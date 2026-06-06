@@ -1,0 +1,15 @@
+export default {
+    nodeEnv: process.env.NODE_ENV || '',
+    port: process.env.PORT || 5002,
+    mongoUri: process.env.MONGO_URI || '',
+    awsRegion: process.env.AWS_REGION,
+    awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    awsS3Bucket: process.env.AWS_S3_BUCKET,
+    keycloakUri: process.env.KEYCLOAK_URI || '',
+    keycloakClientApiId: process.env.KEYCLOAK_CLIENT_ID || '',
+    keycloakClientApiSecret: process.env.KEYCLOAK_CLIENT_SECRET || '',
+    isRuntime: process.env.RUNTIME || '',
+    s3Host: `https://${process.env.AWS_S3_BUCKET}.s3.sa-east-1.amazonaws.com`,
+    cdnHost: process.env.CDN_HOST || 'cdnHost',
+};

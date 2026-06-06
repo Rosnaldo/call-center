@@ -1,0 +1,24 @@
+
+{
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "e2e:local": {
+      "cache": false,
+      "persistent": true
+    },
+    "cy:run": {
+      "cache": false
+    },
+    "cy:open": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+    "compilerOptions": {
+        "rootDir": "src",
+        "ignoreDeprecations": "6.0",
+        "moduleResolution": "node",
+        "target": "ES2020",
+        "module": "commonjs",
+        "lib": ["es2020", "dom"],
+        "skipLibCheck": true,
+        "outDir": "./build",
+        "resolveJsonModule": true,
+        "paths": {
+            "src/*": ["./src/*"],
+            "#apis/*": ["./src/apis/*"],
+            "#config/*": ["./src/config/*"],
+            "#const/*": ["./src/const/*"],
+            "#controllers/*": ["./src/controllers/*"],
+            "#crud/*": ["./src/crud/*"],
+            "#daos/*": ["./src/daos/*"],
+            "#exceptions/*": ["./src/exceptions/*"],
+            "#helpers/*": ["./src/helpers/*"],
+            "#keycloak/*": ["./src/keycloak/*"],
+            "#interactors/*": ["./src/interactors/*"],
+            "#middleware/*": ["./src/middleware/*"],
+            "#migrations/*": ["./src/migrations/*"],
+            "#models/*": ["./src/entities/models/*"],
+            "#producers/*": ["./src/producers/*"],
+            "#routes/*": ["./src/routes/*"],
+            "#schemas/*": ["./src/entities/schemas/*"],
+            "#indexes/*": ["./src/entities/indexes/*"],
+            "#runners/*": ["./src/entities/runners/*"],
+            "#entities/*": ["./src/entities/*"],
+            "#types/*": ["./src/types/*"],
+            "#utils/*": ["./src/utils/*"],
+            "#validations/*": ["./src/validations/*"],
+            "#route_bootstrap": ["./src/route_bootstrap"],
+            "#mongoose_bootstrap": ["./src/mongoose_bootstrap"],
+            "#populate": ["./src/populate"],
+            "#properties": ["./src/properties"],
+            "#db/*": ["./src/db/*"]
+        },
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true
+    },
+    "include": ["src", "tests"],
+    "exclude": [
+        "node_modules",
+        "build",
+        "out"
+    ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "e2e",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "e2e": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "wait-on": "^9.0.5"
+  }
+}

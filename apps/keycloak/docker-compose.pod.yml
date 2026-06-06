@@ -1,0 +1,12 @@
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0.1
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HOSTNAM: auth.meudominio.com
+      KC_HOSTNAME_ADMIN: auth.meudominio.com
+    ports:
+      - "8080:8080"

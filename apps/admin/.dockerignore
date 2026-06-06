@@ -1,0 +1,6 @@
+**/build
+**/dist
+**/data
+**/node_modules
+.git
+dockerfile

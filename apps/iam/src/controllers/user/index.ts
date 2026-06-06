@@ -1,0 +1,29 @@
+import { Avatar } from './avatar';
+import { Count } from './count';
+import { Create } from './create';
+import { Delete } from './delete';
+import { Edit } from './edit';
+import { FindByEmail } from './find_by_email';
+import { Paginacao } from './paginacao';
+
+export class UserController {
+    public readonly classId = Symbol.for('Controller > User');
+
+    public readonly paginacao: Paginacao;
+    public readonly create: Create;
+    public readonly byEmail: FindByEmail;
+    public readonly delete: Delete;
+    public readonly edit: Edit;
+    public readonly avatar: Avatar;
+    public readonly count: Count;
+
+    constructor() {
+        this.count = Count.construir(this.classId);
+        this.create = Create.construir(this.classId);
+        this.paginacao = Paginacao.construir(this.classId);
+        this.byEmail = FindByEmail.construir(this.classId);
+        this.delete = Delete.construir(this.classId);
+        this.edit = Edit.construir(this.classId);
+        this.avatar = Avatar.construir(this.classId);
+    }
+}
