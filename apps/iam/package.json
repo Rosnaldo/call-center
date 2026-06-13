@@ -33,6 +33,7 @@
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^3.2.2",
     "lodash": "^4.17.23",
+    "mongodb": "^6.21.0",
     "mongodb-memory-server": "^11.0.1",
     "mongoose": "^8.19.3",
     "morgan": "^1.9.1",

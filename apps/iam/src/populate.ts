@@ -18,58 +18,13 @@ type UserPick = Pick<IUser['IParams'], 'firstName' | 'lastName' | 'email' | 'rol
 
 const users: UserPick[] = [
     {
-        firstName: "Alex",
-        lastName: "Mercer",
-        email: "alex.mercer@gmail.com",
+        firstName: "Andrey",
+        lastName: "Tsuzuki",
+        email: "andrey.tsuzuki@gmail.com",
         avatar: {
-            s3Path: `avatars/${properties.nodeEnv}/alex.mercer.jpeg`
+            s3Path: `avatars/${properties.nodeEnv}/andrey.tsuzuki.jpeg`
         },
-        role: 'attendent',
-    },
-    {
-        firstName: "Marcus",
-        lastName: "Vance",
-        email: "marcus.vance@exemplo.com",
-        avatar: {
-            s3Path: `avatars/${properties.nodeEnv}/marcus.vance.jpeg`
-        },
-        role: 'attendent',
-    },
-    {
-        firstName: "David",
-        lastName: "Miller",
-        email: "david.miller@exemplo.com",
-        avatar: {
-            s3Path: `avatars/${properties.nodeEnv}/david.miller.jpeg`
-        },
-        role: 'attendent',
-    },
-    {
-        firstName: "Samantha",
-        lastName: "Cruz",
-        email: "samantha.cruz@exemplo.com",
-        avatar: {
-            s3Path: `avatars/${properties.nodeEnv}/samantha.cruz.jpeg`
-        },
-        role: 'customer',
-    },
-    {
-        firstName: "Emily",
-        lastName: "Blunt",
-        email: "emily.blunt@exemplo.com",
-        avatar: {
-            s3Path: `avatars/${properties.nodeEnv}/emily.blunt.jpeg`
-        },
-        role: 'customer',
-    },
-    {
-        firstName: "Sophia",
-        lastName: "Wang",
-        email: "sophia.wang@exemplo.com",
-        avatar: {
-            s3Path: `avatars/${properties.nodeEnv}/sophia.wang.jpeg`
-        },
-        role: 'customer',
+        role: 'admin',
     },
 ];
 

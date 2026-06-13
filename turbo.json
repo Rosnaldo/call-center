@@ -19,6 +19,10 @@
     "cy:open": {
       "cache": false,
       "persistent": true
+    },
+    "simulation": {
+      "cache": false,
+      "persistent": true
     }
   }
 }
