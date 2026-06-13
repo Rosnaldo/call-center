@@ -33,19 +33,26 @@ export interface IUser {
     updatedAt: Date;
 }
 
-export const PictureType = {
-    image: 'image',
-} as const;
+export interface ICallSession {
+    _id: string;
+    roomName: string;
+    sessionId: string;
+    customerId: string;
+    attendantId: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
 
-export const PictureTypeAll = [
-    PictureType.image,
-];
-
-export interface IPicture extends IMedia {
-    type: keyof typeof PictureType;
-    w: number;
-    h: number;
-};
+export interface ICallUserPresence {
+    _id: string;
+    roomName: string;
+    sessionId: string;
+    userId: string;
+    joinedAt: Date;
+    leftAt: Date;
+    createdAt: Date;
+    updatedAt: Date;
+}
 
 export interface Pagination {
     currentPage: number;

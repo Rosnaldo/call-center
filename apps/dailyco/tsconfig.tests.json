@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "composite": true,
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": false,
+    "types": ["jest", "node"]
+  },
+  "include": ["src", "tests", "cypress"],
+  "exclude": [
+    "node_modules",
+    "build",
+    "out"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Video Call Center Template",
+  "description": "A video call center template featuring customer and attendant queues, real-time multi-tab synchronization, browser notifications for turn alerts, and integrated Daily.co video calls.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="100%" height="100%">
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#C49B55" flood-opacity="0.8"/>
+    </filter>
+  </defs>
+
+  <style>
+    .line { fill: none; stroke: #B88A44; stroke-width: 1.5; }
+    .dot { fill: #B88A44; }
+    .box { fill: #F4F1EA; stroke: #C49B55; stroke-width: 1.5; }
+    .icon { fill: none; stroke: #C49B55; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .icon-fill { fill: #C49B55; }
+    .text-label { fill: #7A6C5D; font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; font-size: 14px; font-weight: 500; letter-spacing: 2px; text-anchor: middle; text-transform: uppercase; }
+  </style>
+
+  <path class="line" d="M 300 380 C 300 330, 600 320, 600 295" />
+  <path class="line" d="M 450 380 C 450 330, 600 320, 600 295" />
+  <path class="line" d="M 600 380 C 600 330, 600 320, 600 295" />
+  <path class="line" d="M 750 380 C 750 330, 600 320, 600 295" />
+  <path class="line" d="M 900 380 C 900 330, 600 320, 600 295" />
+
+  <path class="line" d="M 600 170 L 600 135" />
+  <path class="icon" d="M 594 142 L 600 135 L 606 142" stroke-width="2" />
+
+  <circle class="dot" r="3" filter="url(#glow)">
+    <animateMotion begin="0s" dur="3s" repeatCount="indefinite" path="M 300 380 C 300 330, 600 320, 600 295" />
+  </circle>
+  <circle class="dot" r="3" filter="url(#glow)">
+    <animateMotion begin="0.4s" dur="3s" repeatCount="indefinite" path="M 450 380 C 450 330, 600 320, 600 295" />
+  </circle>
+  <circle class="dot" r="3" filter="url(#glow)">
+    <animateMotion begin="0.8s" dur="3s" repeatCount="indefinite" path="M 600 380 C 600 330, 600 320, 600 295" />
+  </circle>
+  <circle class="dot" r="3" filter="url(#glow)">
+    <animateMotion begin="1.2s" dur="3s" repeatCount="indefinite" path="M 750 380 C 750 330, 600 320, 600 295" />
+  </circle>
+  <circle class="dot" r="3" filter="url(#glow)">
+    <animateMotion begin="1.6s" dur="3s" repeatCount="indefinite" path="M 900 380 C 900 330, 600 320, 600 295" />
+  </circle>
+
+  <circle class="dot" r="3" filter="url(#glow)">
+    <animateMotion begin="0s" dur="1.5s" repeatCount="indefinite" path="M 600 170 L 600 135" />
+  </circle>
+  <circle class="dot" r="3" filter="url(#glow)">
+    <animateMotion begin="0.75s" dur="1.5s" repeatCount="indefinite" path="M 600 170 L 600 135" />
+  </circle>
+
+  <g transform="translate(580, 20)">
+    <rect class="icon" x="0" y="0" width="40" height="70" rx="6" />
+    <line class="icon" x1="12" y1="5" x2="28" y2="5" />
+    <line class="icon" x1="15" y1="63" x2="25" y2="63" />
+  </g>
+  <text class="text-label" x="600" y="115">CELULAR</text>
+
+  <g transform="translate(560, 170)">
+    <rect class="box" x="0" y="0" width="80" height="80" rx="14" />
+    <g transform="translate(15, 15) scale(0.8)">
+      <path class="icon" d="M 5 5 L 60 5 L 45 35 L 40 45" stroke-width="3" stroke-linejoin="round" />
+      <path class="icon" d="M 25 35 L 25 50 C 25 55 30 60 35 60 L 40 55" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <path class="icon" d="M 5 5 L 25 35" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      
+      <circle cx="45" cy="45" r="12" fill="#F4F1EA" stroke="#C49B55" stroke-width="2.5" />
+      <path class="icon" d="M 39 45 L 44 50 L 51 41" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+  </g>
+  <text class="text-label" x="600" y="275">FILTER</text>
+
+  <g transform="translate(260, 380)">
+    <rect class="box" x="0" y="0" width="80" height="80" rx="14" />
+    <rect class="icon" x="15" y="15" width="50" height="35" rx="4" />
+    <line class="icon" x1="30" y1="60" x2="50" y2="60" />
+    <line class="icon" x1="40" y1="50" x2="40" y2="60" />
+    <circle class="icon" cx="40" cy="32" r="12" />
+    <text x="40" y="37" fill="#C49B55" font-family="sans-serif" font-size="12" font-weight="bold" text-anchor="middle">18</text>
+    <line class="icon" x1="68" y1="15" x2="68" y2="23" stroke-width="1.5"/>
+    <line class="icon" x1="64" y1="19" x2="72" y2="19" stroke-width="1.5"/>
+  </g>
+  <text class="text-label" x="300" y="490">ADULT</text>
+
+  <g transform="translate(410, 380)">
+    <rect class="box" x="0" y="0" width="80" height="80" rx="14" />
+    <rect class="icon" x="15" y="20" width="50" height="34" rx="4" />
+    <polygon class="icon" points="35,30 35,44 47,37" />
+    <line class="icon" x1="15" y1="60" x2="65" y2="60" />
+    <circle class="icon-fill" cx="25" cy="60" r="2" />
+  </g>
+  <text class="text-label" x="450" y="490">STREAM</text>
+
+  <g transform="translate(560, 380)">
+    <rect class="box" x="0" y="0" width="80" height="80" rx="14" />
+    <path class="icon" d="M 35 25 C 55 25, 65 30, 65 42 C 65 50, 60 55, 62 62 L 52 55 C 45 55, 35 50, 35 42" />
+    <path class="icon" style="fill: #F4F1EA;" d="M 15 42 C 15 28, 45 28, 45 42 C 45 56, 25 56, 18 64 L 18 54 C 15 50, 15 46, 15 42 Z" />
+    <text x="30" y="47" fill="#C49B55" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle">@</text>
+  </g>
+  <text class="text-label" x="600" y="490">SOCIAL</text>
+
+  <g transform="translate(710, 380)">
+    <rect class="box" x="0" y="0" width="80" height="80" rx="14" />
+    <rect class="icon" x="33" y="15" width="14" height="26" rx="7" />
+    <path class="icon" d="M 26 30 C 26 40, 54 40, 54 30" />
+    <line class="icon" x1="40" y1="41" x2="40" y2="55" />
+    <line class="icon" x1="30" y1="55" x2="50" y2="55" />
+    <path class="icon" d="M 20 20 C 15 25, 15 35, 20 40" />
+    <path class="icon" d="M 15 15 C 8 23, 8 37, 15 45" />
+    <path class="icon" d="M 60 20 C 65 25, 65 35, 60 40" />
+    <path class="icon" d="M 65 15 C 72 23, 72 37, 65 45" />
+  </g>
+  <text class="text-label" x="750" y="490">PODCAST</text>
+
+  <g transform="translate(860, 380)">
+    <rect class="box" x="0" y="0" width="80" height="80" rx="14" />
+    <path class="icon" d="M 15 40 C 10 25, 30 25, 40 30 C 50 25, 70 25, 65 40 C 60 60, 45 45, 40 45 C 35 45, 20 60, 15 40 Z" />
+    <line class="icon" x1="25" y1="33" x2="25" y2="41" stroke-width="1.5" />
+    <line class="icon" x1="21" y1="37" x2="29" y2="37" stroke-width="1.5" />
+    <circle class="icon-fill" cx="50" cy="39" r="2.5" />
+    <circle class="icon-fill" cx="56" cy="33" r="2.5" />
+    <path class="line" d="M 40 30 C 40 15, 55 15, 55 5" />
+  </g>
+  <text class="text-label" x="900" y="490">GAME</text>
+
+</svg>

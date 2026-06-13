@@ -4,6 +4,8 @@
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "module": "ESNext",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "lib": [
       "ES2022",
       "DOM",

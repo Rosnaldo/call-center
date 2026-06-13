@@ -1,0 +1,47 @@
+{
+    "compilerOptions": {
+        "rootDir": "src",
+        "ignoreDeprecations": "6.0",
+        "moduleResolution": "node",
+        "target": "ES2020",
+        "module": "commonjs",
+        "lib": ["es2020", "dom"],
+        "skipLibCheck": true,
+        "outDir": "./build",
+        "resolveJsonModule": true,
+        "paths": {
+            "src/*": ["./src/*"],
+            "#apis/*": ["./src/apis/*"],
+            "#config/*": ["./src/config/*"],
+            "#const/*": ["./src/const/*"],
+            "#controllers/*": ["./src/controllers/*"],
+            "#crud/*": ["./src/crud/*"],
+            "#daos/*": ["./src/daos/*"],
+            "#exceptions/*": ["./src/exceptions/*"],
+            "#keycloak/*": ["./src/keycloak/*"],
+            "#middleware/*": ["./src/middleware/*"],
+            "#models/*": ["./src/entities/models/*"],
+            "#routes/*": ["./src/routes/*"],
+            "#schemas/*": ["./src/entities/schemas/*"],
+            "#indexes/*": ["./src/entities/indexes/*"],
+            "#runners/*": ["./src/entities/runners/*"],
+            "#entities/*": ["./src/entities/*"],
+            "#types/*": ["./src/types/*"],
+            "#utils/*": ["./src/utils/*"],
+            "#route_bootstrap": ["./src/route_bootstrap"],
+            "#mongoose_bootstrap": ["./src/mongoose_bootstrap"],
+            "#properties": ["./src/properties"],
+            "#db/*": ["./src/db/*"]
+        },
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true
+    },
+    "include": ["src", "tests"],
+    "exclude": [
+        "node_modules",
+        "build",
+        "out"
+    ]
+}
