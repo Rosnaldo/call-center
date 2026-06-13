@@ -10,6 +10,10 @@ vi.mock('../../components/header/Header.tsx', () => {
   };
 });
 
+vi.mock('../../hooks/auth/useLogout.ts', () => ({
+  useLogout: () => vi.fn(),
+}));
+
 class MockFileReader {
   onload: any = null;
   result: string | null = null;
@@ -38,7 +42,6 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
   const defaultProps = {
     users: mockUsers,
     currentUser: mockUser,
-    onLogout: vi.fn(),
     navigate: vi.fn(),
     onUpdateProfile: vi.fn(),
   };

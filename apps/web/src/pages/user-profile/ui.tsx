@@ -8,11 +8,11 @@ import { Header } from '../../components/header/Header.tsx';
 import { Title } from '../../components/Title.tsx';
 import { Edit2, Check, UploadCloud, ShieldAlert } from 'lucide-react';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { useLogout } from '../../hooks/auth/useLogout.ts';
 
 interface UserProfilePageProps {
   users: OnlineUserState[];
   currentUser: OnlineUserState | null;
-  onLogout: () => void;
   navigate: (path: string) => void;
   onUpdateProfile: (userId: string, name: string, avatarUrl: string) => void;
 }
@@ -20,10 +20,10 @@ interface UserProfilePageProps {
 export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   users,
   currentUser,
-  onLogout,
   navigate,
   onUpdateProfile,
 }) => {
+  const onLogout = useLogout();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!currentUser) {

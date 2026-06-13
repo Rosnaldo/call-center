@@ -15,12 +15,12 @@ import {
   Loader2
 } from 'lucide-react';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { useLogout } from '../../hooks/auth/useLogout.ts';
 
 interface PaymentsPageUIProps {
   currentUser: OnlineUserState | null;
   users: OnlineUserState[];
   addTokensSimulation: (userId: string, count: number) => void;
-  handleLogout: () => void;
   navigate: (path: string) => void;
 }
 
@@ -58,9 +58,9 @@ export const PaymentsPageUI: React.FC<PaymentsPageUIProps> = ({
   currentUser,
   users,
   addTokensSimulation,
-  handleLogout,
   navigate,
 }) => {
+  const handleLogout = useLogout();
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -101,7 +101,7 @@ export const PaymentsPageUI: React.FC<PaymentsPageUIProps> = ({
     setIsProcessing(true);
     setSuccessInfo(null);
 
-    const isSimulation = (import.meta as any).env?.VITE_ENV !== 'production';
+    const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
 
     try {
       if (!isSimulation) {

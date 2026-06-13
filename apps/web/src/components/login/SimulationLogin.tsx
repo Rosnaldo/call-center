@@ -3,16 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, ChevronRight, ShieldCheck } from 'lucide-react';
-import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { useOnlineUsersStore } from '@/src/states/online-users/store';
+import { useCurrentUserStore } from '@/src/states/current-user/store';
 
-interface SimulationLoginProps {
-  onSelect: (user: OnlineUserState) => void;
-  users: OnlineUserState[];
-}
 
-export const SimulationLogin: React.FC<SimulationLoginProps> = ({ onSelect, users }) => {
+export const SimulationLogin = () => {
+  const navigate = useNavigate();
+  const users = useOnlineUsersStore((state) => state.users);
+  const setCurrentUser = useCurrentUserStore((s) => s.setCurrentUser);
+
   const [presetFilter, setPresetFilter] = useState<'all' | 'customer' | 'attendant'>('all');
 
   const preSets = users.filter((u) => 
@@ -100,7 +102,7 @@ export const SimulationLogin: React.FC<SimulationLoginProps> = ({ onSelect, user
               <button
                 key={preset.id}
                 id={`preset-join-${preset.id}`}
-                onClick={() => onSelect({ ...preset, status: 'idle' })}
+                onClick={() => { setCurrentUser({ ...preset, status: 'idle' }); navigate('/painel'); }}
                 className="flex items-center justify-between border border-slate-200/80 rounded-xl p-3.5 bg-white hover:bg-slate-50 hover:border-slate-300 hover:shadow-xs text-left group transition cursor-pointer"
               >
                 <div className="flex items-center gap-3">

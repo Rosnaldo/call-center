@@ -9,11 +9,11 @@ import { ArrowLeft } from 'lucide-react';
 import { TransactionsTable } from '../../components/TransactionsTable.tsx';
 import { PaginatedTransactionsResponse } from '../../queries/transaction/query.ts';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { useLogout } from '../../hooks/auth/useLogout.ts';
 
 interface TokenHistoryPageUIProps {
   currentUser: OnlineUserState;
   users: OnlineUserState[];
-  handleLogout: () => void;
   navigate: (path: string) => void;
   paginatedData: PaginatedTransactionsResponse;
   searchTerm: string;
@@ -28,7 +28,6 @@ interface TokenHistoryPageUIProps {
 export const TokenHistoryPageUI: React.FC<TokenHistoryPageUIProps> = ({
   currentUser,
   users,
-  handleLogout,
   navigate,
   paginatedData,
   searchTerm,
@@ -39,6 +38,8 @@ export const TokenHistoryPageUI: React.FC<TokenHistoryPageUIProps> = ({
   handleTypeFilterChange,
   setCurrentPage,
 }) => {
+  const handleLogout = useLogout();
+
   return (
     <div id="token-history-page-view" className="flex flex-col min-h-screen font-sans bg-slate-50/50">
       <Header users={users} onLogout={handleLogout} />

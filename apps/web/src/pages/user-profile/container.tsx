@@ -9,12 +9,10 @@ import { UserProfilePage } from './ui.tsx';
 import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 
 interface UserProfileContainerProps {
-  onLogout: () => void;
   navigate: (path: string) => void;
 }
 
 export const UserProfileContainer: React.FC<UserProfileContainerProps> = ({
-  onLogout,
   navigate,
 }) => {
   const currentUser = useCurrentUserStore((s) => s.currentUser);
@@ -37,7 +35,6 @@ export const UserProfileContainer: React.FC<UserProfileContainerProps> = ({
     <UserProfilePage
       users={users}
       currentUser={currentUser || null}
-      onLogout={onLogout}
       navigate={navigate}
       onUpdateProfile={handleUpdateProfile}
     />

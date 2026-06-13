@@ -43,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Navigation Route Tabs */}
-        {((import.meta as any).env?.VITE_ENV !== 'production') && (
+        {((import.meta as any).env?.VITE_ENV === 'simulation') && (
           <nav id="header-navigation-tabs" className="flex items-center gap-1 bg-brand-panel border border-brand-border p-1 rounded-xl">
             <button
               id="nav-route-login"

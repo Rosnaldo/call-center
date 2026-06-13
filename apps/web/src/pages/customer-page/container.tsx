@@ -12,21 +12,17 @@ import { useBillingTimer } from '@/src/hooks/useBillingTimer.ts';
 
 interface CustomerPageContainerProps {
   navigate: (path: string) => void;
-  handleLogout: () => void;
-  completeCall: (attendantId: string, callId?: string, byAttendant?: boolean) => void;
-  updateCall: (callId: string, updates: any) => void;
 }
 
 export const CustomerPageContainer: React.FC<CustomerPageContainerProps> = ({
   navigate,
-  handleLogout,
-  completeCall,
-  updateCall,
 }) => {
   const currentUser = useCurrentUserStore((s) => s.currentUser);
   const users = useOnlineUsersStore((state) => state.users);
   const addTokensSimulation = useOnlineUsersStore((state) => state.addTokensSimulation);
   const call = useCallStore((state) => state.call);
+  const completeCall = useCallStore((s) => s.completeCall);
+  const updateCall = useCallStore((s) => s.updateCall);
 
   useBillingTimer(call ?? undefined);
 
@@ -36,7 +32,6 @@ export const CustomerPageContainer: React.FC<CustomerPageContainerProps> = ({
       users={users}
       call={call}
       navigate={navigate}
-      handleLogout={handleLogout}
       completeCall={completeCall}
       addTokensSimulation={addTokensSimulation}
       updateCall={updateCall}

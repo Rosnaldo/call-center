@@ -15,7 +15,7 @@ export interface OnlineUsersStore {
   users: OnlineUserState[];
 }
 
-const isSimulation = (import.meta as any).env?.VITE_ENV !== 'production';
+const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
 
 export const initialOnlineUsersStore: OnlineUsersStore = {
   users: isSimulation ? MOCK_USERS : [],

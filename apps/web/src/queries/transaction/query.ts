@@ -21,7 +21,7 @@ export async function fetchTransactions(
   search?: string,
   type?: string
 ): Promise<PaginatedTransactionsResponse> {
-  const isSimulation = (import.meta as any).env?.VITE_ENV !== 'production';
+  const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
 
   if (isSimulation) {
     const userTxs = MOCK_TRANSACTIONS.filter(tx => tx.userId === userId);

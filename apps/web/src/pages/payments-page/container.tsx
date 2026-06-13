@@ -9,12 +9,10 @@ import { PaymentsPageUI } from './ui.tsx';
 import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 
 interface PaymentsPageContainerProps {
-  handleLogout: () => void;
   navigate: (path: string) => void;
 }
 
 export const PaymentsPageContainer: React.FC<PaymentsPageContainerProps> = ({
-  handleLogout,
   navigate,
 }) => {
   const currentUser = useCurrentUserStore((s) => s.currentUser);
@@ -26,7 +24,6 @@ export const PaymentsPageContainer: React.FC<PaymentsPageContainerProps> = ({
       currentUser={currentUser || null}
       users={users}
       addTokensSimulation={addTokensSimulation}
-      handleLogout={handleLogout}
       navigate={navigate}
     />
   );

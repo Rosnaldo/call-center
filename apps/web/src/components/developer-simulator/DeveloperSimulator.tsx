@@ -42,7 +42,7 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
   const timerStatus = useTimerStore((s) => s.status);
   const timerElapsed = useTimerStore((s) => s.elapsedSeconds);
 
-  if ((import.meta as any).env?.VITE_ENV === 'development') {
+  if ((import.meta as any).env?.VITE_ENV !== 'simulation') {
     return null;
   }
 

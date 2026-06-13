@@ -12,16 +12,14 @@ import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
 
 interface TokenHistoryPageContainerProps {
-  handleLogout: () => void;
   navigate: (path: string) => void;
 }
 
 const TokenHistoryPageDataLoader: React.FC<{
   currentUser: OnlineUserState;
   users: OnlineUserState[];
-  handleLogout: () => void;
   navigate: (path: string) => void;
-}> = ({ currentUser, users, handleLogout, navigate }) => {
+}> = ({ currentUser, users, navigate }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'credit' | 'debit'>('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -39,7 +37,6 @@ const TokenHistoryPageDataLoader: React.FC<{
     <TokenHistoryPageUI
       currentUser={currentUser}
       users={users}
-      handleLogout={handleLogout}
       navigate={navigate}
       paginatedData={paginatedData}
       searchTerm={searchTerm}
@@ -54,7 +51,6 @@ const TokenHistoryPageDataLoader: React.FC<{
 };
 
 export const TokenHistoryPageContainer: React.FC<TokenHistoryPageContainerProps> = ({
-  handleLogout,
   navigate,
 }) => {
   const users = useOnlineUsersStore((state) => state.users);
@@ -98,7 +94,6 @@ export const TokenHistoryPageContainer: React.FC<TokenHistoryPageContainerProps>
         <TokenHistoryPageDataLoader
           currentUser={currentUser}
           users={users}
-          handleLogout={handleLogout}
           navigate={navigate}
         />
       </Suspense>

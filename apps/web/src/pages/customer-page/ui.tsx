@@ -14,13 +14,13 @@ import { SectionHeader } from '../../components/SectionHeader.tsx';
 import { CallState } from '@/src/states/call/state.ts';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
 import filterToxicSvg from '../../assets/filter-toxic-links.svg';
+import { useLogout } from '../../hooks/auth/useLogout.ts';
 
 interface CustomerPageUIProps {
   currentUser: OnlineUserState | null;
   users: OnlineUserState[];
   call: CallState | null;
   navigate: (path: string) => void;
-  handleLogout: () => void;
   completeCall: (attendantId: string, callId?: string, byAttendant?: boolean) => void;
   addTokensSimulation: (userId: string, count: number) => void;
   updateCall: (callId: string, updates: Partial<CallState>) => void;
@@ -31,11 +31,11 @@ export const CustomerPageUI: React.FC<CustomerPageUIProps> = ({
   users,
   call,
   navigate,
-  handleLogout,
   completeCall,
   addTokensSimulation,
   updateCall,
 }) => {
+  const handleLogout = useLogout();
   if (!currentUser) {
     return (
       <UnauthorizedView

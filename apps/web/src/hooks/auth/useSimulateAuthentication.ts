@@ -5,21 +5,22 @@
 
 import { useCallback } from 'react';
 import { useCurrentUserStore } from '../../states/current-user/store.ts';
-import { OnlineUserState } from '@/src/states/online-users/state.ts';
 
 export function useSimulateAuthentication() {
+  const currentUser = useCurrentUserStore((s) => s.currentUser);
   const setCurrentUser = useCurrentUserStore((s) => s.setCurrentUser);
 
-  const selectIdentity = useCallback((user: OnlineUserState | null) => {
-    setCurrentUser(user);
-  }, [setCurrentUser]);
+  const isAuthenticated = currentUser !== null;
 
-  const leaveSession = useCallback(() => {
+  const login = useCallback(() => {}, []);
+
+  const logout = useCallback(() => {
     setCurrentUser(null);
   }, [setCurrentUser]);
 
   return {
-    selectIdentity,
-    leaveSession
+    login,
+    logout,
+    isAuthenticated,
   };
 }
