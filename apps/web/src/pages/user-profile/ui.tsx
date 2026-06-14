@@ -9,19 +9,25 @@ import { Title } from '../../components/Title.tsx';
 import { Edit2, Check, UploadCloud, ShieldAlert } from 'lucide-react';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
 import { useLogout } from '../../hooks/auth/useLogout.ts';
+import { mytoast } from '@/src/components/toast.tsx';
+import { handleRequestError } from '@/src/utils/utils.ts';
 
 interface UserProfilePageProps {
+  fileError: string | null;
+  avatarUrl: string | null;
   users: OnlineUserState[];
   currentUser: OnlineUserState | null;
   navigate: (path: string) => void;
-  onUpdateProfile: (userId: string, name: string, avatarUrl: string) => void;
+  processFile: (file: File) => Promise<void>;
 }
 
 export const UserProfilePage: React.FC<UserProfilePageProps> = ({
+  fileError,
+  avatarUrl,
   users,
   currentUser,
   navigate,
-  onUpdateProfile,
+  processFile,
 }) => {
   const onLogout = useLogout();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,9 +52,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(currentUser.name);
-  const [avatarUrl, setAvatarUrl] = useState(currentUser.avatarUrl);
   const [isDragging, setIsDragging] = useState(false);
-  const [fileError, setFileError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   const handleCancel = () => {
@@ -58,7 +62,6 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
   const handleSave = () => {
     if (!name.trim()) return;
-    onUpdateProfile(currentUser.id, name.trim(), avatarUrl);
     setIsEditing(false);
     setSaveSuccess(true);
     setTimeout(() => {
@@ -67,31 +70,18 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
     }, 1500);
   };
 
-  const processFile = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setFileError('O arquivo deve ser uma imagem JPG ou PNG.');
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setFileError('O tamanho máximo é de 2 MB.');
-      return;
-    }
-    setFileError(null);
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        const newUrl = reader.result;
-        setAvatarUrl(newUrl);
-        onUpdateProfile(currentUser.id, name, newUrl);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const loadingToast = mytoast('Alterando avatar...');
+      try {
+        await processFile(file);
+      } catch (error) {
+        handleRequestError(error);
+      } finally {
+        mytoast.dismiss(loadingToast);
       }
     };
-    reader.onerror = () => setFileError('Erro ao ler a imagem. Tente novamente.');
-    reader.readAsDataURL(file);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
   };
 
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
@@ -201,20 +191,6 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                     </span>
                   </div>
                   <p className="text-sm text-brand-muted font-mono">{currentUser.email}</p>
-                </div>
-
-                {/* Avatar URL (manual input) */}
-                <div>
-                  <label className="block text-[10px] font-mono tracking-wider text-brand-muted uppercase mb-1.5">
-                    URL do Avatar
-                  </label>
-                  <input
-                    type="url"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    placeholder="https://exemplo.com/suafoto.jpg"
-                    className="w-full bg-brand-panel/35 border border-brand-border rounded-xl px-3 py-2 text-xs text-brand-dark font-mono focus:outline-none focus:ring-1 focus:ring-brand-ochre"
-                  />
                 </div>
               </div>
 

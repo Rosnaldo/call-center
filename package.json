@@ -31,7 +31,8 @@
     "@react-email/components": "1.0.4",
     "eslint-plugin-n": "17.24.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "sonner": "^2.0.7"
   },
   "overrides": {
     "minimatch": "^10.2.2",

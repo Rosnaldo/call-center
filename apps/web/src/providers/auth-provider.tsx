@@ -1,11 +1,8 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { keycloak } from '../api/keycloak';
-import { apiBack } from '../api/backend';
-import { ApiError } from '../error/api';
 import { useCurrentUserStore } from '../states/current-user/store';
-import { User } from '../entities/user';
 import { OnlineUserState } from '../states/online-users/state';
+import { fetchUser } from '../services/user';
 
 type AuthContextType = {
     isAuthenticated: boolean;
@@ -19,27 +16,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return <AuthProviderReal>{children}</AuthProviderReal>;
 }
 
-async function fetchUser(email: string) {
-    const res = await apiBack.get(
-        "/users/by-email", {
-            params: { email }
-        }
-    )
-    
-    if (res.data.isError) {
-        throw new ApiError(res.data.message);
-    }
-
-    const user = res.data as User;
-    return user;
-}
-
 function AuthProviderReal({ children }: { children: React.ReactNode }) {
     const initialized = useRef(false);
     const [ready, setReady] = useState(false);
+    const [initError, setInitError] = useState<string | null>(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const setCurrentUser = useCurrentUserStore((s) => s.setCurrentUser);
-    const navigate = useNavigate();
 
     useEffect(() => {
         if (initialized.current) return;
@@ -62,6 +44,7 @@ function AuthProviderReal({ children }: { children: React.ReactNode }) {
                 ...user,
                 id: user._id,
                 name: `${user.firstName} ${user.lastName}`,
+                avatarUrl: user.avatar?.url,
                 status: 'idle',
                 isOnline: true,
             };
@@ -70,8 +53,9 @@ function AuthProviderReal({ children }: { children: React.ReactNode }) {
             setReady(true);
         })
         .catch((error) => {
+            console.error('Keycloak initialization failed:', error);
             const message = error instanceof Error ? error.message : 'Erro desconhecido.';
-            navigate(`/error?message=${encodeURIComponent(message)}`);
+            setInitError(message);
         });
 
         keycloak.onAuthSuccess = () => setIsAuthenticated(true);
@@ -86,6 +70,21 @@ function AuthProviderReal({ children }: { children: React.ReactNode }) {
             });
         };
     }, []);
+
+    if (initError) return (
+        <div className="flex min-h-screen items-center justify-center bg-[var(--bg-brand-canvas)]">
+            <div className="text-center bg-white p-8 rounded-2xl border border-slate-200/50 max-w-sm shadow-sm">
+                <h3 className="text-base font-bold text-slate-800">Erro ao inicializar</h3>
+                <p className="text-xs text-slate-500 mt-2">{initError}</p>
+                <button
+                    onClick={() => window.location.replace('/login')}
+                    className="mt-6 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-lg transition shadow-sm cursor-pointer"
+                >
+                    Tentar novamente
+                </button>
+            </div>
+        </div>
+    );
 
     if (!ready) return <div>Loading session…</div>;
 

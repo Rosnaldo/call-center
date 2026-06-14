@@ -38,6 +38,9 @@ export class FindByEmail {
             const { email } = input;
             const query = { email };
             const user = await getUserDao().findOne(query);
+            if (!user) {
+                throw new BadRequestException('Usuário não encontrado.');
+            }
 
             return successData(this.utils.toObject(user!));
         } catch (error: unknown) {

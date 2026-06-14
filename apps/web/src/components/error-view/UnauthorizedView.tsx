@@ -3,25 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
 import { UserCheck } from 'lucide-react';
-import { Header } from '../header/Header.tsx';
-import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { useNavigate } from 'react-router-dom';
 
-interface UnauthorizedViewProps {
-  users: OnlineUserState[];
-  onLogout: () => void;
-  navigate: (path: string) => void;
-}
+export const UnauthorizedView= () => {
+  const navigate = useNavigate();
 
-export const UnauthorizedView: React.FC<UnauthorizedViewProps> = ({
-  users,
-  onLogout,
-  navigate,
-}) => {
   return (
     <div className="flex flex-col min-h-screen font-sans">
-      <Header users={users} onLogout={onLogout} />
       <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 mt-6 flex-grow flex items-center justify-center">
         <div className="text-center bg-white p-8 rounded-2xl border border-slate-200/50 max-w-sm shadow-sm">
           <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-100">

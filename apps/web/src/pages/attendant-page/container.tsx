@@ -12,7 +12,6 @@ import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 import { useBillingTimer } from '@/src/hooks/useBillingTimer.ts';
 
 export const AttendantPageContainer: React.FC = () => {
-  const navigate = useNavigate();
   const currentUser = useCurrentUserStore((s) => s.currentUser);
   const users = useOnlineUsersStore((state) => state.users);
   const addTokensSimulation = useOnlineUsersStore((state) => state.addTokensSimulation);
@@ -28,7 +27,6 @@ export const AttendantPageContainer: React.FC = () => {
       currentUser={currentUser || null}
       users={users}
       call={call}
-      navigate={navigate}
       completeCall={completeCall}
       addTokensSimulation={addTokensSimulation}
       updateCall={updateCall}

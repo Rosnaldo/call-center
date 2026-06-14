@@ -1,13 +1,13 @@
 export const UserRole = {
     admin: 'admin',
     customer: 'customer',
-    attendent: 'attendent',
+    attendant: 'attendant',
 } as const;
 
 export const UserRoleAll = [
     UserRole.admin,
     UserRole.customer,
-    UserRole.attendent,
+    UserRole.attendant,
 ];
 
 export interface IMedia {

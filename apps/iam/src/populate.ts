@@ -20,7 +20,7 @@ const users: UserPick[] = [
     {
         firstName: "Andrey",
         lastName: "Tsuzuki",
-        email: "andrey.tsuzuki@gmail.com",
+        email: "andreytsuzuki@gmail.com",
         avatar: {
             s3Path: `avatars/${properties.nodeEnv}/andrey.tsuzuki.jpeg`
         },

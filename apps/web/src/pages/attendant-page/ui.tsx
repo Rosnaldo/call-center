@@ -5,8 +5,6 @@
 
 import React from 'react';
 import { Header } from '../../components/header/Header.tsx';
-import { UnauthorizedView } from '../../components/error-view/UnauthorizedView.tsx';
-import { RoleMismatchView } from '../../components/error-view/RoleMismatchView.tsx';
 import { DeveloperSimulator } from '../../components/developer-simulator/DeveloperSimulator.tsx';
 import { CallLobbyView } from '../../components/call-lobby-view/call-view/CallLobbyView.tsx';
 import { UserLists } from '../../components/user-list/UserLists.tsx';
@@ -20,7 +18,6 @@ interface AttendantPageUIProps {
   currentUser: OnlineUserState | null;
   users: OnlineUserState[];
   call: CallState | null;
-  navigate: (path: string) => void;
   completeCall: (attendantId: string, callId?: string, byAttendant?: boolean) => void;
   addTokensSimulation: (userId: string, count: number) => void;
   updateCall: (callId: string, updates: Partial<CallState>) => void;
@@ -31,34 +28,12 @@ export const AttendantPageUI: React.FC<AttendantPageUIProps> = ({
   currentUser,
   users,
   call,
-  navigate,
   completeCall,
   addTokensSimulation,
   updateCall,
   simulateIncomingCall,
 }) => {
   const handleLogout = useLogout();
-  if (!currentUser) {
-    return (
-      <UnauthorizedView
-        users={users}
-        onLogout={handleLogout}
-        navigate={navigate}
-      />
-    );
-  }
-
-  if (currentUser.role !== 'attendant') {
-    return (
-      <RoleMismatchView
-        currentUser={currentUser}
-        users={users}
-        onLogout={handleLogout}
-        navigate={navigate}
-        requiredRole="attendant"
-      />
-    );
-  }
 
   return (
     <div id="attendant-main-view" className="flex flex-col min-h-screen font-sans bg-slate-50/50">

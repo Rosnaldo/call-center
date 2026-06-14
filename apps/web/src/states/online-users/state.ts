@@ -9,6 +9,7 @@ import { MOCK_USERS } from './mock.ts';
 export interface OnlineUserState extends EntityUser {
   id: string;
   name: string;
+  avatarUrl?: string;
   status: 'idle' | 'waiting' | 'in-call';
   isOnline?: boolean;
 }

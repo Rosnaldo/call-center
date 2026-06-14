@@ -25,7 +25,7 @@ export class Count {
         try {
             const admins = await this.crud.count({ role: UserRole.admin });
             const customers = await this.crud.count({ role: UserRole.customer });
-            const attendants = await this.crud.count({ role: UserRole.attendent });
+            const attendants = await this.crud.count({ role: UserRole.attendant });
             return successData({ admins, customers, attendants });
         } catch (error: unknown) {
             return logError(error, '/users/count');

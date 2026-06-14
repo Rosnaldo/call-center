@@ -4,12 +4,7 @@ import { useCurrentUserStore } from '../states/current-user/store.ts';
 export function UserPainelPage() {
   const currentUser = useCurrentUserStore((s) => s.currentUser);
 
-  console.log('Current user:', currentUser);
-  if (!currentUser) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (currentUser.role === 'customer') {
+  if (currentUser?.role === 'customer') {
     return <Navigate to="/customer" replace />;
   }
 
