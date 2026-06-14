@@ -39,6 +39,7 @@ export function createWebSocketServer(server: Server): WebSocketServer {
                     authWs.userId = user.id;
                     authWs.userEmail = user.email ?? '';
                     authWs.userName = [user.firstName, user.lastName].filter(Boolean).join(' ');
+                    authWs.userToken = token;
                     wss.emit('connection', authWs, req);
                 });
             })

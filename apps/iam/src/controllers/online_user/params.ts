@@ -15,4 +15,7 @@ export interface IOnlineUserController {
     IList: {
         IOutput: IListOutput;
     };
+    IRemove: {
+        IInput: { id: string };
+    };
 }

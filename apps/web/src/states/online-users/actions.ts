@@ -7,7 +7,6 @@ import { MOCK_USERS } from './mock.ts';
 import { OnlineUserState } from './state.ts';
 
 export interface OnlineUsersActions {
-  addUser: (user: OnlineUserState) => void;
   upsertUser: (user: OnlineUserState) => void;
   removeUser: (userId: string) => void;
   updateUser: (userId: string, updates: Partial<OnlineUserState>) => void;
@@ -20,12 +19,6 @@ export const createOnlineUsersActions = (
   set: (fn: (state: any) => any) => void
 ): OnlineUsersActions => {
   return {
-    addUser: (user) => {
-      set((state) => ({
-        users: [...state.users, user],
-      }));
-    },
-
     upsertUser: (user) => {
       set((state) => {
         const exists = state.users.some((u: OnlineUserState) => u.id === user.id);

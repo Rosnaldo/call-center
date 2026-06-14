@@ -9,7 +9,7 @@ import { UserUtils, UserBuilder } from '#schemas/user/utils';
 import { validateInput } from 'src/validations/user/exists';
 import { BadRequestException } from 'src/exceptions/bad_request';
 import { getKcMain } from '#keycloak/singleton';
-import { UserRole, UserRoleAll } from '@repo/shared-types';
+import { UserRole } from '@repo/shared-types';
 
 type IInput = IUserController['IExists']['IInput'];
 type IOutput = IUserController['IExists']['IOutput'];
@@ -51,15 +51,11 @@ export class Exists {
                 return successData(this.utils.toObject(existingUser));
             }
 
-            const realmRoles = await client.users.listRealmRoleMappings({ id: kcUser.id });
-            const matchedRole = realmRoles.map(r => r.name).find(name => UserRoleAll.includes(name as any));
-            const role = (matchedRole ?? UserRole.customer) as keyof typeof UserRole;
-
             const newUser = await new UserBuilder().create({
                 firstName: kcUser.firstName ?? '',
                 lastName: kcUser.lastName ?? '',
                 email,
-                role,
+                role: UserRole.customer,
             }).save();
 
             return successData(newUser);

@@ -29,4 +29,18 @@ export default (app: Application) => {
             return res.status(200).send(either.data);
         }
     );
+
+    app.delete(
+        '/online-users/remove',
+        GetKeycloakUser,
+        async (req, res) => {
+            const controller = new OnlineUserController();
+            const mapped = controller.remove.mapper(req.body);
+            const either = await controller.remove.exec({ mapped });
+            if (either.isError) {
+                return res.status(either.status).send(either);
+            }
+            return res.status(200).send();
+        }
+    );
 };

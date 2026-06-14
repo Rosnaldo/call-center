@@ -8,7 +8,7 @@ export class OnlineUserUtils {
         email: makeSmallStringSchema('email'),
         role: z.enum(['admin', 'customer', 'attendant']),
         avatarUrl: makeStringSchema('avatarUrl').optional(),
-        status: z.enum(['idle', 'waiting', 'in-call']),
+        status: z.enum(['idle', 'waiting', 'in-call', 'disconnecting']),
         isOnline: z.boolean().optional(),
     });
 }

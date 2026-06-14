@@ -50,21 +50,19 @@ export const AttendantList: React.FC<AttendantListProps> = ({
   };
 
   // Dynamic online attendants mapped from the state users array
-  const allAttendantsMapped: (OnlineUserState & { isOffline?: boolean })[] = onlineAttendants.map(at => ({
+  const allAttendantsMapped: (OnlineUserState & { isOffline?: boolean; isDisconnecting?: boolean })[] = onlineAttendants.map(at => ({
     ...at,
-    isOffline: false
+    isOffline: at.isOnline === false,
+    isDisconnecting: at.status === 'disconnecting',
   }));
 
-  // Sort: Available (online & idle) first, Busy (online & on call) second, Offline third.
-  const getSortScore = (at: OnlineUserState & { isOffline?: boolean }) => {
-    if (at.isOffline) {
-      return 3; // Offline/Unavailable lowest
-    }
+  // Sort: Available first, Busy second, Disconnecting third, Offline last.
+  const getSortScore = (at: OnlineUserState & { isOffline?: boolean; isDisconnecting?: boolean }) => {
+    if (at.isOffline) return 4;
+    if (at.isDisconnecting) return 3;
     const busyCall = getAttendantOccupiedOrRinging(at.id);
-    if (busyCall) {
-      return 2; // Online but busy in-call or ringing
-    }
-    return 1; // Online and available/idle highest
+    if (busyCall) return 2;
+    return 1;
   };
 
   const sortedAttendants = [...allAttendantsMapped].sort((a, b) => {
@@ -107,6 +105,7 @@ export const AttendantList: React.FC<AttendantListProps> = ({
               const activeCall = getAttendantcall(at.id);
               const busyCall = getAttendantOccupiedOrRinging(at.id);
               const isSelf = currentUser?.id === at.id;
+              const isDisconnecting = at.isDisconnecting ?? false;
 
               const currentCustInActiveWithThisAtt = getAttendantCall(at.id) && currentUser && getAttendantCall(at.id)?.customerId === currentUser.id;
               const isLocalCustomerBusyState = currentUser ? isCustomerCurrentlyBusy(currentUser.id) : false;
@@ -117,6 +116,8 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                   className={`border rounded-2xl p-4 transition-all duration-300 group ${
                     at.isOffline
                       ? 'bg-brand-card/45 border-brand-border/40 opacity-70'
+                      : isDisconnecting
+                      ? 'bg-amber-50/40 border-amber-200/60 opacity-80'
                       : isSelf
                       ? 'bg-brand-card border-brand-ochre/30'
                       : activeCall
@@ -138,7 +139,9 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                           />
                         </div>
                         {at.isOffline ? (
-                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-amber-500 rounded-full border-2 border-white" title="Offline" />
+                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-slate-400 rounded-full border-2 border-white" title="Offline" />
+                        ) : isDisconnecting ? (
+                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-amber-400 rounded-full border-2 border-white animate-pulse" title="Reconectando..." />
                         ) : activeCall ? (
                           <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-amber-500 rounded-full border-2 border-white" title="In call" />
                         ) : (
@@ -159,12 +162,21 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                               Offline
                             </span>
                           )}
+                          {isDisconnecting && (
+                            <span className="text-[9px] font-semibold tracking-wide px-1.5 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded animate-pulse">
+                              Reconectando...
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 mt-2">
                           {at.isOffline ? (
-                            <span className="text-[10px] font-mono tracking-tight bg-amber-50 border border-amber-100/50 text-amber-700 px-2 py-0.5 rounded font-medium flex items-center gap-1.5">
+                            <span className="text-[10px] font-mono tracking-tight bg-slate-50 border border-slate-200 text-slate-500 px-2 py-0.5 rounded font-medium flex items-center gap-1.5">
                               <strong>Offline</strong> · Indisponível
+                            </span>
+                          ) : isDisconnecting ? (
+                            <span className="text-[10px] font-mono tracking-tight bg-amber-50 border border-amber-200 text-amber-700 px-2 py-0.5 rounded font-medium flex items-center gap-1.5 animate-pulse">
+                              <strong>Reconectando</strong> · Aguardando conexão
                             </span>
                           ) : activeCall ? (
                             <span className="text-[10px] font-mono tracking-tight bg-amber-50 border border-amber-100/50 text-amber-700 px-2 py-0.5 rounded font-medium flex items-center gap-1.5">
@@ -188,6 +200,15 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                         >
                           <Video className="w-3.5 h-3.5 text-brand-muted/40" />
                           Offline
+                        </button>
+                      ) : isDisconnecting ? (
+                        <button
+                          disabled
+                          className="px-3 py-2 rounded-xl text-xs font-semibold bg-amber-50 text-amber-400 border border-amber-200 cursor-not-allowed flex items-center gap-1.5"
+                          title="Atendente reconectando..."
+                        >
+                          <Video className="w-3.5 h-3.5" />
+                          Reconectando
                         </button>
                       ) : currentUser?.role === 'customer' ? (
                         currentCustInActiveWithThisAtt ? (

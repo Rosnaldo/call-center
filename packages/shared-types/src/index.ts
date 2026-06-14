@@ -68,7 +68,7 @@ export interface IOnlineUser {
     email: string;
     role: keyof typeof UserRole;
     avatarUrl?: string;
-    status: 'idle' | 'waiting' | 'in-call';
+    status: 'idle' | 'waiting' | 'in-call' | 'disconnecting';
     isOnline?: boolean;
     tokens?: number;
 }
