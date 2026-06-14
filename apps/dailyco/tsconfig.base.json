@@ -28,6 +28,7 @@
             "#entities/*": ["./src/entities/*"],
             "#types/*": ["./src/types/*"],
             "#utils/*": ["./src/utils/*"],
+            "#websocket/*": ["./src/websocket/*"],
             "#route_bootstrap": ["./src/route_bootstrap"],
             "#mongoose_bootstrap": ["./src/mongoose_bootstrap"],
             "#properties": ["./src/properties"],
