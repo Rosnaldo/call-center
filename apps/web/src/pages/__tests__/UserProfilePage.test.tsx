@@ -183,14 +183,11 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
     });
   });
 
-  it('displays error message on selection of an invalid, non-image file type', () => {
-    const { container } = render(<UserProfilePage {...defaultProps} />);
+  it('displays error message when fileError prop is set', () => {
+    const errorMsg = 'Por favor, selecione uma imagem.';
+    render(<UserProfilePage {...defaultProps} fileError={errorMsg} />);
 
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = new File(['text content'], 'info.txt', { type: 'text/plain' });
-    fireEvent.change(fileInput, { target: { files: [file] } });
-
-    expect(screen.getByText('O arquivo deve ser uma imagem JPG ou PNG.')).toBeDefined();
+    expect(screen.getByText(errorMsg)).toBeDefined();
   });
 
   it('handles drag-and-drop operations on the zone correctly', async () => {

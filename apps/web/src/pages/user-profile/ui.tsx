@@ -36,7 +36,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
     return (
       <div className="min-h-screen bg-brand-canvas flex flex-col items-center justify-center p-6">
         <div className="bg-white border border-brand-border rounded-2xl p-8 max-w-md w-full text-center">
-          <ShieldAlert className="w-12 h-12 text-rose-500 mx-auto mb-4" />
+          <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-brand-dark font-display mb-2">Desconectado</h2>
           <p className="text-xs text-brand-muted mb-6">Por favor, conecte-se com um dos usuários de teste no simulador.</p>
           <button
@@ -77,6 +77,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
       try {
         await processFile(file);
       } catch (error) {
+        console.log("Error in handleFileChange:", error);
         handleRequestError(error);
       } finally {
         mytoast.dismiss(loadingToast);
@@ -86,11 +87,19 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = () => setIsDragging(false);
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) processFile(file);
+    if (!file) return;
+    const loadingToast = mytoast('Alterando avatar...');
+    try {
+      await processFile(file);
+    } catch (error) {
+      handleRequestError(error);
+    } finally {
+      mytoast.dismiss(loadingToast);
+    }
   };
 
   const initials = currentUser.name ? currentUser.name.charAt(0).toUpperCase() : '?';
@@ -247,11 +256,11 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               </button>
 
               <span className="text-[10px] tracking-wide text-brand-muted leading-relaxed max-w-[180px]">
-                JPG ou PNG, máx 2 MB · arraste para enviar
+                Qualquer formato de imagem, máx 2 MB · arraste para enviar
               </span>
 
               {fileError && (
-                <div className="mt-4 p-2 bg-rose-50 border border-rose-100 rounded-xl text-[10px] text-rose-600 font-medium">
+                <div className="mt-4 p-2 bg-red-50 border border-red-100 rounded-xl text-[10px] text-red-600 font-medium">
                   {fileError}
                 </div>
               )}

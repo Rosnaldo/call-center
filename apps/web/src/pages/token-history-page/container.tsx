@@ -70,12 +70,12 @@ export const TokenHistoryPageContainer: React.FC = () => {
 
   return (
     <ErrorBoundary fallback={
-      <div className="bg-rose-50 border border-rose-100 rounded-2xl p-6 text-center text-slate-800 m-4">
-        <p className="text-sm font-bold text-rose-900 font-sans">Erro ao carregar tabela de transações</p>
-        <p className="text-xs text-rose-700 mt-1 font-sans">Por favor, tente recarregar ou consulte os logs.</p>
+      <div className="bg-red-50 border border-red-100 rounded-2xl p-6 text-center text-slate-800 m-4">
+        <p className="text-sm font-bold text-red-900 font-sans">Erro ao carregar tabela de transações</p>
+        <p className="text-xs text-red-700 mt-1 font-sans">Por favor, tente recarregar ou consulte os logs.</p>
         <button
           onClick={() => window.location.reload()}
-          className="mt-3 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold cursor-pointer"
+          className="mt-3 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold cursor-pointer"
         >
           Recarregar
         </button>

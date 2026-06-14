@@ -128,7 +128,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
                             (cust.tokens !== undefined ? cust.tokens : 5) <= 0
-                              ? 'bg-rose-50 text-rose-600 border-rose-100'
+                              ? 'bg-red-50 text-red-600 border-red-100'
                               : 'bg-amber-50 text-amber-700 border-amber-100'
                           }`}
                           title={(cust.tokens !== undefined ? cust.tokens : 5) <= 0 ? "Sem tokens" : "Saldo de tokens"}

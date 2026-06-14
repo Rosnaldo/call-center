@@ -51,7 +51,7 @@ export const RoleMismatchView: React.FC<RoleMismatchViewProps> = ({
           id={`role-mismatch-box-${requiredRole}`}
           className="max-w-lg mx-auto text-center py-12 px-6 bg-white border border-slate-200/50 rounded-2xl shadow-sm mt-8"
         >
-          <div className="w-14 h-14 bg-rose-50 rounded-full flex items-center justify-center mx-auto text-rose-500 mb-4 border border-rose-100">
+          <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-500 mb-4 border border-red-100">
             <Radio className="w-7 h-7 animate-pulse" />
           </div>
           <h3 className="text-base font-bold text-slate-800">{title}</h3>

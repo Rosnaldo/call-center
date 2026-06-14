@@ -34,7 +34,7 @@ export const UserProfileContainer: React.FC = () => {
     formData.append("image", file);
     setFileError(null);
 
-     const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
+    const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
     if (isSimulation) {
       const reader = new FileReader();
       reader.onload = () => {

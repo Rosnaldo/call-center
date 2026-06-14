@@ -65,12 +65,12 @@ export const TransactionsTableContent: React.FC<TransactionsTableProps> = ({
 
         {/* Total Consumido */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-3xs flex items-center gap-4">
-          <div className="size-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 shrink-0">
+          <div className="size-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center border border-red-100 shrink-0">
             <TrendingDown className="w-5 h-5" />
           </div>
           <div>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1.5">Consumo Total</p>
-            <p className="text-xl font-black text-slate-800 font-mono text-rose-600">-{totalDebited} tokens</p>
+            <p className="text-xl font-black text-slate-800 font-mono text-red-600">-{totalDebited} tokens</p>
           </div>
         </div>
       </div>
@@ -121,8 +121,8 @@ export const TransactionsTableContent: React.FC<TransactionsTableProps> = ({
               onClick={() => handleTypeFilterChange('debit')}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1 ${
                 typeFilter === 'debit'
-                  ? 'bg-rose-600 text-white'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-rose-50/20 hover:text-rose-600'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-red-50/20 hover:text-red-600'
               }`}
             >
               <ArrowDownLeft className="w-3.5 h-3.5" />
@@ -170,7 +170,7 @@ export const TransactionsTableContent: React.FC<TransactionsTableProps> = ({
                     <div className={`size-10 rounded-xl shrink-0 flex items-center justify-center border shadow-3xs ${
                       isCredit
                         ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                        : 'bg-rose-50 text-rose-600 border-rose-100'
+                        : 'bg-red-50 text-red-600 border-red-100'
                     }`}>
                       {isCredit ? (
                         <ArrowUpRight className="w-5 h-5 stroke-[2.5]" />
