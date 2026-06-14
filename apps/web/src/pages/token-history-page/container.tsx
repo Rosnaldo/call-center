@@ -4,6 +4,7 @@
  */
 
 import React, { useState, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useOnlineUsersStore } from '../../states/online-users/store.ts';
 import { useTransactionsQuery } from '../../queries/transaction/query.ts';
 import { TokenHistoryPageUI } from './ui.tsx';
@@ -11,15 +12,11 @@ import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
 import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
 
-interface TokenHistoryPageContainerProps {
-  navigate: (path: string) => void;
-}
-
 const TokenHistoryPageDataLoader: React.FC<{
   currentUser: OnlineUserState;
   users: OnlineUserState[];
-  navigate: (path: string) => void;
-}> = ({ currentUser, users, navigate }) => {
+}> = ({ currentUser, users }) => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'credit' | 'debit'>('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -50,9 +47,8 @@ const TokenHistoryPageDataLoader: React.FC<{
   );
 };
 
-export const TokenHistoryPageContainer: React.FC<TokenHistoryPageContainerProps> = ({
-  navigate,
-}) => {
+export const TokenHistoryPageContainer: React.FC = () => {
+  const navigate = useNavigate();
   const users = useOnlineUsersStore((state) => state.users);
   const currentUser = useCurrentUserStore((s) => s.currentUser);
 
@@ -94,7 +90,6 @@ export const TokenHistoryPageContainer: React.FC<TokenHistoryPageContainerProps>
         <TokenHistoryPageDataLoader
           currentUser={currentUser}
           users={users}
-          navigate={navigate}
         />
       </Suspense>
     </ErrorBoundary>

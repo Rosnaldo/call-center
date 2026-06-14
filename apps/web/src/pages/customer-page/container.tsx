@@ -4,19 +4,15 @@
  */
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useOnlineUsersStore } from '../../states/online-users/store.ts';
 import { useCallStore } from '../../states/call/store.ts';
 import { CustomerPageUI } from './ui.tsx';
 import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 import { useBillingTimer } from '@/src/hooks/useBillingTimer.ts';
 
-interface CustomerPageContainerProps {
-  navigate: (path: string) => void;
-}
-
-export const CustomerPageContainer: React.FC<CustomerPageContainerProps> = ({
-  navigate,
-}) => {
+export const CustomerPageContainer: React.FC = () => {
+  const navigate = useNavigate();
   const currentUser = useCurrentUserStore((s) => s.currentUser);
   const users = useOnlineUsersStore((state) => state.users);
   const addTokensSimulation = useOnlineUsersStore((state) => state.addTokensSimulation);

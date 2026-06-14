@@ -4,17 +4,13 @@
  */
 
 import React, { useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useOnlineUsersStore } from '../../states/online-users/store.ts';
 import { UserProfilePage } from './ui.tsx';
 import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 
-interface UserProfileContainerProps {
-  navigate: (path: string) => void;
-}
-
-export const UserProfileContainer: React.FC<UserProfileContainerProps> = ({
-  navigate,
-}) => {
+export const UserProfileContainer: React.FC = () => {
+  const navigate = useNavigate();
   const currentUser = useCurrentUserStore((s) => s.currentUser);
   const setCurrentUser = useCurrentUserStore((s) => s.setCurrentUser);
   const users = useOnlineUsersStore((state) => state.users);

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "simulation": "vite --mode simulation",
-    "dev": "vite --mode development",
+    "dev": "vite --port 5173",
     "build": "vite build",
     "build-dev": "vite build --mode development",
     "preview": "vite preview",

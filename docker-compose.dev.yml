@@ -1,10 +1,9 @@
 
 services:
-  nginx:
+  nginx-http:
     image: nginx:latest
     ports:
       - "80:80"
-      - "443:443"
     depends_on:
       - iam
       - mongo
@@ -12,13 +11,35 @@ services:
     volumes:
       # Main nginx config
       - ./apps/nginx/dev/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./apps/nginx/dev/certs:/etc/nginx/certs:ro
+      - ./certbot/www:/var/www/certbot
+
+  nginx-https:
+    image: nginx:latest
+    container_name: nginx-https
+    ports:
+      - "443:443"
+    depends_on:
+      - nginx-http
+    volumes:
+      - ./nginx/https/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./volumes/letsencrypt:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot
       - ./apps/web/dist:/etc/nginx/html
       - ./apps/admin/dist:/etc/nginx/html/myadmin
-      - s3_cache:/var/cache/nginx
     networks:
       - frontend
       - backend
+  
+  certbot:
+    image: certbot/certbot:v1.4.0
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./volumes/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - nginx-http
+    entrypoint: "certbot certonly --non-interactive --agree-tos -m ${ADMIN_EMAIL} --webroot -w /var/www/certbot -d ${BASE_DOMAIN}"
+    env_file:
+      - ./apps/nginx/.env.dev
 
   iam:
     image: iam
