@@ -7,7 +7,7 @@ import React from 'react';
 import { Header } from '../../components/header/Header.tsx';
 import { DeveloperSimulator } from '../../components/developer-simulator/DeveloperSimulator.tsx';
 import { CallLobbyView } from '../../components/call-lobby-view/call-view/CallLobbyView.tsx';
-import { UserLists } from '../../components/user-list/UserLists.tsx';
+import { UserListsContainer } from '../../components/user-list/UserListsContainer.tsx';
 import { SectionHeader } from '../../components/SectionHeader.tsx';
 import { CallState } from '@/src/states/call/state.ts';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
@@ -82,8 +82,7 @@ export const CustomerPageUI: React.FC<CustomerPageUIProps> = ({
             />
 
             {/* Customer view components - Lists only the Consultation Desks */}
-            <UserLists
-              users={users}
+            <UserListsContainer
               currentUser={currentUser}
               call={call}
               onCompleteCall={completeCall}

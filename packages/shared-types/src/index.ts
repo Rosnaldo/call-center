@@ -62,7 +62,7 @@ export interface Pagination {
     size: number;
 };
 
-export interface IOnlineUser {
+export interface IOnlineUser extends Omit<IUser, '_id' | 'firstName' | 'lastName'> {
     id: string;
     name: string;
     avatarUrl?: string;

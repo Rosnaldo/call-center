@@ -3,6 +3,7 @@ import { keycloak } from '../api/keycloak';
 import { useCurrentUserStore } from '../states/current-user/store';
 import { OnlineUserState } from '../states/online-users/state';
 import { fetchUser } from '../services/user';
+import { addOnlineUser } from '../services/online-users';
 
 type AuthContextType = {
     isAuthenticated: boolean;
@@ -37,16 +38,19 @@ function AuthProviderReal({ children }: { children: React.ReactNode }) {
         .then(async (auth) => {
             const parsed = keycloak.tokenParsed;
             const email = parsed?.email;
-            // const fullname = parsed?.name;
 
             const user = await fetchUser(email);
             const onlineUser: OnlineUserState = {
+                ...user,
                 id: user._id,
                 name: `${user.firstName} ${user.lastName}`,
                 avatarUrl: user.avatar?.url,
                 status: 'idle',
                 isOnline: true,
             };
+
+            await addOnlineUser(onlineUser);
+
             setCurrentUser(onlineUser);
             setIsAuthenticated(auth);
             setReady(true);
