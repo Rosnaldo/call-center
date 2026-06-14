@@ -3,16 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { User as EntityUser } from '../../entities/user';
+import { IOnlineUser } from '@repo/shared-types';
 import { MOCK_USERS } from './mock.ts';
 
-export interface OnlineUserState extends EntityUser {
-  id: string;
-  name: string;
-  avatarUrl?: string;
-  status: 'idle' | 'waiting' | 'in-call';
-  isOnline?: boolean;
-}
+export interface OnlineUserState extends IOnlineUser {}
 
 export interface OnlineUsersStore {
   users: OnlineUserState[];

@@ -41,7 +41,6 @@ function AuthProviderReal({ children }: { children: React.ReactNode }) {
 
             const user = await fetchUser(email);
             const onlineUser: OnlineUserState = {
-                ...user,
                 id: user._id,
                 name: `${user.firstName} ${user.lastName}`,
                 avatarUrl: user.avatar?.url,

@@ -2,6 +2,7 @@ export default {
     nodeEnv: process.env.NODE_ENV || '',
     port: process.env.PORT || 5002,
     mongoUri: process.env.MONGO_URI || '',
+    redisUri: process.env.REDIS_URI || 'redis://localhost:6379',
     awsRegion: process.env.AWS_REGION,
     awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
     awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,

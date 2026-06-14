@@ -35,7 +35,8 @@
             "#mongoose_bootstrap": ["./src/mongoose_bootstrap"],
             "#populate": ["./src/populate"],
             "#properties": ["./src/properties"],
-            "#db/*": ["./src/db/*"]
+            "#db/*": ["./src/db/*"],
+            "#redis/*": ["./src/redis/*"]
         },
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,

@@ -62,3 +62,11 @@ export interface Pagination {
     size: number;
 };
 
+export interface IOnlineUser {
+    id: string;
+    name: string;
+    avatarUrl?: string;
+    status: 'idle' | 'waiting' | 'in-call';
+    isOnline?: boolean;
+}
+

@@ -29,6 +29,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.16.4",
+    "ioredis": "^5.11.1",
     "jest": "^30.3.0",
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^3.2.2",
@@ -46,6 +47,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
     "@types/cors": "^2.8.19",
+    "@types/ioredis": "^4.28.10",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.14.166",
     "@types/morgan": "^1.9.10",

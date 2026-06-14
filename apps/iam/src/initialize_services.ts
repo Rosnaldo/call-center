@@ -15,6 +15,7 @@ import './extensions/transform_in_dict';
 import { mongooseBootstrap } from '#mongoose_bootstrap';
 import { routeBootstrap } from '#route_bootstrap';
 import { buildKcMain } from '#keycloak/singleton';
+import { buildRedisMain, disconnectRedis } from '#redis/singleton';
 
 const app = express();
 
@@ -24,6 +25,7 @@ export async function initializeServices({ e2e }: { e2e?: () => Promise<void> } 
     try {
         await buildKcMain();
         await mongooseBootstrap({ e2e });
+        buildRedisMain();
 
         app.use(cors());
         app.use(express.json());
@@ -46,6 +48,13 @@ export async function initializeServices({ e2e }: { e2e?: () => Promise<void> } 
                 console.log('[DB] Todas as conexões Mongo fechadas');
             } catch (err) {
                 console.error('[DB] Erro ao fechar conexões', err);
+            }
+
+            try {
+                await disconnectRedis();
+                console.log('[Redis] Conexão fechada');
+            } catch (err) {
+                console.error('[Redis] Erro ao fechar conexão', err);
             }
             server.close(() => {
                 console.log(`[*] - WEB Service - Closed`);
