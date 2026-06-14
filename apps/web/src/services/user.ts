@@ -4,7 +4,7 @@ import { ApiError } from "../error/api";
 
 export async function fetchUser(email: string): Promise<User>  {
     const res = await apiBack.get(
-        "/users/by-email", {
+        "/users/exists", {
             params: { email }
         }
     )

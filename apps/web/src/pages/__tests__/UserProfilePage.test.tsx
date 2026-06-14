@@ -44,6 +44,9 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
     currentUser: mockUser,
     navigate: vi.fn(),
     onUpdateProfile: vi.fn(),
+    fileError: null,
+    avatarUrl: mockUser.avatarUrl || null,
+    processFile: vi.fn(),
   };
 
   beforeEach(() => {

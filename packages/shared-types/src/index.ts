@@ -62,11 +62,14 @@ export interface Pagination {
     size: number;
 };
 
-export interface IOnlineUser extends Omit<IUser, '_id' | 'firstName' | 'lastName'> {
+export interface IOnlineUser {
     id: string;
     name: string;
+    email: string;
+    role: keyof typeof UserRole;
     avatarUrl?: string;
     status: 'idle' | 'waiting' | 'in-call';
     isOnline?: boolean;
+    tokens?: number;
 }
 

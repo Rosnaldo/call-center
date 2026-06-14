@@ -1,9 +1,8 @@
 import WebSocket, { WebSocketServer } from 'ws';
-import { AuthenticatedWebSocket, OnlineUserData, WsMessage } from '#websocket/types';
-import { addOnlineUser, removeOnlineUser, getOnlineUsers } from '#websocket/service/online_users';
+import { AuthenticatedWebSocket, IOnlineUser, WsMessage } from '#websocket/types';
 
-const broadcast = (wss: WebSocketServer, event: WsMessage['event'], data: unknown): void => {
-    const message = JSON.stringify({ event, data } satisfies WsMessage);
+const broadcast = (wss: WebSocketServer, user: IOnlineUser): void => {
+    const message = JSON.stringify({ event: 'online_users_updated', data: user } satisfies WsMessage<IOnlineUser>);
     wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(message);
@@ -12,17 +11,16 @@ const broadcast = (wss: WebSocketServer, event: WsMessage['event'], data: unknow
 };
 
 export const onConnection = (wss: WebSocketServer) => (ws: AuthenticatedWebSocket): void => {
-    const user: OnlineUserData = {
+    const user = {
         id: ws.userId,
         name: ws.userName,
         email: ws.userEmail,
-    };
+        isOnline: true,
+    } as IOnlineUser;
 
-    addOnlineUser(user);
-    broadcast(wss, 'online_users_updated', getOnlineUsers());
+    broadcast(wss, user);
 
     ws.on('close', () => {
-        removeOnlineUser(ws.userId);
-        broadcast(wss, 'online_users_updated', getOnlineUsers());
+        broadcast(wss, { ...user, isOnline: false });
     });
 };

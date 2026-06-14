@@ -20,11 +20,11 @@ interface ICreateInput {
 
 type ICreateOutput = IUser['IParams'];
 
-interface IByEmailInput {
+interface IExistsInput {
     email: NonNullable<IUser['IParams']['email']>;
 }
 
-type IByEmailOutput = IUser['IParams'];
+type IExistsOutput = IUser['IParams'];
 
 interface IDeleteInput {
     _id: IUser['IParams']['_id'];
@@ -57,9 +57,9 @@ export interface IUserController {
         IInput: ICreateInput;
         IOutput: ICreateOutput;
     };
-    IByEmail: {
-        IInput: IByEmailInput;
-        IOutput: IByEmailOutput;
+    IExists: {
+        IInput: IExistsInput;
+        IOutput: IExistsOutput;
     };
     IDelete: {
         IInput: IDeleteInput;

@@ -8,6 +8,7 @@ import { OnlineUserState } from './state.ts';
 
 export interface OnlineUsersActions {
   addUser: (user: OnlineUserState) => void;
+  upsertUser: (user: OnlineUserState) => void;
   removeUser: (userId: string) => void;
   updateUser: (userId: string, updates: Partial<OnlineUserState>) => void;
   addTokensSimulation: (userId: string, tokens: number) => void;
@@ -23,6 +24,17 @@ export const createOnlineUsersActions = (
       set((state) => ({
         users: [...state.users, user],
       }));
+    },
+
+    upsertUser: (user) => {
+      set((state) => {
+        const exists = state.users.some((u: OnlineUserState) => u.id === user.id);
+        return {
+          users: exists
+            ? state.users.map((u: OnlineUserState) => (u.id === user.id ? { ...u, ...user } : u))
+            : [...state.users, user],
+        };
+      });
     },
 
     removeUser: (userId) => {

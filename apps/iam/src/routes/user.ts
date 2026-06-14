@@ -37,12 +37,12 @@ export default (app: Application) => {
         }
     );
     app.get(
-        '/users/by-email',
+        '/users/exists',
         GetKeycloakUser,
         async (req, res) => {
             const controller = new UserController();
-            const params = controller.byEmail!.mapper({ ...req.query, userKc: req.userKc });
-            const either = await controller.byEmail!.get({ params });
+            const params = controller.exists!.mapper({ ...req.query, userKc: req.userKc });
+            const either = await controller.exists!.get({ params });
             if (either.isError) {
                 return res.status(400).send(either);
             }

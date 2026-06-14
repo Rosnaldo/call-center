@@ -4,6 +4,7 @@ import { useCurrentUserStore } from '../states/current-user/store';
 import { OnlineUserState } from '../states/online-users/state';
 import { fetchUser } from '../services/user';
 import { addOnlineUser } from '../services/online-users';
+import { useOnlineUsersWebSocket } from '../hooks/useOnlineUsersWebSocket';
 
 type AuthContextType = {
     isAuthenticated: boolean;
@@ -22,7 +23,10 @@ function AuthProviderReal({ children }: { children: React.ReactNode }) {
     const [ready, setReady] = useState(false);
     const [initError, setInitError] = useState<string | null>(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [kcToken, setKcToken] = useState<string | undefined>(undefined);
     const setCurrentUser = useCurrentUserStore((s) => s.setCurrentUser);
+
+    useOnlineUsersWebSocket(kcToken);
 
     useEffect(() => {
         if (initialized.current) return;
@@ -44,6 +48,7 @@ function AuthProviderReal({ children }: { children: React.ReactNode }) {
                 ...user,
                 id: user._id,
                 name: `${user.firstName} ${user.lastName}`,
+                email: user.email!,
                 avatarUrl: user.avatar?.url,
                 status: 'idle',
                 isOnline: true,
@@ -52,6 +57,7 @@ function AuthProviderReal({ children }: { children: React.ReactNode }) {
             await addOnlineUser(onlineUser);
 
             setCurrentUser(onlineUser);
+            setKcToken(keycloak.token);
             setIsAuthenticated(auth);
             setReady(true);
         })

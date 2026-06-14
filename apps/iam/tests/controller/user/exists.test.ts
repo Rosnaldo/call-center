@@ -2,7 +2,7 @@ import { mockUser } from '../../entities/schemas/user/mock';
 import { mongooseBootstrap } from 'src/mongoose_bootstrap';
 import { disconnectMain } from 'src/db/singleton';
 import { IUser } from 'src/entities/schemas/user/types';
-import { validateOutput } from 'src/validations/user/find-by-email';
+import { validateOutput } from 'src/validations/user/exists';
 import { UserController } from 'src/controllers/user';
 import { isSuccess } from 'src/utils/either';
 
@@ -32,15 +32,15 @@ afterAll(async () => {
     await disconnectMain();
 });
 
-describe('Controller > User > FindByEmail', () => {
+describe('Controller > User > Exists', () => {
     it('validate output', async () => {
         const params = {
             email: user.email,
         };
 
         const controller = new UserController();
-        const mapped = controller.byEmail.mapper(params);
-        const either = await controller.byEmail.get({ params: mapped });
+        const mapped = controller.exists.mapper(params);
+        const either = await controller.exists.get({ params: mapped });
 
         if (isSuccess(either)) {
             const zodResult = validateOutput(either.data);
