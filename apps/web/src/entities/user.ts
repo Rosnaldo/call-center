@@ -1,10 +1,3 @@
-export type UserRole = 'customer' | 'attendant';
+import { IUser } from '@repo/shared-types';
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  avatarUrl: string;
-  tokens?: number;
-}
+export interface User extends IUser {};

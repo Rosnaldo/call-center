@@ -7,6 +7,8 @@ import { User as EntityUser } from '../../entities/user';
 import { MOCK_USERS } from './mock.ts';
 
 export interface OnlineUserState extends EntityUser {
+  id: string;
+  name: string;
   status: 'idle' | 'waiting' | 'in-call';
   isOnline?: boolean;
 }

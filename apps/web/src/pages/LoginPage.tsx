@@ -10,9 +10,8 @@ export function LoginPage() {
 
     useEffect(() => {
         if (isSimulation) return;
-        const redirectToKeycloak = !isAuthenticated;
 
-        console.log("LoginPage: isAuthenticated =", isAuthenticated, "redirectToKeycloak =", redirectToKeycloak);
+        const redirectToKeycloak = !isAuthenticated;
         if (redirectToKeycloak) {
             login(); // 🔁 redirects to Keycloak
         } else {

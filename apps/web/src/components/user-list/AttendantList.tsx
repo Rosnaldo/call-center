@@ -78,7 +78,7 @@ export const AttendantList: React.FC<AttendantListProps> = ({
 
   const isCustomerCurrentlyBusy = (customerId: string) => {
     return call?.customerId === customerId &&
-      (call.status === 'active' || call.status === 'awaiting-answer' || call.status === 'call-interrupteded');
+      (call?.status === 'active' || call?.status === 'awaiting-answer' || call?.status === 'call-interrupteded');
   };
 
   return (

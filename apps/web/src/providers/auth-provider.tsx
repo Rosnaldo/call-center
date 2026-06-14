@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { keycloak } from '../api/keycloak';
 import { apiBack } from '../api/backend';
 import { ApiError } from '../error/api';
@@ -38,6 +39,7 @@ function AuthProviderReal({ children }: { children: React.ReactNode }) {
     const [ready, setReady] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const setCurrentUser = useCurrentUserStore((s) => s.setCurrentUser);
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (initialized.current) return;
@@ -55,26 +57,21 @@ function AuthProviderReal({ children }: { children: React.ReactNode }) {
             const email = parsed?.email;
             // const fullname = parsed?.name;
 
-            setIsAuthenticated(auth);
-            setReady(true);
             const user = await fetchUser(email);
             const onlineUser: OnlineUserState = {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                avatarUrl: user.avatarUrl,
-                tokens: user.tokens || 0,
+                ...user,
+                id: user._id,
+                name: `${user.firstName} ${user.lastName}`,
                 status: 'idle',
                 isOnline: true,
             };
             setCurrentUser(onlineUser);
+            setIsAuthenticated(auth);
+            setReady(true);
         })
         .catch((error) => {
-            if (error instanceof ApiError) {
-                // mytoast.error(error.message)
-            }
-            throw error;
+            const message = error instanceof Error ? error.message : 'Erro desconhecido.';
+            navigate(`/error?message=${encodeURIComponent(message)}`);
         });
 
         keycloak.onAuthSuccess = () => setIsAuthenticated(true);

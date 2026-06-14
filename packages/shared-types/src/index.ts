@@ -29,6 +29,7 @@ export interface IUser {
     phone?: string;
     avatar?: IUserAvatar;
     role: keyof typeof UserRole;
+    tokens?: number;
     createdAt: Date;
     updatedAt: Date;
 }

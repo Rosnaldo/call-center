@@ -5,6 +5,7 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from './pages/LoginPage.tsx';
+import { ErrorPage } from './pages/ErrorPage.tsx';
 import { CustomerPageContainer } from './pages/customer-page/container.tsx';
 import { AttendantPageContainer } from './pages/attendant-page/container.tsx';
 import { UserProfileContainer } from './pages/user-profile/container.tsx';
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/token-history" element={<TokenHistoryPageContainer />} />
         </Route>
 
+        <Route path="/error" element={<ErrorPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
 
