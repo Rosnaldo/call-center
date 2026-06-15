@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { mapUserToOnlineUser } from '@repo/shared-types';
-import { keycloak } from '../api/keycloak';
+import { keycloakService, KeycloakState } from '../api/keycloak-service';
 import { useCurrentUserStore } from '../states/current-user/store';
 import { OnlineUserState } from '../states/online-users/state';
 import { fetchUser } from '../services/user';
@@ -22,62 +22,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 function AuthProviderReal({ children }: { children: React.ReactNode }) {
     const initialized = useRef(false);
     const [ready, setReady] = useState(false);
-    const [initError, setInitError] = useState<string | null>(null);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [kcToken, setKcToken] = useState<string | undefined>(undefined);
+    const [kcState, setKcState] = useState<KeycloakState>(keycloakService.getState);
     const setCurrentUser = useCurrentUserStore((s) => s.setCurrentUser);
 
-    useOnlineUsersWebSocket(kcToken);
+    useOnlineUsersWebSocket(kcState.token);
 
     useEffect(() => {
-        if (initialized.current) return;
-        initialized.current = true;
+        const unsub = keycloakService.subscribe(setKcState);
 
-        keycloak
-        .init({
-            redirectUri: window.location.origin + '/',
-            onLoad: 'login-required',
-            checkLoginIframe: false,
-            enableLogging: true,
-        })
-        .then(async (auth) => {
-            const parsed = keycloak.tokenParsed;
-            const email = parsed?.email;
+        if (!initialized.current) {
+            initialized.current = true;
 
-            const user = await fetchUser(email);
-            const onlineUser: OnlineUserState = mapUserToOnlineUser(user);
-
-            await addOnlineUser(onlineUser);
-
-            setCurrentUser(onlineUser);
-            setKcToken(keycloak.token);
-            setIsAuthenticated(auth);
-            setReady(true);
-        })
-        .catch((error) => {
-            console.error('Keycloak initialization failed:', error);
-            const message = error instanceof Error ? error.message : 'Erro desconhecido.';
-            setInitError(message);
-        });
-
-        keycloak.onAuthSuccess = () => setIsAuthenticated(true);
-        keycloak.onAuthLogout = () => setIsAuthenticated(false);
-
-        keycloak.onTokenExpired = () => {
-            keycloak.updateToken(30).catch(() => {
-                setIsAuthenticated(false);
-                keycloak.logout({
-                    redirectUri: window.location.origin,
-                });
+            keycloakService.init().then(async () => {
+                const { email } = keycloakService.getState();
+                if (!email) throw new Error('Email não encontrado no token.');
+                const user = await fetchUser(email);
+                const onlineUser: OnlineUserState = mapUserToOnlineUser(user);
+                await addOnlineUser(onlineUser);
+                setCurrentUser(onlineUser);
+                setReady(true);
+            }).catch((error) => {
+                const message = error instanceof Error ? error.message : 'Erro desconhecido.';
+                setKcState((prev) => ({ ...prev, error: message }));
             });
-        };
+        }
+
+        return unsub;
     }, []);
 
-    if (initError) return (
+    if (kcState.error) return (
         <div className="flex min-h-screen items-center justify-center bg-[var(--bg-brand-canvas)]">
             <div className="text-center bg-white p-8 rounded-2xl border border-slate-200/50 max-w-sm shadow-sm">
                 <h3 className="text-base font-bold text-slate-800">Erro ao inicializar</h3>
-                <p className="text-xs text-slate-500 mt-2">{initError}</p>
+                <p className="text-xs text-slate-500 mt-2">{kcState.error}</p>
                 <button
                     onClick={() => window.location.replace('/login')}
                     className="mt-6 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-lg transition shadow-sm cursor-pointer"
@@ -93,19 +70,12 @@ function AuthProviderReal({ children }: { children: React.ReactNode }) {
     return (
         <AuthContext.Provider
             value={{
-                isAuthenticated,
-                login: () =>
-                    keycloak.login({
-                        prompt: 'login',
-                        redirectUri: window.location.href,
-                    }),
-                logout: () =>
-                    keycloak.logout({
-                        redirectUri: window.location.origin,
-                    }),
+                isAuthenticated: kcState.isAuthenticated,
+                login: keycloakService.login,
+                logout: keycloakService.logout,
             }}
         >
-        {children}
+            {children}
         </AuthContext.Provider>
     );
 }
