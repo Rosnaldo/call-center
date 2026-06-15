@@ -1,6 +1,7 @@
 import { IOnlineUser } from '@repo/shared-types';
 import { useAuthStore } from '../states/auth/store';
 import { useOnlineUsersStore } from '../states/online-users/store';
+import { ITransport, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
 
 const WS_URL = import.meta.env.VITE_REALTIME_WS_URL as string | undefined;
 const RECONNECT_DELAY_MS = 3_000;
@@ -12,14 +13,14 @@ type WsInboundMessage =
     | { event: 'heartbeat_ack' }
     | { event: 'user_logout'; data: { id: string } };
 
-let activeWs: WebSocket | null = null;
+let activeWs: ITransport | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 let ackTimer: ReturnType<typeof setTimeout> | null = null;
 let running = false;
 
 export function notifyWsLogout(): void {
-    if (activeWs?.readyState === WebSocket.OPEN) {
+    if (activeWs?.readyState === TRANSPORT_OPEN) {
         activeWs.send(JSON.stringify({ event: 'user_logout' }));
     }
 }
@@ -40,21 +41,21 @@ function disconnect() {
     activeWs = null;
 }
 
-function connect(token: string) {
+function connect(token: string, factory: TransportFactory) {
     if (!running || !WS_URL) return;
 
-    const ws = new WebSocket(`${WS_URL}?token=${token}`);
-    activeWs = ws;
+    const transport = factory(`${WS_URL}?token=${token}`);
+    activeWs = transport;
 
-    ws.onopen = () => {
+    transport.onopen = () => {
         heartbeatInterval = setInterval(() => {
-            if (ws.readyState !== WebSocket.OPEN) return;
-            ws.send(JSON.stringify({ event: 'heartbeat' }));
-            ackTimer = setTimeout(() => ws.close(), HEARTBEAT_ACK_TIMEOUT_MS);
+            if (transport.readyState !== TRANSPORT_OPEN) return;
+            transport.send(JSON.stringify({ event: 'heartbeat' }));
+            ackTimer = setTimeout(() => transport.close(), HEARTBEAT_ACK_TIMEOUT_MS);
         }, HEARTBEAT_INTERVAL_MS);
     };
 
-    ws.onmessage = (event) => {
+    transport.onmessage = (event) => {
         try {
             const msg = JSON.parse(event.data as string) as WsInboundMessage;
             const { upsertUser, removeUser } = useOnlineUsersStore.getState();
@@ -75,22 +76,22 @@ function connect(token: string) {
         }
     };
 
-    ws.onerror = (err) => console.error('[WS] error', err);
+    transport.onerror = (err) => console.error('[WS] error', err);
 
-    ws.onclose = () => {
+    transport.onclose = () => {
         clearHeartbeat();
         if (!running) return;
-        reconnectTimer = setTimeout(() => connect(token), RECONNECT_DELAY_MS);
+        reconnectTimer = setTimeout(() => connect(token, factory), RECONNECT_DELAY_MS);
     };
 }
 
-export function initOnlineUsersWebSocket(): void {
+export function initOnlineUsersWebSocket(factory: TransportFactory = createWsTransport): void {
     useAuthStore.subscribe((state, prev) => {
         if (state.token === prev.token) return;
         disconnect();
         if (state.token) {
             running = true;
-            connect(state.token);
+            connect(state.token, factory);
         }
     });
 }
