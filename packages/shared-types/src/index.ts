@@ -62,14 +62,38 @@ export interface Pagination {
     size: number;
 };
 
-export interface IOnlineUser {
+type Equal<T, U> = (<V>() => V extends T ? 1 : 2) extends (<V>() => V extends U ? 1 : 2) ? true : false;
+type Expect<T extends true> = T;
+
+export interface IOnlineUser extends Omit<IUser, '_id' | 'firstName' | 'lastName' | 'avatar'> {
     id: string;
     name: string;
-    email: string;
-    role: keyof typeof UserRole;
     avatarUrl?: string;
     status: 'idle' | 'waiting' | 'in-call' | 'disconnecting';
     isOnline?: boolean;
-    tokens?: number;
 }
 
+type _t = Expect<Equal<
+    Omit<IUser, '_id' | 'firstName' | 'lastName' | 'avatar'>,
+    Pick<IOnlineUser, keyof Omit<IUser, '_id' | 'firstName' | 'lastName' | 'avatar'>>
+>>;
+
+export function mapUserToOnlineUser(
+    user: IUser,
+    options?: Partial<Pick<IOnlineUser, 'status' | 'isOnline'>>,
+): IOnlineUser {
+    return {
+        slug: user.slug,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        tokens: user.tokens,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        id: user._id,
+        name: `${user.firstName} ${user.lastName}`,
+        avatarUrl: user.avatar?.url,
+        isOnline: options?.isOnline ?? true,
+        status: options?.status ?? 'idle',
+    };
+}

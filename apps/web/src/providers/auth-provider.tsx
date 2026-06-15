@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { mapUserToOnlineUser } from '@repo/shared-types';
 import { keycloak } from '../api/keycloak';
 import { useCurrentUserStore } from '../states/current-user/store';
 import { OnlineUserState } from '../states/online-users/state';
@@ -44,15 +45,7 @@ function AuthProviderReal({ children }: { children: React.ReactNode }) {
             const email = parsed?.email;
 
             const user = await fetchUser(email);
-            const onlineUser: OnlineUserState = {
-                ...user,
-                id: user._id,
-                name: `${user.firstName} ${user.lastName}`,
-                email: user.email!,
-                avatarUrl: user.avatar?.url,
-                status: 'idle',
-                isOnline: true,
-            };
+            const onlineUser: OnlineUserState = mapUserToOnlineUser(user);
 
             await addOnlineUser(onlineUser);
 

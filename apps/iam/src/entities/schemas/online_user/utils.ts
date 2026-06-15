@@ -5,10 +5,15 @@ export class OnlineUserUtils {
     public readonly zodSchema = z.object({
         id: makeSmallStringSchema('id'),
         name: makeSmallStringSchema('name'),
-        email: makeSmallStringSchema('email'),
+        slug: makeSmallStringSchema('slug'),
+        email: makeSmallStringSchema('email').optional(),
+        phone: makeSmallStringSchema('phone').optional(),
         role: z.enum(['admin', 'customer', 'attendant']),
         avatarUrl: makeStringSchema('avatarUrl').optional(),
         status: z.enum(['idle', 'waiting', 'in-call', 'disconnecting']),
         isOnline: z.boolean().optional(),
+        tokens: z.number().optional(),
+        createdAt: z.coerce.date(),
+        updatedAt: z.coerce.date(),
     });
 }

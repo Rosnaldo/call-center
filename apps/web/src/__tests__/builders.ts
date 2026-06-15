@@ -8,11 +8,15 @@ const nextId = () => `mock-${++seq}`;
 export const buildOnlineUserState = (d?: Partial<OnlineUserState>): OnlineUserState => ({
   id: d?.id ?? nextId(),
   name: d?.name ?? 'Test UserState',
+  slug: d?.slug ?? 'test-user',
   email: d?.email ?? 'test@example.com',
   role: d?.role ?? 'customer',
   avatarUrl: d?.avatarUrl ?? '',
   status: d?.status ?? 'idle',
   tokens: d?.tokens ?? 5,
+  phone: d?.phone,
+  createdAt: d?.createdAt ?? new Date('2024-01-01'),
+  updatedAt: d?.updatedAt ?? new Date('2024-01-01'),
 });
 
 export const buildCall = (d?: Partial<CallState>): CallState => ({

@@ -18,35 +18,79 @@ describe('Validations > OnlineUser > Add', () => {
         const result = inputSchema.safeParse({
             id: 'user-1',
             name: 'João Silva',
+            slug: 'joao-silva',
+            email: 'joao@example.com',
+            role: 'customer',
             status: 'idle',
             isOnline: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
         });
         expect(result.success).toBe(true);
     });
 
-    it('accepts input with optional avatarUrl', () => {
+    it('accepts input with optional fields omitted', () => {
         const result = inputSchema.safeParse({
             id: 'user-1',
             name: 'João Silva',
+            slug: 'joao-silva',
+            role: 'attendant',
             status: 'waiting',
-            avatarUrl: 'https://cdn.example.com/avatar.png',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+        expect(result.success).toBe(true);
+    });
+
+    it('accepts date strings for createdAt and updatedAt', () => {
+        const result = inputSchema.safeParse({
+            id: 'user-1',
+            name: 'João Silva',
+            slug: 'joao-silva',
+            role: 'customer',
+            status: 'idle',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
         });
         expect(result.success).toBe(true);
     });
 
     it('rejects input without id', () => {
-        const result = inputSchema.safeParse({ name: 'João Silva', status: 'idle' });
+        const result = inputSchema.safeParse({
+            name: 'João Silva',
+            slug: 'joao-silva',
+            role: 'customer',
+            status: 'idle',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
         expect(result.success).toBe(false);
     });
 
     it('rejects invalid status', () => {
-        const result = inputSchema.safeParse({ id: '1', name: 'João', status: 'offline' });
+        const result = inputSchema.safeParse({
+            id: '1',
+            name: 'João',
+            slug: 'joao',
+            role: 'customer',
+            status: 'offline',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
         expect(result.success).toBe(false);
     });
 
     it('accepts all valid statuses', () => {
         for (const status of ['idle', 'waiting', 'in-call'] as const) {
-            const result = inputSchema.safeParse({ id: '1', name: 'João', status });
+            const result = inputSchema.safeParse({
+                id: '1',
+                name: 'João',
+                slug: 'joao',
+                role: 'customer',
+                status,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            });
             expect(result.success).toBe(true);
         }
     });

@@ -1,7 +1,7 @@
 import WebSocket, { WebSocketServer } from 'ws';
 import { AuthenticatedWebSocket, WsClientMessage, WsMessage } from '#websocket/types';
 import { addToIam, removeFromIam } from 'src/services/users';
-import { IOnlineUser } from '@repo/shared-types';
+import { IOnlineUser, mapUserToOnlineUser } from '@repo/shared-types';
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const GRACE_PERIOD_MS = 30_000;
@@ -27,15 +27,7 @@ export const onConnection = (wss: WebSocketServer) => (ws: AuthenticatedWebSocke
         disconnectingTimers.delete(ws.user._id);
     }
 
-    const user: IOnlineUser = {
-        ...ws.user,
-        id: ws.user._id,
-        name: ws.user.firstName + ' ' + ws.user.lastName,
-        email: ws.user.email + '',
-        avatarUrl: ws.user?.avatar?.url,
-        isOnline: true,
-        status: 'idle',
-    };
+    const user: IOnlineUser = mapUserToOnlineUser(ws.user);
 
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
