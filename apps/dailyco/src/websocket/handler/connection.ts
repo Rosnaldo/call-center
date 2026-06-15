@@ -43,17 +43,16 @@ export const onConnection = (wss: WebSocketServer) => (ws: AuthenticatedWebSocke
         ws.ping();
     }, HEARTBEAT_INTERVAL_MS);
 
-    const startGracePeriod = () => {
+    const startGracePeriod = (status: 'disconnecting' | 'offline' = 'disconnecting') => {
         if (disconnectingTimers.has(user.id)) return;
 
-        const disconnectingUser: IOnlineUser = { ...user, status: 'disconnecting' };
-        broadcastMessage(wss, { event: 'online_users_updated', data: disconnectingUser });
-        addToIam(disconnectingUser, token);
+        const transitionUser: IOnlineUser = { ...user, status };
+        broadcastMessage(wss, { event: 'online_users_updated', data: transitionUser });
+        addToIam(transitionUser, token);
 
         const timer = setTimeout(() => {
             disconnectingTimers.delete(user.id);
-            const offlineUser: IOnlineUser = { ...user, isOnline: false };
-            broadcastMessage(wss, { event: 'online_users_updated', data: offlineUser });
+            broadcastMessage(wss, { event: 'user_logout', data: { id: user.id } });
             removeFromIam(user.id, token);
         }, GRACE_PERIOD_MS);
 
@@ -72,8 +71,7 @@ export const onConnection = (wss: WebSocketServer) => (ws: AuthenticatedWebSocke
                     break;
                 case 'user_logout':
                     clearInterval(heartbeat);
-                    broadcastMessage(wss, { event: 'user_logout', data: { id: user.id } });
-                    removeFromIam(user.id, token);
+                    startGracePeriod('offline');
                     ws.terminate();
                     break;
             }

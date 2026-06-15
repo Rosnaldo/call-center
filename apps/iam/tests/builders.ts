@@ -11,7 +11,6 @@ export const buildOnlineUser = (d?: Partial<IOnlineUser>): IOnlineUser => ({
     role: d?.role ?? 'customer',
     avatarUrl: d?.avatarUrl,
     status: d?.status ?? 'idle',
-    isOnline: d?.isOnline ?? true,
     tokens: d?.tokens,
     phone: d?.phone,
     createdAt: d?.createdAt ?? new Date('2024-01-01'),

@@ -22,7 +22,6 @@ describe('Validations > OnlineUser > Add', () => {
             email: 'joao@example.com',
             role: 'customer',
             status: 'idle',
-            isOnline: true,
             createdAt: new Date(),
             updatedAt: new Date(),
         });
@@ -73,7 +72,7 @@ describe('Validations > OnlineUser > Add', () => {
             name: 'João',
             slug: 'joao',
             role: 'customer',
-            status: 'offline',
+            status: 'unknown',
             createdAt: new Date(),
             updatedAt: new Date(),
         });
@@ -81,7 +80,7 @@ describe('Validations > OnlineUser > Add', () => {
     });
 
     it('accepts all valid statuses', () => {
-        for (const status of ['idle', 'waiting', 'in-call'] as const) {
+        for (const status of ['idle', 'waiting', 'in-call', 'disconnecting', 'offline'] as const) {
             const result = inputSchema.safeParse({
                 id: '1',
                 name: 'João',

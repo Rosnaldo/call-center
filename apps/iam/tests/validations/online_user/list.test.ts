@@ -18,7 +18,7 @@ describe('Validations > OnlineUser > List', () => {
         const now = new Date();
         const result = outputSchema.safeParse({
             users: [
-                { id: 'u1', name: 'Alice', slug: 'alice', role: 'attendant', status: 'idle', isOnline: true, createdAt: now, updatedAt: now },
+                { id: 'u1', name: 'Alice', slug: 'alice', role: 'attendant', status: 'idle', createdAt: now, updatedAt: now },
                 { id: 'u2', name: 'Bob', slug: 'bob', role: 'customer', status: 'in-call', createdAt: now, updatedAt: now },
             ],
         });

@@ -32,7 +32,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
   };
 
   const getSortScore = (cust: OnlineUserState) => {
-    if (cust.isOnline === false) return 4;
+    if (cust.status === 'offline') return 4;
     if (cust.status === 'disconnecting') return 3;
     const busyCall = getCustomerCall(cust.id);
     if (busyCall) return 2;
@@ -70,7 +70,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
           sortedCustomers.map((cust) => {
             const isSelf = currentUser?.id === cust.id;
             const talkingCall = getCustomerCall(cust.id);
-            const isOffline = cust.isOnline === false;
+            const isOffline = cust.status === 'offline';
             const isDisconnecting = cust.status === 'disconnecting';
 
             return (

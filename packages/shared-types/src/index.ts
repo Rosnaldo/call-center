@@ -69,8 +69,7 @@ export interface IOnlineUser extends Omit<IUser, '_id' | 'firstName' | 'lastName
     id: string;
     name: string;
     avatarUrl?: string;
-    status: 'idle' | 'waiting' | 'in-call' | 'disconnecting';
-    isOnline?: boolean;
+    status: 'idle' | 'waiting' | 'in-call' | 'disconnecting' | 'offline';
 }
 
 type _t = Expect<Equal<
@@ -80,7 +79,7 @@ type _t = Expect<Equal<
 
 export function mapUserToOnlineUser(
     user: IUser,
-    options?: Partial<Pick<IOnlineUser, 'status' | 'isOnline'>>,
+    options?: Partial<Pick<IOnlineUser, 'status'>>,
 ): IOnlineUser {
     return {
         slug: user.slug,
@@ -93,7 +92,6 @@ export function mapUserToOnlineUser(
         id: user._id,
         name: `${user.firstName} ${user.lastName}`,
         avatarUrl: user.avatar?.url,
-        isOnline: options?.isOnline ?? true,
         status: options?.status ?? 'idle',
     };
 }

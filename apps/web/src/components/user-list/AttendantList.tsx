@@ -52,7 +52,7 @@ export const AttendantList: React.FC<AttendantListProps> = ({
   // Dynamic online attendants mapped from the state users array
   const allAttendantsMapped: (OnlineUserState & { isOffline?: boolean; isDisconnecting?: boolean })[] = onlineAttendants.map(at => ({
     ...at,
-    isOffline: at.isOnline === false,
+    isOffline: at.status === 'offline',
     isDisconnecting: at.status === 'disconnecting',
   }));
 
