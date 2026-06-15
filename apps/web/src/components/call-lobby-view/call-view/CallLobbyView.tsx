@@ -12,7 +12,7 @@ import { CallView, CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
 import { playNotificationChime } from '../../../utils/helpers.ts';
 
-function showSystemNotification(title: string, body: string, dailycoUrl?: string) {
+function showSystemNotification(title: string, body: string, roomUrl?: string) {
   if ('Notification' in window && Notification.permission === 'granted') {
     try {
       const n = new Notification(title, {
@@ -23,7 +23,7 @@ function showSystemNotification(title: string, body: string, dailycoUrl?: string
       });
       n.onclick = () => {
         window.focus();
-        if (dailycoUrl) window.open(dailycoUrl, '_blank');
+        if (roomUrl) window.open(roomUrl, '_blank');
         n.close();
       };
     } catch (e) {
@@ -68,7 +68,7 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
         customerName: currentUser.name,
         attendantId: selectedAttendantId,
         attendantName: selectedAttendant.name,
-        dailycoUrl: '',
+        roomUrl: '',
         status: 'draft-lobby' as any,
         tokensCharged: 0,
       }
@@ -103,14 +103,14 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
         showSystemNotification(
           'Chamada Conectada!',
           `Sua chamada com ${targetPartner} está ativa agora.`,
-          currentCall.dailycoUrl
+          currentCall.roomUrl
         );
       } catch (err) {
         console.warn('Failed to notify call start:', err);
       }
     }
     prevStatusRef.current = currentCall?.status;
-  }, [currentCall?.status, currentUser?.role, currentCall?.attendantName, currentCall?.customerName, currentCall?.dailycoUrl]);
+  }, [currentCall?.status, currentUser?.role, currentCall?.attendantName, currentCall?.customerName, currentCall?.roomUrl]);
 
   const handleStartCall = () => {
     if (!currentCall) return;

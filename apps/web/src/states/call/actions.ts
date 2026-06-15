@@ -63,7 +63,7 @@ export const createCallActions = (
           customerName: customer.name,
           attendantId,
           attendantName: attendant.name,
-          dailycoUrl: generateMeetUrl(),
+          roomUrl: generateMeetUrl(),
           status: 'awaiting-answer',
           tokensCharged: 1
         };
@@ -168,7 +168,7 @@ export const createCallActions = (
           customerName: customer.name,
           attendantId: attendant.id,
           attendantName: attendant.name,
-          dailycoUrl: generateMeetUrl(),
+          roomUrl: generateMeetUrl(),
           status: 'awaiting-answer',
           tokensCharged: 1,
         };

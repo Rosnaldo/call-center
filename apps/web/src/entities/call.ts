@@ -4,7 +4,7 @@ export interface Call {
   customerName: string;
   attendantId: string;
   attendantName: string;
-  dailycoUrl: string;
+  roomUrl: string;
 }
 
 export interface CallParticipantPresence {
