@@ -15,6 +15,5 @@
     },
     "extends": "./tsconfig.base.json",
     "files": ["./src/@types/express/index.d.ts"],
-    "include": ["./src/*.ts", "./src/**/*.ts", "./src/**/*.d.ts"],
-    "exclude": ["./tests/*.test.ts", "./tests/**/*.ts"]
+    "include": ["./src"]
 }

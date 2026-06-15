@@ -2,11 +2,8 @@ import WebSocket, { WebSocketServer } from 'ws';
 import { AuthenticatedWebSocket, WsClientMessage, WsMessage } from '#websocket/types';
 import { addToIam, removeFromIam } from 'src/services/users';
 import { IOnlineUser, mapUserToOnlineUser } from '@repo/shared-types';
-
-const HEARTBEAT_INTERVAL_MS = 30_000;
-const GRACE_PERIOD_MS = 30_000;
-
-const disconnectingTimers = new Map<string, ReturnType<typeof setTimeout>>();
+import { graceTimer } from '#websocket/grace_timer';
+import { createHeartbeat } from '#websocket/heartbeat';
 
 const broadcastMessage = (wss: WebSocketServer, payload: WsMessage<unknown>): void => {
     const message = JSON.stringify(payload);
@@ -19,58 +16,44 @@ const broadcastMessage = (wss: WebSocketServer, payload: WsMessage<unknown>): vo
 
 export const onConnection = (wss: WebSocketServer) => (ws: AuthenticatedWebSocket): void => {
     const token = ws.token;
-
-    // Cancel any pending grace period — user reconnected in time
-    const pendingTimer = disconnectingTimers.get(ws.user._id);
-    if (pendingTimer) {
-        clearTimeout(pendingTimer);
-        disconnectingTimers.delete(ws.user._id);
-    }
+    graceTimer.cancel(ws.user._id);
 
     const user: IOnlineUser = mapUserToOnlineUser(ws.user);
 
-    ws.isAlive = true;
-    ws.on('pong', () => { ws.isAlive = true; });
-
-    const heartbeat = setInterval(() => {
-        if (!ws.isAlive) {
-            clearInterval(heartbeat);
-            startGracePeriod();
-            ws.terminate();
-            return;
-        }
-        ws.isAlive = false;
-        ws.ping();
-    }, HEARTBEAT_INTERVAL_MS);
-
     const startGracePeriod = (status: 'disconnecting' | 'offline' = 'disconnecting') => {
-        if (disconnectingTimers.has(user.id)) return;
-
-        const transitionUser: IOnlineUser = { ...user, status };
-        broadcastMessage(wss, { event: 'online_users_updated', data: transitionUser });
-        addToIam(transitionUser, token);
-
-        const timer = setTimeout(() => {
-            disconnectingTimers.delete(user.id);
-            broadcastMessage(wss, { event: 'user_logout', data: { id: user.id } });
-            removeFromIam(user.id, token);
-        }, GRACE_PERIOD_MS);
-
-        disconnectingTimers.set(user.id, timer);
+        graceTimer.start(
+            user.id,
+            () => {
+                const transitionUser: IOnlineUser = { ...user, status };
+                broadcastMessage(wss, { event: 'online_users_updated', data: transitionUser });
+                addToIam(transitionUser, token);
+            },
+            () => {
+                broadcastMessage(wss, { event: 'user_logout', data: { id: user.id } });
+                removeFromIam(user.id, token);
+            },
+        );
     };
+
+    const hb = createHeartbeat(ws, () => {
+        startGracePeriod();
+        ws.terminate();
+    });
+
+    ws.on('pong', () => hb.beat());
 
     ws.on('message', (raw) => {
         try {
             const msg = JSON.parse(raw.toString()) as WsClientMessage;
             switch (msg.event) {
                 case 'heartbeat':
-                    ws.isAlive = true;
+                    hb.beat();
                     if (ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ event: 'heartbeat_ack' } satisfies Pick<WsMessage, 'event'>));
                     }
                     break;
                 case 'user_logout':
-                    clearInterval(heartbeat);
+                    hb.stop();
                     startGracePeriod('offline');
                     ws.terminate();
                     break;
@@ -84,7 +67,7 @@ export const onConnection = (wss: WebSocketServer) => (ws: AuthenticatedWebSocke
     addToIam(user, token);
 
     ws.on('close', () => {
-        clearInterval(heartbeat);
+        hb.stop();
         startGracePeriod();
     });
 };
