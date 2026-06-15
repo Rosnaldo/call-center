@@ -1,4 +1,4 @@
-import WebSocket from 'ws';
+import { ISocket } from '#websocket/socket';
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
 
@@ -7,7 +7,7 @@ interface Heartbeat {
     stop(): void;
 }
 
-export function createHeartbeat(ws: WebSocket & { isAlive: boolean }, onDead: () => void): Heartbeat {
+export function createHeartbeat(ws: ISocket & { isAlive: boolean }, onDead: () => void): Heartbeat {
     ws.isAlive = true;
 
     const interval = setInterval(() => {

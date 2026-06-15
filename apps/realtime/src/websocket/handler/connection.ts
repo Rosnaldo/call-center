@@ -1,20 +1,20 @@
-import WebSocket, { WebSocketServer } from 'ws';
 import { AuthenticatedWebSocket, WsClientMessage, WsMessage } from '#websocket/types';
+import { ISocketServer, SOCKET_OPEN } from '#websocket/socket';
 import { addToIam, removeFromIam } from 'src/services/users';
 import { IOnlineUser, mapUserToOnlineUser } from '@repo/shared-types';
 import { graceTimer } from '#websocket/grace_timer';
 import { createHeartbeat } from '#websocket/heartbeat';
 
-const broadcastMessage = (wss: WebSocketServer, payload: WsMessage<unknown>): void => {
+const broadcastMessage = (wss: ISocketServer, payload: WsMessage<unknown>): void => {
     const message = JSON.stringify(payload);
-    wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
+    for (const client of wss.clients) {
+        if (client.readyState === SOCKET_OPEN) {
             client.send(message);
         }
-    });
+    }
 };
 
-export const onConnection = (wss: WebSocketServer) => (ws: AuthenticatedWebSocket): void => {
+export const onConnection = (wss: ISocketServer) => (ws: AuthenticatedWebSocket): void => {
     const token = ws.token;
     graceTimer.cancel(ws.user._id);
 
@@ -48,7 +48,7 @@ export const onConnection = (wss: WebSocketServer) => (ws: AuthenticatedWebSocke
             switch (msg.event) {
                 case 'heartbeat':
                     hb.beat();
-                    if (ws.readyState === WebSocket.OPEN) {
+                    if (ws.readyState === SOCKET_OPEN) {
                         ws.send(JSON.stringify({ event: 'heartbeat_ack' } satisfies Pick<WsMessage, 'event'>));
                     }
                     break;

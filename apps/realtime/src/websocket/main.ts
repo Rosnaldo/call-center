@@ -38,7 +38,7 @@ export function createWebSocketServer(server: Server): WebSocketServer {
             .then((tokenUser) => userExists(tokenUser.email, token))
             .then((fullUser: IUser) => {
                 wss.handleUpgrade(req, socket, head, (ws) => {
-                    const authWs = ws as AuthenticatedWebSocket;
+                    const authWs = ws as unknown as AuthenticatedWebSocket;
                     authWs.user = fullUser;
                     authWs.token = token;
                     wss.emit('connection', authWs, req);
@@ -50,7 +50,7 @@ export function createWebSocketServer(server: Server): WebSocketServer {
             });
     });
 
-    wss.on('connection', onConnection(wss) as (ws: WebSocket) => void);
+    wss.on('connection', onConnection(wss) as unknown as (ws: WebSocket) => void);
 
     return wss;
 }

@@ -1,7 +1,7 @@
-import WebSocket from 'ws';
 import { IUser } from '@repo/shared-types';
+import { ISocket } from '#websocket/socket';
 
-export interface AuthenticatedWebSocket extends WebSocket {
+export interface AuthenticatedWebSocket extends ISocket {
     user: IUser;
     token: string;
     isAlive: boolean;
