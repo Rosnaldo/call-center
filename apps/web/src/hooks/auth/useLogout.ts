@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthentication } from './useAuthentication.ts';
 import { useCurrentUserStore } from '../../states/current-user/store.ts';
 import { useOnlineUsersStore } from '../../states/online-users/store.ts';
-import { notifyWsLogout } from '../useOnlineUsersWebSocket.ts';
+import { notifyWsLogout } from '../../services/online-users-ws.ts';
 
 export function useLogout() {
   const navigate = useNavigate();

@@ -1,16 +1,8 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import { useKeycloak } from '@/src/providers/auth-provider';
+import { useAuthStore } from '../../states/auth/store';
 
 export function useRealAuthentication() {
-	const { isAuthenticated, login, logout } = useKeycloak();
-
-	return {
-		isAuthenticated,
-		login,
-		logout,
-	};
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    const login = useAuthStore((s) => s.login);
+    const logout = useAuthStore((s) => s.logout);
+    return { isAuthenticated, login, logout };
 }

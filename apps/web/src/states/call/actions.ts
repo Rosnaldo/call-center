@@ -173,9 +173,7 @@ export const createCallActions = (
           tokensCharged: 1,
         };
 
-        setTimeout(() => {
-          try { playNotificationChime(); } catch (_) {}
-        }, 100);
+        try { playNotificationChime(); } catch (_) {}
 
         useOnlineUsersStore.getState().updateUser(customer.id, { status: 'in-call' as const });
 
@@ -194,15 +192,9 @@ export const createCallActions = (
         updateUser(call.attendantId, { status: 'idle' as const });
 
         if (currentUser && currentUser.id === call.customerId) {
-          setTimeout(() => {
-            const { currentUser: fresh, setCurrentUser } = useCurrentUserStore.getState();
-            if (fresh) setCurrentUser({ ...fresh, tokens: 0, status: 'idle' as const });
-          }, 0);
+          const { currentUser: fresh, setCurrentUser } = useCurrentUserStore.getState();
+          if (fresh) setCurrentUser({ ...fresh, tokens: 0, status: 'idle' as const });
         }
-
-        setTimeout(() => {
-          playNotificationChime();
-        }, 100);
 
         return { call: null };
       });
