@@ -3,12 +3,12 @@ import KcAdminClient from '@keycloak/keycloak-admin-client';
 import Properties from '#properties';
 import { ServiceResponseException } from '#exceptions/service_response';
 
-const originalFetch = global.fetch;
+// const originalFetch = global.fetch;
 
-global.fetch = async (url, options) => {
-  console.log('[FETCH]', options?.method, url);
-  return originalFetch(url, options);
-};
+// global.fetch = async (url, options) => {
+//   console.log('[FETCH]', options?.method, url);
+//   return originalFetch(url, options);
+// };
 
 const getKcAdminClient = () => {
     return new KcAdminClient({

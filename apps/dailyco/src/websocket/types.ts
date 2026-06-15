@@ -1,13 +1,9 @@
 import WebSocket from 'ws';
-import { IOnlineUser } from '@repo/shared-types';
-
-export { IOnlineUser };
+import { IUser } from '@repo/shared-types';
 
 export interface AuthenticatedWebSocket extends WebSocket {
-    userId: string;
-    userEmail: string;
-    userName: string;
-    userToken: string;
+    user: IUser;
+    token: string;
     isAlive: boolean;
 }
 

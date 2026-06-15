@@ -1,24 +1,12 @@
 import WebSocket, { WebSocketServer } from 'ws';
-import { AuthenticatedWebSocket, IOnlineUser, WsClientMessage, WsMessage } from '#websocket/types';
-import { iamApi } from '#apis/iam';
+import { AuthenticatedWebSocket, WsClientMessage, WsMessage } from '#websocket/types';
+import { addToIam, removeFromIam } from 'src/services/users';
+import { IOnlineUser } from '@repo/shared-types';
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const GRACE_PERIOD_MS = 30_000;
 
 const disconnectingTimers = new Map<string, ReturnType<typeof setTimeout>>();
-
-const syncToIam = (user: IOnlineUser, token: string): void => {
-    iamApi.post('/online-users/add', user, {
-        headers: { Authorization: token },
-    }).catch((err) => console.error('[IAM] sync failed:', err));
-};
-
-const removeFromIam = (userId: string, token: string): void => {
-    iamApi.delete('/online-users/remove', {
-        headers: { Authorization: token },
-        data: { id: userId },
-    }).catch((err) => console.error('[IAM] remove failed:', err));
-};
 
 const broadcastMessage = (wss: WebSocketServer, payload: WsMessage<unknown>): void => {
     const message = JSON.stringify(payload);
@@ -30,22 +18,24 @@ const broadcastMessage = (wss: WebSocketServer, payload: WsMessage<unknown>): vo
 };
 
 export const onConnection = (wss: WebSocketServer) => (ws: AuthenticatedWebSocket): void => {
-    const token = ws.userToken;
+    const token = ws.token;
 
     // Cancel any pending grace period — user reconnected in time
-    const pendingTimer = disconnectingTimers.get(ws.userId);
+    const pendingTimer = disconnectingTimers.get(ws.user._id);
     if (pendingTimer) {
         clearTimeout(pendingTimer);
-        disconnectingTimers.delete(ws.userId);
+        disconnectingTimers.delete(ws.user._id);
     }
 
     const user: IOnlineUser = {
-        id: ws.userId,
-        name: ws.userName,
-        email: ws.userEmail,
+        ...ws.user,
+        id: ws.user._id,
+        name: ws.user.firstName + ' ' + ws.user.lastName,
+        email: ws.user.email + '',
+        avatarUrl: ws.user?.avatar?.url,
         isOnline: true,
         status: 'idle',
-    } as IOnlineUser;
+    };
 
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
@@ -66,7 +56,7 @@ export const onConnection = (wss: WebSocketServer) => (ws: AuthenticatedWebSocke
 
         const disconnectingUser: IOnlineUser = { ...user, status: 'disconnecting' };
         broadcastMessage(wss, { event: 'online_users_updated', data: disconnectingUser });
-        syncToIam(disconnectingUser, token);
+        addToIam(disconnectingUser, token);
 
         const timer = setTimeout(() => {
             disconnectingTimers.delete(user.id);
@@ -101,7 +91,7 @@ export const onConnection = (wss: WebSocketServer) => (ws: AuthenticatedWebSocke
     });
 
     broadcastMessage(wss, { event: 'online_users_updated', data: user });
-    syncToIam(user, token);
+    addToIam(user, token);
 
     ws.on('close', () => {
         clearInterval(heartbeat);

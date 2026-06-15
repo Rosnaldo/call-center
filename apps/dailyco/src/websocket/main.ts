@@ -4,6 +4,8 @@ import url from 'url';
 import { iamApi } from '#apis/iam';
 import { AuthenticatedWebSocket } from './types';
 import { onConnection } from './handler/connection';
+import { userExists } from 'src/services/users';
+import { IUser } from '@repo/shared-types';
 
 interface IamValidateResponse {
     id: string;
@@ -33,13 +35,12 @@ export function createWebSocketServer(server: Server): WebSocketServer {
         }
 
         verifyToken(token)
-            .then((user) => {
+            .then((tokenUser) => userExists(tokenUser.email, token))
+            .then((fullUser: IUser) => {
                 wss.handleUpgrade(req, socket, head, (ws) => {
                     const authWs = ws as AuthenticatedWebSocket;
-                    authWs.userId = user.id;
-                    authWs.userEmail = user.email ?? '';
-                    authWs.userName = [user.firstName, user.lastName].filter(Boolean).join(' ');
-                    authWs.userToken = token;
+                    authWs.user = fullUser;
+                    authWs.token = token;
                     wss.emit('connection', authWs, req);
                 });
             })
