@@ -3,7 +3,8 @@ import { Server } from 'http';
 import url from 'url';
 import { iamApi } from '#apis/iam';
 import { AuthenticatedWebSocket } from './types';
-import { onConnection } from './handler/connection';
+import { WsTransport } from './transport';
+import { onConnection } from './connection';
 import { userExists } from 'src/services/users';
 import { IUser } from '@repo/shared-types';
 
@@ -38,9 +39,11 @@ export function createWebSocketServer(server: Server): WebSocketServer {
             .then((tokenUser) => userExists(tokenUser.email, token))
             .then((fullUser: IUser) => {
                 wss.handleUpgrade(req, socket, head, (ws) => {
-                    const authWs = ws as unknown as AuthenticatedWebSocket;
+                    const transport = new WsTransport(ws);
+                    const authWs = transport as unknown as AuthenticatedWebSocket;
                     authWs.user = fullUser;
                     authWs.token = token;
+                    authWs.isAlive = false;
                     wss.emit('connection', authWs, req);
                 });
             })

@@ -2,7 +2,7 @@ import { ISocket } from '#websocket/socket';
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
 
-interface Heartbeat {
+export interface Heartbeat {
     beat(): void;
     stop(): void;
 }

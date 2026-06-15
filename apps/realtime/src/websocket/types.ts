@@ -1,7 +1,7 @@
 import { IUser } from '@repo/shared-types';
-import { ISocket } from '#websocket/socket';
+import { EventEmitterTransport } from '#websocket/transport';
 
-export interface AuthenticatedWebSocket extends ISocket {
+export interface AuthenticatedWebSocket extends EventEmitterTransport {
     user: IUser;
     token: string;
     isAlive: boolean;
