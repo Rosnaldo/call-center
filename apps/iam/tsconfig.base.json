@@ -33,6 +33,7 @@
             "#validations/*": ["./src/validations/*"],
             "#route_bootstrap": ["./src/route_bootstrap"],
             "#mongoose_bootstrap": ["./src/mongoose_bootstrap"],
+            "#redis_bootstrap": ["./src/redis_bootstrap"],
             "#populate": ["./src/populate"],
             "#properties": ["./src/properties"],
             "#db/*": ["./src/db/*"],

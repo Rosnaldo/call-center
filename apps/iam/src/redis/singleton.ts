@@ -1,17 +1,16 @@
-import { RedisMain } from './main';
 import type Redis from 'ioredis';
+import { RedisConnection } from './main';
 
-let redisMain: RedisMain;
+const main = new RedisConnection();
 
-export const buildRedisMain = (): RedisMain => {
-    redisMain = new RedisMain();
-    return redisMain;
+export const connectRedis = async (): Promise<void> => {
+    await main.connect();
 };
 
 export const getRedisClient = (): Redis => {
-    return redisMain.get();
+    return main.get();
 };
 
 export const disconnectRedis = async (): Promise<void> => {
-    await redisMain.disconnect();
+    await main.disconnect();
 };

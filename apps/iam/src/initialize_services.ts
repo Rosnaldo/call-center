@@ -15,7 +15,7 @@ import './extensions/transform_in_dict';
 import { mongooseBootstrap } from '#mongoose_bootstrap';
 import { routeBootstrap } from '#route_bootstrap';
 import { buildKcMain } from '#keycloak/singleton';
-import { buildRedisMain, disconnectRedis } from '#redis/singleton';
+import { connectRedis, disconnectRedis } from '#redis/singleton';
 
 const app = express();
 
@@ -25,7 +25,7 @@ export async function initializeServices(): Promise<void> {
     try {
         await buildKcMain();
         await mongooseBootstrap();
-        buildRedisMain();
+        await connectRedis();
 
         app.use(cors());
         app.use(express.json());
