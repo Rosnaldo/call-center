@@ -1,6 +1,7 @@
 import { IOnlineUser } from '@repo/shared-types';
 import { useOnlineUsersStore } from '../states/online-users/store';
 import { ITransport, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
+import { CallState } from '../states/call/state';
 
 const WS_URL = import.meta.env.VITE_REALTIME_WS_URL as string | undefined;
 const RECONNECT_DELAY_MS = 3_000;
@@ -10,7 +11,8 @@ const HEARTBEAT_ACK_TIMEOUT_MS = 10_000;
 type WsInboundMessage =
     | { event: 'online_users_updated'; data: IOnlineUser }
     | { event: 'heartbeat_ack' }
-    | { event: 'user_logout'; data: { id: string } };
+    | { event: 'user_logout'; data: { id: string } }
+    | { event: 'incoming_call'; data: { call: Omit<CallState, 'startedAt' | 'interruptedAt'> } };
 
 let _heartbeatRef: ReturnType<typeof setInterval> | null = null;
 
@@ -38,12 +40,21 @@ const ackTimer = {
     },
 };
 
+export type IncomingCallPayload = Omit<CallState, 'startedAt' | 'interruptedAt'>;
+
 let activeWs: ITransport | null = null;
 let running = false;
+let _onIncomingCall: ((call: IncomingCallPayload) => void) | undefined;
 
 export function notifyWsLogout(): void {
     if (activeWs?.readyState === TRANSPORT_OPEN) {
         activeWs.send(JSON.stringify({ event: 'user_logout' }));
+    }
+}
+
+export function notifyWsIncomingCall(targetUserId: string, call: Omit<CallState, 'startedAt' | 'interruptedAt'>): void {
+    if (activeWs?.readyState === TRANSPORT_OPEN) {
+        activeWs.send(JSON.stringify({ event: 'incoming_call', data: { targetUserId, call } }));
     }
 }
 
@@ -75,6 +86,9 @@ function connect(token: string, factory: TransportFactory) {
                 case 'user_logout':
                     removeUser(msg.data.id);
                     break;
+                case 'incoming_call':
+                    _onIncomingCall?.(msg.data.call);
+                    break;
             }
         } catch {
             // malformed frame — ignore
@@ -91,8 +105,13 @@ function connect(token: string, factory: TransportFactory) {
     };
 }
 
-export function initOnlineUsersWebSocket(token: string | undefined, factory: TransportFactory = createWsTransport): void {
+export function initOnlineUsersWebSocket(
+    token: string | undefined,
+    factory: TransportFactory = createWsTransport,
+    onIncomingCall?: (call: IncomingCallPayload) => void,
+): void {
     if (!token) return;
+    _onIncomingCall = onIncomingCall;
     running = true;
     connect(token, factory);
 }

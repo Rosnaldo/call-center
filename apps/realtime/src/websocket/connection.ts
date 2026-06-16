@@ -9,6 +9,7 @@ import { handleClose } from '#websocket/handler/on_close';
 import { handlePong } from '#websocket/handler/on_pong';
 import { handleMessageHeartbeat } from '#websocket/handler/message/heartbeat';
 import { handleMessageLogout } from '#websocket/handler/message/logout';
+import { handleMessageIncomingCall } from '#websocket/handler/message/incoming_call';
 
 export const onConnection = (wss: ISocketServer) => (ws: AuthenticatedWebSocket): void => {
     const token = ws.token;
@@ -33,6 +34,9 @@ export const onConnection = (wss: ISocketServer) => (ws: AuthenticatedWebSocket)
                     break;
                 case 'user_logout':
                     handleMessageLogout(ws, hb, startGracePeriod);
+                    break;
+                case 'incoming_call':
+                    handleMessageIncomingCall(wss, msg.data);
                     break;
             }
         } catch {

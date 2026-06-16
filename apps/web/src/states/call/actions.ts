@@ -7,6 +7,7 @@ import { useOnlineUsersStore } from '../online-users/store.ts';
 import { useCurrentUserStore } from '../current-user/store.ts';
 import { playNotificationChime, generateMeetUrl } from '../../utils/helpers.ts';
 import { CallState, CallStore, initialCallStore } from './state.ts';
+import { notifyWsIncomingCall } from '../../services/online-users-ws.ts';
 
 export function billingRecurringChargeUpdate(
   prev: CallStore,
@@ -24,6 +25,7 @@ export function billingRecurringChargeUpdate(
 export interface CallActions {
   setCallState: (stateOrFn: any) => void;
   initiateCall: (customerId: string, attendantId: string) => void;
+  receiveIncomingCall: (call: Omit<CallState, 'startedAt' | 'interruptedAt'>) => void;
   completeCall: (attendantId: string, callId?: string, byAttendant?: boolean) => void;
   updateCall: (callId: string, updates: Partial<CallState>) => void;
   billingOutOfTokens: (callId: string) => void;
@@ -44,6 +46,8 @@ export const createCallActions = (
     },
 
     initiateCall: (customerId, attendantId) => {
+      let createdCall: CallState | undefined;
+
       set((state) => {
         const { users, setUsers } = useOnlineUsersStore.getState();
         const customer = users.find(u => u.id === customerId);
@@ -70,7 +74,21 @@ export const createCallActions = (
 
         setUsers(users.map(u => u.id === customerId ? { ...u, status: 'in-call' as const } : u));
 
+        createdCall = newCall;
         return { call: newCall };
+      });
+
+      if (createdCall) {
+        notifyWsIncomingCall(attendantId, createdCall);
+      }
+    },
+
+    receiveIncomingCall: (call) => {
+      set(() => {
+        const { updateUser } = useOnlineUsersStore.getState();
+        updateUser(call.customerId, { status: 'in-call' as const });
+        try { playNotificationChime(); } catch (_) {}
+        return { call: { ...call } };
       });
     },
 
