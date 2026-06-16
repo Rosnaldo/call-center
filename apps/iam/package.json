@@ -10,8 +10,7 @@
     "tsc": "rimraf build && tsc -p tsconfig.src.json && tsc-alias -p tsconfig.src.json && rimraf *.tsbuildinfo",
     "build": "npm run tsc",
     "populate": "NODE_ENV=local nodemon --exec \"ts-node -r tsconfig-paths/register \" src/populate.ts",
-    "test": "RUNTIME=ts NODE_ENV=test jest",
-    "e2e:local": "NODE_ENV=e2e nodemon --exec \"ts-node -r tsconfig-paths/register \" cypress/index.ts"
+    "test": "RUNTIME=ts NODE_ENV=test jest"
   },
   "author": "",
   "license": "ISC",

@@ -34,19 +34,6 @@ async function resolveToken(key: string, token: string, issuer: string): Promise
     });
 }
 
-export function makeValidateToken(): (token: string) => Promise<JwtPayload> {
-    if (properties.nodeEnv === "e2e") {
-        return async (_token: string): Promise<JwtPayload> => ({
-            sub: "sub",
-            email: "andreytsuzuki@gmail.com",
-            given_name: "Andrey",
-            family_name: "Tsuzuki"
-        });
-    }
-
-    return validateToken;
-}
-
 async function validateToken(token: string): Promise<JwtPayload> {
     const payload = jwt.decode(token) as JwtPayload;
     const issuer = payload.iss || '';
@@ -67,7 +54,7 @@ async function validateToken(token: string): Promise<JwtPayload> {
 export const GetKeycloakUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const token = req.headers.authorization || '';
-        const result = await makeValidateToken()(token);
+        const result = await validateToken(token);
 
         req.userKc = {
             id: result.sub!,

@@ -33,7 +33,7 @@ export class MainConnection {
     };
 
     private readonly createConnection = async ({ testTransaction = false }: Props): Promise<Connection> => {
-        const testEnv = ['test', 'e2e'];
+        const testEnv = ['test'];
         if (testEnv.includes(Properties.nodeEnv) && testTransaction) {
             this.replSet = await MongoMemoryReplSet.create({
                 replSet: { count: 1 }, // mínimo para transactions

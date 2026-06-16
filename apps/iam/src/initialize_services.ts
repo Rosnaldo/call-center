@@ -19,12 +19,12 @@ import { buildRedisMain, disconnectRedis } from '#redis/singleton';
 
 const app = express();
 
-export async function initializeServices({ e2e }: { e2e?: () => Promise<void> } = {}): Promise<void> {
+export async function initializeServices(): Promise<void> {
     let isShuttingDown = false;
 
     try {
         await buildKcMain();
-        await mongooseBootstrap({ e2e });
+        await mongooseBootstrap();
         buildRedisMain();
 
         app.use(cors());
