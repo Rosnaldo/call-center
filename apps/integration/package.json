@@ -1,0 +1,26 @@
+{
+  "name": "integration",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Integration tests for IAM + Realtime + Web",
+  "scripts": {
+    "test": "NODE_ENV=test RUNTIME=ts jest --forceExit"
+  },
+  "dependencies": {
+    "@repo/shared-types": "*"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.25",
+    "@types/jest": "^30.0.0",
+    "@types/lodash": "^4.14.166",
+    "@types/node": "^20.0.0",
+    "@types/supertest": "^6.0.0",
+    "ioredis-mock": "^8.13.1",
+    "jest": "^30.3.0",
+    "mongodb-memory-server": "^11.0.1",
+    "supertest": "^7.1.0",
+    "ts-jest": "^29.4.6",
+    "typescript": "^6.0.3"
+  }
+}
