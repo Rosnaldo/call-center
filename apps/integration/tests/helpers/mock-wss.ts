@@ -46,3 +46,9 @@ export function collectSentMessages(ws: AuthenticatedWebSocket): string[] {
     });
     return messages;
 }
+
+// Simulates a message arriving from the client side (e.g. user_logout).
+// The connection handler listens on the 'message' event of the underlying EventEmitter.
+export function simulateMessage(ws: AuthenticatedWebSocket, msg: Record<string, unknown>): void {
+    (ws as unknown as EventEmitter).emit('message', JSON.stringify(msg));
+}
