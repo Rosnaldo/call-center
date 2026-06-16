@@ -1,341 +1,344 @@
 <#import "template.ftl" as layout>
 
+<style>
+  .input-py { padding-block: 0.75rem; }
+  .btn-py { padding-block: 0.875rem; }
+  .left-icon { left: 0.875rem; }
+  .right-icon { right: 0.75rem; }
+  .mt-1 { margin-top: 0.25rem; }
+  .mt-2 { margin-top: 0.5rem; }
+  .mb-4 { margin-bottom: 1rem; }
+  .mb-6 { margin-bottom: 1.5rem; }
+  .pb-3 { padding-bottom: 0.75rem; }
+  .text-10 { font-size: 0.625rem; }
+  .gap-1-5 { gap: 0.375rem; }
+  .gap-2-5 { gap: 0.625rem; }
+  .gap-3-5 { gap: 0.875rem; }
+</style>
+
 <@layout.registrationLayout title="Cadastrar • ChácaraMeets">
 
-      <!-- Card -->
-        <form id="kc-register-form" action="${url.registrationAction}" method="post" class="space-y-4" novalidate>
-          <div class="grid grid-cols-2 gap-4">
-            <!-- Nome -->
-            <div class="space-y-2">
-              <label class="text-sm font-medium leading-none" for="firstName">Nome</label>
-              <div class="relative">
-                <!-- Ícone User -->
-                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/>
-                </svg>
-                <input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  value="${(register.formData.firstName!'')}"
-                  placeholder="João"
-                  class="bg-background/50 px-10 block w-full rounded-md border border-input py-2 text-sm"
-                  autocomplete="given-name"
-                />
-              </div>
-              <#if messagesPerField.existsError('firstName')>
-                <p class="text-xs text-destructive">${kcSanitize(messagesPerField.get('firstName'))}</p>
-              </#if>
-            </div>
+  <!-- Brand Logo -->
+  <div class="flex flex-col items-center text-center gap-2 select-none mb-6">
+    <a href="${url.loginUrl}" class="p-4 bg-primary text-primary-foreground rounded-2xl shadow-sm inline-flex items-center justify-center hover:bg-primary/90 transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M15 10l4.553-2.069A1 1 0 0121 8.816v6.368a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+      </svg>
+    </a>
+    <div>
+      <h1 class="font-bold text-foreground text-2xl tracking-tight">
+        Chácara<span class="text-primary">Meets</span>
+      </h1>
+      <p class="text-10 tracking-widest text-muted-foreground uppercase mt-1">
+        Automated Operations Portal
+      </p>
+    </div>
+  </div>
 
-            <!-- Sobrenome -->
-            <div class="space-y-2">
-              <label class="text-sm font-medium leading-none" for="lastName">Sobrenome</label>
-              <input
-                id="lastName"
-                name="lastName"
-                type="text"
-                value="${(register.formData.lastName!'')}"
-                placeholder="Silva"
-                class="bg-background/50 block w-full rounded-md border border-input py-2 px-3 text-sm"
-                autocomplete="family-name"
-              />
-              <#if messagesPerField.existsError('lastName')>
-                <p class="text-xs text-destructive">${kcSanitize(messagesPerField.get('lastName'))}</p>
-              </#if>
-            </div>
-          </div>
+  <!-- Card Header -->
+  <div class="flex items-center justify-between pb-3 border-t border-input mb-6">
+    <h3 class="text-sm font-bold tracking-tight text-foreground mt-2">
+      Criar Nova Conta
+    </h3>
+    <a href="${url.loginUrl}" class="text-xs text-primary hover:text-primary/80 flex items-center gap-1-5 transition-colors mt-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+      <span>Voltar ao login</span>
+    </a>
+  </div>
 
-          <#-- Username: só exibe se o realm NÃO usa email como username -->
-          <#if !realm.registrationEmailAsUsername>
-            <div class="space-y-2">
-              <label class="text-sm font-medium leading-none" for="username">Usuário</label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                value="${(register.formData.username!'')}"
-                placeholder="seu_usuario"
-                class="bg-background/50 block w-full rounded-md border border-input py-2 px-3 text-sm"
-                autocomplete="username"
-              />
-              <#if messagesPerField.existsError('username')>
-                <p class="text-xs text-destructive">${kcSanitize(messagesPerField.get('username'))}</p>
-              </#if>
-            </div>
-          <#else>
-            <input type="hidden" id="username" name="username" value="${(register.formData.email!'')}" />
-          </#if>
+  <!-- Global Message Alert -->
+  <#if message?has_content>
+    <#if message.type == "error">
+      <div class="bg-destructive/10 border border-accent/20 text-destructive rounded-xl px-4 py-2 text-xs font-medium flex items-start gap-2-5 mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>${kcSanitize(message.summary)?no_esc}</span>
+      </div>
+    <#elseif message.type == "success">
+      <div class="bg-green-500/10 border border-accent/20 text-green-500 rounded-xl px-4 py-2 text-xs font-medium flex items-start gap-2-5 mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0 mt-1 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M5 13l4 4L19 7" />
+        </svg>
+        <span>${kcSanitize(message.summary)?no_esc}</span>
+      </div>
+    </#if>
+  </#if>
 
-          <!-- E-mail -->
-          <div class="space-y-2">
-            <label class="text-sm font-medium leading-none text-primary-foreground" for="email">E-mail</label>
-            <div class="relative">
-              <!-- Ícone Mail -->
-              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none"
-                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M4 4h16v16H4z" fill="none"/><path d="M22 6l-10 7L2 6"/>
-              </svg>
-              <input
-                id="email"
-                type="email"
-                name="email"
-                value="${(register.formData.email!'')}"
-                placeholder="seu@email.com"
-                class="bg-background/50 px-10 block w-full rounded-md border border-input py-2 text-sm"
-                autocomplete="email"
-                required
-              />
-            </div>
-            <#if messagesPerField.existsError('email')>
-              <p class="text-xs text-destructive">${kcSanitize(messagesPerField.get('email'))}</p>
-            </#if>
-          </div>
+  <!-- Registration Form -->
+  <form id="kc-register-form" action="${url.registrationAction}" method="post" class="flex flex-col gap-4" novalidate>
 
-          <!-- Senha -->
-          <div class="space-y-6">
-          <#if realm.password>
-            <div class="space-y-2">
-              <div class="flex items-center justify-between">
-                    <label
-                        for="password"
-                        data-slot="label"
-                        class="${properties.kcLabelClass!} text-sm font-medium leading-none text-primary-foreground"
-                    >
-                        Senha
-                    </label>
-              </div>
-                <div class="${properties.kcInputWrapperClass!}">
-                    <div class="${properties.kcInputGroup!} relative" dir="ltr">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            class="lucide lucide-lock absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
-                            aria-hidden="true"
-                        >
-                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                        </svg>
-                        <input
-                            type="password"
-                            id="password"
-                            name="password"
-                            data-slot="input"
-                            class="${properties.kcInputClass!} px-10 block file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-background/50 pl-10 pr-10"
-                            autofocus autocomplete="senha"
-                            aria-invalid="<#if messagesPerField.existsError('password','password-confirm')>true</#if>"
-                            placeholder="Digite sua nova senha"
-                        />
-                        <button
-                            id="toggle-password"
-                            class="${properties.kcFormPasswordVisibilityButtonClass!} absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" type="button" aria-label="${msg('showPassword')}"
-                            aria-controls="password-new"  data-password-toggle
-                            data-icon-show="${properties.kcFormPasswordVisibilityIconShow!}" data-icon-hide="${properties.kcFormPasswordVisibilityIconHide!}"
-                            data-label-show="${msg('showPassword')}" data-label-hide="${msg('hidePassword')}"
-                        >
-                            <i class="${properties.kcFormPasswordVisibilityIconShow!}" aria-hidden="true">
-                                <span id="eye-off" class="hidden">
-                                    <!-- EyeOff -->
-                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.62 20.62 0 0 1 5.06-6.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a20.7 20.7 0 0 1-3.22 4.42M1 1l22 22"/>
-                                    </svg>
-                                </span>
-                                <span id="eye">
-                                    <!-- Eye -->
-                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                                    </svg>
-                                </span>
-                            </i>
-                        </button>
-                    </div>
-                    <div class="mt-2">
-                      <p class="text-xs text-muted-foreground">Mínimo de 8 caracteres</p>
-                    </div>
-                    <#if messagesPerField.existsError('password')>
-                        <span id="input-error-password" class="${properties.kcInputErrorMessageClass!} text-xs text-destructive" aria-live="polite">
-                            ${kcSanitize(messagesPerField.get('password'))?no_esc}
-                        </span>
-                    </#if>
-                </div>
-            </div>
+    <!-- First Name + Last Name -->
+    <div class="grid grid-cols-2 gap-3-5">
 
-            <!-- Confirmar senha -->
-            <div class="${properties.kcFormGroupClass!} space-y-2">
-                <div class="${properties.kcLabelWrapperClass!}">
-                    <label
-                        for="password-confirm"
-                        data-slot="label"
-                        class="${properties.kcLabelClass!} flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
-                    >
-                        ${msg("passwordConfirm")}
-                    </label>
-                </div>
-              <div class="${properties.kcInputGroup!} relative" dir="ltr">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            class="lucide lucide-lock absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
-                            aria-hidden="true"
-                        >
-                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                        </svg>
-                        <input
-                            type="password"
-                            id="password-confirm"
-                            name="password-confirm"
-                            data-slot="input"
-                            class="${properties.kcInputClass!} px-10 block file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-background/50 pl-10 pr-10"
-                            autofocus autocomplete="new-password"
-                            aria-invalid="<#if messagesPerField.existsError('password','password-confirm')>true</#if>"
-                            placeholder="Confirme sua nova senha"
-                        />
+      <div class="flex flex-col gap-1-5">
+        <label for="firstName" class="text-10 font-bold tracking-widest text-muted-foreground uppercase">
+          Nome
+        </label>
+        <div class="relative">
+          <span class="absolute left-icon top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </span>
+          <input
+            id="firstName"
+            name="firstName"
+            type="text"
+            value="${(register.formData.firstName!'')}"
+            placeholder="Andrey"
+            required
+            autocomplete="given-name"
+            class="w-full input-py pl-10 pr-3 bg-background/50 border border-input rounded-xl text-sm text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-all outline-none"
+          />
+        </div>
+        <#if messagesPerField.existsError('firstName')>
+          <p class="text-xs text-destructive">${kcSanitize(messagesPerField.get('firstName'))}</p>
+        </#if>
+      </div>
 
-                        <button
-                            id="confirm-toggle-password"
-                            class="${properties.kcFormPasswordVisibilityButtonClass!} absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" type="button" aria-label="${msg('showPassword')}"
-                            type="button" aria-label="${msg('showPassword')}"
-                            aria-controls="password-confirm"  data-password-toggle
-                            data-icon-show="${properties.kcFormPasswordVisibilityIconShow!}" data-icon-hide="${properties.kcFormPasswordVisibilityIconHide!}"
-                            data-label-show="${msg('showPassword')}" data-label-hide="${msg('hidePassword')}"
-                        >
-                            <i class="${properties.kcFormPasswordVisibilityIconShow!}" aria-hidden="true">
-                                <span id="confirm-eye-off" class="hidden">
-                                    <!-- EyeOff -->
-                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.62 20.62 0 0 1 5.06-6.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a20.7 20.7 0 0 1-3.22 4.42M1 1l22 22"/>
-                                    </svg>
-                                </span>
-                                <span id="confirm-eye">
-                                    <!-- Eye -->
-                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                                    </svg>
-                                </span>
-                            </i>
-                        </button>
-                    </div>
-                <#if messagesPerField.existsError('password-confirm')>
-                    <span id="input-error-password-confirm" class="${properties.kcInputErrorMessageClass!} text-xs text-destructive" aria-live="polite">
-                        ${kcSanitize(messagesPerField.get('password-confirm'))?no_esc}
-                    </span>
-                </#if>
-            </div>
-          </#if>
-          </div>
+      <div class="flex flex-col gap-1-5">
+        <label for="lastName" class="text-10 font-bold tracking-widest text-muted-foreground uppercase">
+          Sobrenome
+        </label>
+        <div class="relative">
+          <span class="absolute left-icon top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </span>
+          <input
+            id="lastName"
+            name="lastName"
+            type="text"
+            value="${(register.formData.lastName!'')}"
+            placeholder="Tsuzuki"
+            required
+            autocomplete="family-name"
+            class="w-full input-py pl-10 pr-3 bg-background/50 border border-input rounded-xl text-sm text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-all outline-none"
+          />
+        </div>
+        <#if messagesPerField.existsError('lastName')>
+          <p class="text-xs text-destructive">${kcSanitize(messagesPerField.get('lastName'))}</p>
+        </#if>
+      </div>
 
-          <#-- Mensagens globais (ex.: usuário/email já existe) -->
-          <#if messages?has_content>
-            <#list messages as m>
-              <p class="text-xs <#if m.type == 'error'>text-destructive<#else>text-muted-foreground</#if>">${kcSanitize(m.summary)}</p>
-            </#list>
-          </#if>
+    </div>
 
-          <!-- Botão Registrar -->
-          <button
-            type="submit"
-            class="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-md my-4 py-2 text-sm"
-          >
-            ${msg("doRegister", "Registrar")}
-          </button>
-        </form>
+    <!-- Username (somente quando o realm NÃO usa email como username) -->
+    <#if !realm.registrationEmailAsUsername>
+      <div class="flex flex-col gap-1-5">
+        <label for="username" class="text-10 font-bold tracking-widest text-muted-foreground uppercase">
+          Usuário
+        </label>
+        <input
+          id="username"
+          name="username"
+          type="text"
+          value="${(register.formData.username!'')}"
+          placeholder="seu_usuario"
+          autocomplete="username"
+          class="w-full input-py px-4 bg-background/50 border border-input rounded-xl text-sm text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-all outline-none"
+        />
+        <#if messagesPerField.existsError('username')>
+          <p class="text-xs text-destructive">${kcSanitize(messagesPerField.get('username'))}</p>
+        </#if>
+      </div>
+    <#else>
+      <input type="hidden" id="username" name="username" value="${(register.formData.email!'')}" />
+    </#if>
 
-        <!-- Voltar para o login -->
-        <a
-          href="${url.loginUrl}"
-          class="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mt-4"
-        >
-          <!-- Ícone ArrowLeft -->
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
+    <!-- Email -->
+    <div class="flex flex-col gap-1-5">
+      <label for="email" class="text-10 font-bold tracking-widest text-muted-foreground uppercase">
+        E-mail Corporativo ou Pessoal
+      </label>
+      <div class="relative">
+        <span class="absolute left-icon top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M3 8l9 6 9-6M4 6h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" />
           </svg>
-          Voltar para o login
-        </a>
+        </span>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          value="${(register.formData.email!'')}"
+          placeholder="andrey@site.com"
+          required
+          autocomplete="email"
+          class="w-full input-py pl-10 pr-4 bg-background/50 border border-input rounded-xl text-sm text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-all outline-none"
+        />
+      </div>
+      <#if messagesPerField.existsError('email')>
+        <p class="text-xs text-destructive">${kcSanitize(messagesPerField.get('email'))}</p>
+      </#if>
+    </div>
 
-</@layout.registrationLayout>
+    <#if realm.password>
+
+      <!-- Password -->
+      <div class="flex flex-col gap-1-5">
+        <label for="password" class="text-10 font-bold tracking-widest text-muted-foreground uppercase">
+          Defina uma senha
+        </label>
+        <div class="relative">
+          <span class="absolute left-icon top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 11c1.105 0 2 .895 2 2v3H10v-3c0-1.105.895-2 2-2z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M7 11V7a5 5 0 0110 0v4" />
+            </svg>
+          </span>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            placeholder="••••••••"
+            required
+            autocomplete="new-password"
+            aria-invalid="<#if messagesPerField.existsError('password','password-confirm')>true</#if>"
+            class="w-full input-py pl-10 pr-10 bg-background/50 border border-input rounded-xl text-sm text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-all outline-none"
+          />
+          <button type="button" id="toggle-password"
+            class="absolute right-icon top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground cursor-pointer outline-none"
+            title="Ver/Ocultar senha">
+            <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            <svg id="eye-off-icon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+            </svg>
+          </button>
+        </div>
+        <#if messagesPerField.existsError('password')>
+          <p class="text-xs text-destructive">${kcSanitize(messagesPerField.get('password'))?no_esc}</p>
+        </#if>
+      </div>
+
+      <!-- Confirm Password -->
+      <div class="flex flex-col gap-1-5">
+        <label for="password-confirm" class="text-10 font-bold tracking-widest text-muted-foreground uppercase">
+          Confirme sua senha
+        </label>
+        <div class="relative">
+          <span class="absolute left-icon top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 11c1.105 0 2 .895 2 2v3H10v-3c0-1.105.895-2 2-2z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M7 11V7a5 5 0 0110 0v4" />
+            </svg>
+          </span>
+          <input
+            id="password-confirm"
+            name="password-confirm"
+            type="password"
+            placeholder="••••••••"
+            required
+            autocomplete="new-password"
+            aria-invalid="<#if messagesPerField.existsError('password','password-confirm')>true</#if>"
+            class="w-full input-py pl-10 pr-10 bg-background/50 border border-input rounded-xl text-sm text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-all outline-none"
+          />
+          <button type="button" id="toggle-confirm-password"
+            class="absolute right-icon top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground cursor-pointer outline-none"
+            title="Ver/Ocultar senha">
+            <svg id="confirm-eye-icon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            <svg id="confirm-eye-off-icon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+            </svg>
+          </button>
+        </div>
+        <p id="password-mismatch" class="text-xs text-destructive hidden">As senhas não coincidem.</p>
+        <#if messagesPerField.existsError('password-confirm')>
+          <p class="text-xs text-destructive">${kcSanitize(messagesPerField.get('password-confirm'))?no_esc}</p>
+        </#if>
+      </div>
+
+    </#if>
+
+    <!-- Submit -->
+    <button type="submit"
+      class="w-full btn-py bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-bold tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1-5 mt-2"
+    >
+      <span>Concluir Cadastro</span>
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
+
+  </form>
+
+  <!-- Login Link -->
+  <div class="text-center pb-3 border-t border-input mt-6">
+    <span class="text-xs text-muted-foreground mt-2 block">
+      Já possui registro?
+      <a href="${url.loginUrl}" class="text-primary hover:text-primary/80 font-bold transition-colors">
+        Acesse sua conta
+      </a>
+    </span>
+  </div>
 
   <script>
     (function () {
-      const email = document.getElementById('email');
-      const username = document.getElementById('username');
-      const pass = document.getElementById('password');
-      const pass2 = document.getElementById('password-confirm');
-      const mismatch = document.getElementById('password-mismatch');
+      var email = document.getElementById('email');
+      var username = document.getElementById('username');
 
-      // Se o realm usa email como username, sincroniza o hidden username
-      if (email && username) {
-        email.addEventListener('input', () => {
-          if (username && username.type === 'hidden') {
-            username.value = email.value;
-          }
+      if (email && username && username.type === 'hidden') {
+        email.addEventListener('input', function () { username.value = email.value; });
+      }
+
+      function makeToggle(btnId, inputId, eyeId, eyeOffId) {
+        var btn = document.getElementById(btnId);
+        var input = document.getElementById(inputId);
+        var eye = document.getElementById(eyeId);
+        var eyeOff = document.getElementById(eyeOffId);
+        if (!btn || !input || !eye || !eyeOff) return;
+        btn.addEventListener('click', function () {
+          var show = input.type === 'password';
+          input.type = show ? 'text' : 'password';
+          eye.classList.toggle('hidden', show);
+          eyeOff.classList.toggle('hidden', !show);
         });
       }
 
-      // Toggle senha
-      const toggleBtn = document.getElementById('toggle-password');
-      const eyeOff = document.getElementById('eye-off');
-      const eye = document.getElementById('eye');
-      if (toggleBtn && pass && eye && eyeOff) {
-        toggleBtn.addEventListener('click', () => {
-          const isPwd = pass.type === 'password';
-          pass.type = isPwd ? 'text' : 'password';
-          eye.classList.toggle('hidden', !isPwd);
-          eyeOff.classList.toggle('hidden', isPwd);
-        });
-      }
+      makeToggle('toggle-password', 'password', 'eye-icon', 'eye-off-icon');
+      makeToggle('toggle-confirm-password', 'password-confirm', 'confirm-eye-icon', 'confirm-eye-off-icon');
 
-      // Toggle confirmação
-      const toggleConfirmBtn = document.getElementById('confirm-toggle-password');
-      const eyeOff2 = document.getElementById('confirm-eye-off');
-      const eye2 = document.getElementById('confirm-eye');
-      if (toggleConfirmBtn && pass2 && eye2 && eyeOff2) {
-        toggleConfirmBtn.addEventListener('click', () => {
-          const isPwd = pass2.type === 'password';
-          pass2.type = isPwd ? 'text' : 'password';
-          eye2.classList.toggle('hidden', !isPwd);
-          eyeOff2.classList.toggle('hidden', isPwd);
-        });
-      }
+      var pass = document.getElementById('password');
+      var pass2 = document.getElementById('password-confirm');
+      var mismatch = document.getElementById('password-mismatch');
+      var form = document.getElementById('kc-register-form');
 
-      // Validação simples de confirmação de senha (cliente)
-      const form = document.getElementById('kc-register-form');
-      if (form && pass && pass2 && mismatch) {
-        const check = () => {
-          if (pass2.value && pass.value !== pass2.value) {
-            mismatch.classList.remove('hidden');
-          } else {
-            mismatch.classList.add('hidden');
-          }
-        };
+      if (pass && pass2 && mismatch) {
+        function check() {
+          mismatch.classList.toggle('hidden', !pass2.value || pass.value === pass2.value);
+        }
         pass.addEventListener('input', check);
         pass2.addEventListener('input', check);
-        form.addEventListener('submit', (e) => {
+      }
+      if (form && pass && pass2) {
+        form.addEventListener('submit', function (e) {
           if (pass.value !== pass2.value) {
             e.preventDefault();
-            mismatch.classList.remove('hidden');
+            if (mismatch) mismatch.classList.remove('hidden');
           }
         });
       }
     })();
   </script>
+
+</@layout.registrationLayout>
