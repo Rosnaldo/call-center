@@ -24,6 +24,7 @@ const queryClient = new QueryClient();
 export default function App() {
   const ready = useAuthStore((s) => s.ready);
   const error = useAuthStore((s) => s.error);
+  const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
 
   if (error) return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--bg-brand-canvas)]">
@@ -40,7 +41,7 @@ export default function App() {
     </div>
   );
 
-  if (!ready) return <div>Loading session…</div>;
+  if (!ready && !isSimulation) return <div>Loading session…</div>;
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -6,7 +6,8 @@ import './states/call/store.ts';
 import './components/call-lobby-view/states/store.ts';
 import { initOnlineUsersWebSocket } from './services/online-users-ws.ts';
 
-export function bootstrap(): void {
-    useAuthStore.getState().bootstrap();
-    initOnlineUsersWebSocket();
+export async function bootstrap(): Promise<void> {
+    await useAuthStore.getState().bootstrap();
+    const token = useAuthStore.getState().token;
+    initOnlineUsersWebSocket(token);
 }
