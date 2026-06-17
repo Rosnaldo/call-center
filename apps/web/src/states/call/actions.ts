@@ -7,7 +7,7 @@ import { useOnlineUsersStore } from '../online-users/store.ts';
 import { useCurrentUserStore } from '../current-user/store.ts';
 import { playNotificationChime, generateMeetUrl } from '../../utils/helpers.ts';
 import { CallState, CallStore, initialCallStore } from './state.ts';
-import { notifyWsIncomingCall } from '../../services/online-users-ws.ts';
+import { notifyWsIncomingCall, notifyWsCancelCall } from '../../services/online-users-ws.ts';
 
 export function billingRecurringChargeUpdate(
   prev: CallStore,
@@ -26,6 +26,7 @@ export interface CallActions {
   setCallState: (stateOrFn: any) => void;
   initiateCall: (customerId: string, attendantId: string) => void;
   receiveIncomingCall: (call: Omit<CallState, 'startedAt' | 'interruptedAt'>) => void;
+  cancelCall: (callId: string) => void;
   completeCall: (attendantId: string, callId?: string, byAttendant?: boolean) => void;
   updateCall: (callId: string, updates: Partial<CallState>) => void;
   billingOutOfTokens: (callId: string) => void;
@@ -69,6 +70,7 @@ export const createCallActions = (
           attendantName: attendant.name,
           roomUrl: generateMeetUrl(),
           status: 'awaiting-answer',
+          wasAnswered: false,
           tokensCharged: 1
         };
 
@@ -90,6 +92,25 @@ export const createCallActions = (
         try { playNotificationChime(); } catch (_) {}
         return { call: { ...call } };
       });
+    },
+
+    cancelCall: (callId) => {
+      let attendantId: string | undefined;
+
+      set((state) => {
+        const call = state.call?.id === callId && !state.call.wasAnswered ? state.call : undefined;
+        if (!call) return {};
+
+        const { updateUser } = useOnlineUsersStore.getState();
+        updateUser(call.customerId, { status: 'idle' as const });
+        attendantId = call.attendantId;
+
+        return { call: null };
+      });
+
+      if (attendantId) {
+        notifyWsCancelCall(attendantId, callId);
+      }
     },
 
     completeCall: (attendantId, callId, byAttendant) => {
@@ -140,6 +161,7 @@ export const createCallActions = (
         if (!call) return {};
 
         if (call.status === 'awaiting-answer' && updates.status === 'active') {
+          updates = { ...updates, wasAnswered: true };
           updateUser(call.attendantId, { status: 'in-call' as const });
           if (currentUser && currentUser.id === call.attendantId) {
             setCurrentUser({ ...currentUser, status: 'in-call' as const });
@@ -158,6 +180,8 @@ export const createCallActions = (
             interruptedAt: undefined,
           };
         }
+
+        if (call.wasAnswered) updates = { ...updates, wasAnswered: true };
 
         return { call: { ...call, ...updates } };
       });
@@ -188,6 +212,7 @@ export const createCallActions = (
           attendantName: attendant.name,
           roomUrl: generateMeetUrl(),
           status: 'awaiting-answer',
+          wasAnswered: false,
           tokensCharged: 1,
         };
 

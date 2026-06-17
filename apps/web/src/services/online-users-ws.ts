@@ -12,7 +12,8 @@ type WsInboundMessage =
     | { event: 'online_users_updated'; data: IOnlineUser }
     | { event: 'heartbeat_ack' }
     | { event: 'user_logout'; data: { id: string } }
-    | { event: 'incoming_call'; data: { call: Omit<CallState, 'startedAt' | 'interruptedAt'> } };
+    | { event: 'incoming_call'; data: { call: Omit<CallState, 'startedAt' | 'interruptedAt'> } }
+    | { event: 'call_cancelled'; data: { callId: string } };
 
 let _heartbeatRef: ReturnType<typeof setInterval> | null = null;
 
@@ -45,6 +46,7 @@ export type IncomingCallPayload = Omit<CallState, 'startedAt' | 'interruptedAt'>
 let activeWs: ITransport | null = null;
 let running = false;
 let _onIncomingCall: ((call: IncomingCallPayload) => void) | undefined;
+let _onCallCancelled: ((callId: string) => void) | undefined;
 
 export function notifyWsLogout(): void {
     if (activeWs?.readyState === TRANSPORT_OPEN) {
@@ -55,6 +57,12 @@ export function notifyWsLogout(): void {
 export function notifyWsIncomingCall(targetUserId: string, call: Omit<CallState, 'startedAt' | 'interruptedAt'>): void {
     if (activeWs?.readyState === TRANSPORT_OPEN) {
         activeWs.send(JSON.stringify({ event: 'incoming_call', data: { targetUserId, call } }));
+    }
+}
+
+export function notifyWsCancelCall(targetUserId: string, callId: string): void {
+    if (activeWs?.readyState === TRANSPORT_OPEN) {
+        activeWs.send(JSON.stringify({ event: 'call_cancelled', data: { targetUserId, callId } }));
     }
 }
 
@@ -89,6 +97,9 @@ function connect(token: string, factory: TransportFactory) {
                 case 'incoming_call':
                     _onIncomingCall?.(msg.data.call);
                     break;
+                case 'call_cancelled':
+                    _onCallCancelled?.(msg.data.callId);
+                    break;
             }
         } catch {
             // malformed frame — ignore
@@ -109,9 +120,11 @@ export function initOnlineUsersWebSocket(
     token: string | undefined,
     factory: TransportFactory = createWsTransport,
     onIncomingCall?: (call: IncomingCallPayload) => void,
+    onCallCancelled?: (callId: string) => void,
 ): void {
     if (!token) return;
     _onIncomingCall = onIncomingCall;
+    _onCallCancelled = onCallCancelled;
     running = true;
     connect(token, factory);
 }

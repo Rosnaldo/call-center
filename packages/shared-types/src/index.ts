@@ -34,14 +34,13 @@ export interface IUser {
     updatedAt: Date;
 }
 
-export interface ICallSession {
-    _id: string;
-    roomName: string;
-    sessionId: string;
+export interface ICall {
+    id: string;
     customerId: string;
+    customerName: string;
     attendantId: string;
-    createdAt: Date;
-    updatedAt: Date;
+    attendantName: string;
+    roomUrl: string;
 }
 
 export interface ICallUserPresence {

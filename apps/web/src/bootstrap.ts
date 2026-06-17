@@ -10,7 +10,10 @@ import { useCallStore } from './states/call/store.ts';
 export async function bootstrap(): Promise<void> {
     await useAuthStore.getState().bootstrap();
     const token = useAuthStore.getState().token;
-    initOnlineUsersWebSocket(token, undefined, (call) => {
-        useCallStore.getState().receiveIncomingCall(call);
-    });
+    initOnlineUsersWebSocket(
+        token,
+        undefined,
+        (call) => useCallStore.getState().receiveIncomingCall(call),
+        (callId) => useCallStore.getState().cancelCall(callId),
+    );
 }

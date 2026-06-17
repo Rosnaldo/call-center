@@ -27,6 +27,7 @@ export const buildCall = (d?: Partial<CallState>): CallState => ({
   attendantName: d?.attendantName ?? 'Test Attendant',
   roomUrl: d?.roomUrl ?? 'https://meet.example.com/test',
   status: d?.status ?? 'active',
+  wasAnswered: d?.wasAnswered ?? false,
   startedAt: d?.startedAt ?? Date.now(),
   tokensCharged: d?.tokensCharged ?? 1,
 });

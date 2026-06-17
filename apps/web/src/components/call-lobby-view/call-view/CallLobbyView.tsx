@@ -70,6 +70,7 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
         attendantName: selectedAttendant.name,
         roomUrl: '',
         status: 'draft-lobby' as any,
+        wasAnswered: false,
         tokensCharged: 0,
       }
     : undefined;
@@ -192,6 +193,11 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
   const [pendingHangUpParams, setPendingHangUpParams] = useState<{ attendantId: string; callId?: string } | null>(null);
 
   const handleHangUp = (attendantId: string, callId?: string) => {
+    const call = callId ? useCallStore.getState().call : currentCall;
+    if (call && !call.wasAnswered && call.status === 'awaiting-answer') {
+      useCallStore.getState().cancelCall(call.id);
+      return;
+    }
     if (isCallActive || isAttendant) {
       setPendingHangUpParams({ attendantId, callId });
       setIsConfirmCloseOpen(true);

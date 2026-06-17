@@ -2,10 +2,11 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import { Call as EntityCall } from '../../entities/call';
+import { ICall } from '@repo/shared-types';
 
-export interface CallState extends EntityCall {
+export interface CallState extends ICall {
   status: 'active' | 'completed' | 'awaiting-answer' | 'call-interrupteded';
+  wasAnswered: boolean;
   startedAt?: number;
   tokensCharged?: number; // Number of tokens charged during this session
   interruptedAt?: number; // Timestamp when connection was interrupted, used to adjust startedAt on reconnect

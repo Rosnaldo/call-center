@@ -10,6 +10,7 @@ import { handlePong } from '#websocket/handler/on_pong';
 import { handleMessageHeartbeat } from '#websocket/handler/message/heartbeat';
 import { handleMessageLogout } from '#websocket/handler/message/logout';
 import { handleMessageIncomingCall } from '#websocket/handler/message/incoming_call';
+import { handleMessageCallCancelled } from '#websocket/handler/message/call_cancelled';
 
 export const onConnection = (wss: ISocketServer) => (ws: AuthenticatedWebSocket): void => {
     const token = ws.token;
@@ -37,6 +38,9 @@ export const onConnection = (wss: ISocketServer) => (ws: AuthenticatedWebSocket)
                     break;
                 case 'incoming_call':
                     handleMessageIncomingCall(wss, msg.data);
+                    break;
+                case 'call_cancelled':
+                    handleMessageCallCancelled(wss, msg.data);
                     break;
             }
         } catch {
