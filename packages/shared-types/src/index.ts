@@ -41,6 +41,22 @@ export interface ICall {
     attendantId: string;
     attendantName: string;
     roomUrl: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export interface CallState {
+    id: string;
+    customerId: string;
+    customerName: string;
+    attendantId: string;
+    attendantName: string;
+    roomUrl: string;
+    status: 'active' | 'completed' | 'awaiting-answer' | 'call-interrupteded';
+    wasAnswered: boolean;
+    startedAt?: number;
+    tokensCharged?: number;
+    interruptedAt?: number;
 }
 
 export interface ICallUserPresence {
