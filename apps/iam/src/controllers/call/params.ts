@@ -5,7 +5,6 @@ interface ICreateInput {
     customerName: ICall['IParams']['customerName'];
     attendantId: ICall['IParams']['attendantId'];
     attendantName: ICall['IParams']['attendantName'];
-    roomUrl: ICall['IParams']['roomUrl'];
 }
 
 type ICreateOutput = ICall['IParams'];

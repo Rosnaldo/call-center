@@ -14,7 +14,6 @@ export const inputSchema = z.object({
     customerName: makeSmallStringSchema('customerName'),
     attendantId: makeObjectIdSchema('attendantId'),
     attendantName: makeSmallStringSchema('attendantName'),
-    roomUrl: makeUrlSchema('roomUrl'),
 });
 
 export const validateInput = (params: any): ValidateParseResult =>

@@ -7,6 +7,8 @@ import { validateInput } from 'src/validations/call/create';
 import { mapString } from '#utils/mapper/string';
 import { getCallDao } from '#daos/singleton';
 import { CallUtils } from '#schemas/call/utils';
+import { dailyApi } from '#apis/daily';
+import { IDailyRoom } from '#controllers/daily_room/params';
 
 type IInput = ICallController['ICreate']['IInput'];
 type IOutput = ICallController['ICreate']['IOutput'];
@@ -30,7 +32,8 @@ export class Create {
     public readonly exec = async (props: Props): Promise<Either<IOutput>> => {
         try {
             const params = this.transform(props.mapped);
-            const doc = await getCallDao().inserir(params);
+            const { data: room } = await dailyApi.post<IDailyRoom>('/rooms');
+            const doc = await getCallDao().inserir({ ...params, roomUrl: room.url });
             const utils = new CallUtils();
             return successData(utils.toObject(doc));
         } catch (error: unknown) {
@@ -43,7 +46,6 @@ export class Create {
         customerName: mapString(body.customerName),
         attendantId: mapString(body.attendantId),
         attendantName: mapString(body.attendantName),
-        roomUrl: mapString(body.roomUrl),
     });
 
     public readonly transform = (mapped: IInput): IInput => {
