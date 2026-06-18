@@ -59,13 +59,19 @@ export interface CallState {
     interruptedAt?: number;
 }
 
-export interface ICallUserPresence {
+export type PresenceEventType =
+    | 'JOINED'
+    | 'LEFT';
+
+export interface ICallUserPresenceEvent {
     _id: string;
     roomName: string;
     sessionId: string;
     userId: string;
-    joinedAt: Date;
-    leftAt: Date;
+
+    type: PresenceEventType;
+    occurredAt: Date;
+
     createdAt: Date;
     updatedAt: Date;
 }
