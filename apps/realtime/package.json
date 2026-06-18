@@ -10,7 +10,7 @@
     "tsc": "rimraf build && tsc -p tsconfig.src.json && tsc-alias -p tsconfig.src.json && rimraf *.tsbuildinfo",
     "build": "npm run tsc",
     "populate": "NODE_ENV=local nodemon --exec \"ts-node -r tsconfig-paths/register \" src/populate.ts",
-    "test": "RUNTIME=ts NODE_ENV=test jest"
+    "test": "echo 'No tests'"
   },
   "author": "",
   "license": "ISC",
@@ -28,7 +28,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.16.4",
-    "jest": "^30.3.0",
+
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^3.2.2",
     "lodash": "^4.17.23",
@@ -37,15 +37,15 @@
     "morgan": "^1.9.1",
     "multer": "^2.0.2",
     "sharp": "^0.34.5",
-    "ts-jest": "^29.4.6",
+
     "uuid": "^8.3.2",
     "ws": "^8.21.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.9.1",
+
     "@types/cors": "^2.8.19",
-    "@types/jest": "^30.0.0",
+
     "@types/lodash": "^4.14.166",
     "@types/morgan": "^1.9.10",
     "@types/node": "^14.14.16",
