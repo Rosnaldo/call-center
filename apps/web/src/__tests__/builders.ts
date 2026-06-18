@@ -15,8 +15,6 @@ export const buildOnlineUserState = (d?: Partial<OnlineUserState>): OnlineUserSt
   status: d?.status ?? 'idle',
   tokens: d?.tokens ?? 5,
   phone: d?.phone,
-  createdAt: d?.createdAt ?? new Date('2024-01-01'),
-  updatedAt: d?.updatedAt ?? new Date('2024-01-01'),
 });
 
 export const buildCall = (d?: Partial<CallState>): CallState => ({

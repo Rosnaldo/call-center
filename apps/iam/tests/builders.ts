@@ -26,6 +26,4 @@ export const buildOnlineUser = (d?: Partial<IOnlineUser>): IOnlineUser => ({
     status: d?.status ?? 'idle',
     tokens: d?.tokens,
     phone: d?.phone,
-    createdAt: d?.createdAt ?? new Date('2024-01-01'),
-    updatedAt: d?.updatedAt ?? new Date('2024-01-01'),
 });

@@ -12,7 +12,5 @@ export class OnlineUserUtils {
         avatarUrl: makeStringSchema('avatarUrl').optional(),
         status: z.enum(['idle', 'waiting', 'in-call', 'disconnecting', 'offline']),
         tokens: z.number().optional(),
-        createdAt: z.coerce.date(),
-        updatedAt: z.coerce.date(),
     });
 }

@@ -42,7 +42,7 @@ export class Add {
     };
 
     public readonly mapper = (body: Request['body']): IInput => {
-        const { id, name, slug, email, phone, role, avatarUrl, status, isOnline, tokens, createdAt, updatedAt } = body;
+        const { id, name, slug, email, phone, role, avatarUrl, status, isOnline, tokens } = body;
         return {
             id: mapString(id),
             name: mapString(name),
@@ -54,8 +54,6 @@ export class Add {
             status: mapString(status) as IInput['status'],
             isOnline: typeof isOnline === 'boolean' ? isOnline : undefined,
             tokens: typeof tokens === 'number' ? tokens : undefined,
-            createdAt,
-            updatedAt,
         };
     };
 

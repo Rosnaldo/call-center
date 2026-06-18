@@ -86,17 +86,23 @@ export interface Pagination {
 type Equal<T, U> = (<V>() => V extends T ? 1 : 2) extends (<V>() => V extends U ? 1 : 2) ? true : false;
 type Expect<T extends true> = T;
 
-export interface IOnlineUser extends Omit<IUser, '_id' | 'firstName' | 'lastName' | 'avatar'> {
+export interface IOnlineUser extends Omit<IUser, '_id' | 'firstName' | 'lastName' | 'avatar' | 'createdAt' | 'updatedAt'> {
     id: string;
     name: string;
     avatarUrl?: string;
     status: 'idle' | 'waiting' | 'in-call' | 'disconnecting' | 'offline';
 }
 
-type _t = Expect<Equal<
-    Omit<IUser, '_id' | 'firstName' | 'lastName' | 'avatar'>,
-    Pick<IOnlineUser, keyof Omit<IUser, '_id' | 'firstName' | 'lastName' | 'avatar'>>
->>;
+type _t = [
+    Expect<Equal<
+        Omit<IUser, '_id' | 'firstName' | 'lastName' | 'avatar' | 'createdAt' | 'updatedAt'>,
+        Pick<IOnlineUser, keyof Omit<IUser, '_id' | 'firstName' | 'lastName' | 'avatar' | 'createdAt' | 'updatedAt'>>
+    >>,
+    Expect<Equal<
+        Omit<ICall, '_id' | 'createdAt' | 'updatedAt'>,
+        Pick<CallState, keyof Omit<ICall, '_id' | 'createdAt' | 'updatedAt'>>
+    >>,
+];
 
 export function mapUserToOnlineUser(
     user: IUser,
@@ -108,8 +114,6 @@ export function mapUserToOnlineUser(
         phone: user.phone,
         role: user.role,
         tokens: user.tokens,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
         id: user._id,
         name: `${user.firstName} ${user.lastName}`,
         avatarUrl: user.avatar?.url,

@@ -36,7 +36,7 @@ describe('CallView Component - Call Interrupted (Awaiting Return) Unit Tests', (
     });
 
     useCurrentUserStore.setState({
-      currentUser: { id: 'att-1', name: 'Attendant', slug: 'attendant', email: 'attendant@example.com', role: 'attendant', avatarUrl: '', status: 'in-call', createdAt: new Date(), updatedAt: new Date() },
+      currentUser: { id: 'att-1', name: 'Attendant', slug: 'attendant', email: 'attendant@example.com', role: 'attendant', avatarUrl: '', status: 'in-call', },
     });
 
     render(
@@ -96,7 +96,7 @@ describe('CallView Component - Call Interrupted (Awaiting Return) Unit Tests', (
     });
 
     useCurrentUserStore.setState({
-      currentUser: { id: 'cust-1', name: 'Customer', slug: 'customer', email: 'customer@example.com', role: 'customer', avatarUrl: '', status: 'in-call', createdAt: new Date(), updatedAt: new Date() },
+      currentUser: { id: 'cust-1', name: 'Customer', slug: 'customer', email: 'customer@example.com', role: 'customer', avatarUrl: '', status: 'in-call', },
     });
 
     const handleStartCall = vi.fn();
@@ -122,7 +122,7 @@ describe('CallView Component - Call Interrupted (Awaiting Return) Unit Tests', (
     });
 
     useCurrentUserStore.setState({
-      currentUser: { id: 'att-1', name: 'Attendant', slug: 'attendant', email: 'attendant@example.com', role: 'attendant', avatarUrl: '', status: 'in-call', createdAt: new Date(), updatedAt: new Date() },
+      currentUser: { id: 'att-1', name: 'Attendant', slug: 'attendant', email: 'attendant@example.com', role: 'attendant', avatarUrl: '', status: 'in-call', },
     });
 
     const handleStartCall = vi.fn();
@@ -146,7 +146,7 @@ describe('CallView Component - Call Interrupted (Awaiting Return) Unit Tests', (
     });
 
     useCurrentUserStore.setState({
-      currentUser: { id: 'cust-1', name: 'Customer', slug: 'customer', email: 'customer@example.com', role: 'customer', avatarUrl: '', status: 'in-call', createdAt: new Date(), updatedAt: new Date() },
+      currentUser: { id: 'cust-1', name: 'Customer', slug: 'customer', email: 'customer@example.com', role: 'customer', avatarUrl: '', status: 'in-call', },
     });
 
     const handleStartCall = vi.fn();
