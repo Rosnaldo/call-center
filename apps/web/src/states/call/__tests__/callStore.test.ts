@@ -10,15 +10,21 @@ vi.mock('../../../utils/helpers.ts', () => ({
   playNotificationChime: vi.fn(),
 }));
 
+vi.mock('../../../services/call.ts', () => ({
+  createIamCall: vi.fn().mockResolvedValue({}),
+}));
+
 import { useCallStore } from '../store.ts';
 import { useOnlineUsersStore } from '../../online-users/store.ts';
 import { buildCall, buildOnlineUserState } from '../../../__tests__/builders.ts';
 import { notifyWsIncomingCall, notifyWsCancelCall } from '../../../services/online-users-ws.ts';
 import { playNotificationChime } from '../../../utils/helpers.ts';
+import { createIamCall } from '../../../services/call.ts';
 
 const notifyIncoming = vi.mocked(notifyWsIncomingCall);
 const notifyCancel = vi.mocked(notifyWsCancelCall);
 const chime = vi.mocked(playNotificationChime);
+const iamCreate = vi.mocked(createIamCall);
 
 beforeEach(() => {
   useCallStore.setState({ call: null });
@@ -251,5 +257,43 @@ describe('updateCall — wasAnswered', () => {
     useCallStore.getState().updateCall(call.id, { status: 'call-interrupteded' });
 
     expect(useCallStore.getState().call?.wasAnswered).toBe(true);
+  });
+});
+
+// ─── updateCall — IAM persistence ────────────────────────────────────────────
+
+describe('updateCall — IAM persistence', () => {
+  it('calls createIamCall when transitioning from awaiting-answer to active', () => {
+    const attendant = buildOnlineUserState({ role: 'attendant' });
+    const call = buildCall({ attendantId: attendant.id, status: 'awaiting-answer', wasAnswered: false });
+    useOnlineUsersStore.setState({ users: [attendant] });
+    useCallStore.setState({ call });
+
+    useCallStore.getState().updateCall(call.id, { status: 'active' });
+
+    expect(iamCreate).toHaveBeenCalledOnce();
+    expect(iamCreate).toHaveBeenCalledWith(expect.objectContaining({
+      customerId: call.customerId,
+      attendantId: call.attendantId,
+      roomUrl: call.roomUrl,
+    }));
+  });
+
+  it('does not call createIamCall for unrelated status updates', () => {
+    const call = buildCall({ status: 'active', wasAnswered: true });
+    useCallStore.setState({ call });
+
+    useCallStore.getState().updateCall(call.id, { status: 'call-interrupteded' });
+
+    expect(iamCreate).not.toHaveBeenCalled();
+  });
+
+  it('does not call createIamCall when reconnecting from interrupted to active', () => {
+    const call = buildCall({ status: 'call-interrupteded', wasAnswered: true });
+    useCallStore.setState({ call });
+
+    useCallStore.getState().updateCall(call.id, { status: 'active' });
+
+    expect(iamCreate).not.toHaveBeenCalled();
   });
 });
