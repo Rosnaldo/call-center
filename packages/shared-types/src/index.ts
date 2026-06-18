@@ -35,7 +35,7 @@ export interface IUser {
 }
 
 export interface ICall {
-    id: string;
+    _id: string;
     customerId: string;
     customerName: string;
     attendantId: string;

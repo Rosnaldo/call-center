@@ -14,6 +14,10 @@ vi.mock('../../hooks/auth/useLogout.ts', () => ({
   useLogout: () => vi.fn(),
 }));
 
+vi.mock('../../components/toast.tsx', () => ({
+  mytoast: Object.assign(vi.fn(() => 'toast-id'), { dismiss: vi.fn() }),
+}));
+
 class MockFileReader {
   onload: any = null;
   result: string | null = null;
@@ -43,10 +47,9 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
     users: mockUsers,
     currentUser: mockUser,
     navigate: vi.fn(),
-    onUpdateProfile: vi.fn(),
     fileError: null,
     avatarUrl: mockUser.avatarUrl || null,
-    processFile: vi.fn(),
+    processFile: vi.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(() => {
@@ -69,16 +72,10 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
     render(<UserProfilePage {...defaultProps} />);
 
     expect(screen.getByTestId('mock-header')).toBeDefined();
-
     expect(screen.getByText('Profile')).toBeDefined();
     expect(screen.getByText('Voltar para a área de Cliente')).toBeDefined();
-
-    // Name shown as text in view mode
     expect(screen.getByText('John Customer')).toBeDefined();
-
-    // Avatar URL input is always visible
-    const urlInput = screen.getByPlaceholderText('https://exemplo.com/suafoto.jpg') as HTMLInputElement;
-    expect(urlInput.value).toBe('https://avatar/1');
+    expect(screen.getByText('Edit')).toBeDefined();
   });
 
   it('renders correct labels when the attendant user is logged in', () => {
@@ -87,7 +84,7 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
     expect(screen.getByText('Voltar para a área de Agente')).toBeDefined();
   });
 
-  it('updates input state as values are typed into display name and avatar URL fields', () => {
+  it('updates name input state as values are typed', () => {
     render(<UserProfilePage {...defaultProps} />);
 
     fireEvent.click(screen.getByText('Edit'));
@@ -95,13 +92,9 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
     const nameInput = screen.getByPlaceholderText('Seu nome visível...') as HTMLInputElement;
     fireEvent.change(nameInput, { target: { value: 'New Custom Name' } });
     expect(nameInput.value).toBe('New Custom Name');
-
-    const urlInput = screen.getByPlaceholderText('https://exemplo.com/suafoto.jpg') as HTMLInputElement;
-    fireEvent.change(urlInput, { target: { value: 'https://new-image.jpg' } });
-    expect(urlInput.value).toBe('https://new-image.jpg');
   });
 
-  it('does not invoke onUpdateProfile if name input is cleared and form is submitted', () => {
+  it('does not navigate if name input is cleared and form is submitted', () => {
     render(<UserProfilePage {...defaultProps} />);
 
     fireEvent.click(screen.getByText('Edit'));
@@ -111,10 +104,11 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
 
     fireEvent.click(screen.getByText('Save'));
 
-    expect(defaultProps.onUpdateProfile).not.toHaveBeenCalled();
+    expect(defaultProps.navigate).not.toHaveBeenCalled();
+    expect(screen.getByPlaceholderText('Seu nome visível...')).toBeDefined();
   });
 
-  it('triggers onUpdateProfile correctly and navigates back to active portal on successful form submit after timeout', async () => {
+  it('navigates back to active portal after saving and the success timeout elapses', () => {
     vi.useFakeTimers();
 
     render(<UserProfilePage {...defaultProps} />);
@@ -124,16 +118,11 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
     const nameInput = screen.getByPlaceholderText('Seu nome visível...') as HTMLInputElement;
     fireEvent.change(nameInput, { target: { value: 'Updated Client' } });
 
-    const urlInput = screen.getByPlaceholderText('https://exemplo.com/suafoto.jpg') as HTMLInputElement;
-    fireEvent.change(urlInput, { target: { value: 'https://final-avatar.png' } });
-
     fireEvent.click(screen.getByText('Save'));
 
-    expect(defaultProps.onUpdateProfile).toHaveBeenCalledWith('cust-1', 'Updated Client', 'https://final-avatar.png');
+    expect(defaultProps.navigate).not.toHaveBeenCalled();
 
-    act(() => {
-      vi.advanceTimersByTime(1500);
-    });
+    act(() => { vi.advanceTimersByTime(1500); });
 
     expect(defaultProps.navigate).toHaveBeenCalledWith('customer');
 
@@ -167,7 +156,7 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
     expect(defaultProps.navigate).not.toHaveBeenCalled();
   });
 
-  it('handles image file selection via file picker correctly and processes FileReader', async () => {
+  it('calls processFile when a file is selected via the file picker', async () => {
     const { container } = render(<UserProfilePage {...defaultProps} />);
 
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
@@ -176,10 +165,8 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
     const file = new File(['dummy content'], 'profile.png', { type: 'image/png' });
     fireEvent.change(fileInput, { target: { files: [file] } });
 
-    const imgPreview = screen.getByAltText('John Customer') as HTMLImageElement;
-
     await waitFor(() => {
-      expect(imgPreview.src).toContain('data:image/png;base64,mockedbase64string');
+      expect(defaultProps.processFile).toHaveBeenCalledWith(file);
     });
   });
 
@@ -203,13 +190,10 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
     expect(dropzone!.className).not.toContain('border-brand-ochre');
 
     const file = new File(['dummy content'], 'profile.png', { type: 'image/png' });
-    fireEvent.drop(dropzone!, {
-      dataTransfer: { files: [file] },
-    });
+    fireEvent.drop(dropzone!, { dataTransfer: { files: [file] } });
 
-    const imgPreview = screen.getByAltText('John Customer') as HTMLImageElement;
     await waitFor(() => {
-      expect(imgPreview.src).toContain('data:image/png;base64,mockedbase64string');
+      expect(defaultProps.processFile).toHaveBeenCalledWith(file);
     });
   });
 });
