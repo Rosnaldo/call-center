@@ -65,19 +65,6 @@ export type PresenceEventType =
     | 'JOINED'
     | 'LEFT';
 
-export interface ICallUserPresenceEvent {
-    _id: string;
-    roomName: string;
-    sessionId: string;
-    userId: string;
-
-    type: PresenceEventType;
-    occurredAt: Date;
-
-    createdAt: Date;
-    updatedAt: Date;
-}
-
 export interface Pagination {
     currentPage: number;
     totalPages: number;

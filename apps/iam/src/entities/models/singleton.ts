@@ -1,5 +1,5 @@
 
-import { callCollectionName, callUserPresenceCollectionName, migrationCollectionName, userCollectionName } from '#const/collection_name_mapping';
+import { callCollectionName, migrationCollectionName, userCollectionName } from '#const/collection_name_mapping';
 import { getMainConnection } from '#db/singleton';
 import { IMigration, MigrationSchema } from '#schemas/migration';
 
@@ -7,13 +7,10 @@ import { UserSchema } from '#schemas/user';
 import { IUser } from '#schemas/user/types';
 import { CallSchema } from '#schemas/call';
 import { ICall } from '#schemas/call/types';
-import { CallUserPresenceSchema } from '#schemas/call_user_presence';
-import { ICallUserPresence } from '#schemas/call_user_presence/types';
 
 let UserModel: IUser['IModel'];
 let MigrationModel: IMigration['IModel'];
 let CallModel: ICall['IModel'];
-let CallUserPresenceModel: ICallUserPresence['IModel'];
 
 export const getUserModel = (): IUser['IModel'] => {
     if (!UserModel) {
@@ -49,16 +46,4 @@ export const getCallModel = (): ICall['IModel'] => {
         ) as ICall['IModel'];
     }
     return CallModel;
-};
-
-export const getCallUserPresenceModel = (): ICallUserPresence['IModel'] => {
-    if (!CallUserPresenceModel) {
-        const connection = getMainConnection();
-        CallUserPresenceModel = connection.model(
-            callUserPresenceCollectionName,
-            CallUserPresenceSchema,
-            callUserPresenceCollectionName
-        ) as ICallUserPresence['IModel'];
-    }
-    return CallUserPresenceModel;
 };
