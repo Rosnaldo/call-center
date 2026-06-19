@@ -7,7 +7,7 @@ import React from 'react';
 import { 
   Video 
 } from 'lucide-react';
-import { useCallViewStore } from '../call-lobby-view/states/store.ts';
+import { useCallViewStore } from '../../states/call-view/store.ts';
 import { useNavigate } from 'react-router-dom';
 import { CallState } from '@/src/states/call/state.ts';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
@@ -28,6 +28,12 @@ export const AttendantList: React.FC<AttendantListProps> = ({
   const navigate = useNavigate();
   const selectedAttendantId = useCallViewStore((s) => s.selectedAttendantId);
   const setSelectedAttendantId = useCallViewStore((s) => s.setSelectedAttendantId);
+  const setViewState = useCallViewStore((s) => s.setViewState);
+
+  const handleAttendantSelection = (attendantId: string) => {
+    setSelectedAttendantId(attendantId);
+    setViewState('lobby');
+  };
 
   const onlineAttendants = users.filter(u => u.role === 'attendant' || u.role === 'admin');
 
@@ -253,7 +259,7 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                             return (
                               <button
                                 id={`call-start-${at.id}`}
-                                onClick={() => setSelectedAttendantId(at.id)}
+                                onClick={() => handleAttendantSelection(at.id)}
                                 disabled={isLocalCustomerBusyState || !!busyCall}
                                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 ${
                                   isLocalCustomerBusyState || !!busyCall

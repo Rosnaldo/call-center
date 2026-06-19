@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useCallStore } from '../../../../states/call/store.ts';
-import { useCallViewStore } from '../../states/store.ts';
+import { useCallViewStore } from '../../../../states/call-view/store.ts';
 import { useCurrentUserStore } from '../../../../states/current-user/store.ts';
 import { useOnlineUsersStore } from '../../../../states/online-users/store.ts';
 import { useIncomingCallStore } from '../../../../states/incoming-call/store.ts';
@@ -40,7 +40,7 @@ export const CallFooterActions: React.FC = () => {
     : undefined;
 
   const currentCall = call ?? draftCall;
-  const isReceiving = currentUser?.id === currentCall?.attendantId;
+  const isReceiving = currentUser?.id === incomingCall?.attendantId;
 
   const handleStartCall = () => {
     sendIncomingCall(currentUser?.id, selectedAttendantId);

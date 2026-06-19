@@ -12,7 +12,7 @@ type WsInboundMessage =
     | { event: 'online_users_updated'; data: IOnlineUser }
     | { event: 'heartbeat_ack' }
     | { event: 'user_logout'; data: { id: string } }
-    | { event: 'incoming_call'; data: { targetUserId: string, call: IncomingCallState } }
+    | { event: 'incoming_call'; data: { incomingCall: IncomingCallState } }
     | { event: 'call_cancelled'; data: { targetUserId: string } };
 
 let _heartbeatRef: ReturnType<typeof setInterval> | null = null;
@@ -46,19 +46,24 @@ export type IncomingCallPayload = IncomingCallState;
 let activeWs: ITransport | null = null;
 let running = false;
 
+const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
+
 export function notifyWsLogout(): void {
+    if (isSimulation) return;
     if (activeWs?.readyState === TRANSPORT_OPEN) {
         activeWs.send(JSON.stringify({ event: 'user_logout' }));
     }
 }
 
 export function notifyWsIncomingCall(targetUserId: string, incomingCall: IncomingCallState): void {
+    if (isSimulation) return;
     if (activeWs?.readyState === TRANSPORT_OPEN) {
         activeWs.send(JSON.stringify({ event: 'incoming_call', data: { targetUserId, incomingCall } }));
     }
 }
 
 export function notifyWsCancelCall(targetUserId: string): void {
+    if (isSimulation) return;
     if (activeWs?.readyState === TRANSPORT_OPEN) {
         activeWs.send(JSON.stringify({ event: 'call_cancelled', data: { targetUserId } }));
     }
@@ -94,7 +99,7 @@ function connect(token: string, factory: TransportFactory) {
                     removeUser(msg.data.id);
                     break;
                 case 'incoming_call':
-                    setIncomingCall?.(msg.data.call);
+                    setIncomingCall?.(msg.data.incomingCall);
                     break;
                 case 'call_cancelled':
                     clearIncomingCall?.();

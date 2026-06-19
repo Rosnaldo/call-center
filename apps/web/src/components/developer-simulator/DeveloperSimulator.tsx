@@ -19,13 +19,16 @@ import { useOnlineUsersStore } from '../../states/online-users/store.ts';
 import { useCallStore } from '../../states/call/store.ts';
 import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 import { useTimerStore } from '../../states/timer/store.ts';
+import { useIncomingCallStore } from '../../states/incoming-call/store.ts';
 import { CallState } from '@/src/states/call/state.ts';
 import { useResetSimulationState } from '@/src/hooks/useResetSimulationState.ts';
+import { useCallViewStore } from '../../states/call-view/store.ts';
 
 interface DeveloperSimulatorProps {
   onUpdateCall?: (callId: string, updates: Partial<CallState>) => void;
   onAddTokens?: (userId: string, count: number) => void;
   onSimulateIncomingCall?: (attendantId: string) => void;
+  onSimulateCallAsCustomer?: (customerId: string, attendantId: string) => void;
 }
 
 export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => {
@@ -33,6 +36,7 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
     onUpdateCall,
     onAddTokens,
     onSimulateIncomingCall,
+    onSimulateCallAsCustomer,
   } = props;
 
   const reset = useResetSimulationState();
@@ -41,13 +45,16 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
   const call = useCallStore((s) => s.call);
   const timerStatus = useTimerStore((s) => s.status);
   const timerElapsed = useTimerStore((s) => s.elapsedSeconds);
+  const incomingCall = useIncomingCallStore((s) => s.incomingCall);
+  const answerIncomingCall = useCallStore((s) => s.answerIncomingCall);
+  const callViewState = useCallViewStore();
 
   if ((import.meta as any).env?.VITE_ENV !== 'simulation') {
     return null;
   }
 
   const [isOpen, setIsOpen] = useState(true);
-  const [jsonTab, setJsonTab] = useState<'calls' | 'users' | 'timer' | 'full'>('calls');
+  const [jsonTab, setJsonTab] = useState<'calls' | 'users' | 'timer' | 'incoming' | 'view-state' | 'full'>('calls');
   const [copied, setCopied] = useState(false);
 
   const runningCalls = call?.status === 'active' || call?.status === 'call-interrupteded' ? [call] : [];
@@ -62,9 +69,15 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
         return users;
       case 'timer':
         return timerState;
+      case 'incoming':
+        return incomingCall;
+      case 'view-state': {
+        const { ...viewStateData } = callViewState;
+        return viewStateData;
+      }
       case 'full':
       default:
-        return { users, call, timer: timerState };
+        return { users, call, incomingCall, timer: timerState, viewState: callViewState };
     }
   };
 
@@ -110,6 +123,68 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
           </h4>
           
           <div className="space-y-3">
+            {/* Outgoing Call Simulation Section for Logged-in Customers */}
+            {currentUser && currentUser.role === 'customer' && (
+              <div id="sim-outgoing-call-section" className="pt-2.5 border-t border-slate-800/50">
+                <h5 className="text-[10px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                  <Phone className="w-3 h-3 text-sky-400" />
+                  Simular Ligação para Atendente
+                </h5>
+                <p className="text-[10px] text-slate-400 mb-2">
+                  Simule o envio de uma chamada para um atendente disponível.
+                </p>
+                {incomingCall?.customerId === currentUser.id ? (
+                  <div className="flex flex-col gap-2">
+                    <div className="text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded p-2 text-center">
+                      Aguardando atendente responder...
+                    </div>
+                    <button
+                      type="button"
+                      onClick={answerIncomingCall}
+                      className="w-full text-center py-2 px-3 text-xs font-bold text-emerald-950 bg-emerald-500 hover:bg-emerald-400 rounded-lg transition border border-emerald-600/25 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5"
+                    >
+                      Simular atendente atender ✅
+                    </button>
+                  </div>
+                ) : (call?.customerId === currentUser.id && ['active', 'call-interrupteded'].includes(call.status)) ? (
+                  <div className="text-[10px] bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded p-2 text-center">
+                    Ligação em andamento.
+                  </div>
+                ) : (
+                  <>
+                    {users.filter(u => u.role === 'attendant' && u.status === 'idle').length === 0 ? (
+                      <p className="text-[10px] text-slate-500 italic">Nenhum atendente disponível no momento.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {users.filter(u => u.role === 'attendant' && u.status === 'idle').map((att) => (
+                          <div key={att.id} className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-slate-900/60 border border-slate-800/45">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <img
+                                src={att.avatarUrl}
+                                alt={att.name}
+                                className="w-5 h-5 rounded-full border border-slate-700 object-cover shrink-0"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${att.name}`;
+                                }}
+                              />
+                              <p className="text-xs font-semibold text-slate-200 truncate leading-tight">{att.name}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onSimulateCallAsCustomer?.(currentUser.id, att.id)}
+                              className="px-2 py-1 text-[9px] font-bold bg-sky-600 hover:bg-sky-500 text-white rounded cursor-pointer transition active:scale-95"
+                            >
+                              Ligar 📞
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Incoming Call Simulation Section for Logged-in Attendants */}
             {currentUser && currentUser.role === 'attendant' && (
               <div id="sim-incoming-call-section" className="pt-2.5 border-t border-slate-800/50">
@@ -120,7 +195,8 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
                 <p className="text-[10px] text-slate-400 mb-2">
                   Gere um cenário de chamada recebida de um cliente (se necessário, um novo cliente será criado).
                 </p>
-                {call?.attendantId === currentUser.id && ['active', 'call-interrupteded'].includes(call.status) ? (
+                {(incomingCall?.attendantId === currentUser.id ||
+                  (call?.attendantId === currentUser.id && ['active', 'call-interrupteded'].includes(call.status))) ? (
                   <div className="text-[10px] bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded p-2 text-center">
                     Você já possui uma chamada ativa ou em escala de resposta.
                   </div>
@@ -356,6 +432,28 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
                   }`}
                 >
                   Timer {timerStatus === 'playing' ? '▶' : '⏹'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setJsonTab('incoming')}
+                  className={`text-[10px] px-2 py-1 rounded transition-colors cursor-pointer ${
+                    jsonTab === 'incoming'
+                      ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
+                      : 'bg-slate-900/40 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Incoming {incomingCall ? '🔔' : '—'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setJsonTab('view-state')}
+                  className={`text-[10px] px-2 py-1 rounded transition-colors cursor-pointer ${
+                    jsonTab === 'view-state'
+                      ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
+                      : 'bg-slate-900/40 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  View State
                 </button>
                 <button
                   type="button"

@@ -33,7 +33,7 @@ export const createIncomingCallActions = (
       const incoming: IncomingCallState = { customerId, attendantId };
       notifyWsIncomingCall(attendantId, incoming);
 
-      return incoming;
+      return { incomingCall: incoming };
     });
   },
   setIncomingCall: (incomingCall) => set({ incomingCall }),

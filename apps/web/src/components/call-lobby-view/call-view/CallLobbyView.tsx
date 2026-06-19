@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDevices } from '@daily-co/daily-react';
-import { useCallViewStore } from '../states/store.ts';
+import { useCallViewStore } from '../../../states/call-view/store.ts';
 import { useCallStore } from '../../../states/call/store.ts';
 import { useCurrentUserStore } from '../../../states/current-user/store.ts';
 import { useOnlineUsersStore } from '../../../states/online-users/store.ts';
@@ -214,6 +214,9 @@ export const CallLobbyView: React.FC = () => {
   const isCallActiveRef = useRef(isCallActive);
   const lastCallRef = useRef<CallState | null>(null);
 
+  const resetSignal = useCallStore((s) => s.resetSignal);
+  const resetSignalRef = useRef(resetSignal);
+
   if (currentCall && isCallActive) lastCallRef.current = currentCall;
 
   useEffect(() => {
@@ -221,6 +224,11 @@ export const CallLobbyView: React.FC = () => {
     isCallActiveRef.current = isCallActive;
 
     if (wasActive && !isCallActive && lastCallRef.current) {
+      if (resetSignalRef.current !== resetSignal) {
+        resetSignalRef.current = resetSignal;
+        lastCallRef.current = null;
+        return;
+      }
       exitFullscreen();
       setCallDurationSeconds(secondsRef.current);
 
@@ -241,7 +249,7 @@ export const CallLobbyView: React.FC = () => {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [isCallActive]);
+  }, [isCallActive, resetSignal]);
 
   useEffect(() => {
     setCompletedCallSummary(null);

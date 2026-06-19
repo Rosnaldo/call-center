@@ -1,6 +1,7 @@
 import { useOnlineUsersStore } from '../online-users/store.ts';
 import { useCurrentUserStore } from '../current-user/store.ts';
 import { useIncomingCallStore } from '../incoming-call/store.ts';
+import { useCallViewStore } from '../call-view/store.ts';
 import { playNotificationChime, generateRoomName } from '../../utils/helpers.ts';
 import { CallState, CallStore, initialCallStore } from './state.ts';
 import { IncomingCallState } from '@repo/shared-types';
@@ -29,6 +30,7 @@ export interface CallActions {
   billingOutOfTokens: (callId: string) => void;
   resetSimulation: () => void;
   simulateIncomingCall: (attendantId: string) => void;
+  simulateCallAsCustomer: (customerId: string, attendantId: string) => void;
 }
 
 export const createCallActions = (
@@ -47,6 +49,7 @@ export const createCallActions = (
       const { updateUser } = useOnlineUsersStore.getState();
       updateUser(incoming.customerId, { status: 'in-call' as const });
       useIncomingCallStore.getState().setIncomingCall(incoming);
+      useCallViewStore.getState().setViewState('lobby');
       try { playNotificationChime(); } catch (_) {}
     },
 
@@ -78,12 +81,14 @@ export const createCallActions = (
           tokensCharged: 1,
         };
 
+        updateUser(incomingCall.customerId, { status: 'in-call' as const });
         updateUser(incomingCall.attendantId, { status: 'in-call' as const });
         if (currentUser?.id === incomingCall.attendantId) {
           setCurrentUser({ ...currentUser, status: 'in-call' as const });
         }
 
         useIncomingCallStore.getState().clearIncomingCall();
+        useCallViewStore.getState().setViewState('in-call');
 
         return { call: newCall };
       });
@@ -97,15 +102,26 @@ export const createCallActions = (
       updateUser(incomingCall.customerId, { status: 'idle' as const });
       useIncomingCallStore.getState().clearIncomingCall();
       notifyWsCancelCall(incomingCall.attendantId);
+      useCallViewStore.getState().setViewState('none');
+      useCallViewStore.getState().setSelectedAttendantId(null);
     },
 
     completeCall: () => {
-      set(() => {
+      set((state) => {
         const { currentUser, setCurrentUser } = useCurrentUserStore.getState();
+        const { updateUser } = useOnlineUsersStore.getState();
 
         if (currentUser) {
           setCurrentUser({ ...currentUser, status: 'idle' as const });
         }
+
+        if (state.call) {
+          updateUser(state.call.customerId, { status: 'idle' as const });
+          updateUser(state.call.attendantId, { status: 'idle' as const });
+        }
+
+        useCallViewStore.getState().setViewState('none');
+        useCallViewStore.getState().setSelectedAttendantId(null);
 
         return { call: null };
       });
@@ -143,7 +159,7 @@ export const createCallActions = (
     },
 
     resetSimulation: () => {
-      set(() => ({ ...initialCallStore }));
+      set((state) => ({ ...initialCallStore, resetSignal: state.resetSignal + 1 }));
     },
 
     simulateIncomingCall: (attendantId) => {
@@ -166,6 +182,27 @@ export const createCallActions = (
 
         useOnlineUsersStore.getState().updateUser(customer.id, { status: 'in-call' as const });
         useIncomingCallStore.getState().setIncomingCall({ customerId: customer.id, attendantId });
+        useCallViewStore.getState().setViewState('lobby');
+
+        return {};
+      });
+    },
+
+    simulateCallAsCustomer: (customerId, attendantId) => {
+      set((state) => {
+        const users = useOnlineUsersStore.getState().users;
+        const customer = users.find(u => u.id === customerId);
+        const attendant = users.find(u => u.id === attendantId);
+        if (!customer || !attendant) return {};
+        if ((customer.tokens ?? 0) <= 0) return {};
+        if (attendant.status !== 'idle') return {};
+        if (useIncomingCallStore.getState().incomingCall) return {};
+        if (state.call?.customerId === customerId) return {};
+
+        try { playNotificationChime(); } catch (_) {}
+
+        useOnlineUsersStore.getState().updateUser(customerId, { status: 'in-call' as const });
+        useIncomingCallStore.getState().setIncomingCall({ customerId, attendantId });
 
         return {};
       });

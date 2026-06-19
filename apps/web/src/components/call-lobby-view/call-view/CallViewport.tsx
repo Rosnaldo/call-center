@@ -5,6 +5,15 @@ import { CallState } from '@/src/states/call/state.ts';
 import { useIncomingCallStore } from '../../../states/incoming-call/store.ts';
 import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 import { useOnlineUsersStore } from '@/src/states/online-users/store.ts';
+import { IOnlineUser } from '@repo/shared-types';
+import { useCallViewStore } from '../../../states/call-view/store.ts';
+
+const getInitials = (name: string): string => {
+  if (!name) return 'VC';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+};
 
 interface CallViewportProps {
   state: CallViewState;
@@ -138,32 +147,20 @@ const renderAwaitingClient = (
 };
 
 const renderLobbyViewport = (
-  isVideoOff: boolean,
-  partnerName: string,
-  partnerInitials: string,
-  attendantName?: string,
-  attendantAvatarUrl?: string
+  attendant: IOnlineUser,
 ) => {
-  const nameToDisplay = attendantName || partnerName;
+  const nameToDisplay = attendant.name;
 
   let lobbyVisual: React.ReactNode = (
     <div className="w-16 h-16 rounded-full bg-brand-ochre/15 border-2 border-brand-ochre/35 flex items-center justify-center text-brand-ochre font-bold text-lg mb-3 shadow-none select-none">
-      {partnerInitials}
+      {getInitials(attendant.name)}
     </div>
   );
-  if (isVideoOff) {
-    lobbyVisual = (
-      <div id="viewport-video-off-lobby" className="flex flex-col items-center text-slate-500 mb-3">
-        <div className="w-16 h-16 rounded-full bg-[#1b1d1f] border border-dashed border-[#2d3135] flex items-center justify-center">
-          <VideoOff className="w-5 h-5 text-slate-600 animate-pulse" />
-        </div>
-        <span className="text-[11px] font-medium mt-2 text-slate-500 tracking-wider uppercase">Câmera Desativada</span>
-      </div>
-    );
-  } else if (attendantAvatarUrl) {
+
+  if (attendant.avatarUrl) {
     lobbyVisual = (
       <img
-        src={attendantAvatarUrl}
+        src={attendant.avatarUrl}
         alt={nameToDisplay}
         className="w-16 h-16 rounded-full object-cover border-2 border-brand-ochre/30 mb-3 shadow-none"
         referrerPolicy="no-referrer"
@@ -226,10 +223,8 @@ const renderActiveVideoViewport = (
 export const CallViewport: React.FC<CallViewportProps> = ({
   state,
   isScreenSharing,
-  isVideoOff,
   isMuted,
   timerText,
-  attendantName,
   currentCall,
 }) => {
   const incomingCall = useIncomingCallStore(s => s.incomingCall);
@@ -237,36 +232,32 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   const currentUser = useCurrentUserStore(s => s.currentUser);
   const users = useOnlineUsersStore(s => s.users);
 
-  const isReceiving = currentUser?.id === currentCall?.attendantId;
+  const isReceiving = currentUser?.id === incomingCall?.attendantId;
   const currentCallStatus = currentCall?.status || '';
   const isAwaitingOrInterrupted = currentCallStatus === 'call-interrupteded' || !!incomingCall;
 
-  const getInitials = (name: string): string => {
-    if (!name) return 'VC';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    return name.slice(0, 2).toUpperCase();
-  };
+  const selectedAttendantId = useCallViewStore(s => s.selectedAttendantId);
 
-  const callSource = incomingCall ?? currentCall;
-  const partnerId = isReceiving ? callSource?.attendantId : callSource?.customerId;
+  const partnerId = isReceiving ? incomingCall?.customerId : incomingCall?.attendantId;
   const partner = users.find(u => u.id === partnerId);
+
   const partnerName = getInitials(partner?.name ?? '');
   const partnerInitials = partnerName.charAt(0);
-  const attendantAvatarUrl = partner?.avatarUrl;
+  const partinerAvatarUrl = partner?.avatarUrl;
+  const attendant = users.find(u => u.id === selectedAttendantId) ?? null;
 
   if (state === CallViewState.None) {
     content = renderNoneViewport();
   } else if (isAwaitingOrInterrupted && isReceiving) {
-    content = renderAwaitingAttendant(currentCallStatus, partnerName, partnerInitials, attendantAvatarUrl);
+    content = renderAwaitingAttendant(currentCallStatus, partnerName, partnerInitials, partinerAvatarUrl);
   } else if (isAwaitingOrInterrupted && !isReceiving) {
-    content = renderAwaitingClient(currentCallStatus, partnerName, partnerInitials, attendantAvatarUrl);
+    content = renderAwaitingClient(currentCallStatus, partnerName, partnerInitials, partinerAvatarUrl);
   } else if (state === CallViewState.Lobby) {
-    content = renderLobbyViewport(isVideoOff, partnerName, partnerInitials, attendantName, attendantAvatarUrl);
+    content = attendant ? renderLobbyViewport(attendant) : renderNoneViewport();
   } else if (isScreenSharing) {
     content = renderScreenSharingViewport();
   } else {
-    content = renderActiveVideoViewport(partnerName, partnerInitials, attendantAvatarUrl);
+    content = renderActiveVideoViewport(partnerName, partnerInitials, partinerAvatarUrl);
   }
 
   let topLeftBadge: React.ReactNode = null;

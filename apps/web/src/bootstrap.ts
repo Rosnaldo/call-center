@@ -3,7 +3,7 @@ import './states/current-user/store.ts';
 import './states/online-users/store.ts';
 import './states/timer/store.ts';
 import './states/call/store.ts';
-import './components/call-lobby-view/states/store.ts';
+import './states/call-view/store.ts';
 import { initOnlineUsersWebSocket } from './services/online-users-ws.ts';
 
 export async function bootstrap(): Promise<void> {

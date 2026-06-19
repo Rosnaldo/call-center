@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { CallViewStateData, ViewState } from './state.ts';
+import { CallViewStateData, ViewState, initialCallViewState } from './state.ts';
 
 export interface CallViewStateActions {
   setViewState: (viewState: ViewState) => void;
@@ -56,14 +56,5 @@ export const createCallViewStateActions = (
   setCameraStream: (cameraStream) => set({ cameraStream }),
   setCameraError: (cameraError) => set({ cameraError }),
 
-  resetCallViewState: () => set({
-    isMuted: false,
-    isVideoOff: false,
-    isScreenSharing: false,
-    isFullscreen: false,
-    isSettingsOpen: false,
-    soundTesting: false,
-    cameraStream: null,
-    cameraError: null,
-  }),
+  resetCallViewState: () => set(initialCallViewState),
 });

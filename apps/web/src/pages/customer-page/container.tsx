@@ -17,6 +17,7 @@ export const CustomerPageContainer: React.FC = () => {
   const call = useCallStore((state) => state.call);
   const completeCall = useCallStore((s) => s.completeCall);
   const updateCall = useCallStore((s) => s.updateCall);
+  const simulateCallAsCustomer = useCallStore((s) => s.simulateCallAsCustomer);
 
   useBillingTimer(call ?? undefined);
 
@@ -28,6 +29,7 @@ export const CustomerPageContainer: React.FC = () => {
       completeCall={completeCall}
       addTokensSimulation={addTokensSimulation}
       updateCall={updateCall}
+      simulateCallAsCustomer={simulateCallAsCustomer}
     />
   );
 };
