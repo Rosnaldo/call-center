@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useDevices } from '@daily-co/daily-react';
 import { useCallViewStore } from '../states/store.ts';
 import { useCallStore } from '../../../states/call/store.ts';
 import { useCurrentUserStore } from '../../../states/current-user/store.ts';
@@ -44,21 +45,52 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
   const {
     isSettingsOpen,
     setIsSettingsOpen,
-    devices,
-    setDevices,
     selectedCamera,
     setSelectedCamera,
     selectedMic,
     setSelectedMic,
     selectedSpeaker,
     setSelectedSpeaker,
-    soundTesting,
-    setSoundTesting,
-    cameraStream,
-    setCameraStream,
-    cameraError,
-    setCameraError,
   } = useCallViewStore();
+
+  const {
+    cameras: dailyCameras,
+    microphones: dailyMics,
+    speakers: dailySpeakers,
+    setCamera: setDailyCamera,
+    setMicrophone: setDailyMic,
+    setSpeaker: setDailySpeaker,
+  } = useDevices();
+
+  useEffect(() => {
+    const selected = dailyCameras.find(c => c.selected);
+    if (selected) setSelectedCamera(selected.device.deviceId);
+  }, [dailyCameras]);
+
+  useEffect(() => {
+    const selected = dailyMics.find(m => m.selected);
+    if (selected) setSelectedMic(selected.device.deviceId);
+  }, [dailyMics]);
+
+  useEffect(() => {
+    const selected = dailySpeakers.find(s => s.selected);
+    if (selected) setSelectedSpeaker(selected.device.deviceId);
+  }, [dailySpeakers]);
+
+  const handleSetCamera = (deviceId: string) => {
+    setSelectedCamera(deviceId);
+    setDailyCamera(deviceId);
+  };
+
+  const handleSetMic = (deviceId: string) => {
+    setSelectedMic(deviceId);
+    setDailyMic(deviceId);
+  };
+
+  const handleSetSpeaker = (deviceId: string) => {
+    setSelectedSpeaker(deviceId);
+    setDailySpeaker(deviceId);
+  };
 
   const selectedAttendant = selectedAttendantId ? users.find(u => u.id === selectedAttendantId) : null;
   const draftCall: CallState | undefined = (selectedAttendantId && selectedAttendant && !call && currentUser)
@@ -285,123 +317,9 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
     }
   };
 
-  // Camera / device settings
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    if (!isSettingsOpen) {
-      if (cameraStream) {
-        cameraStream.getTracks().forEach(track => track.stop());
-        setCameraStream(null);
-      }
-      return;
-    }
-
-    let active = true;
-    setCameraError(null);
-
-    const startCamera = async () => {
-      const isMockDevice = selectedCamera === 'built-in-cam' || selectedCamera === 'external-cam' || selectedCamera === 'virtual-cam';
-      if (isMockDevice) {
-        if (cameraStream) {
-          cameraStream.getTracks().forEach(track => track.stop());
-          setCameraStream(null);
-        }
-        return;
-      }
-      try {
-        if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: selectedCamera } } });
-        if (active) {
-          setCameraStream(stream);
-          if (videoRef.current) videoRef.current.srcObject = stream;
-        } else {
-          stream.getTracks().forEach(track => track.stop());
-        }
-      } catch (err: any) {
-        console.warn('Could not launch camera device stream:', err);
-        if (active) setCameraError(err.message || 'Sem permissão ou câmera ocupada');
-      }
-    };
-
-    startCamera();
-    return () => { active = false; };
-  }, [isSettingsOpen, selectedCamera]);
-
-  useEffect(() => {
-    if (videoRef.current && cameraStream) videoRef.current.srcObject = cameraStream;
-  }, [cameraStream, isSettingsOpen]);
-
-  useEffect(() => {
-    return () => { if (cameraStream) cameraStream.getTracks().forEach(track => track.stop()); };
-  }, [cameraStream]);
-
-  useEffect(() => {
-    if (typeof navigator !== 'undefined' && navigator.mediaDevices?.enumerateDevices) {
-      navigator.mediaDevices.enumerateDevices()
-        .then(deviceInfos => {
-          setDevices(deviceInfos);
-          const videoIn = deviceInfos.filter(d => d.kind === 'videoinput');
-          const audioIn = deviceInfos.filter(d => d.kind === 'audioinput');
-          const audioOut = deviceInfos.filter(d => d.kind === 'audiooutput');
-          if (videoIn.length > 0) setSelectedCamera(videoIn[0].deviceId);
-          if (audioIn.length > 0) setSelectedMic(audioIn[0].deviceId);
-          if (audioOut.length > 0) setSelectedSpeaker(audioOut[0].deviceId);
-        })
-        .catch(err => console.warn('Erro ao obter os dispositivos de mídia:', err));
-    }
-  }, []);
-
-  const testSpeakerSound = () => {
-    if (soundTesting) return;
-    setSoundTesting(true);
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) { setSoundTesting(false); return; }
-      const ctx = new AudioCtx();
-      const playTone = (freq: number, startTime: number, duration: number) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, startTime);
-        gain.gain.setValueAtTime(0.15, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(startTime);
-        osc.stop(startTime + duration);
-      };
-      playTone(523.25, ctx.currentTime, 0.4);
-      playTone(659.25, ctx.currentTime + 0.15, 0.4);
-      playTone(783.99, ctx.currentTime + 0.3, 0.6);
-      setTimeout(() => { setSoundTesting(false); ctx.close(); }, 1000);
-    } catch (e) {
-      console.error(e);
-      setSoundTesting(false);
-    }
-  };
-
-  const cameraDevicesList = devices.filter(d => d.kind === 'videoinput');
-  const micDevicesList = devices.filter(d => d.kind === 'audioinput');
-  const speakerDevicesList = devices.filter(d => d.kind === 'audiooutput');
-
-  const cameras = (cameraDevicesList.length > 0 ? cameraDevicesList : [
-    { deviceId: 'built-in-cam', label: '🎥 Câmera FaceTime HD Integrada', kind: 'videoinput', groupId: '' },
-    { deviceId: 'external-cam', label: '🎥 Webcam USB Externa 4K', kind: 'videoinput', groupId: '' },
-    { deviceId: 'virtual-cam', label: '🎥 OBS Virtual Camera', kind: 'videoinput', groupId: '' }
-  ]) as any as MediaDeviceInfo[];
-
-  const mics = (micDevicesList.length > 0 ? micDevicesList : [
-    { deviceId: 'built-in-mic', label: '🎙️ Microfone Integrado (MacBook Pro)', kind: 'audioinput', groupId: '' },
-    { deviceId: 'headset-mic', label: '🎧 Microfone de Fone Bluetooth (Hands-Free)', kind: 'audioinput', groupId: '' },
-    { deviceId: 'usb-condenser', label: '🎙️ Røde NT-USB Condenser Mic', kind: 'audioinput', groupId: '' }
-  ]) as any as MediaDeviceInfo[];
-
-  const speakers = (speakerDevicesList.length > 0 ? speakerDevicesList : [
-    { deviceId: 'built-in-spk', label: '🔊 Alto-falantes de Sistema (Integrados)', kind: 'audiooutput', groupId: '' },
-    { deviceId: 'headset-spk', label: '🎧 Fones AirPods Pro (Estéreo)', kind: 'audiooutput', groupId: '' },
-    { deviceId: 'hdmi-output', label: '🖥️ Monitor DisplayPort / Saída HDMI', kind: 'audiooutput', groupId: '' }
-  ]) as any as MediaDeviceInfo[];
+  const cameras = dailyCameras.map(c => c.device);
+  const mics = dailyMics.map(m => m.device);
+  const speakers = dailySpeakers.map(s => s.device);
 
   // Billing summary
   const [completedCallSummary, setCompletedCallSummary] = useState<CallState | null>(null);
@@ -529,19 +447,14 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
             isOpen={isSettingsOpen}
             onClose={() => setIsSettingsOpen(false)}
             selectedCamera={selectedCamera}
-            setSelectedCamera={setSelectedCamera}
+            setSelectedCamera={handleSetCamera}
             selectedMic={selectedMic}
-            setSelectedMic={setSelectedMic}
+            setSelectedMic={handleSetMic}
             selectedSpeaker={selectedSpeaker}
-            setSelectedSpeaker={setSelectedSpeaker}
+            setSelectedSpeaker={handleSetSpeaker}
             cameras={cameras}
             mics={mics}
             speakers={speakers}
-            cameraStream={cameraStream}
-            cameraError={cameraError}
-            soundTesting={soundTesting}
-            testSpeakerSound={testSpeakerSound}
-            videoRef={videoRef}
           />
 
           <BillingCalculationModal isOpen={isCalculatingTokens} isAttendant={currentUser?.role === 'attendant'} />

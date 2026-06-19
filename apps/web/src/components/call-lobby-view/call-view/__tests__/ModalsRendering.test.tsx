@@ -1,4 +1,3 @@
-import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ConfirmCloseCallModal } from '../../ConfirmCloseCallModal.tsx';
@@ -6,6 +5,12 @@ import { BillingCalculationModal } from '../../BillingCalculationModal.tsx';
 import { BillingSummaryModal } from '../../BillingSummaryModal.tsx';
 import { MediaSettingsModal } from '../../MediaSettingsModal.tsx';
 import { buildCall, buildOnlineUserState } from '../../../../__tests__/builders.ts';
+
+vi.mock('@daily-co/daily-react', () => ({
+  useDaily: () => null,
+  useLocalSessionId: () => '',
+  useVideoTrack: () => ({ persistentTrack: undefined, isOff: true }),
+}));
 
 describe('Modals Rendering and Behavior Unit Tests', () => {
 
@@ -199,11 +204,6 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
       speakers: [
         { deviceId: 'spk-1', label: 'Built-in Speaker', kind: 'audiooutput', groupId: '' } as MediaDeviceInfo,
       ],
-      cameraStream: null,
-      cameraError: null,
-      soundTesting: false,
-      testSpeakerSound: vi.fn(),
-      videoRef: React.createRef<HTMLVideoElement | null>(),
     };
 
     it('should return null when isOpen is false', () => {
@@ -243,40 +243,14 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
       expect(screen.getByText('Dispositivo de áudio padrão')).toBeDefined();
     });
 
-    it('renders custom camera error screen when present', () => {
-      render(
-        <MediaSettingsModal
-          {...defaultProps}
-          cameraError="Câmera ocupada por outro processo"
-        />
-      );
-
-      expect(screen.getByText('Câmera ocupada por outro processo')).toBeDefined();
+    it('renders camera placeholder when no track available', () => {
+      render(<MediaSettingsModal {...defaultProps} />);
+      expect(screen.getByText('Câmera indisponível ou desligada')).toBeDefined();
     });
 
-    it('handles test speaker button and indicators', () => {
-      const testSound = vi.fn();
-      const { rerender } = render(
-        <MediaSettingsModal
-          {...defaultProps}
-          testSpeakerSound={testSound}
-          soundTesting={false}
-        />
-      );
-
-      const testBtn = screen.getByText('Testar');
-      fireEvent.click(testBtn);
-      expect(testSound).toHaveBeenCalled();
-
-      rerender(
-        <MediaSettingsModal
-          {...defaultProps}
-          testSpeakerSound={testSound}
-          soundTesting={true}
-        />
-      );
-
-      expect(screen.getByText('Testando...')).toBeDefined();
+    it('renders test speaker button', () => {
+      render(<MediaSettingsModal {...defaultProps} />);
+      expect(screen.getByText('Testar')).toBeDefined();
     });
   });
 });

@@ -5,6 +5,7 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "sonner";
+import { DailyProvider } from '@daily-co/daily-react';
 import { LoginPage } from './pages/LoginPage.tsx';
 import { ErrorPage } from './pages/ErrorPage.tsx';
 import { CustomerPageContainer } from './pages/customer-page/container.tsx';
@@ -44,6 +45,7 @@ export default function App() {
   if (!ready && !isSimulation) return <div>Loading session…</div>;
 
   return (
+    <DailyProvider>
     <QueryClientProvider client={queryClient}>
       <Toaster />
       <Routes>
@@ -71,5 +73,6 @@ export default function App() {
 
       <Footer />
     </QueryClientProvider>
+    </DailyProvider>
   );
 }

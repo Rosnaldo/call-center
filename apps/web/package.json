@@ -13,6 +13,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@daily-co/daily-js": "^0.91.0",
+    "@daily-co/daily-react": "^0.25.2",
     "@google/genai": "^2.4.0",
     "@repo/shared-types": "*",
     "@tailwindcss/vite": "^4.1.14",
