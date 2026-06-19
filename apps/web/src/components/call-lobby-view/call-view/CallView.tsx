@@ -22,8 +22,6 @@ interface CallViewProps {
   setIsSettingsOpen: (value: boolean) => void;
   isFullscreen: boolean;
   toggleFullscreen: () => void;
-  handleStartCall: () => void;
-  onHangUp: (attendantId: string, callId?: string) => void;
   currentCall?: CallState;
   timerText?: string;
   attendantName?: string;
@@ -45,8 +43,6 @@ export const CallView: React.FC<CallViewProps> = ({
   setIsSettingsOpen,
   isFullscreen,
   toggleFullscreen,
-  handleStartCall,
-  onHangUp,
   currentCall,
   timerText,
   attendantName,
@@ -85,10 +81,6 @@ export const CallView: React.FC<CallViewProps> = ({
         setIsSettingsOpen={setIsSettingsOpen}
         isFullscreen={isFullscreen}
         toggleFullscreen={toggleFullscreen}
-        handleStartCall={handleStartCall}
-        onHangUp={onHangUp}
-        currentCall={currentCall}
-        isAttendant={isAttendant}
       />
     </div>
   );

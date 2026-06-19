@@ -71,9 +71,7 @@ export const CustomerPageUI: React.FC<CustomerPageUIProps> = ({
             />
 
             {/* Connected Meet or Queue Progression */}
-            <CallLobbyView
-              onHangUp={completeCall}
-            />
+            <CallLobbyView />
 
             <SectionHeader
               sectionNumber="02"

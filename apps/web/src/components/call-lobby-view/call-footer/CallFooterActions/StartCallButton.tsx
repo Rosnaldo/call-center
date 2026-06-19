@@ -17,11 +17,7 @@ export const StartCallButton: React.FC<StartCallButtonProps> = ({
       type="button"
       id={id}
       onClick={onClick}
-      className={`px-6 py-3 rounded-full flex items-center gap-2 text-white font-semibold transition-all active:scale-95 shadow-lg border cursor-pointer animate-pulse ${
-        label === 'Atender Chamada' 
-          ? 'bg-emerald-600 hover:bg-emerald-700 border-emerald-500/20' 
-          : 'bg-brand-ochre hover:bg-brand-ochre-hover border-transparent'
-      }`}
+      className="px-6 py-3 rounded-full flex items-center gap-2 text-white font-semibold transition-all active:scale-95 shadow-lg border border-transparent cursor-pointer animate-pulse bg-brand-ochre hover:bg-brand-ochre-hover"
     >
       <Phone className="w-4 h-4 fill-white" />
       <span>{label}</span>

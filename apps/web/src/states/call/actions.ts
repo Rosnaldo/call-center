@@ -8,7 +8,6 @@ import { useCurrentUserStore } from '../current-user/store.ts';
 import { playNotificationChime, generateRoomName } from '../../utils/helpers.ts';
 import { CallState, CallStore, initialCallStore } from './state.ts';
 import { notifyWsIncomingCall, notifyWsCancelCall } from '../../services/online-users-ws.ts';
-import { createIamCall } from '../../services/call.ts';
 
 export function billingRecurringChargeUpdate(
   prev: CallStore,
@@ -156,8 +155,6 @@ export const createCallActions = (
     },
 
     updateCall: (callId, updates) => {
-      let callToRecord: CallState | undefined;
-
       set((state) => {
         const { updateUser } = useOnlineUsersStore.getState();
         const { currentUser, setCurrentUser } = useCurrentUserStore.getState();
@@ -166,7 +163,6 @@ export const createCallActions = (
 
         if (call.status === 'awaiting-answer' && updates.status === 'active') {
           updates = { ...updates, wasAnswered: true };
-          callToRecord = call;
           updateUser(call.attendantId, { status: 'in-call' as const });
           if (currentUser && currentUser.id === call.attendantId) {
             setCurrentUser({ ...currentUser, status: 'in-call' as const });
@@ -190,12 +186,6 @@ export const createCallActions = (
 
         return { call: { ...call, ...updates } };
       });
-
-      if (callToRecord) {
-        createIamCall(callToRecord).catch((err) =>
-          console.error('[call] failed to record call in IAM', err)
-        );
-      }
     },
 
     resetSimulation: () => {

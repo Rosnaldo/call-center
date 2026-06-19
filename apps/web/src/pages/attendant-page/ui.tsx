@@ -71,9 +71,7 @@ export const AttendantPageUI: React.FC<AttendantPageUIProps> = ({
             />
 
             {/* Connected callers monitor rooms for Agents */}
-            <CallLobbyView
-              onHangUp={completeCall}
-            />
+            <CallLobbyView />
 
             <SectionHeader
               sectionNumber="02"

@@ -8,10 +8,9 @@ import { InfoCard } from '../info-card/InfoCard.tsx';
 import { MediaSettingsModal } from '../MediaSettingsModal.tsx';
 import { BillingCalculationModal } from '../BillingCalculationModal.tsx';
 import { BillingSummaryModal } from '../BillingSummaryModal.tsx';
-import { ConfirmCloseCallModal } from '../ConfirmCloseCallModal.tsx';
 import { CallView, CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
-import { playNotificationChime, roomUrl } from '../../../utils/helpers.ts';
+import { roomUrl } from '../../../utils/helpers.ts';
 
 function showSystemNotification(title: string, body: string, roomName?: string) {
   if ('Notification' in window && Notification.permission === 'granted') {
@@ -33,11 +32,7 @@ function showSystemNotification(title: string, body: string, roomName?: string) 
   }
 }
 
-interface CallLobbyViewProps {
-  onHangUp: (attendantId: string, callId?: string, byAttendant?: boolean) => void;
-}
-
-export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
+export const CallLobbyView: React.FC = () => {
   const call = useCallStore((s) => s.call);
   const currentUser = useCurrentUserStore((s) => s.currentUser);
   const users = useOnlineUsersStore((s) => s.users);
@@ -111,14 +106,12 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
   const currentCall = call ?? draftCall;
   const isAttendant = currentCall ? currentUser?.id === currentCall.attendantId : false;
 
-  // Local UI state (not stored in Zustand)
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [billingCountdown, setBillingCountdown] = useState(10);
-  const [activationTimes, setActivationTimes] = useState<Record<string, number>>({});
 
   const fastBilling = false;
   const blockDurationSeconds = fastBilling ? 10 : 600;
@@ -146,44 +139,14 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
     prevStatusRef.current = currentCall?.status;
   }, [currentCall?.status, currentUser?.role, currentCall?.attendantName, currentCall?.customerName, currentCall?.roomName]);
 
-  const handleStartCall = () => {
-    if (!currentCall) return;
-    const now = Date.now();
-
-    if (!isAttendant) {
-      try { playNotificationChime(); } catch (err) { console.warn('Failed to play start sound:', err); }
-    }
-
-    if (currentCall.status === ('draft-lobby' as any) || currentCall.id.startsWith('draft-call-')) {
-      useCallStore.getState().initiateCall(currentCall.customerId, currentCall.attendantId);
-      useCallViewStore.getState().setSelectedAttendantId(null);
-      return;
-    }
-
-    if (currentCall.status === 'call-interrupteded') {
-      useCallStore.getState().updateCall(currentCall.id, { status: 'active' });
-      return;
-    }
-
-    if (isAttendant) {
-      setActivationTimes(prev => ({ ...prev, [currentCall.id]: now }));
-      useCallStore.getState().updateCall(currentCall.id, { status: 'active', startedAt: now });
-    } else {
-      useCallStore.getState().updateCall(currentCall.id, { status: 'awaiting-answer' });
-    }
-  };
-
   // Elapsed timer
   useEffect(() => {
     if (!currentCall) {
       setSeconds(0);
       return;
     }
-    if (currentCall.status !== 'active') {
-      // Freeze display during interruption without resetting
-      return;
-    }
-    const start = activationTimes[currentCall.id] || currentCall.startedAt || Date.now();
+    if (currentCall.status !== 'active') return;
+    const start = currentCall.startedAt || Date.now();
     const tick = () => {
       const diff = Math.floor((Date.now() - start) / 1000);
       const clamped = diff >= 0 ? diff : 0;
@@ -193,7 +156,7 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
     tick();
     const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
-  }, [currentCall?.id, currentCall?.status, isCallActive, activationTimes, currentCall?.startedAt]);
+  }, [currentCall?.id, currentCall?.status, isCallActive, currentCall?.startedAt]);
 
   // Billing countdown
   useEffect(() => {
@@ -201,11 +164,8 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
       setBillingCountdown(blockDurationSeconds);
       return;
     }
-    if (currentCall.status !== 'active') {
-      // Freeze countdown during interruption
-      return;
-    }
-    const start = activationTimes[currentCall.id] || currentCall.startedAt || Date.now();
+    if (currentCall.status !== 'active') return;
+    const start = currentCall.startedAt || Date.now();
     const tickBilling = () => {
       const elapsedSinceStart = Date.now() - start;
       const tokensChargedCount = currentCall.tokensCharged || 1;
@@ -217,45 +177,7 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
     tickBilling();
     const interval = setInterval(tickBilling, 1000);
     return () => clearInterval(interval);
-  }, [currentCall?.id, currentCall?.status, isCallActive, activationTimes, currentCall?.tokensCharged, currentCall?.startedAt, blockDurationSeconds]);
-
-  // Confirm close modal
-  const endedByAttendantRef = useRef(false);
-  const endedByCustomerRef = useRef(false);
-  const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
-  const [pendingHangUpParams, setPendingHangUpParams] = useState<{ attendantId: string; callId?: string } | null>(null);
-
-  const handleHangUp = (attendantId: string, callId?: string) => {
-    const call = callId ? useCallStore.getState().call : currentCall;
-    if (call && !call.wasAnswered && call.status === 'awaiting-answer') {
-      useCallStore.getState().cancelCall(call.id);
-      return;
-    }
-    if (isCallActive || isAttendant) {
-      setPendingHangUpParams({ attendantId, callId });
-      setIsConfirmCloseOpen(true);
-    } else {
-      onHangUp(attendantId, callId, isAttendant);
-    }
-  };
-
-  const handleConfirmClose = () => {
-    if (isAttendant) endedByAttendantRef.current = true;
-    else endedByCustomerRef.current = true;
-
-    if (pendingHangUpParams) {
-      onHangUp(pendingHangUpParams.attendantId, pendingHangUpParams.callId, isAttendant);
-    } else if (currentCall) {
-      onHangUp(currentCall.attendantId, currentCall.id, isAttendant);
-    }
-    setPendingHangUpParams(null);
-    setIsConfirmCloseOpen(false);
-  };
-
-  const handleCancelClose = () => {
-    setPendingHangUpParams(null);
-    setIsConfirmCloseOpen(false);
-  };
+  }, [currentCall?.id, currentCall?.status, isCallActive, currentCall?.tokensCharged, currentCall?.startedAt, blockDurationSeconds]);
 
   // Fullscreen
   const containerRef = useRef<HTMLDivElement>(null);
@@ -344,9 +266,6 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
       const endedCall = lastCallRef.current;
       lastCallRef.current = null;
 
-      endedByAttendantRef.current = false;
-      endedByCustomerRef.current = false;
-
       setIsCalculatingTokens(true);
 
       const timeoutId = setTimeout(() => {
@@ -434,8 +353,6 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
             setIsSettingsOpen={setIsSettingsOpen}
             isFullscreen={isFullscreen}
             toggleFullscreen={toggleFullscreen}
-            handleStartCall={handleStartCall}
-            onHangUp={handleHangUp}
             currentCall={currentCall}
             timerText={isCallActive ? formatTimer(seconds) : undefined}
             attendantName={attendantName}
@@ -465,13 +382,6 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
             currentUser={currentUser}
             callDurationSeconds={callDurationSeconds}
             onClose={() => setCompletedCallSummary(null)}
-          />
-
-          <ConfirmCloseCallModal
-            isOpen={isConfirmCloseOpen}
-            onConfirm={handleConfirmClose}
-            onCancel={handleCancelClose}
-            isAttendant={isAttendant}
           />
         </div>
 
