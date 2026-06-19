@@ -34,18 +34,6 @@ export interface IUser {
     updatedAt: Date;
 }
 
-export interface ICall {
-    _id: string;
-    customerId: string;
-    customerName: string;
-    attendantId: string;
-    attendantName: string;
-    roomName: string;
-    sessionId: string;
-    createdAt: Date;
-    updatedAt: Date;
-}
-
 export interface CallState {
     id: string;
     customerId: string;
@@ -86,10 +74,6 @@ type _t = [
     Expect<Equal<
         Omit<IUser, '_id' | 'firstName' | 'lastName' | 'avatar' | 'createdAt' | 'updatedAt'>,
         Pick<IOnlineUser, keyof Omit<IUser, '_id' | 'firstName' | 'lastName' | 'avatar' | 'createdAt' | 'updatedAt'>>
-    >>,
-    Expect<Equal<
-        Omit<ICall, '_id' | 'createdAt' | 'updatedAt'>,
-        Pick<CallState, keyof Omit<ICall, '_id' | 'createdAt' | 'updatedAt'>>
     >>,
 ];
 
