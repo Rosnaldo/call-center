@@ -1,10 +1,9 @@
-import { getCallModel, getUserModel } from '#models/singleton';
+import { getUserModel } from '#models/singleton';
 
 export class LoadModels {
     private readonly loadModels = (): void => {
         try {
             getUserModel();
-            getCallModel();
         } catch (error) {
             console.error(`[LoadModels.loadModels]: Error loading models`, error)
             throw error;
