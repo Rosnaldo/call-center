@@ -5,7 +5,6 @@ import './states/timer/store.ts';
 import './states/call/store.ts';
 import './components/call-lobby-view/states/store.ts';
 import { initOnlineUsersWebSocket } from './services/online-users-ws.ts';
-import { useCallStore } from './states/call/store.ts';
 
 export async function bootstrap(): Promise<void> {
     await useAuthStore.getState().bootstrap();
@@ -13,7 +12,5 @@ export async function bootstrap(): Promise<void> {
     initOnlineUsersWebSocket(
         token,
         undefined,
-        (call) => useCallStore.getState().receiveIncomingCall(call),
-        (callId) => useCallStore.getState().cancelCall(callId),
     );
 }

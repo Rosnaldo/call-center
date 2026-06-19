@@ -10,30 +10,12 @@ import { BillingCalculationModal } from '../BillingCalculationModal.tsx';
 import { BillingSummaryModal } from '../BillingSummaryModal.tsx';
 import { CallView, CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
-import { roomUrl } from '../../../utils/helpers.ts';
+import { useIncomingCallStore } from '../../../states/incoming-call/store.ts';
 
-function showSystemNotification(title: string, body: string, roomName?: string) {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    try {
-      const n = new Notification(title, {
-        body,
-        icon: 'https://ssl.gstatic.com/meet/images/iso/meet_32px_b44081efbc99c518.png',
-        requireInteraction: true,
-        tag: 'turn-alert'
-      });
-      n.onclick = () => {
-        window.focus();
-        if (roomName) window.open(roomUrl(roomName), '_blank');
-        n.close();
-      };
-    } catch (e) {
-      console.error('Failed to create system notification:', e);
-    }
-  }
-}
 
 export const CallLobbyView: React.FC = () => {
   const call = useCallStore((s) => s.call);
+  const incomingCall = useIncomingCallStore((s) => s.incomingCall);
   const currentUser = useCurrentUserStore((s) => s.currentUser);
   const users = useOnlineUsersStore((s) => s.users);
   const selectedAttendantId = useCallViewStore((s) => s.selectedAttendantId);
@@ -104,7 +86,6 @@ export const CallLobbyView: React.FC = () => {
     : undefined;
 
   const currentCall = call ?? draftCall;
-  const isAttendant = currentCall ? currentUser?.id === currentCall.attendantId : false;
 
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
@@ -119,25 +100,6 @@ export const CallLobbyView: React.FC = () => {
   const isCallActive = currentCall
     ? (currentCall.status === 'active' || currentCall.status === 'call-interrupteded')
     : false;
-
-  const prevStatusRef = useRef(currentCall?.status);
-  useEffect(() => {
-    if (prevStatusRef.current === 'awaiting-answer' && currentCall?.status === 'active') {
-      try {
-        const targetPartner = currentUser?.role === 'customer'
-          ? currentCall.attendantName
-          : currentCall.customerName;
-        showSystemNotification(
-          'Chamada Conectada!',
-          `Sua chamada com ${targetPartner} está ativa agora.`,
-          currentCall.roomName
-        );
-      } catch (err) {
-        console.warn('Failed to notify call start:', err);
-      }
-    }
-    prevStatusRef.current = currentCall?.status;
-  }, [currentCall?.status, currentUser?.role, currentCall?.attendantName, currentCall?.customerName, currentCall?.roomName]);
 
   // Elapsed timer
   useEffect(() => {
@@ -289,28 +251,13 @@ export const CallLobbyView: React.FC = () => {
   const customerUser = currentCall ? users.find(u => u.id === currentCall.customerId) : null;
   const currentTokens = customerUser?.tokens ?? 0;
 
-  const partnerName = currentCall ? (isAttendant ? currentCall.customerName : currentCall.attendantName) : '';
-
-  const getInitials = (name: string): string => {
-    if (!name) return 'VC';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    return name.slice(0, 2).toUpperCase();
-  };
-
-  const partnerInitials = getInitials(partnerName);
-
   const getCallViewState = (): CallViewState => {
-    if (!currentCall) return CallViewState.None;
+    if (!currentCall && !incomingCall) return CallViewState.None;
     return isCallActive ? CallViewState.InCall : CallViewState.Lobby;
   };
   const viewState = getCallViewState();
 
   const attendantName = currentCall?.attendantName || '';
-  const partnerUser = currentCall
-    ? users.find(u => u.id === (isAttendant ? currentCall.customerId : currentCall.attendantId))
-    : null;
-  const attendantAvatarUrl = partnerUser?.avatarUrl || '';
 
   const formatTimer = (totSeconds: number) => {
     const mins = Math.floor(totSeconds / 60);
@@ -345,8 +292,6 @@ export const CallLobbyView: React.FC = () => {
             isScreenSharing={isScreenSharing}
             isVideoOff={isVideoOff}
             isMuted={isMuted}
-            partnerName={partnerName}
-            partnerInitials={partnerInitials}
             setIsMuted={setIsMuted}
             setIsVideoOff={setIsVideoOff}
             setIsScreenSharing={setIsScreenSharing}
@@ -356,8 +301,6 @@ export const CallLobbyView: React.FC = () => {
             currentCall={currentCall}
             timerText={isCallActive ? formatTimer(seconds) : undefined}
             attendantName={attendantName}
-            attendantAvatarUrl={attendantAvatarUrl}
-            isAttendant={isAttendant}
           />
 
           <MediaSettingsModal

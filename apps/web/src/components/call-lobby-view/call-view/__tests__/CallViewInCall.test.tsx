@@ -33,16 +33,6 @@ describe('CallView Component - in-call Unit Tests', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders call session active with partner information badge', () => {
-    render(<CallView {...defaultProps()} />);
-
-    const partnerBadge = screen.getByText(/John Doe/i);
-    expect(partnerBadge).toBeDefined();
-
-    const screenBtn = screen.getByTitle(/Compartilhar Tela/i);
-    expect(screenBtn).toBeDefined();
-  });
-
   it('renders muted indicator correctly when mic is muted during call', () => {
     const { container } = render(<CallView {...defaultProps({ isMuted: true })} />);
 
@@ -58,30 +48,6 @@ describe('CallView Component - in-call Unit Tests', () => {
 
     const shareAlert = screen.getByText(/Sua Tela está Sendo Compartilhada/i);
     expect(shareAlert).toBeDefined();
-  });
-
-  it('renders initials badge when video camera is functioning normally', () => {
-    render(<CallView {...defaultProps()} />);
-
-    const initialsElement = screen.getByText('JD');
-    expect(initialsElement).toBeDefined();
-  });
-
-  it('triggers onHangUp callback with proper ids when click end call button', () => {
-    const onHangUp = vi.fn();
-    const { container } = render(
-      <CallView {...defaultProps({
-        onHangUp,
-        currentCall: buildCall({ attendantId: 'att-123', id: 'call-abc' }),
-      })} />
-    );
-
-    const hangUpBtn = container.querySelector('#lobby-end-call');
-    expect(hangUpBtn).not.toBeNull();
-    if (hangUpBtn) {
-      fireEvent.click(hangUpBtn);
-      expect(onHangUp).toHaveBeenCalledWith('att-123', 'call-abc');
-    }
   });
 
   it('calls setIsScreenSharing when screen share button is clicked', () => {

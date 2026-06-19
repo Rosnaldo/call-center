@@ -3,7 +3,7 @@ import { useCallStore } from '../../../../states/call/store.ts';
 import { useCallViewStore } from '../../states/store.ts';
 import { useCurrentUserStore } from '../../../../states/current-user/store.ts';
 import { useOnlineUsersStore } from '../../../../states/online-users/store.ts';
-import { playNotificationChime } from '../../../../utils/helpers.ts';
+import { useIncomingCallStore } from '../../../../states/incoming-call/store.ts';
 import { CallState } from '@/src/states/call/state.ts';
 import { StartCallButton } from './StartCallButton.tsx';
 import { AnswerCallButton } from './AnswerCallButton.tsx';
@@ -14,6 +14,8 @@ import { ConfirmCloseCallModal } from '../../ConfirmCloseCallModal.tsx';
 
 export const CallFooterActions: React.FC = () => {
   const call = useCallStore(s => s.call);
+  const incomingCall = useIncomingCallStore(s => s.incomingCall);
+  const sendIncomingCall = useIncomingCallStore(s => s.sendIncomingCall);
   const selectedAttendantId = useCallViewStore(s => s.selectedAttendantId);
   const viewState = useCallViewStore(s => s.viewState);
   const currentUser = useCurrentUserStore(s => s.currentUser);
@@ -38,22 +40,10 @@ export const CallFooterActions: React.FC = () => {
     : undefined;
 
   const currentCall = call ?? draftCall;
-  const isAttendant = currentCall ? currentUser?.id === currentCall.attendantId : false;
+  const isReceiving = currentUser?.id === currentCall?.attendantId;
 
   const handleStartCall = () => {
-    if (!currentCall) return;
-
-    if (!isAttendant) {
-      try { playNotificationChime(); } catch (err) { console.warn('Failed to play start sound:', err); }
-    }
-
-    if (currentCall.status === ('draft-lobby' as any) || currentCall.id.startsWith('draft-call-')) {
-      useCallStore.getState().initiateCall(currentCall.customerId, currentCall.attendantId);
-      useCallViewStore.getState().setSelectedAttendantId(null);
-      return;
-    }
-
-    useCallStore.getState().updateCall(currentCall.id, { status: 'awaiting-answer' });
+    sendIncomingCall(currentUser?.id, selectedAttendantId);
   };
 
   const handleReturnCall = () => {
@@ -62,12 +52,11 @@ export const CallFooterActions: React.FC = () => {
   };
 
   const handleAnswerCall = () => {
-    if (!currentCall) return;
-    useCallStore.getState().updateCall(currentCall.id, { status: 'active', startedAt: Date.now() });
+    useCallStore.getState().answerIncomingCall();
   };
 
   const handleCancelCall = () => {
-    if (currentCall) useCallStore.getState().cancelCall(currentCall.id);
+    useCallStore.getState().cancelCall();
   };
 
   const handleHangUp = () => {
@@ -100,13 +89,12 @@ export const CallFooterActions: React.FC = () => {
           isOpen={isConfirmCloseOpen}
           onConfirm={handleConfirmClose}
           onCancel={handleCancelClose}
-          isAttendant={isAttendant}
         />
       </>
     );
   }
 
-  if (viewState === 'awaiting-answer' && !isAttendant) {
+  if (incomingCall && !isReceiving) {
     return (
       <div className="flex gap-2.5 items-center">
         <CancelCallButton onClick={handleCancelCall} />
@@ -114,7 +102,7 @@ export const CallFooterActions: React.FC = () => {
     );
   }
 
-  if (viewState === 'awaiting-answer' && isAttendant) {
+  if (incomingCall && isReceiving) {
     return (
       <div className="flex gap-2.5 items-center">
         <AnswerCallButton onClick={handleAnswerCall} />

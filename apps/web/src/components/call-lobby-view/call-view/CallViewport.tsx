@@ -2,18 +2,18 @@ import React from 'react';
 import { ScreenShare, VideoOff, MicOff, Clock, User } from 'lucide-react';
 import { CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
+import { useIncomingCallStore } from '../../../states/incoming-call/store.ts';
+import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
+import { useOnlineUsersStore } from '@/src/states/online-users/store.ts';
 
 interface CallViewportProps {
   state: CallViewState;
   isScreenSharing: boolean;
   isVideoOff: boolean;
   isMuted: boolean;
-  partnerName: string;
-  partnerInitials: string;
   timerText?: string;
   attendantName?: string;
   queueCount?: number;
-  attendantAvatarUrl?: string;
   currentCall?: CallState;
   isAttendant?: boolean;
 }
@@ -228,24 +228,38 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   isScreenSharing,
   isVideoOff,
   isMuted,
-  partnerName,
-  partnerInitials,
   timerText,
   attendantName,
-  attendantAvatarUrl,
   currentCall,
-  isAttendant,
 }) => {
+  const incomingCall = useIncomingCallStore(s => s.incomingCall);
   let content: React.ReactNode = null;
+  const currentUser = useCurrentUserStore(s => s.currentUser);
+  const users = useOnlineUsersStore(s => s.users);
 
+  const isReceiving = currentUser?.id === currentCall?.attendantId;
   const currentCallStatus = currentCall?.status || '';
-  const isAwaitingOrInterrupted = currentCallStatus === 'awaiting-answer' || currentCallStatus === 'call-interrupteded';
+  const isAwaitingOrInterrupted = currentCallStatus === 'call-interrupteded' || !!incomingCall;
+
+  const getInitials = (name: string): string => {
+    if (!name) return 'VC';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  };
+
+  const callSource = incomingCall ?? currentCall;
+  const partnerId = isReceiving ? callSource?.attendantId : callSource?.customerId;
+  const partner = users.find(u => u.id === partnerId);
+  const partnerName = getInitials(partner?.name ?? '');
+  const partnerInitials = partnerName.charAt(0);
+  const attendantAvatarUrl = partner?.avatarUrl;
 
   if (state === CallViewState.None) {
     content = renderNoneViewport();
-  } else if (isAwaitingOrInterrupted && isAttendant) {
+  } else if (isAwaitingOrInterrupted && isReceiving) {
     content = renderAwaitingAttendant(currentCallStatus, partnerName, partnerInitials, attendantAvatarUrl);
-  } else if (isAwaitingOrInterrupted && !isAttendant) {
+  } else if (isAwaitingOrInterrupted && !isReceiving) {
     content = renderAwaitingClient(currentCallStatus, partnerName, partnerInitials, attendantAvatarUrl);
   } else if (state === CallViewState.Lobby) {
     content = renderLobbyViewport(isVideoOff, partnerName, partnerInitials, attendantName, attendantAvatarUrl);

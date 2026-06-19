@@ -40,17 +40,6 @@ describe('useBillingTimer — timer / call store integration', () => {
 
       expect(useTimerStore.getState().elapsedSeconds).toBe(3);
     });
-
-    it('does not play the timer while call is awaiting-answer', () => {
-      renderHook(({ call }) => useBillingTimer(call), {
-        initialProps: { call: makeCall('awaiting-answer') },
-      });
-
-      act(() => { vi.advanceTimersByTime(5000); });
-
-      expect(useTimerStore.getState().status).toBe('stopped');
-      expect(useTimerStore.getState().elapsedSeconds).toBe(0);
-    });
   });
 
   describe('call interrupted', () => {

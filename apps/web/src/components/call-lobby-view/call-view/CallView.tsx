@@ -14,8 +14,6 @@ interface CallViewProps {
   isScreenSharing: boolean;
   isVideoOff: boolean;
   isMuted: boolean;
-  partnerName: string;
-  partnerInitials: string;
   setIsMuted: React.Dispatch<React.SetStateAction<boolean>>;
   setIsVideoOff: React.Dispatch<React.SetStateAction<boolean>>;
   setIsScreenSharing: React.Dispatch<React.SetStateAction<boolean>>;
@@ -26,8 +24,6 @@ interface CallViewProps {
   timerText?: string;
   attendantName?: string;
   queueCount?: number;
-  attendantAvatarUrl?: string;
-  isAttendant?: boolean;
 }
 
 export const CallView: React.FC<CallViewProps> = ({
@@ -35,8 +31,6 @@ export const CallView: React.FC<CallViewProps> = ({
   isScreenSharing,
   isVideoOff,
   isMuted,
-  partnerName,
-  partnerInitials,
   setIsMuted,
   setIsVideoOff,
   setIsScreenSharing,
@@ -47,8 +41,6 @@ export const CallView: React.FC<CallViewProps> = ({
   timerText,
   attendantName,
   queueCount,
-  attendantAvatarUrl,
-  isAttendant,
 }) => {
   return (
     <div className={`bg-[#0c0d0e] overflow-hidden relative flex flex-col justify-between animate-fade-in ${
@@ -61,14 +53,10 @@ export const CallView: React.FC<CallViewProps> = ({
         isScreenSharing={isScreenSharing}
         isVideoOff={isVideoOff}
         isMuted={isMuted}
-        partnerName={partnerName}
-        partnerInitials={partnerInitials}
         timerText={timerText}
         attendantName={attendantName}
         queueCount={queueCount}
-        attendantAvatarUrl={attendantAvatarUrl}
         currentCall={currentCall}
-        isAttendant={isAttendant}
       />
       <CallFooter
         state={state}

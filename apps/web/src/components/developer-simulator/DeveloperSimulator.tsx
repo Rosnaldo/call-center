@@ -50,7 +50,6 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
   const [jsonTab, setJsonTab] = useState<'calls' | 'users' | 'timer' | 'full'>('calls');
   const [copied, setCopied] = useState(false);
 
-  const awaitingCalls = call?.status === 'awaiting-answer' ? [call] : [];
   const runningCalls = call?.status === 'active' || call?.status === 'call-interrupteded' ? [call] : [];
 
   const timerState = { status: timerStatus, elapsedSeconds: timerElapsed };
@@ -121,7 +120,7 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
                 <p className="text-[10px] text-slate-400 mb-2">
                   Gere um cenário de chamada recebida de um cliente (se necessário, um novo cliente será criado).
                 </p>
-                {call?.attendantId === currentUser.id && ['active', 'awaiting-answer', 'call-interrupteded'].includes(call.status) ? (
+                {call?.attendantId === currentUser.id && ['active', 'call-interrupteded'].includes(call.status) ? (
                   <div className="text-[10px] bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded p-2 text-center">
                     Você já possui uma chamada ativa ou em escala de resposta.
                   </div>
@@ -292,50 +291,6 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
                           Simular Retorno do Usuário 📡
                         </button>
                       )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Simulated Call Answering Section */}
-            {awaitingCalls.length > 0 && (
-              <div id="sim-awaiting-calls-section" className="mt-4 pt-4 border-t border-slate-800/80">
-                <h5 className="text-[10px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 mb-2.5">
-                  <Phone className="w-3 h-3 text-emerald-400" />
-                  Chamadas em Espera ({awaitingCalls.length})
-                </h5>
-                <div className="space-y-2">
-                  {awaitingCalls.map((call) => (
-                    <div 
-                      key={call.id} 
-                      id={`sim-call-${call.id}`}
-                      className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800/65 flex flex-col gap-2"
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-xs font-semibold text-slate-100 flex items-center gap-1">
-                          <span className="text-blue-400 truncate max-w-[120px]">{call.customerName}</span>
-                          <span className="text-slate-500 text-[10px]">➡</span>
-                          <span className="text-purple-400 truncate max-w-[120px]">{call.attendantName}</span>
-                        </span>
-                        <span className="text-[9px] text-slate-500 mt-0.5 font-mono">
-                          ID: {call.id}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (onUpdateCall) {
-                            onUpdateCall(call.id, {
-                              status: 'active',
-                              // startedAt: Date.now()
-                            });
-                          }
-                        }}
-                        id={`sim-answer-btn-${call.id}`}
-                        className="w-full text-center py-1.5 px-2 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md hover:bg-emerald-500 hover:text-white transition cursor-pointer"
-                      >
-                        Simular Atendimento (Atender)
-                      </button>
                     </div>
                   ))}
                 </div>

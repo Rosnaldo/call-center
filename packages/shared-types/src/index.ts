@@ -34,6 +34,11 @@ export interface IUser {
     updatedAt: Date;
 }
 
+export interface IncomingCallState {
+    customerId: string;
+    attendantId: string;
+}
+
 export interface CallState {
     id: string;
     customerId: string;
@@ -42,7 +47,7 @@ export interface CallState {
     attendantName: string;
     roomName: string;
     sessionId: string;
-    status: 'active' | 'completed' | 'awaiting-answer' | 'call-interrupteded';
+    status: 'active' | 'completed' | 'call-interrupteded';
     wasAnswered: boolean;
     startedAt?: number;
     tokensCharged?: number;

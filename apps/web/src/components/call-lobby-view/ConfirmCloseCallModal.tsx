@@ -4,7 +4,6 @@ interface ConfirmCloseCallModalProps {
   isOpen: boolean;
   onConfirm: () => void;
   onCancel: () => void;
-  isAttendant?: boolean;
 }
 
 export const ConfirmCloseCallModal: React.FC<ConfirmCloseCallModalProps> = ({

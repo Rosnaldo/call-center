@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { CallViewStateData, initialCallViewState, ViewState } from './state.ts';
 import { CallViewStateActions, createCallViewStateActions } from './actions.ts';
 import { useCallStore } from '../../../states/call/store.ts';
+import { useIncomingCallStore } from '../../../states/incoming-call/store.ts';
 
 export const useCallViewStore = create<CallViewStateData & CallViewStateActions>((set) => ({
   ...initialCallViewState,
@@ -17,7 +18,6 @@ const toViewState = (status: string | undefined, selectedAttendantId: string | n
   if (!status) return selectedAttendantId ? 'lobby' : 'none';
   if (status === 'active') return 'in-call';
   if (status === 'call-interrupteded') return 'call-interrupteded';
-  if (status === 'awaiting-answer') return 'awaiting-answer';
   return 'lobby';
 };
 
@@ -31,11 +31,12 @@ useCallStore.subscribe((state, prev) => {
   if (viewState !== next) useCallViewStore.setState({ viewState: next });
 });
 
-// Sync viewState when selectedAttendantId changes (only when no active call)
+// Sync viewState when selectedAttendantId changes (only when no active call and no incoming)
 useCallViewStore.subscribe((state, prev) => {
   if (state.selectedAttendantId === prev.selectedAttendantId) return;
   const activeStatus = useCallStore.getState().call?.status as string | undefined;
-  if (!activeStatus) {
+  const hasIncoming = !!useIncomingCallStore.getState().incomingCall;
+  if (!activeStatus && !hasIncoming) {
     const next = toViewState(undefined, state.selectedAttendantId);
     if (state.viewState !== next) useCallViewStore.setState({ viewState: next });
   }

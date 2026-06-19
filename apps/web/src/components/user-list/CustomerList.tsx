@@ -27,7 +27,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
 
   const getCustomerCall = (custId: string) => {
     return call?.customerId === custId &&
-      (call.status === 'active' || call.status === 'awaiting-answer' || call.status === 'call-interrupteded')
+      (call.status === 'active' || call.status === 'call-interrupteded')
       ? call : undefined;
   };
 

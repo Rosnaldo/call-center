@@ -196,22 +196,6 @@ describe('DeveloperSimulator Component Unit Tests', () => {
     });
   });
 
-  it('allows simulating client room answer for awaiting calls', () => {
-    setupStores({
-      call: { ...mockcall, status: 'awaiting-answer' as const },
-    });
-
-    render(<DeveloperSimulator {...defaultProps} />);
-
-    expect(screen.getByText('Chamadas em Espera (1)')).toBeDefined();
-    const answerBtn = screen.getByText('Simular Atendimento (Atender)');
-    
-    fireEvent.click(answerBtn);
-    expect(defaultProps.onUpdateCall).toHaveBeenCalledWith('call-1', expect.objectContaining({
-      status: 'active'
-    }));
-  });
-
   it('switches JSON viewer board tabs and supports click copies', () => {
     render(<DeveloperSimulator {...defaultProps} />);
     

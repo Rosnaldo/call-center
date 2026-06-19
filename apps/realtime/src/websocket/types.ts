@@ -1,4 +1,4 @@
-import { IUser } from '@repo/shared-types';
+import { IncomingCallState, IUser } from '@repo/shared-types';
 import { EventEmitterTransport } from '#websocket/transport';
 
 export interface AuthenticatedWebSocket extends EventEmitterTransport {
@@ -13,21 +13,11 @@ export type WsClientEvent = 'heartbeat' | 'user_logout' | 'incoming_call' | 'cal
 
 export interface IncomingCallData {
     targetUserId: string;
-    call: {
-        id: string;
-        customerId: string;
-        customerName: string;
-        attendantId: string;
-        attendantName: string;
-        roomName: string;
-        status: 'awaiting-answer';
-        tokensCharged?: number;
-    };
+    incomingCall: IncomingCallState;
 }
 
 export interface CancelledCallData {
     targetUserId: string;
-    callId: string;
 }
 
 export type WsClientMessage =
