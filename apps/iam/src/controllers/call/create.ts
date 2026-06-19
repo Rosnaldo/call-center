@@ -33,7 +33,7 @@ export class Create {
         try {
             const params = this.transform(props.mapped);
             const { data: room } = await dailyApi.post<IDailyRoom>('/rooms');
-            const doc = await getCallDao().inserir({ ...params, roomUrl: room.url });
+            const doc = await getCallDao().inserir({ ...params, roomName: room.name });
             const utils = new CallUtils();
             return successData(utils.toObject(doc));
         } catch (error: unknown) {

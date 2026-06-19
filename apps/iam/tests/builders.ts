@@ -11,7 +11,7 @@ export const buildCall = (d?: Partial<ICall>): ICall => ({
     customerName: d?.customerName ?? 'Test Customer',
     attendantId: d?.attendantId ?? nextObjectId(),
     attendantName: d?.attendantName ?? 'Test Attendant',
-    roomUrl: d?.roomUrl ?? 'https://meet.example.com/test-room',
+    roomName: d?.roomName ?? 'test-room',
     createdAt: d?.createdAt ?? new Date('2024-01-01'),
     updatedAt: d?.updatedAt ?? new Date('2024-01-01'),
 });

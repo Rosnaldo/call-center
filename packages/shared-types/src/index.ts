@@ -40,7 +40,8 @@ export interface ICall {
     customerName: string;
     attendantId: string;
     attendantName: string;
-    roomUrl: string;
+    roomName: string;
+    sessionId: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -51,7 +52,8 @@ export interface CallState {
     customerName: string;
     attendantId: string;
     attendantName: string;
-    roomUrl: string;
+    roomName: string;
+    sessionId: string;
     status: 'active' | 'completed' | 'awaiting-answer' | 'call-interrupteded';
     wasAnswered: boolean;
     startedAt?: number;

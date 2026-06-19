@@ -10,9 +10,9 @@ import { BillingSummaryModal } from '../BillingSummaryModal.tsx';
 import { ConfirmCloseCallModal } from '../ConfirmCloseCallModal.tsx';
 import { CallView, CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
-import { playNotificationChime } from '../../../utils/helpers.ts';
+import { playNotificationChime, roomUrl } from '../../../utils/helpers.ts';
 
-function showSystemNotification(title: string, body: string, roomUrl?: string) {
+function showSystemNotification(title: string, body: string, roomName?: string) {
   if ('Notification' in window && Notification.permission === 'granted') {
     try {
       const n = new Notification(title, {
@@ -23,7 +23,7 @@ function showSystemNotification(title: string, body: string, roomUrl?: string) {
       });
       n.onclick = () => {
         window.focus();
-        if (roomUrl) window.open(roomUrl, '_blank');
+        if (roomName) window.open(roomUrl(roomName), '_blank');
         n.close();
       };
     } catch (e) {
@@ -68,7 +68,8 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
         customerName: currentUser.name,
         attendantId: selectedAttendantId,
         attendantName: selectedAttendant.name,
-        roomUrl: '',
+        roomName: '',
+        sessionId: '',
         status: 'draft-lobby' as any,
         wasAnswered: false,
         tokensCharged: 0,
@@ -104,14 +105,14 @@ export const CallLobbyView: React.FC<CallLobbyViewProps> = ({ onHangUp }) => {
         showSystemNotification(
           'Chamada Conectada!',
           `Sua chamada com ${targetPartner} está ativa agora.`,
-          currentCall.roomUrl
+          currentCall.roomName
         );
       } catch (err) {
         console.warn('Failed to notify call start:', err);
       }
     }
     prevStatusRef.current = currentCall?.status;
-  }, [currentCall?.status, currentUser?.role, currentCall?.attendantName, currentCall?.customerName, currentCall?.roomUrl]);
+  }, [currentCall?.status, currentUser?.role, currentCall?.attendantName, currentCall?.customerName, currentCall?.roomName]);
 
   const handleStartCall = () => {
     if (!currentCall) return;

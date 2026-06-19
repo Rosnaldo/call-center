@@ -9,7 +9,8 @@ export const CallSchema = new Schema<ICall['ISchema']>(
         customerName: { type: String, required: true },
         attendantId: { type: String, required: true },
         attendantName: { type: String, required: true },
-        roomUrl: { type: String, required: true },
+        roomName: { type: String, required: true },
+        sessionId: { type: String, required: true },
     },
     {
         strict: false,

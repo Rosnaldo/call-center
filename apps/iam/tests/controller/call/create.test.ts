@@ -70,7 +70,7 @@ describe('Controller > Call > Create', () => {
         expect(either.data.customerName).toBe(body.customerName);
         expect(either.data.attendantId).toBe(body.attendantId);
         expect(either.data.attendantName).toBe(body.attendantName);
-        expect(either.data.roomUrl).toBe(mockDailyRoom.url);
+        expect(either.data.roomName).toBe(mockDailyRoom.name);
         expect(either.data.createdAt).toBeInstanceOf(Date);
         expect(either.data.updatedAt).toBeInstanceOf(Date);
 
@@ -78,7 +78,7 @@ describe('Controller > Call > Create', () => {
         expect(saved).not.toBeNull();
         expect(saved!.customerId).toBe(body.customerId);
         expect(saved!.attendantId).toBe(body.attendantId);
-        expect(saved!.roomUrl).toBe(mockDailyRoom.url);
+        expect(saved!.roomName).toBe(mockDailyRoom.url);
 
         const zodResult = validateOutput(either.data);
         expect(zodResult.hasError).toBeFalsy();
@@ -100,7 +100,7 @@ describe('Controller > Call > Create', () => {
         expect(api.post).toHaveBeenCalledWith('/rooms');
     });
 
-    it('retorna a roomUrl vinda do Daily.co', async () => {
+    it('retorna a roomName vinda do Daily.co', async () => {
         const call = buildCall();
         const body = {
             customerId: call.customerId,
@@ -115,7 +115,7 @@ describe('Controller > Call > Create', () => {
 
         if (!isSuccess(either)) throw new Error(`Expected success, got: ${either.message}`);
 
-        expect(either.data.roomUrl).toBe(mockDailyRoom.url);
+        expect(either.data.roomName).toBe(mockDailyRoom.name);
     });
 
     it('returns 400 when required fields are missing', async () => {

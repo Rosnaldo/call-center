@@ -7,7 +7,8 @@ export interface ICallSchema {
     customerName: string;
     attendantId: string;
     attendantName: string;
-    roomUrl: string;
+    roomName: string;
+    sessionId: string;
 }
 
 type ICallDocument = HydratedDocument<ICallSchema> & { _id: Types.ObjectId };

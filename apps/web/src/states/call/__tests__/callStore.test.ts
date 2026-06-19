@@ -275,7 +275,7 @@ describe('updateCall — IAM persistence', () => {
     expect(iamCreate).toHaveBeenCalledWith(expect.objectContaining({
       customerId: call.customerId,
       attendantId: call.attendantId,
-      roomUrl: call.roomUrl,
+      roomName: call.roomName,
     }));
   });
 

@@ -19,7 +19,7 @@ export interface IncomingCallData {
         customerName: string;
         attendantId: string;
         attendantName: string;
-        roomUrl: string;
+        roomName: string;
         status: 'awaiting-answer';
         tokensCharged?: number;
     };

@@ -41,8 +41,7 @@ export function playNotificationChime() {
   }
 }
 
-// Generate random room code for Daily.co
-export function generateMeetUrl(): string {
+export function generateRoomName(): string {
   const segment = (len: number) => {
     let text = "";
     const possible = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -51,5 +50,9 @@ export function generateMeetUrl(): string {
     }
     return text;
   };
-  return `https://meetcent.daily.co/call-${segment(8)}`;
+  return `call-${segment(8)}`;
+}
+
+export function roomUrl(roomName: string): string {
+  return `https://meetcent.daily.co/${roomName}`;
 }

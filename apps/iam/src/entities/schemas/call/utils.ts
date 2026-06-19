@@ -4,7 +4,7 @@ import { cleanMongooseObject } from '#entities/utils/clean_mongoose_doc';
 import { makeSmallStringSchema } from '#utils/zod/valid_small_string';
 import { makeObjectIdSchema } from '#utils/zod/valid_objectid_schema';
 import { makeDateSchema } from '#utils/zod/valid_date';
-import { makeUrlSchema } from '#utils/zod/valid_url';
+
 
 export class CallUtils {
     public readonly zodSchema = z.object({
@@ -13,7 +13,8 @@ export class CallUtils {
         customerName: makeSmallStringSchema('customerName'),
         attendantId: makeObjectIdSchema('attendantId'),
         attendantName: makeSmallStringSchema('attendantName'),
-        roomUrl: makeUrlSchema('roomUrl'),
+        roomName: makeSmallStringSchema('roomName'),
+        sessionId: makeSmallStringSchema('sessionId'),
         createdAt: makeDateSchema('createdAt'),
         updatedAt: makeDateSchema('updatedAt'),
     });

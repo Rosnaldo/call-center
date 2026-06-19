@@ -5,7 +5,7 @@
 
 import { useOnlineUsersStore } from '../online-users/store.ts';
 import { useCurrentUserStore } from '../current-user/store.ts';
-import { playNotificationChime, generateMeetUrl } from '../../utils/helpers.ts';
+import { playNotificationChime, generateRoomName } from '../../utils/helpers.ts';
 import { CallState, CallStore, initialCallStore } from './state.ts';
 import { notifyWsIncomingCall, notifyWsCancelCall } from '../../services/online-users-ws.ts';
 import { createIamCall } from '../../services/call.ts';
@@ -69,7 +69,8 @@ export const createCallActions = (
           customerName: customer.name,
           attendantId,
           attendantName: attendant.name,
-          roomUrl: generateMeetUrl(),
+          roomName: generateRoomName(),
+          sessionId: '',
           status: 'awaiting-answer',
           wasAnswered: false,
           tokensCharged: 1
@@ -220,7 +221,8 @@ export const createCallActions = (
           customerName: customer.name,
           attendantId: attendant.id,
           attendantName: attendant.name,
-          roomUrl: generateMeetUrl(),
+          roomName: generateRoomName(),
+          sessionId: '',
           status: 'awaiting-answer',
           wasAnswered: false,
           tokensCharged: 1,
