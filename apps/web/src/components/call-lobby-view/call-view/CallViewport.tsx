@@ -38,113 +38,103 @@ const renderNoneViewport = () => (
   </div>
 );
 
-const renderAwaitingAttendant = (
-  status: string,
+const renderPartnerAvatar = (
   partnerName: string,
   partnerInitials: string,
-  attendantAvatarUrl?: string
-) => {
-  const avatarOrInitials: React.ReactNode = attendantAvatarUrl ? (
+  avatarUrl?: string,
+  extraClass = ''
+): React.ReactNode =>
+  avatarUrl ? (
     <img
-      src={attendantAvatarUrl}
+      src={avatarUrl}
       alt={partnerName}
-      className="w-20 h-20 rounded-full object-cover border-2 border-brand-ochre/50 mb-3 shadow-none bg-slate-800 animate-pulse"
+      className={`w-20 h-20 rounded-full object-cover border-2 border-brand-ochre/50 mb-3 shadow-none bg-slate-800 ${extraClass}`}
       referrerPolicy="no-referrer"
     />
   ) : (
-    <div className="w-20 h-20 rounded-full bg-brand-ochre/15 border-2 border-brand-ochre/35 flex items-center justify-center text-brand-ochre font-bold text-2xl mb-3 shadow-none select-none animate-pulse">
+    <div className={`w-20 h-20 rounded-full bg-brand-ochre/15 border-2 border-brand-ochre/35 flex items-center justify-center text-brand-ochre font-bold text-2xl mb-3 shadow-none select-none ${extraClass}`}>
       {partnerInitials}
     </div>
   );
 
-  const statusInfo: React.ReactNode = status === 'call-interrupteded' ? (
-    <>
-      <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mb-1">
-        Conexão Interrompida
-      </h3>
-      <p className="text-xs text-slate-300 font-medium select-text">
-        Aguardando {partnerName} retornar à ligação...
-      </p>
-      <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
-        Timer e cobrança pausados. Aguarde o retorno do cliente ou finalize a sessão se preferir.
-      </p>
-    </>
-  ) : (
-    <>
-      <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1">
-        Chamada Recebida
-      </h3>
-      <p className="text-xs text-slate-300 font-medium select-text">
-        {partnerName} está tentando ligar...
-      </p>
-      <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
-        Clique no botão verde <strong className="text-emerald-400 font-semibold">"Atender Chamada"</strong> abaixo para iniciar a videoconferência.
-      </p>
-    </>
-  );
-
-  return (
-    <div id="viewport-awaiting" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans animate-fade-in select-none">
-      <div className="relative">
-        {avatarOrInitials}
-        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 border-2 border-[#0e1012] rounded-full animate-pulse" />
-      </div>
-      {statusInfo}
+const renderAwaitingAttendant = (
+  partnerName: string,
+  partnerInitials: string,
+  avatarUrl?: string
+) => (
+  <div id="viewport-awaiting-attendant" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans animate-fade-in select-none">
+    <div className="relative">
+      {renderPartnerAvatar(partnerName, partnerInitials, avatarUrl, 'animate-pulse')}
+      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 border-2 border-[#0e1012] rounded-full animate-pulse" />
     </div>
-  );
-};
+    <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1">
+      Chamada Recebida
+    </h3>
+    <p className="text-xs text-slate-300 font-medium select-text">
+      {partnerName} está tentando ligar...
+    </p>
+    <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
+      Clique no botão verde <strong className="text-emerald-400 font-semibold">"Atender Chamada"</strong> abaixo para iniciar a videoconferência.
+    </p>
+  </div>
+);
 
 const renderAwaitingClient = (
-  status: string,
   partnerName: string,
   partnerInitials: string,
-  attendantAvatarUrl?: string
-) => {
-  const avatarOrInitials: React.ReactNode = attendantAvatarUrl ? (
-    <img
-      src={attendantAvatarUrl}
-      alt={partnerName}
-      className="w-20 h-20 rounded-full object-cover border-2 border-brand-ochre/50 mb-3 shadow-none bg-slate-800 animate-pulse"
-      referrerPolicy="no-referrer"
-    />
-  ) : (
-    <div className="w-20 h-20 rounded-full bg-brand-ochre/15 border-2 border-brand-ochre/35 flex items-center justify-center text-brand-ochre font-bold text-2xl mb-3 shadow-none select-none animate-pulse">
-      {partnerInitials}
-    </div>
-  );
+  avatarUrl?: string
+) => (
+  <div id="viewport-awaiting-client" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans animate-fade-in select-none">
+    {renderPartnerAvatar(partnerName, partnerInitials, avatarUrl, 'animate-pulse')}
+    <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1 animate-pulse">
+      Chamada Iniciada
+    </h3>
+    <p className="text-xs text-slate-300 font-medium select-text">
+      Aguardando que {partnerName} atenda a ligação...
+    </p>
+  </div>
+);
 
-  const statusInfo: React.ReactNode = status === 'call-interrupteded' ? (
-    <>
-      <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mb-1 animate-pulse">
-        Conexão Interrompida
-      </h3>
-      <p className="text-xs text-slate-300 font-medium select-text">
-        Aguardando o atendente {partnerName} retornar...
-      </p>
-      <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
-        Timer e cobrança pausados. Aguarde o retorno do atendente ou finalize a sessão se preferir.
-      </p>
-    </>
-  ) : (
-    <>
-      <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1 animate-pulse">
-        Chamada Iniciada
-      </h3>
-      <p className="text-xs text-slate-300 font-medium select-text">
-        Aguardando que {partnerName} atenda a ligação...
-      </p>
-    </>
-  );
-
-  return (
-    <div id="viewport-awaiting" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans animate-fade-in select-none">
-      <div className="relative">
-        {avatarOrInitials}
-      </div>
-      {statusInfo}
+const renderInterruptedAttendant = (
+  partnerName: string,
+  partnerInitials: string,
+  avatarUrl?: string
+) => (
+  <div id="viewport-interrupted-attendant" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans animate-fade-in select-none">
+    <div className="relative">
+      {renderPartnerAvatar(partnerName, partnerInitials, avatarUrl, 'animate-pulse')}
+      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 border-2 border-[#0e1012] rounded-full animate-pulse" />
     </div>
-  );
-};
+    <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mb-1">
+      Conexão Interrompida
+    </h3>
+    <p className="text-xs text-slate-300 font-medium select-text">
+      Aguardando {partnerName} retornar à ligação...
+    </p>
+    <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
+      Timer e cobrança pausados. Aguarde o retorno do cliente ou finalize a sessão se preferir.
+    </p>
+  </div>
+);
+
+const renderInterruptedClient = (
+  partnerName: string,
+  partnerInitials: string,
+  avatarUrl?: string
+) => (
+  <div id="viewport-interrupted-client" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans animate-fade-in select-none">
+    {renderPartnerAvatar(partnerName, partnerInitials, avatarUrl, 'animate-pulse')}
+    <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mb-1 animate-pulse">
+      Conexão Interrompida
+    </h3>
+    <p className="text-xs text-slate-300 font-medium select-text">
+      Aguardando o atendente {partnerName} retornar...
+    </p>
+    <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
+      Timer e cobrança pausados. Aguarde o retorno do atendente ou finalize a sessão se preferir.
+    </p>
+  </div>
+);
 
 const renderLobbyViewport = (
   attendant: IOnlineUser,
@@ -258,8 +248,8 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   const isReceiving = incomingCall
     ? currentUser?.id === incomingCall.attendantId
     : currentUser?.id === currentCall?.attendantId;
-  const currentCallStatus = currentCall?.status || '';
-  const isAwaitingOrInterrupted = currentCallStatus === 'call-interrupteded' || !!incomingCall;
+  const isInterrupted = currentCall?.status === 'call-interrupteded';
+  const hasIncomingCall = !!incomingCall;
 
   const selectedAttendantId = useCallViewStore(s => s.selectedAttendantId);
 
@@ -276,10 +266,14 @@ export const CallViewport: React.FC<CallViewportProps> = ({
     content = renderNoneViewport();
   } else if (state === CallViewState.AwaitingAnswer) {
     content = renderAwaitingAnswer(attendant);
-  } else if (isAwaitingOrInterrupted && isReceiving) {
-    content = renderAwaitingAttendant(currentCallStatus, partnerName, partnerInitials, partinerAvatarUrl);
-  } else if (isAwaitingOrInterrupted && !isReceiving) {
-    content = renderAwaitingClient(currentCallStatus, partnerName, partnerInitials, partinerAvatarUrl);
+  } else if (isInterrupted && isReceiving) {
+    content = renderInterruptedAttendant(partnerName, partnerInitials, partinerAvatarUrl);
+  } else if (isInterrupted && !isReceiving) {
+    content = renderInterruptedClient(partnerName, partnerInitials, partinerAvatarUrl);
+  } else if (hasIncomingCall && isReceiving) {
+    content = renderAwaitingAttendant(partnerName, partnerInitials, partinerAvatarUrl);
+  } else if (hasIncomingCall && !isReceiving) {
+    content = renderAwaitingClient(partnerName, partnerInitials, partinerAvatarUrl);
   } else if (state === CallViewState.Lobby) {
     content = attendant ? renderLobbyViewport(attendant) : renderNoneViewport();
   } else if (isScreenSharing) {
@@ -289,7 +283,7 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   }
 
   let topLeftBadge: React.ReactNode = null;
-  if (state === CallViewState.Lobby && !isAwaitingOrInterrupted) {
+  if (state === CallViewState.Lobby && !isInterrupted && !hasIncomingCall) {
     topLeftBadge = (
       <div className="absolute top-4 left-4 bg-black/75 backdrop-blur-md text-slate-300 text-xs font-medium px-3.5 py-1.5 rounded-full border border-white/5 select-none font-sans shadow-md">
         {partnerName} (Preview)
