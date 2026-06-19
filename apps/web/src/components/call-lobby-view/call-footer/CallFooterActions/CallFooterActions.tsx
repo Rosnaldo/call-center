@@ -20,7 +20,6 @@ export const CallFooterActions: React.FC = () => {
   const users = useOnlineUsersStore(s => s.users);
 
   const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
-  const [pendingHangUpParams, setPendingHangUpParams] = useState<{ attendantId: string; callId?: string } | null>(null);
 
   const selectedAttendant = selectedAttendantId ? users.find(u => u.id === selectedAttendantId) : null;
   const draftCall: CallState | undefined = (selectedAttendantId && selectedAttendant && !call && currentUser)
@@ -40,7 +39,6 @@ export const CallFooterActions: React.FC = () => {
 
   const currentCall = call ?? draftCall;
   const isAttendant = currentCall ? currentUser?.id === currentCall.attendantId : false;
-  const isCallActive = viewState === 'in-call' || viewState === 'call-interrupteded';
 
   const handleStartCall = () => {
     if (!currentCall) return;
@@ -72,27 +70,18 @@ export const CallFooterActions: React.FC = () => {
     if (currentCall) useCallStore.getState().cancelCall(currentCall.id);
   };
 
-  const handleHangUp = (attendantId: string, callId?: string) => {
-    if (isCallActive || isAttendant) {
-      setPendingHangUpParams({ attendantId, callId });
-      setIsConfirmCloseOpen(true);
-    } else {
-      useCallStore.getState().completeCall(attendantId, callId, isAttendant);
-    }
+  const handleHangUp = () => {
+    setIsConfirmCloseOpen(true);
   };
 
   const handleConfirmClose = () => {
-    if (pendingHangUpParams) {
-      useCallStore.getState().completeCall(pendingHangUpParams.attendantId, pendingHangUpParams.callId, isAttendant);
-    } else if (currentCall) {
-      useCallStore.getState().completeCall(currentCall.attendantId, currentCall.id, isAttendant);
+    if (currentCall) {
+      useCallStore.getState().completeCall();
     }
-    setPendingHangUpParams(null);
     setIsConfirmCloseOpen(false);
   };
 
   const handleCancelClose = () => {
-    setPendingHangUpParams(null);
     setIsConfirmCloseOpen(false);
   };
 
@@ -104,7 +93,7 @@ export const CallFooterActions: React.FC = () => {
         <EndCallButton
           label="Finish"
           onClick={() => {
-            if (currentCall) handleHangUp(currentCall.attendantId, currentCall.id);
+            if (currentCall) handleHangUp();
           }}
         />
         <ConfirmCloseCallModal

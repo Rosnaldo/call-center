@@ -27,7 +27,7 @@ export interface CallActions {
   initiateCall: (customerId: string, attendantId: string) => void;
   receiveIncomingCall: (call: Omit<CallState, 'startedAt' | 'interruptedAt'>) => void;
   cancelCall: (callId: string) => void;
-  completeCall: (attendantId: string, callId?: string, byAttendant?: boolean) => void;
+  completeCall: () => void;
   updateCall: (callId: string, updates: Partial<CallState>) => void;
   billingOutOfTokens: (callId: string) => void;
   resetSimulation: () => void;
@@ -114,39 +114,14 @@ export const createCallActions = (
       }
     },
 
-    completeCall: (attendantId, callId, byAttendant) => {
-      set((state) => {
-        const { users, updateUser } = useOnlineUsersStore.getState();
+    completeCall: () => {
+      set(() => {
         const { currentUser, setCurrentUser } = useCurrentUserStore.getState();
-        const activeStatuses = ['active', 'awaiting-answer', 'call-interrupteded'] as const;
 
-        const completedCall = state.call &&
-          (callId ? state.call.id === callId : state.call.attendantId === attendantId) &&
-          activeStatuses.includes(state.call.status as any)
-          ? state.call : undefined;
-
-        if (!completedCall) return {};
-
-        const customer = users.find(u => u.id === completedCall.customerId);
-        if (customer) {
-          const customerUpdates = byAttendant
-            ? { status: 'idle' as const }
-            : { status: 'idle' as const, tokens: Math.max(0, (customer.tokens ?? 5) - (completedCall.tokensCharged || 1)) };
-          updateUser(customer.id, customerUpdates);
-        }
-
-        updateUser(attendantId, { status: 'idle' as const });
-
-        if (currentUser && currentUser.id === completedCall.customerId) {
-          if (byAttendant) {
-            setCurrentUser({ ...currentUser, status: 'idle' as const });
-          } else {
-            const nextTokens = Math.max(0, (currentUser.tokens ?? 5) - (completedCall.tokensCharged || 1));
-            setCurrentUser({ ...currentUser, tokens: nextTokens, status: 'idle' as const });
-          }
-        }
-
-        if (currentUser && currentUser.id === completedCall.attendantId) {
+        // fazer billing
+        // broadcast customer e attendant idle
+        // notificar remocao de call para attendant e customer
+        if (currentUser) {
           setCurrentUser({ ...currentUser, status: 'idle' as const });
         }
 
