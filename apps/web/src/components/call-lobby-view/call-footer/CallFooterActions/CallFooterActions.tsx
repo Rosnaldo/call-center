@@ -76,6 +76,10 @@ export const CallFooterActions: React.FC = () => {
 
   if (viewState === 'none') return null;
 
+  if (viewState === 'awaiting-answer') {
+    return <CancelCallButton onClick={handleCancelCall} />;
+  }
+
   if (viewState === 'in-call') {
     return (
       <>

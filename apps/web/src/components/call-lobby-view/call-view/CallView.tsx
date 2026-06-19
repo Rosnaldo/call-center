@@ -6,6 +6,7 @@ import { CallFooter } from '../call-footer/CallFooter.tsx';
 export enum CallViewState {
   None = 'none',
   Lobby = 'lobby',
+  AwaitingAnswer = 'awaiting-answer',
   InCall = 'in-call',
 }
 

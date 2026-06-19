@@ -19,6 +19,7 @@ export const CallLobbyView: React.FC = () => {
   const currentUser = useCurrentUserStore((s) => s.currentUser);
   const users = useOnlineUsersStore((s) => s.users);
   const selectedAttendantId = useCallViewStore((s) => s.selectedAttendantId);
+  const persistedViewState = useCallViewStore((s) => s.viewState);
   const {
     isSettingsOpen,
     setIsSettingsOpen,
@@ -260,6 +261,7 @@ export const CallLobbyView: React.FC = () => {
   const currentTokens = customerUser?.tokens ?? 0;
 
   const getCallViewState = (): CallViewState => {
+    if (persistedViewState === 'awaiting-answer') return CallViewState.AwaitingAnswer;
     if (!currentCall && !incomingCall) return CallViewState.None;
     return isCallActive ? CallViewState.InCall : CallViewState.Lobby;
   };

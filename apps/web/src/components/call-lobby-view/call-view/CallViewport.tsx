@@ -178,6 +178,29 @@ const renderLobbyViewport = (
   );
 };
 
+const renderAwaitingAnswer = (attendant: IOnlineUser | null) => (
+  <div id="viewport-awaiting-answer" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans animate-fade-in select-none">
+    {attendant?.avatarUrl ? (
+      <img
+        src={attendant.avatarUrl}
+        alt={attendant.name}
+        className="w-20 h-20 rounded-full object-cover border-2 border-brand-ochre/50 mb-3 shadow-none bg-slate-800 animate-pulse"
+        referrerPolicy="no-referrer"
+      />
+    ) : (
+      <div className="w-20 h-20 rounded-full bg-brand-ochre/15 border-2 border-brand-ochre/35 flex items-center justify-center text-brand-ochre font-bold text-2xl mb-3 animate-pulse">
+        {attendant ? getInitials(attendant.name) : 'VC'}
+      </div>
+    )}
+    <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1 animate-pulse">
+      Chamada Iniciada
+    </h3>
+    <p className="text-xs text-slate-300 font-medium select-text">
+      Aguardando que {attendant?.name ?? ''} atenda a ligação...
+    </p>
+  </div>
+);
+
 const renderScreenSharingViewport = () => (
   <div id="viewport-sharing" className="flex flex-col items-center justify-center p-6 text-center max-w-sm">
     <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-4 animate-pulse">
@@ -232,22 +255,27 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   const currentUser = useCurrentUserStore(s => s.currentUser);
   const users = useOnlineUsersStore(s => s.users);
 
-  const isReceiving = currentUser?.id === incomingCall?.attendantId;
+  const isReceiving = incomingCall
+    ? currentUser?.id === incomingCall.attendantId
+    : currentUser?.id === currentCall?.attendantId;
   const currentCallStatus = currentCall?.status || '';
   const isAwaitingOrInterrupted = currentCallStatus === 'call-interrupteded' || !!incomingCall;
 
   const selectedAttendantId = useCallViewStore(s => s.selectedAttendantId);
 
-  const partnerId = isReceiving ? incomingCall?.customerId : incomingCall?.attendantId;
+  const callSource = incomingCall ?? currentCall;
+  const partnerId = isReceiving ? callSource?.customerId : callSource?.attendantId;
   const partner = users.find(u => u.id === partnerId);
 
-  const partnerName = getInitials(partner?.name ?? '');
-  const partnerInitials = partnerName.charAt(0);
+  const partnerName = partner?.name ?? '';
+  const partnerInitials = getInitials(partnerName);
   const partinerAvatarUrl = partner?.avatarUrl;
   const attendant = users.find(u => u.id === selectedAttendantId) ?? null;
 
   if (state === CallViewState.None) {
     content = renderNoneViewport();
+  } else if (state === CallViewState.AwaitingAnswer) {
+    content = renderAwaitingAnswer(attendant);
   } else if (isAwaitingOrInterrupted && isReceiving) {
     content = renderAwaitingAttendant(currentCallStatus, partnerName, partnerInitials, partinerAvatarUrl);
   } else if (isAwaitingOrInterrupted && !isReceiving) {

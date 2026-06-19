@@ -34,7 +34,6 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
           isOpen={true}
           onConfirm={onConfirm}
           onCancel={onCancel}
-          isAttendant={false}
         />
       );
 
@@ -64,7 +63,6 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
           isOpen={true}
           onConfirm={vi.fn()}
           onCancel={vi.fn()}
-          isAttendant={true}
         />
       );
 

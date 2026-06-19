@@ -2,6 +2,7 @@ import { IncomingCallState } from '@repo/shared-types';
 import { IncomingCallStore } from './state.ts';
 import { useOnlineUsersStore } from '../online-users/store.ts';
 import { notifyWsIncomingCall } from '@/src/services/online-users-ws.ts';
+import { useCallViewStore } from '../call-view/store.ts';
 
 export interface IncomingCallActions {
   cancel: () => void;
@@ -33,6 +34,7 @@ export const createIncomingCallActions = (
       const incoming: IncomingCallState = { customerId, attendantId };
       notifyWsIncomingCall(attendantId, incoming);
 
+      useCallViewStore.getState().setViewState('awaiting-answer');
       return { incomingCall: incoming };
     });
   },

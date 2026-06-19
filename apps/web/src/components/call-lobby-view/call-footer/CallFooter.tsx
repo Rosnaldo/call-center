@@ -32,25 +32,23 @@ export const CallFooter: React.FC<CallFooterProps> = ({
   isFullscreen,
   toggleFullscreen,
 }) => {
-  const isCallActive = state === CallViewState.InCall;
+  const showCallControls = state === CallViewState.InCall;
 
   return (
     <div className="bg-[#17191b] p-4 border-t border-[#222528] flex justify-center items-center gap-4">
       <MicToggleButton
-        isCallActive={isCallActive}
         isMuted={isMuted}
         onClick={() => setIsMuted(prev => !prev)}
       />
 
       <CamToggleButton
-        isCallActive={isCallActive}
         isVideoOff={isVideoOff}
         onClick={() => setIsVideoOff(prev => !prev)}
       />
 
-      {isCallActive && (
+      {showCallControls && (
         <ScreenShareToggleButton
-          isCallActive={isCallActive}
+          isCallActive
           isScreenSharing={isScreenSharing}
           onClick={() => setIsScreenSharing(prev => !prev)}
         />
@@ -58,7 +56,7 @@ export const CallFooter: React.FC<CallFooterProps> = ({
 
       <SettingsButton onClick={() => setIsSettingsOpen(true)} />
 
-      {isCallActive && (
+      {showCallControls && (
         <FullscreenToggleButton
           isFullscreen={isFullscreen}
           onClick={toggleFullscreen}
