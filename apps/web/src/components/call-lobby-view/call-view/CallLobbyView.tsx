@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useDevices } from '@daily-co/daily-react';
 import { useCallViewStore } from '../../../states/call-view/store.ts';
 import { useCallStore } from '../../../states/call/store.ts';
 import { useCurrentUserStore } from '../../../states/current-user/store.ts';
@@ -20,55 +19,8 @@ export const CallLobbyView: React.FC = () => {
   const users = useOnlineUsersStore((s) => s.users);
   const selectedAttendantId = useCallViewStore((s) => s.selectedAttendantId);
   const persistedViewState = useCallViewStore((s) => s.viewState);
-  const {
-    isSettingsOpen,
-    setIsSettingsOpen,
-    selectedCamera,
-    setSelectedCamera,
-    selectedMic,
-    setSelectedMic,
-    selectedSpeaker,
-    setSelectedSpeaker,
-  } = useCallViewStore();
 
-  const {
-    cameras: dailyCameras,
-    microphones: dailyMics,
-    speakers: dailySpeakers,
-    setCamera: setDailyCamera,
-    setMicrophone: setDailyMic,
-    setSpeaker: setDailySpeaker,
-  } = useDevices();
-
-  useEffect(() => {
-    const selected = dailyCameras.find(c => c.selected);
-    if (selected) setSelectedCamera(selected.device.deviceId);
-  }, [dailyCameras]);
-
-  useEffect(() => {
-    const selected = dailyMics.find(m => m.selected);
-    if (selected) setSelectedMic(selected.device.deviceId);
-  }, [dailyMics]);
-
-  useEffect(() => {
-    const selected = dailySpeakers.find(s => s.selected);
-    if (selected) setSelectedSpeaker(selected.device.deviceId);
-  }, [dailySpeakers]);
-
-  const handleSetCamera = (deviceId: string) => {
-    setSelectedCamera(deviceId);
-    setDailyCamera(deviceId);
-  };
-
-  const handleSetMic = (deviceId: string) => {
-    setSelectedMic(deviceId);
-    setDailyMic(deviceId);
-  };
-
-  const handleSetSpeaker = (deviceId: string) => {
-    setSelectedSpeaker(deviceId);
-    setDailySpeaker(deviceId);
-  };
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const selectedAttendant = selectedAttendantId ? users.find(u => u.id === selectedAttendantId) : null;
   const draftCall: CallState | undefined = (selectedAttendantId && selectedAttendant && !call && currentUser)
@@ -202,10 +154,6 @@ export const CallLobbyView: React.FC = () => {
     }
   };
 
-  const cameras = dailyCameras.map(c => c.device);
-  const mics = dailyMics.map(m => m.device);
-  const speakers = dailySpeakers.map(s => s.device);
-
   // Billing summary
   const [completedCallSummary, setCompletedCallSummary] = useState<CallState | null>(null);
   const [isCalculatingTokens, setIsCalculatingTokens] = useState(false);
@@ -316,15 +264,6 @@ export const CallLobbyView: React.FC = () => {
           <MediaSettingsModal
             isOpen={isSettingsOpen}
             onClose={() => setIsSettingsOpen(false)}
-            selectedCamera={selectedCamera}
-            setSelectedCamera={handleSetCamera}
-            selectedMic={selectedMic}
-            setSelectedMic={handleSetMic}
-            selectedSpeaker={selectedSpeaker}
-            setSelectedSpeaker={handleSetSpeaker}
-            cameras={cameras}
-            mics={mics}
-            speakers={speakers}
           />
 
           <BillingCalculationModal isOpen={isCalculatingTokens} isAttendant={currentUser?.role === 'attendant'} />

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ConfirmCloseCallModal } from '../../ConfirmCloseCallModal.tsx';
 import { BillingCalculationModal } from '../../BillingCalculationModal.tsx';
@@ -6,11 +6,30 @@ import { BillingSummaryModal } from '../../BillingSummaryModal.tsx';
 import { MediaSettingsModal } from '../../MediaSettingsModal.tsx';
 import { buildCall, buildOnlineUserState } from '../../../../__tests__/builders.ts';
 
-vi.mock('@daily-co/daily-react', () => ({
-  useDaily: () => null,
-  useLocalSessionId: () => '',
-  useVideoTrack: () => ({ persistentTrack: undefined, isOff: true }),
-}));
+vi.mock('../../../../hooks/useDevices.ts', () => ({ useDevices: vi.fn() }));
+vi.mock('../../../../hooks/useMediaTest.ts', () => ({ useMediaTest: vi.fn() }));
+
+import { useDevices } from '../../../../hooks/useDevices.ts';
+import { useMediaTest } from '../../../../hooks/useMediaTest.ts';
+
+const defaultDevicesMock = {
+  cameras: [{ deviceId: 'cam-1', label: 'FaceTime HD Camera' }],
+  microphones: [{ deviceId: 'mic-1', label: 'Built-in Microphone' }],
+  speakers: [{ deviceId: 'spk-1', label: 'Built-in Speaker' }],
+  selectedCamera: 'cam-1',
+  selectedMicrophone: 'mic-1',
+  selectedSpeaker: 'spk-1',
+  setSelectedCamera: vi.fn(),
+  setSelectedMicrophone: vi.fn(),
+  setSelectedSpeaker: vi.fn(),
+};
+
+const defaultMediaTestMock = {
+  videoRef: { current: null },
+  micLevel: 0,
+  startTest: vi.fn(),
+  stopTest: vi.fn(),
+};
 
 describe('Modals Rendering and Behavior Unit Tests', () => {
 
@@ -184,71 +203,56 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
   });
 
   describe('MediaSettingsModal', () => {
-    const defaultProps = {
-      isOpen: true,
-      onClose: vi.fn(),
-      selectedCamera: 'cam-1',
-      setSelectedCamera: vi.fn(),
-      selectedMic: 'mic-1',
-      setSelectedMic: vi.fn(),
-      selectedSpeaker: 'spk-1',
-      setSelectedSpeaker: vi.fn(),
-      cameras: [
-        { deviceId: 'cam-1', label: 'FaceTime HD Camera', kind: 'videoinput', groupId: '' } as MediaDeviceInfo,
-      ],
-      mics: [
-        { deviceId: 'mic-1', label: 'Built-in Microphone', kind: 'audioinput', groupId: '' } as MediaDeviceInfo,
-      ],
-      speakers: [
-        { deviceId: 'spk-1', label: 'Built-in Speaker', kind: 'audiooutput', groupId: '' } as MediaDeviceInfo,
-      ],
-    };
+    beforeEach(() => {
+      vi.mocked(useDevices).mockReturnValue(defaultDevicesMock as any);
+      vi.mocked(useMediaTest).mockReturnValue(defaultMediaTestMock as any);
+    });
 
     it('should return null when isOpen is false', () => {
-      const { container } = render(
-        <MediaSettingsModal {...defaultProps} isOpen={false} />
-      );
+      const { container } = render(<MediaSettingsModal isOpen={false} onClose={vi.fn()} />);
       expect(container.firstChild).toBeNull();
     });
 
     it('renders correctly with options, controls, and triggers onClose on click', () => {
       const onClose = vi.fn();
-      render(<MediaSettingsModal {...defaultProps} onClose={onClose} />);
+      render(<MediaSettingsModal isOpen={true} onClose={onClose} />);
 
       expect(screen.getByText('Configurações de Áudio e Vídeo')).toBeDefined();
       expect(screen.getByText('FaceTime HD Camera')).toBeDefined();
       expect(screen.getByText('Built-in Microphone')).toBeDefined();
       expect(screen.getByText('Built-in Speaker')).toBeDefined();
-      expect(screen.getByText('Câmera indisponível ou desligada')).toBeDefined();
 
-      const doneBtn = screen.getByText('Concluído');
-      fireEvent.click(doneBtn);
+      fireEvent.click(screen.getByText('Concluído'));
       expect(onClose).toHaveBeenCalled();
     });
 
     it('renders list fallback options when no devices detected', () => {
-      render(
-        <MediaSettingsModal
-          {...defaultProps}
-          cameras={[]}
-          mics={[]}
-          speakers={[]}
-        />
-      );
+      vi.mocked(useDevices).mockReturnValue({
+        ...defaultDevicesMock,
+        cameras: [],
+        microphones: [],
+        speakers: [],
+      } as any);
+
+      render(<MediaSettingsModal isOpen={true} onClose={vi.fn()} />);
 
       expect(screen.getByText('Nenhuma câmera detectada')).toBeDefined();
       expect(screen.getByText('Nenhum microfone detectado')).toBeDefined();
       expect(screen.getByText('Dispositivo de áudio padrão')).toBeDefined();
     });
 
-    it('renders camera placeholder when no track available', () => {
-      render(<MediaSettingsModal {...defaultProps} />);
-      expect(screen.getByText('Câmera indisponível ou desligada')).toBeDefined();
+    it('renders camera video element when open', () => {
+      const { container } = render(<MediaSettingsModal isOpen={true} onClose={vi.fn()} />);
+      expect(container.querySelector('video')).not.toBeNull();
     });
 
-    it('renders test speaker button', () => {
-      render(<MediaSettingsModal {...defaultProps} />);
-      expect(screen.getByText('Testar')).toBeDefined();
+    it('calls startTest with selected devices on open', () => {
+      const startTest = vi.fn();
+      vi.mocked(useMediaTest).mockReturnValue({ ...defaultMediaTestMock, startTest } as any);
+
+      render(<MediaSettingsModal isOpen={true} onClose={vi.fn()} />);
+
+      expect(startTest).toHaveBeenCalledWith('cam-1', 'mic-1');
     });
   });
 });
