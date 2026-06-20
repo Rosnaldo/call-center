@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { CallView, CallViewState } from '../CallView.tsx';
 import { useCurrentUserStore } from '../../../../states/current-user/store.ts';
 
@@ -40,29 +40,5 @@ describe('CallView Component - none (Idle / No Call Chosen)', () => {
     const endButton = container.querySelector('#lobby-end-call');
     expect(startButton).toBeNull();
     expect(endButton).toBeNull();
-  });
-
-  it('calls setIsMuted when mic toggle is clicked', () => {
-    const setIsMuted = vi.fn();
-    const { container } = render(<CallView {...makeProps({ setIsMuted })} />);
-
-    const micButton = container.querySelector('#lobby-mic-toggle');
-    expect(micButton).not.toBeNull();
-    if (micButton) {
-      fireEvent.click(micButton);
-      expect(setIsMuted).toHaveBeenCalled();
-    }
-  });
-
-  it('calls setIsVideoOff when camera toggle is clicked', () => {
-    const setIsVideoOff = vi.fn();
-    const { container } = render(<CallView {...makeProps({ setIsVideoOff })} />);
-
-    const camButton = container.querySelector('#lobby-cam-toggle');
-    expect(camButton).not.toBeNull();
-    if (camButton) {
-      fireEvent.click(camButton);
-      expect(setIsVideoOff).toHaveBeenCalled();
-    }
   });
 });

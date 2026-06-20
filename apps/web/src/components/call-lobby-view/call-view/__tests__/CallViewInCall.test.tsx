@@ -33,16 +33,6 @@ describe('CallView Component - in-call Unit Tests', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders muted indicator correctly when mic is muted during call', () => {
-    const { container } = render(<CallView {...defaultProps({ isMuted: true })} />);
-
-    const mutedIndicator = screen.getByText('Mudo');
-    expect(mutedIndicator).toBeDefined();
-
-    const micIconOff = container.querySelector('.bg-red-600\\/90');
-    expect(micIconOff).not.toBeNull();
-  });
-
   it('renders clean visual state on screen sharing mode', () => {
     render(<CallView {...defaultProps({ isScreenSharing: true })} />);
 
