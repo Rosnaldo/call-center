@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useDevicesStore } from "../states/devices/store";
 
 export function useMediaTest() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -8,6 +9,8 @@ export function useMediaTest() {
   const [micLevel, setMicLevel] = useState(0);
   const [isPlayingTestSound, setIsPlayingTestSound] = useState(false);
   const testSoundCtxRef = useRef<AudioContext | null>(null);
+  const cameraOn = useDevicesStore((s) => s.cameraOn);
+  const microphoneOn = useDevicesStore((s) => s.microphoneOn);
 
   const stopTest = useCallback(() => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -29,6 +32,10 @@ export function useMediaTest() {
       });
 
       streamRef.current = stream;
+
+      const { cameraOn, microphoneOn } = useDevicesStore.getState();
+      stream.getVideoTracks().forEach((t) => (t.enabled = cameraOn));
+      stream.getAudioTracks().forEach((t) => (t.enabled = microphoneOn));
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -102,5 +109,25 @@ export function useMediaTest() {
     };
   }, [stopTest, stopTestSound]);
 
-  return { videoRef, micLevel, startTest, stopTest, playTestSound, isPlayingTestSound };
+  const setVideoEnabled = useCallback((enabled: boolean) => {
+    const stream = streamRef.current;
+    if (!stream) return;
+    stream.getVideoTracks().forEach((t) => (t.enabled = enabled));
+  }, []);
+
+  const setAudioEnabled = useCallback((enabled: boolean) => {
+    const stream = streamRef.current;
+    if (!stream) return;
+    stream.getAudioTracks().forEach((t) => (t.enabled = enabled));
+  }, []);
+
+  useEffect(() => {
+      setVideoEnabled(cameraOn);
+  }, [cameraOn, setVideoEnabled]);
+
+  useEffect(() => {
+      setAudioEnabled(microphoneOn);
+  }, [microphoneOn, setAudioEnabled]);
+
+  return { videoRef, micLevel, startTest, stopTest, playTestSound, isPlayingTestSound, setVideoEnabled, setAudioEnabled };
 }

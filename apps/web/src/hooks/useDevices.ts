@@ -1,17 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
-
-export interface MediaDeviceOption {
-  deviceId: string;
-  label: string;
-}
+import { useEffect, useCallback } from "react";
+import { useDevicesStore } from "../states/devices/store";
 
 export function useDevices() {
-  const [cameras, setCameras] = useState<MediaDeviceOption[]>([]);
-  const [microphones, setMicrophones] = useState<MediaDeviceOption[]>([]);
-  const [speakers, setSpeakers] = useState<MediaDeviceOption[]>([]);
-  const [selectedCamera, setSelectedCamera] = useState("");
-  const [selectedMicrophone, setSelectedMicrophone] = useState("");
-  const [selectedSpeaker, setSelectedSpeaker] = useState("");
+  const store = useDevicesStore();
 
   const enumerateDevices = useCallback(async () => {
     try {
@@ -30,17 +21,19 @@ export function useDevices() {
         .filter((d) => d.kind === "audiooutput")
         .map((d) => ({ deviceId: d.deviceId, label: d.label || `Speaker ${d.deviceId.slice(0, 5)}` }));
 
-      setCameras(videoInputs);
-      setMicrophones(audioInputs);
-      setSpeakers(audioOutputs);
+      const state = useDevicesStore.getState();
 
-      if (videoInputs.length && !selectedCamera) setSelectedCamera(videoInputs[0].deviceId);
-      if (audioInputs.length && !selectedMicrophone) setSelectedMicrophone(audioInputs[0].deviceId);
-      if (audioOutputs.length && !selectedSpeaker) setSelectedSpeaker(audioOutputs[0].deviceId);
+      state.setCameras(videoInputs);
+      state.setMicrophones(audioInputs);
+      state.setSpeakers(audioOutputs);
+
+      if (videoInputs.length && !state.selectedCamera) state.setSelectedCamera(videoInputs[0].deviceId);
+      if (audioInputs.length && !state.selectedMicrophone) state.setSelectedMicrophone(audioInputs[0].deviceId);
+      if (audioOutputs.length && !state.selectedSpeaker) state.setSelectedSpeaker(audioOutputs[0].deviceId);
     } catch (err) {
       console.error("Failed to enumerate devices:", err);
     }
-  }, [selectedCamera, selectedMicrophone, selectedSpeaker]);
+  }, []);
 
   useEffect(() => {
     enumerateDevices();
@@ -48,15 +41,5 @@ export function useDevices() {
     return () => navigator.mediaDevices.removeEventListener("devicechange", enumerateDevices);
   }, [enumerateDevices]);
 
-  return {
-    cameras,
-    microphones,
-    speakers,
-    selectedCamera,
-    selectedMicrophone,
-    selectedSpeaker,
-    setSelectedCamera,
-    setSelectedMicrophone,
-    setSelectedSpeaker,
-  };
+  return store;
 }

@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
-import { Camera, Mic, Volume2, X, Sliders } from 'lucide-react';
+import { Camera, CameraOff, Mic, MicOff, Volume2, X, Sliders } from 'lucide-react';
 import { useDevices } from '../../hooks/useDevices.ts';
 import { useMediaTest } from '../../hooks/useMediaTest.ts';
+import { useDevicesStore } from '../../states/devices/store.ts';
 
 interface MediaSettingsModalProps {
   isOpen: boolean;
@@ -16,6 +17,11 @@ export const MediaSettingsModal: React.FC<MediaSettingsModalProps> = ({ isOpen, 
   } = useDevices();
 
   const { videoRef, micLevel, startTest, stopTest, playTestSound, isPlayingTestSound } = useMediaTest();
+
+  const cameraOn = useDevicesStore(s => s.cameraOn);
+  const microphoneOn = useDevicesStore(s => s.microphoneOn);
+  const toggleCamera = useDevicesStore(s => s.toggleCamera);
+  const toggleMicrophone = useDevicesStore(s => s.toggleMicrophone);
 
   useEffect(() => {
     if (isOpen) {
@@ -84,6 +90,15 @@ export const MediaSettingsModal: React.FC<MediaSettingsModalProps> = ({ isOpen, 
                     ))
                   )}
                 </select>
+                <button type="button" onClick={toggleCamera}
+                  className={`mt-1.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider border transition-colors cursor-pointer ${
+                    cameraOn
+                      ? 'bg-[#1e2022] hover:bg-[#222528] border-[#2d3135] text-slate-300 hover:text-white'
+                      : 'bg-red-600/20 hover:bg-red-600/30 border-red-500/30 text-red-400 hover:text-red-300'
+                  }`}>
+                  {cameraOn ? <Camera className="w-3.5 h-3.5 shrink-0" /> : <CameraOff className="w-3.5 h-3.5 shrink-0" />}
+                  {cameraOn ? "Desabilitar Câmera" : "Habilitar Câmera"}
+                </button>
               </div>
 
               <div className="space-y-1.5 min-w-0">
@@ -102,6 +117,15 @@ export const MediaSettingsModal: React.FC<MediaSettingsModalProps> = ({ isOpen, 
                     ))
                   )}
                 </select>
+                <button type="button" onClick={toggleMicrophone}
+                  className={`mt-1.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider border transition-colors cursor-pointer ${
+                    microphoneOn
+                      ? 'bg-[#1e2022] hover:bg-[#222528] border-[#2d3135] text-slate-300 hover:text-white'
+                      : 'bg-red-600/20 hover:bg-red-600/30 border-red-500/30 text-red-400 hover:text-red-300'
+                  }`}>
+                  {microphoneOn ? <Mic className="w-3.5 h-3.5 shrink-0" /> : <MicOff className="w-3.5 h-3.5 shrink-0" />}
+                  {microphoneOn ? "Desabilitar Microfone" : "Habilitar Microfone"}
+                </button>
               </div>
 
               <div className="space-y-1.5 min-w-0">

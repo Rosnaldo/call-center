@@ -13,10 +13,6 @@ export enum CallViewState {
 interface CallViewProps {
   state: CallViewState;
   isScreenSharing: boolean;
-  isVideoOff: boolean;
-  isMuted: boolean;
-  setIsMuted: React.Dispatch<React.SetStateAction<boolean>>;
-  setIsVideoOff: React.Dispatch<React.SetStateAction<boolean>>;
   setIsScreenSharing: React.Dispatch<React.SetStateAction<boolean>>;
   setIsSettingsOpen: (value: boolean) => void;
   isFullscreen: boolean;
@@ -30,10 +26,6 @@ interface CallViewProps {
 export const CallView: React.FC<CallViewProps> = ({
   state,
   isScreenSharing,
-  isVideoOff,
-  isMuted,
-  setIsMuted,
-  setIsVideoOff,
   setIsScreenSharing,
   setIsSettingsOpen,
   isFullscreen,
@@ -52,8 +44,6 @@ export const CallView: React.FC<CallViewProps> = ({
       <CallViewport
         state={state}
         isScreenSharing={isScreenSharing}
-        isVideoOff={isVideoOff}
-        isMuted={isMuted}
         timerText={timerText}
         attendantName={attendantName}
         queueCount={queueCount}
@@ -61,10 +51,6 @@ export const CallView: React.FC<CallViewProps> = ({
       />
       <CallFooter
         state={state}
-        isMuted={isMuted}
-        setIsMuted={setIsMuted}
-        isVideoOff={isVideoOff}
-        setIsVideoOff={setIsVideoOff}
         isScreenSharing={isScreenSharing}
         setIsScreenSharing={setIsScreenSharing}
         setIsSettingsOpen={setIsSettingsOpen}

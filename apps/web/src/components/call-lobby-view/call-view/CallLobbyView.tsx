@@ -40,8 +40,6 @@ export const CallLobbyView: React.FC = () => {
 
   const currentCall = call ?? draftCall;
 
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -248,10 +246,6 @@ export const CallLobbyView: React.FC = () => {
           <CallView
             state={viewState}
             isScreenSharing={isScreenSharing}
-            isVideoOff={isVideoOff}
-            isMuted={isMuted}
-            setIsMuted={setIsMuted}
-            setIsVideoOff={setIsVideoOff}
             setIsScreenSharing={setIsScreenSharing}
             setIsSettingsOpen={setIsSettingsOpen}
             isFullscreen={isFullscreen}

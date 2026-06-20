@@ -1,10 +1,11 @@
 import React from 'react';
-import { ScreenShare, VideoOff, MicOff, Clock, User } from 'lucide-react';
+import { ScreenShare, MicOff, Clock, User } from 'lucide-react';
 import { CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
 import { useIncomingCallStore } from '../../../states/incoming-call/store.ts';
 import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 import { useOnlineUsersStore } from '@/src/states/online-users/store.ts';
+import { useDevicesStore } from '../../../states/devices/store.ts';
 import { IOnlineUser } from '@repo/shared-types';
 import { useCallViewStore } from '../../../states/call-view/store.ts';
 
@@ -18,8 +19,6 @@ const getInitials = (name: string): string => {
 interface CallViewportProps {
   state: CallViewState;
   isScreenSharing: boolean;
-  isVideoOff: boolean;
-  isMuted: boolean;
   timerText?: string;
   attendantName?: string;
   queueCount?: number;
@@ -236,10 +235,10 @@ const renderActiveVideoViewport = (
 export const CallViewport: React.FC<CallViewportProps> = ({
   state,
   isScreenSharing,
-  isMuted,
   timerText,
   currentCall,
 }) => {
+  const microphoneOn = useDevicesStore(s => s.microphoneOn);
   const incomingCall = useIncomingCallStore(s => s.incomingCall);
   let content: React.ReactNode = null;
   const currentUser = useCurrentUserStore(s => s.currentUser);
@@ -309,7 +308,7 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   }
 
   let muteBadge: React.ReactNode = null;
-  if (state === CallViewState.InCall && isMuted) {
+  if (state === CallViewState.InCall && !microphoneOn) {
     muteBadge = (
       <div className="bg-red-600/90 text-white text-[10px] uppercase font-bold px-2.5 py-1.5 rounded-full border border-red-500/20 shadow-md flex items-center gap-1.5 backdrop-blur-sm">
         <MicOff className="w-3 h-3 text-white" />

@@ -1,5 +1,6 @@
 import React from 'react';
 import { CallViewState } from '../call-view/CallView.tsx';
+import { useDevicesStore } from '../../../states/devices/store.ts';
 import { MicToggleButton } from './MicToggleButton.tsx';
 import { CamToggleButton } from './CamToggleButton.tsx';
 import { ScreenShareToggleButton } from './ScreenShareToggleButton.tsx';
@@ -9,10 +10,6 @@ import { CallFooterActions } from './CallFooterActions/CallFooterActions.tsx';
 
 interface CallFooterProps {
   state: CallViewState;
-  isMuted: boolean;
-  setIsMuted: React.Dispatch<React.SetStateAction<boolean>>;
-  isVideoOff: boolean;
-  setIsVideoOff: React.Dispatch<React.SetStateAction<boolean>>;
   isScreenSharing: boolean;
   setIsScreenSharing: React.Dispatch<React.SetStateAction<boolean>>;
   setIsSettingsOpen: (value: boolean) => void;
@@ -22,28 +19,29 @@ interface CallFooterProps {
 
 export const CallFooter: React.FC<CallFooterProps> = ({
   state,
-  isMuted,
-  setIsMuted,
-  isVideoOff,
-  setIsVideoOff,
   isScreenSharing,
   setIsScreenSharing,
   setIsSettingsOpen,
   isFullscreen,
   toggleFullscreen,
 }) => {
+  const cameraOn = useDevicesStore(s => s.cameraOn);
+  const microphoneOn = useDevicesStore(s => s.microphoneOn);
+  const toggleCamera = useDevicesStore(s => s.toggleCamera);
+  const toggleMicrophone = useDevicesStore(s => s.toggleMicrophone);
+
   const showCallControls = state === CallViewState.InCall;
 
   return (
     <div className="bg-[#17191b] p-4 border-t border-[#222528] flex justify-center items-center gap-4">
       <MicToggleButton
-        isMuted={isMuted}
-        onClick={() => setIsMuted(prev => !prev)}
+        isMuted={!microphoneOn}
+        onClick={toggleMicrophone}
       />
 
       <CamToggleButton
-        isVideoOff={isVideoOff}
-        onClick={() => setIsVideoOff(prev => !prev)}
+        isVideoOff={!cameraOn}
+        onClick={toggleCamera}
       />
 
       {showCallControls && (

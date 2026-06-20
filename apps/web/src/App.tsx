@@ -19,6 +19,7 @@ import { UserPainelPage } from './pages/UserPainelPage.tsx';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RoleProtectedRoute } from './role-protected-route.tsx';
 import { useAuthStore } from './states/auth/store.ts';
+import { DailyInit } from './components/DailyInit.tsx';
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ export default function App() {
 
   return (
     <DailyProvider>
+    <DailyInit />
     <QueryClientProvider client={queryClient}>
       <Toaster />
       <Routes>
