@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Camera, CameraOff, Mic, MicOff, Volume2, X, Sliders } from 'lucide-react';
+import { useDaily } from '@daily-co/daily-react';
 import { useDevices } from '../../hooks/useDevices.ts';
 import { useMediaTest } from '../../hooks/useMediaTest.ts';
 import { useDevicesStore } from '../../states/devices/store.ts';
@@ -10,6 +11,7 @@ interface MediaSettingsModalProps {
 }
 
 export const MediaSettingsModal: React.FC<MediaSettingsModalProps> = ({ isOpen, onClose }) => {
+  const daily = useDaily();
   const {
     cameras, microphones, speakers,
     selectedCamera, selectedMicrophone, selectedSpeaker,
@@ -90,7 +92,7 @@ export const MediaSettingsModal: React.FC<MediaSettingsModalProps> = ({ isOpen, 
                     ))
                   )}
                 </select>
-                <button type="button" onClick={toggleCamera}
+                <button type="button" onClick={() => toggleCamera(daily)}
                   className={`mt-1.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider border transition-colors cursor-pointer ${
                     cameraOn
                       ? 'bg-[#1e2022] hover:bg-[#222528] border-[#2d3135] text-slate-300 hover:text-white'
@@ -117,7 +119,7 @@ export const MediaSettingsModal: React.FC<MediaSettingsModalProps> = ({ isOpen, 
                     ))
                   )}
                 </select>
-                <button type="button" onClick={toggleMicrophone}
+                <button type="button" onClick={() => toggleMicrophone(daily)}
                   className={`mt-1.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider border transition-colors cursor-pointer ${
                     microphoneOn
                       ? 'bg-[#1e2022] hover:bg-[#222528] border-[#2d3135] text-slate-300 hover:text-white'

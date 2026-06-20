@@ -5,6 +5,7 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "sonner";
+import DailyIframe from '@daily-co/daily-js';
 import { DailyProvider } from '@daily-co/daily-react';
 import { LoginPage } from './pages/LoginPage.tsx';
 import { ErrorPage } from './pages/ErrorPage.tsx';
@@ -19,9 +20,9 @@ import { UserPainelPage } from './pages/UserPainelPage.tsx';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RoleProtectedRoute } from './role-protected-route.tsx';
 import { useAuthStore } from './states/auth/store.ts';
-import { DailyInit } from './components/DailyInit.tsx';
 
 const queryClient = new QueryClient();
+const callObject = DailyIframe.createCallObject();
 
 export default function App() {
   const ready = useAuthStore((s) => s.ready);
@@ -46,8 +47,7 @@ export default function App() {
   if (!ready && !isSimulation) return <div>Loading session…</div>;
 
   return (
-    <DailyProvider>
-    <DailyInit />
+    <DailyProvider callObject={callObject}>
     <QueryClientProvider client={queryClient}>
       <Toaster />
       <Routes>

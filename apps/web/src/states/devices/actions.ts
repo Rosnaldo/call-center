@@ -1,24 +1,24 @@
-import { useDailyStore } from "../daily/store.ts";
+import type { DailyCall } from "@daily-co/daily-js";
 import { DevicesStateData } from "./state.ts";
 
 export interface DevicesActions {
-  toggleCamera: () => void;
-  toggleMicrophone: () => void;
+  toggleCamera: (daily: DailyCall | null) => void;
+  toggleMicrophone: (daily: DailyCall | null) => void;
 }
 
 export const createDevicesActions = (
   set: (arg: Partial<DevicesStateData> | ((state: DevicesStateData) => Partial<DevicesStateData>)) => void,
   get: () => DevicesStateData,
 ): DevicesActions => ({
-  toggleCamera: () => {
+  toggleCamera: (daily) => {
     const next = !get().cameraOn;
     set({ cameraOn: next });
-    useDailyStore.getState().daily?.setLocalVideo(next);
+    daily?.setLocalVideo(next);
   },
 
-  toggleMicrophone: () => {
+  toggleMicrophone: (daily) => {
     const next = !get().microphoneOn;
     set({ microphoneOn: next });
-    useDailyStore.getState().daily?.setLocalAudio(next);
+    daily?.setLocalAudio(next);
   },
 });
