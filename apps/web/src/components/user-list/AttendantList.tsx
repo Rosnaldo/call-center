@@ -8,7 +8,7 @@ import {
   Video 
 } from 'lucide-react';
 import { useCallViewStore } from '../../states/call-view/store.ts';
-import { useNavigate } from 'react-router-dom';
+
 import { CallState } from '@/src/states/call/state.ts';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
 
@@ -23,9 +23,9 @@ export const AttendantList: React.FC<AttendantListProps> = ({
   users,
   currentUser,
   call,
-  onCompleteCall,
+  onCompleteCall: _onCompleteCall,
 }) => {
-  const navigate = useNavigate();
+
   const selectedAttendantId = useCallViewStore((s) => s.selectedAttendantId);
   const setSelectedAttendantId = useCallViewStore((s) => s.setSelectedAttendantId);
   const setViewState = useCallViewStore((s) => s.setViewState);
@@ -218,7 +218,7 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                         </button>
                       ) : currentUser?.role === 'customer' ? (
                         currentCustInActiveWithThisAtt ? (
-                          <div className="text-xs font-bold text-amber-700 bg-amber-50 px-3 py-2 border border-amber-200 rounded-xl flex items-center gap-1.5 animate-pulse">
+                          <div className="text-xs font-bold text-amber-700 bg-amber-50 px-3 py-2 border border-amber-200 rounded-xl flex items-center gap-1.5 animate-pulse cursor-not-allowed">
                             <Video className="w-3.5 h-3.5" />
                             Conectado
                           </div>
@@ -231,8 +231,8 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                               return (
                                 <button
                                   id={`buy-shortcut-${at.id}`}
-                                  onClick={() => navigate('/payments')}
-                                  className="px-3 py-2 rounded-xl text-xs font-bold bg-brand-ochre hover:bg-brand-ochre-hover text-white transition-all flex items-center gap-1.5 cursor-pointer animate-pulse"
+                                  disabled
+                                  className="px-3 py-2 rounded-xl text-xs font-bold bg-brand-panel text-brand-muted/50 border border-brand-border transition-all flex items-center gap-1.5 cursor-not-allowed"
                                   title="Você está sem tokens. Clique para comprar tokens agora!"
                                 >
                                   Comprar Tokens
@@ -246,11 +246,11 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                               return (
                                 <button
                                   id={`call-deselect-${at.id}`}
-                                  onClick={() => setSelectedAttendantId(null)}
-                                  className="px-3 py-2 rounded-xl text-xs font-bold bg-brand-panel border border-brand-border text-brand-ochre hover:bg-brand-border transition-colors flex items-center gap-1.5 cursor-pointer"
+                                  className="px-3 py-2 rounded-xl text-xs font-bold bg-brand-panel border border-brand-border text-brand-muted/50 transition-colors flex items-center gap-1.5 cursor-not-allowed"
                                   title="Close lobby"
+                                  disabled
                                 >
-                                  <Video className="w-3.5 h-3.5 text-brand-ochre" />
+                                  <Video className="w-3.5 h-3.5 text-brand-muted/40" />
                                   Selecionado
                                 </button>
                               );
@@ -281,15 +281,7 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                           })()
                         )
                       ) : isSelf ? (
-                        activeCall ? (
-                          <button
-                            id={`self-at-complete-${at.id}`}
-                            onClick={() => onCompleteCall(at.id)}
-                            className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-xs px-3 py-2 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
-                          >
-                            Finalizar
-                          </button>
-                        ) : (
+                        activeCall ? null : (
                           <span className="text-xs text-brand-muted font-medium">Aguardando...</span>
                         )
                       ) : null}
