@@ -12,6 +12,18 @@ export function useMediaTest() {
   const cameraOn = useDevicesStore((s) => s.cameraOn);
   const microphoneOn = useDevicesStore((s) => s.microphoneOn);
 
+  const setVideoEnabled = useCallback((enabled: boolean) => {
+    const stream = streamRef.current;
+    if (!stream) return;
+    stream.getVideoTracks().forEach((t) => (t.enabled = enabled));
+  }, []);
+
+  const setAudioEnabled = useCallback((enabled: boolean) => {
+    const stream = streamRef.current;
+    if (!stream) return;
+    stream.getAudioTracks().forEach((t) => (t.enabled = enabled));
+  }, []);
+
   const stopTest = useCallback(() => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     if (streamRef.current) {
@@ -34,8 +46,8 @@ export function useMediaTest() {
       streamRef.current = stream;
 
       const { cameraOn, microphoneOn } = useDevicesStore.getState();
-      stream.getVideoTracks().forEach((t) => (t.enabled = cameraOn));
-      stream.getAudioTracks().forEach((t) => (t.enabled = microphoneOn));
+      setVideoEnabled(cameraOn);
+      setAudioEnabled(microphoneOn);
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -108,18 +120,6 @@ export function useMediaTest() {
       stopTestSound();
     };
   }, [stopTest, stopTestSound]);
-
-  const setVideoEnabled = useCallback((enabled: boolean) => {
-    const stream = streamRef.current;
-    if (!stream) return;
-    stream.getVideoTracks().forEach((t) => (t.enabled = enabled));
-  }, []);
-
-  const setAudioEnabled = useCallback((enabled: boolean) => {
-    const stream = streamRef.current;
-    if (!stream) return;
-    stream.getAudioTracks().forEach((t) => (t.enabled = enabled));
-  }, []);
 
   useEffect(() => {
       setVideoEnabled(cameraOn);

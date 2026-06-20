@@ -8,13 +8,10 @@ import { useOnlineUsersStore } from '@/src/states/online-users/store.ts';
 import { useDevicesStore } from '../../../states/devices/store.ts';
 import { IOnlineUser } from '@repo/shared-types';
 import { useCallViewStore } from '../../../states/call-view/store.ts';
-
-const getInitials = (name: string): string => {
-  if (!name) return 'VC';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-};
+import { VideoTile } from '../VideoTile.tsx';
+import { PartnerAvatar } from '../PartnerAvatar.tsx';
+import { useParticipantIds } from '@daily-co/daily-react';
+import { getInitials } from '@/src/utils/helpers.ts';
 
 interface CallViewportProps {
   state: CallViewState;
@@ -207,27 +204,14 @@ const renderScreenSharingViewport = () => (
   </div>
 );
 
-const renderActiveVideoViewport = (
-  partnerName: string,
-  partnerInitials: string,
-  attendantAvatarUrl?: string
-) => {
-  const videoVisual: React.ReactNode = attendantAvatarUrl ? (
-    <img
-      src={attendantAvatarUrl}
-      alt={partnerName}
-      className="w-24 h-24 md:w-28 md:h-28 rounded-full object-cover shadow-none border-2 border-slate-700/40 transform hover:scale-105 transition duration-300 select-none bg-slate-800"
-      referrerPolicy="no-referrer"
-    />
-  ) : (
-    <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-brand-ochre/15 flex items-center justify-center text-brand-ochre font-bold text-3xl md:text-4xl shadow-none border-2 border-slate-700/40 tracking-wide transform hover:scale-105 transition duration-300 select-none">
-      {partnerInitials}
-    </div>
-  );
+const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ partner }) => {
+  const remoteParticipantIds = useParticipantIds({ filter: "remote" });
+  const id = remoteParticipantIds[0];
+  const [partnerCameraOn, setPartnerCameraOn] = React.useState(true);
 
   return (
     <div id="viewport-active-video" className="flex flex-col items-center">
-      {videoVisual}
+      {partnerCameraOn ? <VideoTile sessionId={id} onCameraChange={setPartnerCameraOn} /> : <PartnerAvatar partner={partner} />}
     </div>
   );
 };
@@ -278,7 +262,7 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   } else if (isScreenSharing) {
     content = renderScreenSharingViewport();
   } else {
-    content = renderActiveVideoViewport(partnerName, partnerInitials, partinerAvatarUrl);
+    content = <ActiveVideoViewport partner={partner} />;
   }
 
   let topLeftBadge: React.ReactNode = null;
