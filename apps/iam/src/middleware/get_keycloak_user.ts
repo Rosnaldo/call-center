@@ -5,8 +5,6 @@ import _ from 'lodash';
 
 import properties from '#properties';
 
-const MOCK_TOKEN_PREFIX = 'mock:';
-
 function getKey(client: JwksClient, header: JwtHeader): Promise<string> {
     return new Promise((resolve, reject) => {
         if (!header.kid) return reject(new Error('No KID found in token header'));
@@ -36,11 +34,8 @@ async function resolveToken(key: string, token: string, issuer: string): Promise
     });
 }
 
-async function defaultValidateToken(token: string): Promise<JwtPayload> {
-    if (properties.nodeEnv === 'test' && token.startsWith(MOCK_TOKEN_PREFIX)) {
-        const encoded = token.slice(MOCK_TOKEN_PREFIX.length);
-        return JSON.parse(Buffer.from(encoded, 'base64').toString('utf8')) as JwtPayload;
-    }
+export async function defaultValidateToken(token: string): Promise<JwtPayload> {
+    if (properties.nodeEnv === 'test') return JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
 
     const payload = jwt.decode(token) as JwtPayload;
     const issuer = payload.iss || '';
@@ -56,10 +51,6 @@ async function defaultValidateToken(token: string): Promise<JwtPayload> {
 
     const key = await getKey(jclient, decodedHeader);
     return await resolveToken(key, token, issuer);
-}
-
-export function makeValidateToken(): (token: string) => Promise<JwtPayload> {
-    return defaultValidateToken;
 }
 
 export const GetKeycloakUser = async (req: Request, res: Response, next: NextFunction) => {

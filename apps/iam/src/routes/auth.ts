@@ -1,5 +1,5 @@
 import { type Application } from 'express';
-import { makeValidateToken } from '#middleware/get_keycloak_user';
+import { defaultValidateToken } from '#middleware/get_keycloak_user';
 
 export default (app: Application) => {
     app.post('/auth/validate-token', async (req, res) => {
@@ -8,8 +8,7 @@ export default (app: Application) => {
             if (!token) {
                 return res.status(401).send({ isError: true, message: 'Token não informado' });
             }
-            const validateToken = makeValidateToken();
-            const payload = await validateToken(token);
+            const payload = await defaultValidateToken(token);
             return res.status(200).send({
                 id: payload.sub,
                 email: payload.email ?? null,
