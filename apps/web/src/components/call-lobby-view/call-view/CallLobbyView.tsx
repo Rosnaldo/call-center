@@ -10,6 +10,7 @@ import { BillingSummaryModal } from '../BillingSummaryModal.tsx';
 import { CallView, CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
 import { useIncomingCallStore } from '../../../states/incoming-call/store.ts';
+import { useBillingStore } from '../../../states/billing/store.ts';
 
 
 export const CallLobbyView: React.FC = () => {
@@ -19,6 +20,7 @@ export const CallLobbyView: React.FC = () => {
   const users = useOnlineUsersStore((s) => s.users);
   const selectedAttendantId = useCallViewStore((s) => s.selectedAttendantId);
   const persistedViewState = useCallViewStore((s) => s.viewState);
+  const initialTokens = useBillingStore((s) => s.initialTokens);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -34,7 +36,6 @@ export const CallLobbyView: React.FC = () => {
         sessionId: '',
         status: 'draft-lobby' as any,
         wasAnswered: false,
-        tokensCharged: 0,
       }
     : undefined;
 
@@ -81,8 +82,8 @@ export const CallLobbyView: React.FC = () => {
     const start = currentCall.startedAt || Date.now();
     const tickBilling = () => {
       const elapsedSinceStart = Date.now() - start;
-      const tokensChargedCount = currentCall.tokensCharged || 1;
-      const nextChargeDelay = tokensChargedCount * blockDurationSeconds * 1000;
+      const tokensCount = initialTokens || 1;
+      const nextChargeDelay = tokensCount * blockDurationSeconds * 1000;
       const remainingMs = nextChargeDelay - elapsedSinceStart;
       const remaining = Math.ceil(remainingMs / 1000);
       setBillingCountdown(remaining >= 0 ? remaining : 0);
@@ -90,7 +91,7 @@ export const CallLobbyView: React.FC = () => {
     tickBilling();
     const interval = setInterval(tickBilling, 1000);
     return () => clearInterval(interval);
-  }, [currentCall?.id, currentCall?.status, isCallActive, currentCall?.tokensCharged, currentCall?.startedAt, blockDurationSeconds]);
+  }, [currentCall?.id, currentCall?.status, isCallActive, initialTokens, currentCall?.startedAt, blockDurationSeconds]);
 
   // Fullscreen
   const containerRef = useRef<HTMLDivElement>(null);
@@ -161,7 +162,7 @@ export const CallLobbyView: React.FC = () => {
   const isCallActiveRef = useRef(isCallActive);
   const lastCallRef = useRef<CallState | null>(null);
 
-  const resetSignal = useCallStore((s) => s.resetSignal);
+  const resetSignal = useBillingStore((s) => s.resetSignal);
   const resetSignalRef = useRef(resetSignal);
 
   if (currentCall && isCallActive) lastCallRef.current = currentCall;

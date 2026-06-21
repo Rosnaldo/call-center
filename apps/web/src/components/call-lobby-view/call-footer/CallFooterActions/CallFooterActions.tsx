@@ -38,7 +38,6 @@ export const CallFooterActions: React.FC = () => {
         sessionId: '',
         status: 'draft-lobby' as any,
         wasAnswered: false,
-        tokensCharged: 0,
       }
     : undefined;
 

@@ -50,7 +50,6 @@ export interface CallState {
     status: 'active' | 'completed';
     wasAnswered: boolean;
     startedAt?: number;
-    tokensCharged?: number;
 }
 
 export type PresenceEventType =

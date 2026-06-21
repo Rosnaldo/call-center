@@ -1,18 +1,23 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { InfoCard } from '../InfoCard.tsx';
 import { buildCall } from '../../../../__tests__/builders.ts';
+import { useBillingStore } from '../../../../states/billing/store.ts';
 
 const BLOCK = 600;
 
-const countdown = (tokensCharged: number, elapsed: number) =>
-  Math.max(0, tokensCharged * BLOCK - elapsed);
+const countdown = (tokens: number, elapsed: number) =>
+  Math.max(0, tokens * BLOCK - elapsed);
+
+beforeEach(() => {
+  useBillingStore.setState({ initialTokens: 1 });
+});
 
 describe('InfoCard – billing countdown timer', () => {
   it('shows the full block duration at t=0', () => {
     render(
       <InfoCard
-        currentCall={buildCall({ tokensCharged: 1 })}
+        currentCall={buildCall()}
         currentTokens={5}
         blockDurationSeconds={BLOCK}
         billingCountdown={countdown(1, 0)}
@@ -23,7 +28,7 @@ describe('InfoCard – billing countdown timer', () => {
   });
 
   it('decrements the countdown as elapsed increases', () => {
-    const call = buildCall({ tokensCharged: 1 });
+    const call = buildCall();
     const { rerender } = render(
       <InfoCard currentCall={call} currentTokens={5} blockDurationSeconds={BLOCK} billingCountdown={countdown(1, 1)} isInCall />
     );
@@ -39,7 +44,7 @@ describe('InfoCard – billing countdown timer', () => {
   it('reaches 0:00 when the full block duration elapses', () => {
     render(
       <InfoCard
-        currentCall={buildCall({ tokensCharged: 1 })}
+        currentCall={buildCall()}
         currentTokens={5}
         blockDurationSeconds={BLOCK}
         billingCountdown={countdown(1, 600)}
@@ -52,7 +57,7 @@ describe('InfoCard – billing countdown timer', () => {
   it('progress bar starts at 100% width at t=0', () => {
     const { container } = render(
       <InfoCard
-        currentCall={buildCall({ tokensCharged: 1 })}
+        currentCall={buildCall()}
         currentTokens={5}
         blockDurationSeconds={BLOCK}
         billingCountdown={600}
@@ -66,7 +71,7 @@ describe('InfoCard – billing countdown timer', () => {
   it('progress bar is at 50% width halfway through the block', () => {
     const { container } = render(
       <InfoCard
-        currentCall={buildCall({ tokensCharged: 1 })}
+        currentCall={buildCall()}
         currentTokens={5}
         blockDurationSeconds={BLOCK}
         billingCountdown={300}
@@ -80,7 +85,7 @@ describe('InfoCard – billing countdown timer', () => {
   it('progress bar reaches 0% width at the end of the block', () => {
     const { container } = render(
       <InfoCard
-        currentCall={buildCall({ tokensCharged: 1 })}
+        currentCall={buildCall()}
         currentTokens={5}
         blockDurationSeconds={BLOCK}
         billingCountdown={0}
@@ -91,10 +96,11 @@ describe('InfoCard – billing countdown timer', () => {
     expect(bar?.style.width).toBe('0%');
   });
 
-  it('shows full countdown at the start of the second token cycle (tokensCharged=2)', () => {
+  it('shows full countdown at the start of the second token cycle (initialTokens=2)', () => {
+    useBillingStore.setState({ initialTokens: 2 });
     render(
       <InfoCard
-        currentCall={buildCall({ tokensCharged: 2 })}
+        currentCall={buildCall()}
         currentTokens={5}
         blockDurationSeconds={BLOCK}
         billingCountdown={countdown(2, 600)}
@@ -105,9 +111,10 @@ describe('InfoCard – billing countdown timer', () => {
   });
 
   it('counts down correctly within the second token cycle', () => {
+    useBillingStore.setState({ initialTokens: 2 });
     render(
       <InfoCard
-        currentCall={buildCall({ tokensCharged: 2 })}
+        currentCall={buildCall()}
         currentTokens={5}
         blockDurationSeconds={BLOCK}
         billingCountdown={countdown(2, 900)}
@@ -117,10 +124,11 @@ describe('InfoCard – billing countdown timer', () => {
     expect(screen.getByText('5:00 / 10:00')).toBeDefined();
   });
 
-  it('displays the correct tokensCharged count in "CONSUMO ATUAL"', () => {
+  it('displays the correct initialTokens count in "CONSUMO ATUAL"', () => {
+    useBillingStore.setState({ initialTokens: 3 });
     render(
       <InfoCard
-        currentCall={buildCall({ tokensCharged: 3 })}
+        currentCall={buildCall()}
         currentTokens={10}
         blockDurationSeconds={BLOCK}
         billingCountdown={countdown(3, 0)}
@@ -133,7 +141,7 @@ describe('InfoCard – billing countdown timer', () => {
   it('displays the customer balance in "Seu Saldo"', () => {
     render(
       <InfoCard
-        currentCall={buildCall({ tokensCharged: 1 })}
+        currentCall={buildCall()}
         currentTokens={7}
         blockDurationSeconds={BLOCK}
         billingCountdown={countdown(1, 0)}
@@ -145,7 +153,7 @@ describe('InfoCard – billing countdown timer', () => {
   });
 
   it('updates Seu Saldo when currentTokens prop changes between renders', () => {
-    const call = buildCall({ tokensCharged: 1 });
+    const call = buildCall();
     const { rerender } = render(
       <InfoCard currentCall={call} currentTokens={5} blockDurationSeconds={BLOCK} billingCountdown={countdown(1, 0)} isInCall />
     );

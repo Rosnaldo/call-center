@@ -1,5 +1,6 @@
 import React from 'react';
-import { CallState } from '@/src/states/call/state.ts';
+import { CallState } from '../../../states/call/state.ts';
+import { useBillingStore } from '../../../states/billing/store.ts';
 
 interface InfoCardProps {
   currentCall?: CallState;
@@ -22,6 +23,8 @@ export const InfoCard: React.FC<InfoCardProps> = ({
   billingCountdown,
   isInCall,
 }) => {
+  const initialTokens = useBillingStore((s) => s.initialTokens);
+
   if (!currentCall) return null;
 
   const pct = blockDurationSeconds > 0 && billingCountdown !== undefined
@@ -59,7 +62,7 @@ export const InfoCard: React.FC<InfoCardProps> = ({
               CONSUMO ATUAL
             </span>
             <span className="bg-[#ebdcb9]/30 text-[#a36500] font-mono font-bold text-[9px] px-2 py-0.5 rounded-md border border-[#ebdcb9]/60">
-              {currentCall.tokensCharged ?? 0} Tk
+              {initialTokens} Tk
             </span>
           </div>
 

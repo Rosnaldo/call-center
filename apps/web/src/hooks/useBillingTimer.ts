@@ -6,16 +6,15 @@
 import { useEffect, useRef } from 'react';
 import { useCallStore } from '../states/call/store.ts';
 import { useOnlineUsersStore } from '../states/online-users/store.ts';
-import { billingRecurringChargeUpdate } from '../states/call/actions.ts';
 import { useTimerStore } from '../states/timer/store.ts';
 import { useCurrentUserStore } from '../states/current-user/store.ts';
-import { CallState, CallStore } from '../states/call/state.ts';
+import { CallState } from '../states/call/state.ts';
 import { OnlineUserState } from '../states/online-users/state.ts';
+import { useBillingStore } from '../states/billing/store.ts';
 
 const BILLING_INTERVAL_SECONDS = 10 * 60; // 600s = 10 minutes per token
 
 export function useBillingTimer(call: CallState | undefined) {
-  const setCallState = useCallStore((s) => s.setCallState);
   const currentUser = useCurrentUserStore((s) => s.currentUser);
 
   const currentUserRef = useRef<OnlineUserState | null>(currentUser);
@@ -64,15 +63,16 @@ export function useBillingTimer(call: CallState | undefined) {
         const isMyCall = user.id === snapshot.customerId || user.id === snapshot.attendantId;
         if (!isMyCall) return;
 
-        const tokensCharged = snapshot.tokensCharged || 1;
-        if (elapsed >= tokensCharged * BILLING_INTERVAL_SECONDS) {
+        const { initialTokens } = useBillingStore.getState();
+        const tokensCount = initialTokens || 1;
+        if (elapsed >= tokensCount * BILLING_INTERVAL_SECONDS) {
           const customerUser = useOnlineUsersStore.getState().users.find(u => u.id === snapshot.customerId);
           const availableTokens = customerUser?.tokens ?? 5;
 
-          if (tokensCharged >= availableTokens) {
-            useCallStore.getState().billingOutOfTokens(snapshot.id);
+          if (tokensCount >= availableTokens) {
+            // useCallStore.getState().billingOutOfTokens(snapshot.id);
           } else {
-            setCallState((prev: CallStore) => billingRecurringChargeUpdate(prev, snapshot.id));
+            useBillingStore.getState().addOneToken();
           }
         }
       }, 1000);
@@ -93,5 +93,5 @@ export function useBillingTimer(call: CallState | undefined) {
       accumulatedRef.current += Math.floor((Date.now() - segmentStartRef.current) / 1000);
       segmentStartRef.current = null;
     }
-  }, [call?.id, call?.status, setCallState]);
+  }, [call?.id, call?.status]);
 }

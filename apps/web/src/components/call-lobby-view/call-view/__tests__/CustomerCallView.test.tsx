@@ -43,7 +43,7 @@ const makeProps = (state: CallViewState, extra = {}) => ({
 beforeEach(() => {
   useCurrentUserStore.setState({ currentUser: customer });
   useOnlineUsersStore.setState({ users: [customer, attendant] });
-  useCallStore.setState({ call: null, resetSignal: 0 });
+  useCallStore.setState({ call: null });
   useCallViewStore.setState({ ...initialCallViewState });
   useIncomingCallStore.setState({ incomingCall: null });
 });
@@ -139,7 +139,7 @@ describe('Customer - CallView state machine', () => {
 
     beforeEach(() => {
       useCallViewStore.setState({ viewState: 'in-call', selectedAttendantId: ATTENDANT_ID });
-      useCallStore.setState({ call, resetSignal: 0 });
+      useCallStore.setState({ call });
     });
 
     it('viewport exibe área de vídeo ativa', () => {

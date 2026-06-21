@@ -3,30 +3,14 @@ import { useOnlineUsersStore } from '../online-users/store.ts';
 import { useCurrentUserStore } from '../current-user/store.ts';
 import { useIncomingCallStore } from '../incoming-call/store.ts';
 import { useCallViewStore } from '../call-view/store.ts';
-import { CallState, CallStore, initialCallStore } from './state.ts';
+import { CallState, initialCallStore } from './state.ts';
 
 import { dailyService } from '../../services/daily.ts';
 
-export function billingRecurringChargeUpdate(
-  prev: CallStore,
-  callId: string
-): CallStore {
-  const call = prev.call?.id === callId ? prev.call : undefined;
-  if (!call) return prev;
-
-  return {
-    ...prev,
-    call: { ...call, tokensCharged: (call.tokensCharged || 1) + 1 }
-  };
-}
-
 export interface CallActions {
-  setCallState: (stateOrFn: any) => void;
   answerIncomingCall: (daily: DailyCall | null) => void;
-
   completeCall: () => void;
   updateCall: (callId: string, updates: Partial<CallState>) => void;
-  billingOutOfTokens: (callId: string) => void;
   resetSimulation: () => void;
 }
 
@@ -34,14 +18,6 @@ export const createCallActions = (
   set: (fn: (state: any) => any) => void
 ): CallActions => {
   return {
-    setCallState: (stateOrFn) => {
-      set((state) => {
-        const prevCallState = { call: state.call };
-        const nextCallState = typeof stateOrFn === 'function' ? stateOrFn(prevCallState) : stateOrFn;
-        return { call: nextCallState.call };
-      });
-    },
-
     answerIncomingCall: (daily) => {
       set((state) => {
         const incomingCall = useIncomingCallStore.getState().incomingCall;
@@ -67,7 +43,6 @@ export const createCallActions = (
           status: 'active',
           wasAnswered: true,
           startedAt: now,
-          tokensCharged: 1,
         };
 
         if (daily) {
@@ -127,26 +102,7 @@ export const createCallActions = (
     },
 
     resetSimulation: () => {
-      set((state) => ({ ...initialCallStore, resetSignal: state.resetSignal + 1 }));
-    },
-
-    billingOutOfTokens: (callId) => {
-      set((state) => {
-        const { updateUser } = useOnlineUsersStore.getState();
-        const { currentUser } = useCurrentUserStore.getState();
-        const call = state.call?.id === callId ? state.call : undefined;
-        if (!call) return {};
-
-        updateUser(call.customerId, { status: 'idle' as const, tokens: 0 });
-        updateUser(call.attendantId, { status: 'idle' as const });
-
-        if (currentUser && currentUser.id === call.customerId) {
-          const { currentUser: fresh, setCurrentUser } = useCurrentUserStore.getState();
-          if (fresh) setCurrentUser({ ...fresh, tokens: 0, status: 'idle' as const });
-        }
-
-        return { call: null };
-      });
+      set(() => ({ ...initialCallStore }));
     },
   };
 };

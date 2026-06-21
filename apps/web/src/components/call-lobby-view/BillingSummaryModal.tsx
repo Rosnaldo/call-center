@@ -1,7 +1,8 @@
 import React from 'react';
 import { Check } from 'lucide-react';
-import { CallState } from '@/src/states/call/state.ts';
-import { OnlineUserState } from '@/src/states/online-users/state';
+import { CallState } from '../../states/call/state.ts';
+import { OnlineUserState } from '../../states/online-users/state';
+import { useBillingStore } from '../../states/billing/store.ts';
 
 interface BillingSummaryModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export const BillingSummaryModal: React.FC<BillingSummaryModalProps> = ({
   callDurationSeconds = 0,
   onClose,
 }) => {
+  const initialTokens = useBillingStore((s) => s.initialTokens);
   const mins = Math.floor(callDurationSeconds / 60);
   const secs = callDurationSeconds % 60;
   const durationText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -61,10 +63,10 @@ export const BillingSummaryModal: React.FC<BillingSummaryModalProps> = ({
 
           <div className="flex items-baseline justify-center gap-1.5 py-1">
             <span className="text-3xl font-black text-brand-dark">
-              {completedCallSummary.tokensCharged ?? 1}
+              {initialTokens}
             </span>
             <span className="text-xs font-bold text-brand-muted">
-              {(completedCallSummary.tokensCharged ?? 1) === 1 ? 'Token' : 'Tokens'}
+              {initialTokens === 1 ? 'Token' : 'Tokens'}
             </span>
           </div>
 

@@ -5,6 +5,7 @@ import { BillingCalculationModal } from '../../BillingCalculationModal.tsx';
 import { BillingSummaryModal } from '../../BillingSummaryModal.tsx';
 import { MediaSettingsModal } from '../../MediaSettingsModal.tsx';
 import { buildCall, buildOnlineUserState } from '../../../../__tests__/builders.ts';
+import { useBillingStore } from '../../../../states/billing/store.ts';
 
 vi.mock('../../../../hooks/useDevices.ts', () => ({ useDevices: vi.fn() }));
 vi.mock('../../../../hooks/useMediaTest.ts', () => ({ useMediaTest: vi.fn() }));
@@ -139,12 +140,13 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
     });
 
     it('renders customer billed summaries', () => {
+      useBillingStore.setState({ initialTokens: 5 });
       const onClose = vi.fn();
       const { container } = render(
         <BillingSummaryModal
           callDurationSeconds={0}
           isOpen={true}
-          completedCallSummary={buildCall({ status: 'completed', tokensCharged: 5, attendantName: 'Dr. John' })}
+          completedCallSummary={buildCall({ status: 'completed', attendantName: 'Dr. John' })}
           currentUser={buildOnlineUserState({ role: 'customer' })}
           onClose={onClose}
         />
@@ -167,12 +169,13 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
       }
     });
 
-    it('renders singular token word when tokensCharged is 1', () => {
+    it('renders singular token word when initialTokens is 1', () => {
+      useBillingStore.setState({ initialTokens: 1 });
       render(
         <BillingSummaryModal
           callDurationSeconds={0}
           isOpen={true}
-          completedCallSummary={buildCall({ status: 'completed', tokensCharged: 1, attendantName: 'Dr. John' })}
+          completedCallSummary={buildCall({ status: 'completed', attendantName: 'Dr. John' })}
           currentUser={buildOnlineUserState({ role: 'customer' })}
           onClose={vi.fn()}
         />
@@ -185,11 +188,12 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
     });
 
     it('renders attendant receive summaries', () => {
+      useBillingStore.setState({ initialTokens: 5 });
       render(
         <BillingSummaryModal
           callDurationSeconds={0}
           isOpen={true}
-          completedCallSummary={buildCall({ status: 'completed', tokensCharged: 5, customerName: 'Alice Mary' })}
+          completedCallSummary={buildCall({ status: 'completed', customerName: 'Alice Mary' })}
           currentUser={buildOnlineUserState({ role: 'attendant' })}
           onClose={vi.fn()}
         />
