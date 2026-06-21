@@ -16,31 +16,40 @@
 jest.mock('src/services/users');
 
 import { EventEmitter } from 'node:events';
-import { IOnlineUser, IUser } from '@repo/shared-types';
+import { IUser } from '@repo/shared-types';
 
-import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
-import { createMockUsers, ADMIN_TOKEN, CUSTOMER_TOKEN } from './helpers/users';
-import { getRedisClient } from '../../iam/src/redis/singleton';
 import { MockSocketServer, createWsClient, simulateMessage } from './helpers/mock-wss';
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { graceTimer } from '../../realtime/src/websocket/grace_timer';
-import * as usersService from 'src/services/users';
 
 import { useOnlineUsersStore } from '../../web/src/states/online-users/store';
 import { initWs } from '../../web/src/services/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/transport';
-import { AuthenticatedWebSocket as RealtimeWs } from '../../realtime/src/websocket/types';
 
-const addToIamMock = usersService.addToIam as jest.Mock;
-const removeFromIamMock = usersService.removeFromIam as jest.Mock;
+const ADMIN_TOKEN = 'mock-admin-token';
+const CUSTOMER_TOKEN = 'mock-customer-token';
 
-const pendingCalls: Array<Promise<unknown>> = [];
+const adminUser: IUser = {
+    _id: 'admin-broadcast-id',
+    slug: 'admin-integration',
+    firstName: 'Admin',
+    lastName: 'Integration',
+    email: 'admin@integration.test',
+    role: 'admin',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+};
 
-async function flushPendingCalls(): Promise<void> {
-    const snapshot = [...pendingCalls];
-    pendingCalls.length = 0;
-    await Promise.all(snapshot);
-}
+const customerUser: IUser = {
+    _id: 'customer-broadcast-id',
+    slug: 'customer-integration',
+    firstName: 'Customer',
+    lastName: 'Integration',
+    email: 'customer@integration.test',
+    role: 'customer',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+};
 
 // ─── bridge helper ──────────────────────────────────────────────────────────
 // Creates a paired (server, webFactory) transport so that server broadcasts
@@ -78,50 +87,13 @@ function createBridgedClient(user: IUser, token: string) {
 // ─── suite ──────────────────────────────────────────────────────────────────
 
 describe('User Logout Flow — Broadcast → Web Store', () => {
-    let iamRequest: IamAgent;
-    let adminUser: IUser;
-    let customerUser: IUser;
     let wss: MockSocketServer;
 
-    beforeAll(async () => {
-        iamRequest = await startIamServer();
-        const users = await createMockUsers();
-        adminUser = users.admin;
-        customerUser = users.customer;
-    });
-
-    afterAll(async () => {
-        await stopIamServer();
-    });
-
-    beforeEach(async () => {
+    beforeEach(() => {
         jest.useFakeTimers();
-
-        await getRedisClient().del('online_users');
-
         wss = new MockSocketServer();
-        pendingCalls.length = 0;
         jest.clearAllMocks();
-
         useOnlineUsersStore.setState({ users: [] });
-
-        addToIamMock.mockImplementation((user: IOnlineUser, token: string) => {
-            const op = iamRequest
-                .post('/online-users/add')
-                .set('Authorization', token)
-                .send(user);
-            pendingCalls.push(op);
-            return op;
-        });
-
-        removeFromIamMock.mockImplementation((userId: string, token: string) => {
-            const op = iamRequest
-                .delete('/online-users/remove')
-                .set('Authorization', token)
-                .send({ id: userId });
-            pendingCalls.push(op);
-            return op;
-        });
     });
 
     afterEach(() => {
@@ -132,107 +104,88 @@ describe('User Logout Flow — Broadcast → Web Store', () => {
 
     // ── test 1 ───────────────────────────────────────────────────────────────
 
-    it('other web clients receive offline status via broadcast', async () => {
+    it('other web clients receive offline status via broadcast', () => {
         // Customer connects first (bridged: server + web initWs)
         const { serverWs: customerWs, webFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         wss.add(customerWs);
         initWs.init(CUSTOMER_TOKEN, webFactory);
         onConnection(wss)(customerWs);
-        await flushPendingCalls();
 
         // Admin connects — handleOpen broadcasts to customer's initWs
         const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
         wss.add(adminWs);
         onConnection(wss)(adminWs);
-        await flushPendingCalls();
 
         // Customer's web store should have both users as idle
-        const storeBeforeLogout = useOnlineUsersStore.getState().users;
-        expect(storeBeforeLogout).toHaveLength(2);
+        expect(useOnlineUsersStore.getState().users).toHaveLength(2);
 
         // Admin logs out — server broadcasts online_users_updated with status 'offline'
         simulateMessage(adminWs, { event: 'user_logout' });
-        await flushPendingCalls();
 
-        const storeAfterLogout = useOnlineUsersStore.getState().users;
-        const adminInStore = storeAfterLogout.find(u => u.id === adminUser._id);
-
+        const adminInStore = useOnlineUsersStore.getState().users.find(u => u.id === adminUser._id);
         expect(adminInStore).toBeDefined();
         expect(adminInStore!.status).toBe('offline');
     });
 
     // ── test 2 ───────────────────────────────────────────────────────────────
 
-    it('logging-out user receives own offline broadcast before terminate', async () => {
+    it('logging-out user receives own offline broadcast before terminate', () => {
         // Admin connects (bridged: server + web initWs)
         const { serverWs: adminWs, webFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         wss.add(adminWs);
         initWs.init(ADMIN_TOKEN, webFactory);
         onConnection(wss)(adminWs);
-        await flushPendingCalls();
 
-        const storeBefore = useOnlineUsersStore.getState().users;
-        const adminBefore = storeBefore.find(u => u.id === adminUser._id);
-        expect(adminBefore?.status).toBe('idle');
+        expect(
+            useOnlineUsersStore.getState().users.find(u => u.id === adminUser._id)?.status,
+        ).toBe('idle');
 
         // Admin logs out — startGracePeriod fires broadcast BEFORE ws.terminate()
         simulateMessage(adminWs, { event: 'user_logout' });
-        await flushPendingCalls();
 
-        const storeAfter = useOnlineUsersStore.getState().users;
-        const adminAfter = storeAfter.find(u => u.id === adminUser._id);
-
+        const adminAfter = useOnlineUsersStore.getState().users.find(u => u.id === adminUser._id);
         expect(adminAfter).toBeDefined();
         expect(adminAfter!.status).toBe('offline');
     });
 
     // ── test 3 ───────────────────────────────────────────────────────────────
 
-    it('grace period expiry does not broadcast removal to web clients', async () => {
+    it('grace period expiry does not broadcast removal to web clients', () => {
         const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
         wss.add(adminWs);
         onConnection(wss)(adminWs);
-        await flushPendingCalls();
 
         const { serverWs: customerWs, webFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         wss.add(customerWs);
         initWs.init(CUSTOMER_TOKEN, webFactory);
         onConnection(wss)(customerWs);
-        await flushPendingCalls();
 
         // Admin logs out — store transitions to offline
         simulateMessage(adminWs, { event: 'user_logout' });
-        await flushPendingCalls();
 
         // Advance past grace period — removeFromIam fires but no broadcast
         jest.advanceTimersByTime(30_001);
-        await flushPendingCalls();
 
         // Web store still has admin as offline (server never broadcast removal)
-        const storeAfterExpiry = useOnlineUsersStore.getState().users;
-        const adminInStore = storeAfterExpiry.find(u => u.id === adminUser._id);
-
+        const adminInStore = useOnlineUsersStore.getState().users.find(u => u.id === adminUser._id);
         expect(adminInStore).toBeDefined();
         expect(adminInStore!.status).toBe('offline');
     });
 
     // ── test 4 ───────────────────────────────────────────────────────────────
 
-    it('reconnect within grace period broadcasts idle status to web clients', async () => {
+    it('reconnect within grace period broadcasts idle status to web clients', () => {
         const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
         wss.add(adminWs);
         onConnection(wss)(adminWs);
-        await flushPendingCalls();
 
         const { serverWs: customerWs, webFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         wss.add(customerWs);
         initWs.init(CUSTOMER_TOKEN, webFactory);
         onConnection(wss)(customerWs);
-        await flushPendingCalls();
 
         // Admin logs out — web store shows admin offline
         simulateMessage(adminWs, { event: 'user_logout' });
-        await flushPendingCalls();
 
         expect(
             useOnlineUsersStore.getState().users.find(u => u.id === adminUser._id)?.status,
@@ -242,16 +195,13 @@ describe('User Logout Flow — Broadcast → Web Store', () => {
         const adminWs2 = createWsClient(adminUser, ADMIN_TOKEN);
         wss.add(adminWs2);
         onConnection(wss)(adminWs2);
-        await flushPendingCalls();
 
         const adminAfterReconnect = useOnlineUsersStore.getState().users.find(
             u => u.id === adminUser._id,
         );
-
         expect(adminAfterReconnect).toBeDefined();
         expect(adminAfterReconnect!.status).toBe('idle');
 
         adminWs2.terminate();
-        await flushPendingCalls();
     });
 });
