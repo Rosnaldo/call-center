@@ -14,6 +14,7 @@ function makeMockToken(payload: {
 
 export const ADMIN_EMAIL = 'admin@integration.test';
 export const CUSTOMER_EMAIL = 'customer@integration.test';
+export const ATTENDANT_EMAIL = 'attendant@integration.test';
 
 export const ADMIN_TOKEN = makeMockToken({
     sub: 'admin-kc-sub',
@@ -29,9 +30,17 @@ export const CUSTOMER_TOKEN = makeMockToken({
     family_name: 'Integration',
 });
 
+export const ATTENDANT_TOKEN = makeMockToken({
+    sub: 'attendant-kc-sub',
+    email: ATTENDANT_EMAIL,
+    given_name: 'Attendant',
+    family_name: 'Integration',
+});
+
 export interface MockUsers {
     admin: IUser;
     customer: IUser;
+    attendant: IUser;
 }
 
 export async function createMockUsers(): Promise<MockUsers> {
@@ -43,5 +52,9 @@ export async function createMockUsers(): Promise<MockUsers> {
         .create({ firstName: 'Customer', lastName: 'Integration', email: CUSTOMER_EMAIL, role: 'customer' })
         .save();
 
-    return { admin, customer };
+    const attendant = await new UserBuilder()
+        .create({ firstName: 'Attendant', lastName: 'Integration', email: ATTENDANT_EMAIL, role: 'attendant' })
+        .save();
+
+    return { admin, customer, attendant };
 }

@@ -1,4 +1,4 @@
-import { IOnlineUser } from '@repo/shared-types';
+import { IOnlineUser, IncomingCallState } from '@repo/shared-types';
 
 // Mirrors the behaviour of apps/web/src/states/online-users/* and
 // apps/web/src/services/online-users-ws.ts without requiring a browser
@@ -7,10 +7,13 @@ import { IOnlineUser } from '@repo/shared-types';
 type WsInboundMessage =
     | { event: 'online_users_updated'; data: IOnlineUser }
     | { event: 'heartbeat_ack' }
-    | { event: 'user_logout'; data: { id: string } };
+    | { event: 'user_logout'; data: { id: string } }
+    | { event: 'incoming_call'; data: { incomingCall: IncomingCallState } }
+    | { event: 'call_cancelled'; data: unknown };
 
 export class WebClientStore {
     private readonly _users = new Map<string, IOnlineUser>();
+    private _incomingCall: IncomingCallState | null = null;
     readonly received: string[] = [];
 
     // Call this for every raw JSON frame that the WebSocket transport delivers.
@@ -24,6 +27,12 @@ export class WebClientStore {
                     break;
                 case 'user_logout':
                     this._users.delete(msg.data.id);
+                    break;
+                case 'incoming_call':
+                    this._incomingCall = msg.data.incomingCall;
+                    break;
+                case 'call_cancelled':
+                    this._incomingCall = null;
                     break;
                 case 'heartbeat_ack':
                     break;
@@ -41,8 +50,17 @@ export class WebClientStore {
         return this._users.get(id);
     }
 
+    getIncomingCall(): IncomingCallState | null {
+        return this._incomingCall;
+    }
+
+    setIncomingCall(incomingCall: IncomingCallState): void {
+        this._incomingCall = incomingCall;
+    }
+
     clear(): void {
         this._users.clear();
+        this._incomingCall = null;
         this.received.length = 0;
     }
 }
