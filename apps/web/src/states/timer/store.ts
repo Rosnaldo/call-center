@@ -7,7 +7,11 @@ import { create } from 'zustand';
 import { TimerState, initialTimerState } from './state.ts';
 import { TimerActions, createTimerActions } from './actions.ts';
 
-export const useTimerStore = create<TimerState & TimerActions>()((set) => ({
+export type TimerStoreInstance = ReturnType<typeof createTimerStore>;
+
+export const createTimerStore = () => create<TimerState & TimerActions>()((set) => ({
   ...initialTimerState,
   ...createTimerActions(set),
 }));
+
+export const useTimerStore = createTimerStore();

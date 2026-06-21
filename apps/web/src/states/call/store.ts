@@ -8,8 +8,9 @@ import { persist } from 'zustand/middleware';
 import { CallStore, initialCallStore } from './state.ts';
 import { CallActions, createCallActions } from './actions.ts';
 
+export type CallStoreInstance = ReturnType<typeof createCallStore>;
 
-export const useCallStore = create<CallStore & CallActions>()(
+export const createCallStore = () => create<CallStore & CallActions>()(
   persist(
     (set) => ({
       ...initialCallStore,
@@ -20,3 +21,5 @@ export const useCallStore = create<CallStore & CallActions>()(
     }
   )
 );
+
+export const useCallStore = createCallStore();

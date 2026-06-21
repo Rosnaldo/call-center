@@ -8,7 +8,9 @@ import { persist } from 'zustand/middleware';
 import { OnlineUsersStore, initialOnlineUsersStore } from './state.ts';
 import { OnlineUsersActions, createOnlineUsersActions } from './actions.ts';
 
-export const useOnlineUsersStore = create<OnlineUsersStore & OnlineUsersActions>()(
+export type OnlineUsersStoreInstance = ReturnType<typeof createOnlineUsersStore>;
+
+export const createOnlineUsersStore = () => create<OnlineUsersStore & OnlineUsersActions>()(
   persist(
     (set) => ({
       ...initialOnlineUsersStore,
@@ -23,3 +25,5 @@ export const useOnlineUsersStore = create<OnlineUsersStore & OnlineUsersActions>
     }
   )
 );
+
+export const useOnlineUsersStore = createOnlineUsersStore();
