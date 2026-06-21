@@ -9,7 +9,7 @@ export interface IDailyRoom {
 
 export interface IDailyRoomController {
     IFindOrCreate: {
-        IInput: Record<string, never>;
+        IInput: { roomName: string };
         IOutput: IDailyRoom;
     };
 }

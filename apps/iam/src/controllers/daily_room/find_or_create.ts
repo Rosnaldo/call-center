@@ -1,17 +1,17 @@
+import { Request } from 'express';
+
 import { logError } from '#utils/log_error';
 import { IDailyRoomController, IDailyRoom } from './params';
 import { Either, successData } from '#utils/either';
 import { dailyApi } from '#apis/daily';
+import { mapString } from '#utils/mapper/string';
+import { AxiosError } from 'axios';
 
+type IInput = IDailyRoomController['IFindOrCreate']['IInput'];
 type IOutput = IDailyRoomController['IFindOrCreate']['IOutput'];
 
 interface Props {
-    mapped: IDailyRoomController['IFindOrCreate']['IInput'];
-}
-
-interface IDailyRoomListResponse {
-    total_count: number;
-    data: IDailyRoom[];
+    mapped: IInput;
 }
 
 export class FindOrCreate {
@@ -26,21 +26,29 @@ export class FindOrCreate {
         return new FindOrCreate();
     }
 
-    public readonly exec = async (_props: Props): Promise<Either<IOutput>> => {
+    public readonly exec = async (props: Props): Promise<Either<IOutput>> => {
         try {
-            const room = await this.findOrCreate();
+            const room = await this.findOrCreate(props.mapped.roomName);
             return successData(room);
         } catch (error: unknown) {
             return logError(error, '/daily/rooms/find-or-create');
         }
     };
 
-    public readonly mapper = (): IDailyRoomController['IFindOrCreate']['IInput'] => ({});
+    public readonly mapper = (body: Request['body']): IInput => ({
+        roomName: mapString(body.roomName),
+    });
 
-    private readonly findOrCreate = async (): Promise<IDailyRoom> => {
-        const { data: list } = await dailyApi.get<IDailyRoomListResponse>('/rooms');
-        if (list.total_count > 0) return list.data[0];
-        const { data: created } = await dailyApi.post<IDailyRoom>('/rooms');
-        return created;
+    private readonly findOrCreate = async (roomName: string): Promise<IDailyRoom> => {
+        try {
+            const { data: room } = await dailyApi.get<IDailyRoom>(`/rooms/${roomName}`);
+            return room;
+        } catch (error: unknown) {
+            if (error instanceof AxiosError && error.response?.status === 404) {
+                const { data: created } = await dailyApi.post<IDailyRoom>('/rooms', { name: roomName });
+                return created;
+            }
+            throw error;
+        }
     };
 }
