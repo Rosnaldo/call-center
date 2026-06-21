@@ -22,7 +22,7 @@ import { MockSocketServer, createWsClient, simulateMessage } from './helpers/moc
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { graceTimer } from '../../realtime/src/websocket/grace_timer';
 
-import { useOnlineUsersStore } from '../../web/src/states/online-users/store';
+import { useOnlineUsersStore } from '../../web/src/states/stores';
 import { initWs } from '../../web/src/services/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/transport';
 

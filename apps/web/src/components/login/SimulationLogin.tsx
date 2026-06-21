@@ -6,8 +6,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, ChevronRight, ShieldCheck } from 'lucide-react';
-import { useOnlineUsersStore } from '@/src/states/online-users/store';
-import { useCurrentUserStore } from '@/src/states/current-user/store';
+import { useOnlineUsersStore, useCurrentUserStore } from '@/src/states/stores';
 
 
 export const SimulationLogin = () => {

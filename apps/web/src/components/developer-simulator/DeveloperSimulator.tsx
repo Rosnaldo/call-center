@@ -14,14 +14,9 @@ import {
   Check,
   Coins
 } from 'lucide-react';
-import { useOnlineUsersStore } from '../../states/online-users/store.ts';
-import { useCallStore } from '../../states/call/store.ts';
-import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
-import { useTimerStore } from '../../states/timer/store.ts';
-import { useIncomingCallStore } from '../../states/incoming-call/store.ts';
+import { useOnlineUsersStore, useCallStore, useCurrentUserStore, useTimerStore, useIncomingCallStore, useCallViewStore } from '../../states/stores.ts';
 
 import { useResetSimulationState } from '@/src/hooks/useResetSimulationState.ts';
-import { useCallViewStore } from '../../states/call-view/store.ts';
 
 interface DeveloperSimulatorProps {
   onAddTokens?: (userId: string, count: number) => void;

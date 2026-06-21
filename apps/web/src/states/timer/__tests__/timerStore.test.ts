@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useTimerStore } from '../store.ts';
+import { useTimerStore } from '../../stores.ts';
 
 beforeEach(() => {
   useTimerStore.getState().reset();

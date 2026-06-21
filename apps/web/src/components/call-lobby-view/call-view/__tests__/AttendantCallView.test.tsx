@@ -2,11 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { CallView, CallViewState } from '../CallView.tsx';
 import { buildCall, buildOnlineUserState } from '../../../../__tests__/builders.ts';
-import { useCurrentUserStore } from '../../../../states/current-user/store.ts';
-import { useOnlineUsersStore } from '../../../../states/online-users/store.ts';
-import { useCallStore } from '../../../../states/call/store.ts';
-import { useCallViewStore } from '../../../../states/call-view/store.ts';
-import { useIncomingCallStore } from '../../../../states/incoming-call/store.ts';
+import { useCurrentUserStore, useOnlineUsersStore, useCallStore, useCallViewStore, useIncomingCallStore } from '../../../../states/stores.ts';
 import { initialCallViewState } from '../../../../states/call-view/state.ts';
 
 const ATTENDANT_ID = 'att-attendant-test-1';

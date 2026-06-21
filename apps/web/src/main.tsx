@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import './index.css';
 import { bootstrap } from './bootstrap.ts';
+import { StoreProvider } from './states/StoreProvider.tsx';
 
 if ((import.meta as any).env?.VITE_ENV !== 'simulation') {
     bootstrap();
@@ -11,8 +12,10 @@ if ((import.meta as any).env?.VITE_ENV !== 'simulation') {
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
-        <BrowserRouter>
-            <App />
-        </BrowserRouter>
+        <StoreProvider>
+            <BrowserRouter>
+                <App />
+            </BrowserRouter>
+        </StoreProvider>
     </StrictMode>,
 );

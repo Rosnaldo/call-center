@@ -2,7 +2,7 @@ import React from 'react';
 import { Check } from 'lucide-react';
 import { CallState } from '../../states/call/state.ts';
 import { OnlineUserState } from '../../states/online-users/state';
-import { useBillingStore } from '../../states/billing/store.ts';
+import { useBillingStore } from '../../states/stores.ts';
 
 interface BillingSummaryModalProps {
   isOpen: boolean;

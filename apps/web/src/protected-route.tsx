@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthentication } from './hooks/auth/useAuthentication.ts';
-import { useCurrentUserStore } from './states/current-user/store.ts';
+import { useCurrentUserStore } from './states/stores.ts';
 import { UnauthorizedView } from './components/error-view/UnauthorizedView.tsx';
 
 export function ProtectedRoute() {

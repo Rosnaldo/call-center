@@ -1,7 +1,6 @@
 import { IOnlineUser, IncomingCallState } from '@repo/shared-types';
-import { useOnlineUsersStore } from '../states/online-users/store';
+import { useOnlineUsersStore, useIncomingCallStore } from '../states/stores';
 import { AuthenticatedWebSocket, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
-import { useIncomingCallStore } from '../states/incoming-call/store';
 
 const WS_URL = import.meta.env.VITE_REALTIME_WS_URL as string | undefined;
 const RECONNECT_DELAY_MS = 3_000;

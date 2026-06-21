@@ -7,7 +7,7 @@ import React from 'react';
 import { 
   Video 
 } from 'lucide-react';
-import { useCallViewStore } from '../../states/call-view/store.ts';
+import { useCallViewStore } from '../../states/stores.ts';
 
 import { CallState } from '@/src/states/call/state.ts';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';

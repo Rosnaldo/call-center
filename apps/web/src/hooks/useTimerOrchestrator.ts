@@ -4,7 +4,7 @@
  */
 
 import { useEffect } from 'react';
-import { useTimerStore } from '../states/timer/store.ts';
+import { useTimerStore } from '../states/stores.ts';
 import { CallState } from '../states/call/state.ts';
 
 /**

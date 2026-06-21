@@ -1,5 +1,5 @@
 import { Navigate } from 'react-router-dom';
-import { useCurrentUserStore } from '../states/current-user/store.ts';
+import { useCurrentUserStore } from '../states/stores.ts';
 
 export function UserPainelPage() {
   const currentUser = useCurrentUserStore((s) => s.currentUser);

@@ -2,7 +2,7 @@ import { mapUserToOnlineUser } from '@repo/shared-types';
 import { keycloak } from '../../api/keycloak';
 import { fetchUser } from '../../services/user';
 import { addOnlineUser } from '../../services/online-users';
-import { useCurrentUserStore } from '../current-user/store';
+import { useCurrentUserStore } from '../stores';
 import { AuthState } from './state';
 
 export interface AuthActions {

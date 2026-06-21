@@ -3,7 +3,7 @@ import { Camera, CameraOff, Mic, MicOff, Volume2, X, Sliders } from 'lucide-reac
 import { useDaily } from '@daily-co/daily-react';
 import { useDevices } from '../../hooks/useDevices.ts';
 import { useMediaTest } from '../../hooks/useMediaTest.ts';
-import { useDevicesStore } from '../../states/devices/store.ts';
+import { useDevicesStore } from '../../states/stores.ts';
 
 interface MediaSettingsModalProps {
   isOpen: boolean;

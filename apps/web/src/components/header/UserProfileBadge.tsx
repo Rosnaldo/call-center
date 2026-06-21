@@ -6,7 +6,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { LogOut, Radio, ChevronDown, Settings, Coins, LayoutDashboard, History } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
+import { useCurrentUserStore } from '@/src/states/stores.ts';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
 
 interface UserProfileBadgeProps {

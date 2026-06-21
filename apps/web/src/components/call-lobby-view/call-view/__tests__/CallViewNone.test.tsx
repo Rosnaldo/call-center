@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { CallView, CallViewState } from '../CallView.tsx';
-import { useCurrentUserStore } from '../../../../states/current-user/store.ts';
+import { useCurrentUserStore } from '../../../../states/stores.ts';
 
 const makeProps = (extra = {}) => ({
   state: CallViewState.None,

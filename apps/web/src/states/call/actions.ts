@@ -1,8 +1,5 @@
 import type { DailyCall } from '@daily-co/daily-js';
-import { useOnlineUsersStore } from '../online-users/store.ts';
-import { useCurrentUserStore } from '../current-user/store.ts';
-import { useIncomingCallStore } from '../incoming-call/store.ts';
-import { useCallViewStore } from '../call-view/store.ts';
+import { useOnlineUsersStore, useCurrentUserStore, useIncomingCallStore, useCallViewStore } from '../stores.ts';
 import { CallState, initialCallStore } from './state.ts';
 
 import { dailyService } from '../../services/daily.ts';

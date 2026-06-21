@@ -8,8 +8,6 @@ import { persist } from 'zustand/middleware';
 import { CurrentUserState, initialCurrentUserState } from './state.ts';
 import { CurrentUserActions, createCurrentUserActions } from './actions.ts';
 
-export type CurrentUserStoreInstance = ReturnType<typeof createCurrentUserStore>;
-
 export const createCurrentUserStore = () => create<CurrentUserState & CurrentUserActions>()(
   persist(
     (set) => ({
@@ -25,5 +23,3 @@ export const createCurrentUserStore = () => create<CurrentUserState & CurrentUse
     }
   )
 );
-
-export const useCurrentUserStore = createCurrentUserStore();

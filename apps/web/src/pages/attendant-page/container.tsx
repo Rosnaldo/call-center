@@ -4,11 +4,8 @@
  */
 
 import React from 'react';
-import { useOnlineUsersStore } from '../../states/online-users/store.ts';
-import { useCallStore } from '../../states/call/store.ts';
-import { useIncomingCallStore } from '../../states/incoming-call/store.ts';
+import { useOnlineUsersStore, useCallStore, useIncomingCallStore, useCurrentUserStore } from '../../states/stores.ts';
 import { AttendantPageUI } from './ui.tsx';
-import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 import { useBillingTimer } from '@/src/hooks/useBillingTimer.ts';
 
 export const AttendantPageContainer: React.FC = () => {

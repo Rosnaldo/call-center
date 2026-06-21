@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useDevicesStore } from "../states/devices/store";
+import { useDevicesStore } from "../states/stores";
 
 export function useMediaTest() {
   const videoRef = useRef<HTMLVideoElement | null>(null);

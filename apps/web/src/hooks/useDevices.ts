@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from "react";
-import { useDevicesStore } from "../states/devices/store";
+import { useDevicesStore } from "../states/stores";
 
 export function useDevices() {
   const store = useDevicesStore();

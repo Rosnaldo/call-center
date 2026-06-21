@@ -2,7 +2,7 @@ import React, { Suspense, useEffect } from 'react';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { UserLists } from './UserLists';
 import { useOnlineUsersQuery } from '../../queries/online-users/query';
-import { useOnlineUsersStore } from '../../states/online-users/store';
+import { useOnlineUsersStore } from '../../states/stores';
 import { OnlineUserState } from '../../states/online-users/state';
 import { CallState } from '../../states/call/state';
 

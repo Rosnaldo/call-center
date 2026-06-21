@@ -5,9 +5,8 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useOnlineUsersStore } from '../../states/online-users/store.ts';
+import { useOnlineUsersStore, useCurrentUserStore } from '../../states/stores.ts';
 import { UserProfilePage } from './ui.tsx';
-import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 import { mytoast } from '@/src/components/toast.tsx';
 import { fetchUserUpload } from '@/src/services/user.ts';
 

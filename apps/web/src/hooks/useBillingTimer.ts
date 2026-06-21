@@ -4,13 +4,9 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { useCallStore } from '../states/call/store.ts';
-import { useOnlineUsersStore } from '../states/online-users/store.ts';
-import { useTimerStore } from '../states/timer/store.ts';
-import { useCurrentUserStore } from '../states/current-user/store.ts';
+import { useCallStore, useOnlineUsersStore, useTimerStore, useCurrentUserStore, useBillingStore } from '../states/stores.ts';
 import { CallState } from '../states/call/state.ts';
 import { OnlineUserState } from '../states/online-users/state.ts';
-import { useBillingStore } from '../states/billing/store.ts';
 
 const BILLING_INTERVAL_SECONDS = 10 * 60; // 600s = 10 minutes per token
 

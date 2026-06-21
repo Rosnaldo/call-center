@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useBillingTimer } from '../useBillingTimer.ts';
-import { useTimerStore } from '../../states/timer/store.ts';
-import { useCallStore } from '../../states/call/store.ts';
+import { useTimerStore, useCallStore } from '../../states/stores.ts';
 import { buildCall } from '../../__tests__/builders.ts';
 import { CallState } from '../../states/call/state.ts';
 

@@ -22,6 +22,7 @@ module.exports = {
     moduleNameMapper: {
         // ESM-only packages that must be stubbed for Jest CJS
         '^@keycloak/keycloak-admin-client$': '<rootDir>/src/mocks/keycloak-client.ts',
+        '^keycloak-js$': '<rootDir>/src/mocks/keycloak-js.ts',
 
         // realtime websocket paths
         '^#websocket/(.*)$': '<rootDir>/../realtime/src/websocket/$1',

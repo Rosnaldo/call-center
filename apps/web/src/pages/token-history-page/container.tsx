@@ -5,11 +5,10 @@
 
 import React, { useState, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useOnlineUsersStore } from '../../states/online-users/store.ts';
+import { useOnlineUsersStore, useCurrentUserStore } from '../../states/stores.ts';
 import { useTransactionsQuery } from '../../queries/transaction/query.ts';
 import { TokenHistoryPageUI } from './ui.tsx';
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
-import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
 
 const TokenHistoryPageDataLoader: React.FC<{

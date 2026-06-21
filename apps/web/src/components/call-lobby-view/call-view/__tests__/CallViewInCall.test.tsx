@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CallView, CallViewState } from '../CallView.tsx';
 import { buildCall } from '../../../../__tests__/builders.ts';
-import { useCurrentUserStore } from '../../../../states/current-user/store.ts';
+import { useCurrentUserStore } from '../../../../states/stores.ts';
 
 const defaultProps = (overrides = {}) => ({
   state: CallViewState.InCall,

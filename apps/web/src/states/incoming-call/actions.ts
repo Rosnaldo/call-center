@@ -1,10 +1,8 @@
 import type { DailyCall } from '@daily-co/daily-js';
 import { IncomingCallState } from '@repo/shared-types';
 import { IncomingCallStore } from './state.ts';
-import { useOnlineUsersStore } from '../online-users/store.ts';
-import { useCallStore } from '../call/store.ts';
+import { useOnlineUsersStore, useCallStore, useCallViewStore } from '../stores.ts';
 import { initWs } from '@/src/services/init-ws.ts';
-import { useCallViewStore } from '../call-view/store.ts';
 import { dailyService } from '@/src/services/daily.ts';
 import { playNotificationChime } from '@/src/utils/helpers.ts';
 

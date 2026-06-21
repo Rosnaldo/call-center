@@ -1,7 +1,7 @@
 import React from 'react';
 import { useDaily } from '@daily-co/daily-react';
 import { CallViewState } from '../call-view/CallView.tsx';
-import { useDevicesStore } from '../../../states/devices/store.ts';
+import { useDevicesStore } from '../../../states/stores.ts';
 import { MicToggleButton } from './MicToggleButton.tsx';
 import { CamToggleButton } from './CamToggleButton.tsx';
 import { ScreenShareToggleButton } from './ScreenShareToggleButton.tsx';

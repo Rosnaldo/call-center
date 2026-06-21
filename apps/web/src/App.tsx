@@ -19,7 +19,7 @@ import { ProtectedRoute } from './protected-route.tsx';
 import { UserPainelPage } from './pages/UserPainelPage.tsx';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RoleProtectedRoute } from './role-protected-route.tsx';
-import { useAuthStore } from './states/auth/store.ts';
+import { useAuthStore } from './states/stores.ts';
 
 const queryClient = new QueryClient();
 const callObject = DailyIframe.createCallObject();

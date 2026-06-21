@@ -12,8 +12,7 @@ vi.mock('../../../utils/helpers.ts', () => ({
 }));
 
 
-import { useCallStore } from '../store.ts';
-import { useOnlineUsersStore } from '../../online-users/store.ts';
+import { useCallStore, useOnlineUsersStore } from '../../stores.ts';
 import { buildCall } from '../../../__tests__/builders.ts';
 
 beforeEach(() => {

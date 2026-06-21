@@ -1,6 +1,6 @@
 import React from 'react';
 import { CallState } from '../../../states/call/state.ts';
-import { useBillingStore } from '../../../states/billing/store.ts';
+import { useBillingStore } from '../../../states/stores.ts';
 
 interface InfoCardProps {
   currentCall?: CallState;

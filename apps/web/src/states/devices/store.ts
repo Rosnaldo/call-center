@@ -11,8 +11,6 @@ interface DevicesSetters {
   setSelectedSpeaker: (deviceId: string) => void;
 }
 
-export type DevicesStoreInstance = ReturnType<typeof createDevicesStore>;
-
 export const createDevicesStore = () => create<DevicesStateData & DevicesActions & DevicesSetters>((set, get) => ({
   ...initialDevicesState,
   ...createDevicesActions(set, get),
@@ -24,5 +22,3 @@ export const createDevicesStore = () => create<DevicesStateData & DevicesActions
   setSelectedMicrophone: (deviceId) => set({ selectedMicrophone: deviceId }),
   setSelectedSpeaker: (deviceId) => set({ selectedSpeaker: deviceId }),
 }));
-
-export const useDevicesStore = createDevicesStore();

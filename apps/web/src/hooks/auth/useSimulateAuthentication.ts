@@ -4,7 +4,7 @@
  */
 
 import { useCallback } from 'react';
-import { useCurrentUserStore } from '../../states/current-user/store.ts';
+import { useCurrentUserStore } from '../../states/stores.ts';
 
 export function useSimulateAuthentication() {
   const currentUser = useCurrentUserStore((s) => s.currentUser);

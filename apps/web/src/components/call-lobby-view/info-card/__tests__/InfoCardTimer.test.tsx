@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { InfoCard } from '../InfoCard.tsx';
 import { buildCall } from '../../../../__tests__/builders.ts';
-import { useBillingStore } from '../../../../states/billing/store.ts';
+import { useBillingStore } from '../../../../states/stores.ts';
 
 const BLOCK = 600;
 

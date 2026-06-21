@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
 import { useDaily } from '@daily-co/daily-react';
-import { useCallStore } from '../../../../states/call/store.ts';
-import { useCallViewStore } from '../../../../states/call-view/store.ts';
-import { useCurrentUserStore } from '../../../../states/current-user/store.ts';
-import { useOnlineUsersStore } from '../../../../states/online-users/store.ts';
-import { useIncomingCallStore } from '../../../../states/incoming-call/store.ts';
+import { useCallStore, useCallViewStore, useCurrentUserStore, useOnlineUsersStore, useIncomingCallStore } from '../../../../states/stores.ts';
 import { CallState } from '@/src/states/call/state.ts';
 import { StartCallButton } from './StartCallButton.tsx';
 import { AnswerCallButton } from './AnswerCallButton.tsx';

@@ -5,8 +5,7 @@
 
 import { useNavigate } from 'react-router-dom';
 import { useAuthentication } from './useAuthentication.ts';
-import { useCurrentUserStore } from '../../states/current-user/store.ts';
-import { useOnlineUsersStore } from '../../states/online-users/store.ts';
+import { useCurrentUserStore, useOnlineUsersStore } from '../../states/stores.ts';
 import { initWs } from '../../services/init-ws.ts';
 
 export function useLogout() {

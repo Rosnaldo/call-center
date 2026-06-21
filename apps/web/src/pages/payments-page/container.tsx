@@ -5,9 +5,8 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useOnlineUsersStore } from '../../states/online-users/store.ts';
+import { useOnlineUsersStore, useCurrentUserStore } from '../../states/stores.ts';
 import { PaymentsPageUI } from './ui.tsx';
-import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 
 export const PaymentsPageContainer: React.FC = () => {
   const navigate = useNavigate();

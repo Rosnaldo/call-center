@@ -5,7 +5,7 @@ import { BillingCalculationModal } from '../../BillingCalculationModal.tsx';
 import { BillingSummaryModal } from '../../BillingSummaryModal.tsx';
 import { MediaSettingsModal } from '../../MediaSettingsModal.tsx';
 import { buildCall, buildOnlineUserState } from '../../../../__tests__/builders.ts';
-import { useBillingStore } from '../../../../states/billing/store.ts';
+import { useBillingStore } from '../../../../states/stores.ts';
 
 vi.mock('../../../../hooks/useDevices.ts', () => ({ useDevices: vi.fn() }));
 vi.mock('../../../../hooks/useMediaTest.ts', () => ({ useMediaTest: vi.fn() }));

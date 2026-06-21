@@ -1,33 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DeveloperSimulator } from '../DeveloperSimulator.tsx';
-import { useCallStore } from '../../../states/call/store.ts';
-import { useOnlineUsersStore } from '../../../states/online-users/store.ts';
-import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
+import { useCallStore, useOnlineUsersStore, useCurrentUserStore } from '../../../states/stores.ts';
 import { buildCall, buildOnlineUserState } from '../../../__tests__/builders.ts';
 import { CallState } from '@/src/states/call/state.ts';
 
-// Mock the call store
-vi.mock('../../../states/call/store.ts', () => {
-  const store = vi.fn();
+vi.mock('../../../states/stores.ts', async (importOriginal) => {
+  const actual = await importOriginal() as any;
   return {
-    useCallStore: store,
-  };
-});
-
-// Mock the user store
-vi.mock('../../../states/online-users/store.ts', () => {
-  const store = vi.fn();
-  return {
-    useOnlineUsersStore: store,
-  };
-});
-
-// Mock the current user store
-vi.mock('@/src/states/current-user/store.ts', () => {
-  const store = vi.fn();
-  return {
-    useCurrentUserStore: store,
+    ...actual,
+    useCallStore: vi.fn(),
+    useOnlineUsersStore: vi.fn(),
+    useCurrentUserStore: vi.fn(),
   };
 });
 
