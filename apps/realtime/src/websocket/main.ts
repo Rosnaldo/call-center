@@ -3,6 +3,7 @@ import { Server } from 'http';
 import url from 'url';
 import { iamApi } from '#apis/iam';
 import { AuthenticatedWebSocket } from './types';
+import { ISocketServer } from './socket';
 import { WsTransport } from './transport';
 import { onConnection } from './connection';
 import { userExists } from 'src/services/users';
@@ -22,7 +23,7 @@ async function verifyToken(token: string): Promise<IamValidateResponse> {
     return response.data;
 }
 
-export function createWebSocketServer(server: Server): WebSocketServer {
+export function createWebSocketServer(server: Server): ISocketServer {
     const wss = new WebSocketServer({ noServer: true });
 
     server.on('upgrade', (req, socket, head) => {
@@ -55,5 +56,5 @@ export function createWebSocketServer(server: Server): WebSocketServer {
 
     wss.on('connection', onConnection(wss) as unknown as (ws: WebSocket) => void);
 
-    return wss;
+    return wss as unknown as ISocketServer;
 }

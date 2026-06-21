@@ -26,14 +26,14 @@ export async function initializeServices(): Promise<void> {
         app.use(express.json({ limit: '10MB' }));
         app.use(express.urlencoded({ extended: false }));
 
-        dailyWebhook(app);
-
         const server = app.listen(Number(Properties.port), '0.0.0.0', () => {
             console.log(`Application running on  ${Properties.port}`);
         });
 
-        createWebSocketServer(server);
+        const wss = createWebSocketServer(server);
         console.log('[WS] WebSocket server attached');
+
+        dailyWebhook(app, wss);
 
         const gracefulShutdown = async () => {
             if (isShuttingDown) return;

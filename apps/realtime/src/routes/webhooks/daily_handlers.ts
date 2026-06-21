@@ -1,4 +1,6 @@
+import { ISocketServer } from '#websocket/socket';
 import { DailyMeetingPayload, DailyParticipantPayload, DailyWaitingParticipantPayload } from './daily_types';
+
 
 export function onMeetingStarted(payload: DailyMeetingPayload): void {
     console.log(`[Daily] meeting.started room=${payload.room}`);
@@ -8,7 +10,7 @@ export function onMeetingEnded(payload: DailyMeetingPayload): void {
     console.log(`[Daily] meeting.ended room=${payload.room}`);
 }
 
-export function onParticipantJoined(payload: DailyParticipantPayload): void {
+export function onParticipantJoined(wss: ISocketServer, payload: DailyParticipantPayload): void {
     console.log(`[Daily] participant.joined room=${payload.room} user=${payload.user_name}`);
 }
 

@@ -1,4 +1,5 @@
 import { type Application, type Request, type Response } from 'express';
+import { ISocketServer } from '#websocket/socket';
 import { DailyWebhookBody } from './daily_types';
 import {
     onMeetingStarted,
@@ -9,7 +10,7 @@ import {
     onWaitingParticipantLeft,
 } from './daily_handlers';
 
-export default (app: Application) => {
+export default (app: Application, wss: ISocketServer) => {
     app.post('/webhooks/daily', (req: Request, res: Response) => {
         const body = req.body as DailyWebhookBody;
 
@@ -21,7 +22,7 @@ export default (app: Application) => {
                 onMeetingEnded(body.payload);
                 break;
             case 'participant.joined':
-                onParticipantJoined(body.payload);
+                onParticipantJoined(wss, body.payload);
                 break;
             case 'participant.left':
                 onParticipantLeft(body.payload);
