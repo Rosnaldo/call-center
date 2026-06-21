@@ -36,7 +36,7 @@ describe('updateCall — wasAnswered', () => {
     const call = buildCall({ status: 'active', wasAnswered: true });
     useCallStore.setState({ call });
 
-    useCallStore.getState().updateCall(call.id, { status: 'call-interrupteded' });
+    useCallStore.getState().updateCall(call.id, { status: 'completed' });
 
     expect(useCallStore.getState().call?.wasAnswered).toBe(true);
   });

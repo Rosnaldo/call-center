@@ -47,11 +47,10 @@ export interface CallState {
     attendantName: string;
     roomName: string;
     sessionId: string;
-    status: 'active' | 'completed' | 'call-interrupteded';
+    status: 'active' | 'completed';
     wasAnswered: boolean;
     startedAt?: number;
     tokensCharged?: number;
-    interruptedAt?: number;
 }
 
 export type PresenceEventType =

@@ -47,7 +47,7 @@ export const createCallActions = (
         const incomingCall = useIncomingCallStore.getState().incomingCall;
         if (!incomingCall) return {};
 
-        if (state.call?.status === 'active' || state.call?.status === 'call-interrupteded') return {};
+        if (state.call?.status === 'active') return {};
 
         const { users, updateUser } = useOnlineUsersStore.getState();
         const { currentUser, setCurrentUser } = useCurrentUserStore.getState();
@@ -115,19 +115,6 @@ export const createCallActions = (
         const call = state.call?.id === callId ? state.call : undefined;
         if (!call) return {};
 
-        if (updates.status === 'call-interrupteded') {
-          updates = { ...updates, interruptedAt: Date.now() };
-        }
-
-        if (call.status === 'call-interrupteded' && updates.status === 'active') {
-          const pauseDuration = call.interruptedAt ? Date.now() - call.interruptedAt : 0;
-          updates = {
-            ...updates,
-            startedAt: (call.startedAt || Date.now()) + pauseDuration,
-            interruptedAt: undefined,
-          };
-        }
-
         if (call.wasAnswered) updates = { ...updates, wasAnswered: true };
 
         updateUser(call.attendantId, { status: 'in-call' as const });
@@ -142,7 +129,6 @@ export const createCallActions = (
     resetSimulation: () => {
       set((state) => ({ ...initialCallStore, resetSignal: state.resetSignal + 1 }));
     },
-
 
     billingOutOfTokens: (callId) => {
       set((state) => {

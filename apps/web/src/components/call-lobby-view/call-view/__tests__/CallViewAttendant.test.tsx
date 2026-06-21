@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { CallView, CallViewState } from '../CallView.tsx';
 import { buildCall, buildOnlineUserState } from '../../../../__tests__/builders.ts';
 import { useCurrentUserStore } from '../../../../states/current-user/store.ts';
@@ -31,7 +31,6 @@ const makeCall = (status: CallState['status']): CallState =>
 const makeProps = (call: CallState, stateOverride?: CallViewState, extra = {}) => ({
   state: stateOverride ?? (
     call.status === 'active' ? CallViewState.InCall :
-    call.status === 'call-interrupteded' ? CallViewState.Lobby :
     CallViewState.Lobby
   ),
   isScreenSharing: false,
@@ -66,14 +65,6 @@ describe('CallView — attendant full call lifecycle', () => {
     it('renders the active in-call viewport after answering', () => {
       const { container } = render(<CallView {...makeProps(makeCall('active'), CallViewState.InCall)} />);
       expect(container.querySelector('#viewport-active-video')).not.toBeNull();
-    });
-
-  });
-
-  describe('3. attendant connection drops (call-interrupteded)', () => {
-    it('shows "Conexão Interrompida" in the viewport', () => {
-      render(<CallView {...makeProps(makeCall('call-interrupteded'))} />);
-      expect(screen.getByText(/Conexão Interrompida/i)).toBeDefined();
     });
 
   });

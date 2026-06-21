@@ -55,7 +55,7 @@ describe('DeveloperSimulator Component Unit Tests', () => {
   });
 
   const defaultProps = {
-    onUpdateCall: vi.fn(),
+
     onAddTokens: vi.fn(),
     onSimulateIncomingCall: vi.fn(),
   };
@@ -162,34 +162,6 @@ describe('DeveloperSimulator Component Unit Tests', () => {
 
     fireEvent.click(add100Btn);
     expect(defaultProps.onAddTokens).toHaveBeenCalledWith('cust-1', 100);
-  });
-
-  it('allows simulating internet drop and reconnect behaviors for active calls', () => {
-    render(<DeveloperSimulator {...defaultProps} />);
-    
-    expect(screen.getByText('Instabilidade de Rede (1)')).toBeDefined();
-    expect(screen.getByText('🟢 Ativa & Fluindo')).toBeDefined();
-
-    // Disconnect Action
-    const disconnectBtn = screen.getByText('Simular Queda de Conexão 🔌');
-    fireEvent.click(disconnectBtn);
-    expect(defaultProps.onUpdateCall).toHaveBeenCalledWith('call-1', {
-      status: 'call-interrupteded'
-    });
-
-    // Feed in an interrupted call state to test reconnect simulation
-    setupStores({
-      call: { ...mockcall, status: 'call-interrupteded' as const },
-    });
-
-    render(<DeveloperSimulator {...defaultProps} />);
-    expect(screen.getByText('🔌 Conexão Interrompida')).toBeDefined();
-
-    const reconnectBtn = screen.getByText('Simular Retorno do Usuário 📡');
-    fireEvent.click(reconnectBtn);
-    expect(defaultProps.onUpdateCall).toHaveBeenCalledWith('call-1', {
-      status: 'active'
-    });
   });
 
   it('switches JSON viewer board tabs and supports click copies', () => {

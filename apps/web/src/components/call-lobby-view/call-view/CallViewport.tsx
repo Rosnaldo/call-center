@@ -231,7 +231,6 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   const isReceiving = incomingCall
     ? currentUser?.id === incomingCall.attendantId
     : currentUser?.id === currentCall?.attendantId;
-  const isInterrupted = currentCall?.status === 'call-interrupteded';
   const hasIncomingCall = !!incomingCall;
 
   const selectedAttendantId = useCallViewStore(s => s.selectedAttendantId);
@@ -249,9 +248,9 @@ export const CallViewport: React.FC<CallViewportProps> = ({
     content = renderNoneViewport();
   } else if (state === CallViewState.AwaitingAnswer) {
     content = renderAwaitingAnswer(attendant);
-  } else if (isInterrupted && isReceiving) {
+  } else if (state === CallViewState.CallInterrupted && isReceiving) {
     content = renderInterruptedAttendant(partnerName, partnerInitials, partinerAvatarUrl);
-  } else if (isInterrupted && !isReceiving) {
+  } else if (state === CallViewState.CallInterrupted && !isReceiving) {
     content = renderInterruptedClient(partnerName, partnerInitials, partinerAvatarUrl);
   } else if (hasIncomingCall && isReceiving) {
     content = renderAwaitingAttendant(partnerName, partnerInitials, partinerAvatarUrl);
@@ -266,7 +265,7 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   }
 
   let topLeftBadge: React.ReactNode = null;
-  if (state === CallViewState.Lobby && !isInterrupted && !hasIncomingCall) {
+  if (state === CallViewState.Lobby && !hasIncomingCall) {
     topLeftBadge = (
       <div className="absolute top-4 left-4 bg-black/75 backdrop-blur-md text-slate-300 text-xs font-medium px-3.5 py-1.5 rounded-full border border-white/5 select-none font-sans shadow-md">
         {partnerName} (Preview)

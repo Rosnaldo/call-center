@@ -49,7 +49,7 @@ export const CallLobbyView: React.FC = () => {
   const blockDurationSeconds = fastBilling ? 10 : 600;
 
   const isCallActive = currentCall
-    ? (currentCall.status === 'active' || currentCall.status === 'call-interrupteded')
+    ? currentCall.status === 'active'
     : false;
 
   // Elapsed timer
@@ -207,6 +207,7 @@ export const CallLobbyView: React.FC = () => {
   const currentTokens = customerUser?.tokens ?? 0;
 
   const getCallViewState = (): CallViewState => {
+    if (persistedViewState === 'call-interrupted') return CallViewState.CallInterrupted;
     if (persistedViewState === 'awaiting-answer') return CallViewState.AwaitingAnswer;
     if (!currentCall && !incomingCall) return CallViewState.None;
     return isCallActive ? CallViewState.InCall : CallViewState.Lobby;

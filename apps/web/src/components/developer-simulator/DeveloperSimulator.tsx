@@ -19,12 +19,11 @@ import { useCallStore } from '../../states/call/store.ts';
 import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 import { useTimerStore } from '../../states/timer/store.ts';
 import { useIncomingCallStore } from '../../states/incoming-call/store.ts';
-import { CallState } from '@/src/states/call/state.ts';
+
 import { useResetSimulationState } from '@/src/hooks/useResetSimulationState.ts';
 import { useCallViewStore } from '../../states/call-view/store.ts';
 
 interface DeveloperSimulatorProps {
-  onUpdateCall?: (callId: string, updates: Partial<CallState>) => void;
   onAddTokens?: (userId: string, count: number) => void;
   onSimulateIncomingCall?: (attendantId: string) => void;
   onSimulateIncomingCallAsCustomer?: (customerId: string, attendantId: string) => void;
@@ -32,7 +31,6 @@ interface DeveloperSimulatorProps {
 
 export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => {
   const {
-    onUpdateCall,
     onAddTokens,
     onSimulateIncomingCall,
     onSimulateIncomingCallAsCustomer,
@@ -56,7 +54,6 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
   const [jsonTab, setJsonTab] = useState<'calls' | 'users' | 'timer' | 'incoming' | 'view-state' | 'full'>('calls');
   const [copied, setCopied] = useState(false);
 
-  const runningCalls = call?.status === 'active' || call?.status === 'call-interrupteded' ? [call] : [];
 
   const timerState = { status: timerStatus, elapsedSeconds: timerElapsed };
 
@@ -145,7 +142,7 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
                       Simular atendente atender ✅
                     </button>
                   </div>
-                ) : (call?.customerId === currentUser.id && ['active', 'call-interrupteded'].includes(call.status)) ? (
+                ) : (call?.customerId === currentUser.id && call.status === 'active') ? (
                   <div className="text-[10px] bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded p-2 text-center">
                     Ligação em andamento.
                   </div>
@@ -195,7 +192,7 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
                   Gere um cenário de chamada recebida de um cliente (se necessário, um novo cliente será criado).
                 </p>
                 {(incomingCall?.attendantId === currentUser.id ||
-                  (call?.attendantId === currentUser.id && ['active', 'call-interrupteded'].includes(call.status))) ? (
+                  (call?.attendantId === currentUser.id && call.status === 'active')) ? (
                   <div className="text-[10px] bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded p-2 text-center">
                     Você já possui uma chamada ativa ou em escala de resposta.
                   </div>
@@ -298,71 +295,52 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
               </button>
             </div>
 
-            {/* Running Calls Instability Simulation Section */}
-            {runningCalls.length > 0 && (
-              <div id="sim-running-calls-section" className="mt-4 pt-4 border-t border-slate-800/80">
-                <h5 className="text-[10px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 mb-2.5">
+            {/* Connection Drop Simulation */}
+            {call?.status === 'active' && (
+              <div id="sim-connection-drop-section" className="pt-2.5 border-t border-slate-800/50">
+                <h5 className="text-[10px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 mb-2">
                   <WifiOff className="w-3 h-3 text-amber-500" />
-                  Instabilidade de Rede ({runningCalls.length})
+                  Instabilidade de Rede
                 </h5>
-                <div className="space-y-2">
-                  {runningCalls.map((call) => (
-                    <div 
-                      key={call.id} 
-                      id={`sim-running-${call.id}`}
-                      className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800/65 flex flex-col gap-2"
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-xs font-semibold text-slate-100 flex items-center gap-1">
-                          <span className="text-blue-400 truncate max-w-[120px]">{call.customerName}</span>
-                          <span className="text-slate-500 text-[10px]">➡</span>
-                          <span className="text-purple-400 truncate max-w-[120px]">{call.attendantName}</span>
+                <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800/65 flex flex-col gap-2">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold text-slate-100 flex items-center gap-1">
+                      <span className="text-blue-400 truncate max-w-[120px]">{call.customerName}</span>
+                      <span className="text-slate-500 text-[10px]">➡</span>
+                      <span className="text-purple-400 truncate max-w-[120px]">{call.attendantName}</span>
+                    </span>
+                    <div className="flex items-center gap-1.5 mt-1 font-sans text-[10px]">
+                      <span className="text-slate-500">Status:</span>
+                      {callViewState.viewState === 'call-interrupted' ? (
+                        <span className="text-amber-500 font-bold flex items-center gap-1">
+                          🔌 Conexão Interrompida
                         </span>
-                         <div className="flex items-center gap-1.5 mt-1 font-sans text-[10px]">
-                          <span className="text-slate-500">Status:</span>
-                          {call.status === 'call-interrupteded' ? (
-                            <span className="text-amber-500 font-bold flex items-center gap-1">
-                              🔌 Conexão Interrompida
-                            </span>
-                          ) : (
-                            <span className="text-emerald-500 font-bold flex items-center gap-1">
-                              🟢 Ativa & Fluindo
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {call.status === 'active' ? (
-                        <button
-                          onClick={() => {
-                            if (onUpdateCall) {
-                              onUpdateCall(call.id, {
-                                status: 'call-interrupteded'
-                              });
-                            }
-                          }}
-                          id={`sim-disconnect-btn-${call.id}`}
-                          className="w-full text-center py-1.5 px-2 text-[11px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-md hover:bg-amber-500 hover:text-slate-950 transition cursor-pointer"
-                        >
-                          Simular Queda de Conexão 🔌
-                        </button>
                       ) : (
-                        <button
-                          onClick={() => {
-                            if (onUpdateCall) {
-                              onUpdateCall(call.id, {
-                                status: 'active'
-                              });
-
-                            }
-                          }}
-                          id={`sim-reconnect-btn-${call.id}`}
-                          className="w-full text-center py-1.5 px-2 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md hover:bg-emerald-500 hover:text-white transition cursor-pointer"
-                        >
-                          Simular Retorno do Usuário 📡
-                        </button>
+                        <span className="text-emerald-500 font-bold flex items-center gap-1">
+                          🟢 Ativa & Fluindo
+                        </span>
                       )}
                     </div>
-                  ))}
+                  </div>
+                  {callViewState.viewState === 'call-interrupted' ? (
+                    <button
+                      type="button"
+                      onClick={() => callViewState.setViewState('in-call')}
+                      id="sim-reconnect-btn"
+                      className="w-full text-center py-1.5 px-2 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md hover:bg-emerald-500 hover:text-white transition cursor-pointer"
+                    >
+                      Simular Retorno do Usuário 📡
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => callViewState.setViewState('call-interrupted')}
+                      id="sim-disconnect-btn"
+                      className="w-full text-center py-1.5 px-2 text-[11px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-md hover:bg-amber-500 hover:text-slate-950 transition cursor-pointer"
+                    >
+                      Simular Queda de Conexão 🔌
+                    </button>
+                  )}
                 </div>
               </div>
             )}

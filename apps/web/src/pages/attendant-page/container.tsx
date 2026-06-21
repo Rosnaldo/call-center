@@ -17,7 +17,7 @@ export const AttendantPageContainer: React.FC = () => {
   const addTokensSimulation = useOnlineUsersStore((state) => state.addTokensSimulation);
   const call = useCallStore((state) => state.call);
   const completeCall = useCallStore((s) => s.completeCall);
-  const updateCall = useCallStore((s) => s.updateCall);
+
   const simulateIncomingCall = useIncomingCallStore((s) => s.simulateIncomingCall);
 
   useBillingTimer(call ?? undefined);
@@ -29,7 +29,6 @@ export const AttendantPageContainer: React.FC = () => {
       call={call}
       completeCall={completeCall}
       addTokensSimulation={addTokensSimulation}
-      updateCall={updateCall}
       simulateIncomingCall={simulateIncomingCall}
     />
   );

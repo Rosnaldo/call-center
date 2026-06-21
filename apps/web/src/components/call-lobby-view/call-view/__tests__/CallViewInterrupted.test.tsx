@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { CallView, CallViewState } from '../CallView.tsx';
-import { buildCall } from '../../../../__tests__/builders.ts';
 import { useCurrentUserStore } from '../../../../states/current-user/store.ts';
 
 const makeProps = (extra = {}) => ({
@@ -28,26 +27,15 @@ describe('CallView Component - Call Interrupted (Awaiting Return) Unit Tests', (
     useCurrentUserStore.setState({ currentUser: null });
   });
 
-  it('does not call handleStartCall with awaiting-answer when resuming interrupted call', () => {
-    const call = buildCall({
-      customerId: 'cust-1',
-      status: 'call-interrupteded',
-    });
-
+  it('renders lobby state when no active call', () => {
     useCurrentUserStore.setState({
-      currentUser: { id: 'cust-1', name: 'Customer', slug: 'customer', email: 'customer@example.com', role: 'customer', avatarUrl: '', status: 'in-call', },
+      currentUser: { id: 'cust-1', name: 'Customer', slug: 'customer', email: 'customer@example.com', role: 'customer', avatarUrl: '', status: 'idle', },
     });
-
-    const handleStartCall = vi.fn();
 
     const { container } = render(
-      <CallView {...makeProps({ currentCall: call, handleStartCall, isAttendant: false })} />
+      <CallView {...makeProps({ currentCall: undefined, isAttendant: false })} />
     );
 
-    const resumeBtn = container.querySelector('#lobby-start-call');
-    if (resumeBtn) {
-      fireEvent.click(resumeBtn);
-      expect(handleStartCall).toHaveBeenCalledOnce();
-    }
+    expect(container.querySelector('#viewport-none')).not.toBeNull();
   });
 });

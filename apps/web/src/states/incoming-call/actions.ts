@@ -74,7 +74,7 @@ export const createIncomingCallActions = (
     const existingIncoming = get().incomingCall;
     const isOccupied =
       (call?.attendantId === attendantId &&
-        ['active', 'call-interrupteded'].includes(call.status)) ||
+        call.status === 'active') ||
       existingIncoming?.attendantId === attendantId;
     if (isOccupied) return;
 

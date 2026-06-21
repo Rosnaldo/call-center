@@ -20,7 +20,6 @@ interface AttendantPageUIProps {
   call: CallState | null;
   completeCall: (attendantId: string, callId?: string, byAttendant?: boolean) => void;
   addTokensSimulation: (userId: string, count: number) => void;
-  updateCall: (callId: string, updates: Partial<CallState>) => void;
   simulateIncomingCall: (attendantId: string) => void;
 }
 
@@ -30,7 +29,6 @@ export const AttendantPageUI: React.FC<AttendantPageUIProps> = ({
   call,
   completeCall,
   addTokensSimulation,
-  updateCall,
   simulateIncomingCall,
 }) => {
   const handleLogout = useLogout();
@@ -89,7 +87,6 @@ export const AttendantPageUI: React.FC<AttendantPageUIProps> = ({
 
           {/* Developer Simulator */}
           <DeveloperSimulator
-            onUpdateCall={updateCall}
             onAddTokens={addTokensSimulation}
             onSimulateIncomingCall={simulateIncomingCall}
           />

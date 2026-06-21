@@ -159,40 +159,4 @@ describe('Customer - CallView state machine', () => {
     });
   });
 
-  describe('call-interrupteded — conexão interrompida', () => {
-    const interruptedCall = buildCall({
-      customerId: CUSTOMER_ID,
-      attendantId: ATTENDANT_ID,
-      attendantName: attendant.name,
-      status: 'call-interrupteded',
-    });
-
-    beforeEach(() => {
-      useCallViewStore.setState({ viewState: 'in-call', selectedAttendantId: ATTENDANT_ID });
-      useCallStore.setState({ call: interruptedCall, resetSignal: 0 });
-      useIncomingCallStore.setState({ incomingCall: null });
-    });
-
-    it('viewport exibe conexão interrompida', () => {
-      const { container } = render(<CallView {...makeProps(CallViewState.InCall, { currentCall: interruptedCall })} />);
-      expect(container.querySelector('#viewport-interrupted-client')).not.toBeNull();
-      expect(screen.getByText(/Conexão Interrompida/i)).toBeDefined();
-    });
-
-    it('viewport exibe mensagem de timer e cobrança pausados', () => {
-      render(<CallView {...makeProps(CallViewState.InCall, { currentCall: interruptedCall })} />);
-      expect(screen.getByText(/Timer e cobrança pausados/i)).toBeDefined();
-    });
-
-    it('footer exibe botão finish', () => {
-      const { container } = render(<CallView {...makeProps(CallViewState.InCall, { currentCall: interruptedCall })} />);
-      expect(container.querySelector('#lobby-end-call')).not.toBeNull();
-    });
-
-    it('footer exibe microfone e câmera', () => {
-      const { container } = render(<CallView {...makeProps(CallViewState.InCall, { currentCall: interruptedCall })} />);
-      expect(container.querySelector('#lobby-mic-toggle')).not.toBeNull();
-      expect(container.querySelector('#lobby-cam-toggle')).not.toBeNull();
-    });
-  });
 });

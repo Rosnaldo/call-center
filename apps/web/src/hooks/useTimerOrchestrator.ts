@@ -18,10 +18,9 @@ export function useTimerOrchestrator(
   isCallActive: boolean
 ): void {
   const callId = currentCall?.id;
-  const isInterrupted = currentCall?.status === 'call-interrupteded';
 
   useEffect(() => {
-    if (!callId || !isCallActive || isInterrupted) {
+    if (!callId || !isCallActive) {
       if (!isCallActive) useTimerStore.getState().stop();
       if (!callId) useTimerStore.getState().reset();
       return;
@@ -39,5 +38,5 @@ export function useTimerOrchestrator(
 
     const interval = setInterval(syncToWallClock, 1000);
     return () => clearInterval(interval);
-  }, [callId, isCallActive, isInterrupted]);
+  }, [callId, isCallActive]);
 }

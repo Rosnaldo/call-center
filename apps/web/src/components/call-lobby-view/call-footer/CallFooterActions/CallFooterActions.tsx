@@ -10,6 +10,7 @@ import { StartCallButton } from './StartCallButton.tsx';
 import { AnswerCallButton } from './AnswerCallButton.tsx';
 import { EndCallButton } from './EndCallButton.tsx';
 import { CancelCallButton } from './CancelCallButton.tsx';
+
 import { ReturnButton } from './ReturnButton.tsx';
 import { ConfirmCloseCallModal } from '../../ConfirmCloseCallModal.tsx';
 
@@ -49,8 +50,7 @@ export const CallFooterActions: React.FC = () => {
   };
 
   const handleReturnCall = () => {
-    if (!currentCall) return;
-    useCallStore.getState().updateCall(currentCall.id, { status: 'active' });
+    useCallViewStore.getState().setViewState('in-call');
   };
 
   const handleAnswerCall = () => {
@@ -117,7 +117,7 @@ export const CallFooterActions: React.FC = () => {
     );
   }
 
-  if (viewState === 'call-interrupteded') {
+  if (viewState === 'call-interrupted') {
     return <ReturnButton onClick={handleReturnCall} />;
   }
 
