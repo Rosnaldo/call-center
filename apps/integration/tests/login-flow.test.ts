@@ -1,48 +1,69 @@
-/**
- * Integration test: sequential user login flow
- *
- * IAM      → real Express app backed by MongoMemoryServer + ioredis-mock
- * Realtime → onConnection handler driven by EventEmitterTransport (no real WebSocket server)
- *
- * Scenario
- * 1. Admin logs in  → onConnection fires → IAM /online-users/add → Redis updated
- * 2. Customer logs in → same flow → IAM Redis contains both users
- */
-
-// Must be called before any import that transitively pulls in src/services/users
 jest.mock('src/services/users');
 
+import { EventEmitter } from 'node:events';
 import { IOnlineUser, IUser } from '@repo/shared-types';
 
 import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
 import { createMockUsers, ADMIN_TOKEN, CUSTOMER_TOKEN } from './helpers/users';
+import { getRedisClient } from '../../iam/src/redis/singleton';
 import { MockSocketServer, createWsClient } from './helpers/mock-wss';
-
-// Realtime connection handler — imported after jest.mock so the mock is in place
 import { onConnection } from '../../realtime/src/websocket/connection';
 
-// Type the auto-mocked module
+import { createStores, Stores } from '../../web/src/states/stores';
+import { initWs } from '../../web/src/services/init-ws';
+import { ITransport, TransportFactory } from '../../web/src/services/transport';
+
 import * as usersService from 'src/services/users';
 
-// ─── helpers ────────────────────────────────────────────────────────────────
-
 const addToIamMock = usersService.addToIam as jest.Mock;
-const pendingIamCalls: Array<Promise<unknown>> = [];
 
-function flushIamCalls(): Promise<void[]> {
-    const snapshot = [...pendingIamCalls];
-    pendingIamCalls.length = 0;
-    return Promise.all(snapshot) as Promise<void[]>;
+const pendingCalls: Array<Promise<unknown>> = [];
+
+async function flushPendingCalls(): Promise<void> {
+    const snapshot = [...pendingCalls];
+    pendingCalls.length = 0;
+    await Promise.all(snapshot);
+}
+
+// ─── bridge helpers ─────────────────────────────────────────────────────────
+
+function createBridgedClient(user: IUser, token: string) {
+    const serverWs = createWsClient(user, token);
+
+    const webFactory: TransportFactory = (_url: string): ITransport => {
+        const transport: ITransport = {
+            get readyState() { return serverWs.readyState; },
+            onopen: null,
+            onmessage: null,
+            onerror: null,
+            onclose: null,
+            send(data: string) {
+                (serverWs as unknown as EventEmitter).emit('message', data);
+            },
+            close() {
+                serverWs.terminate();
+            },
+        };
+
+        (serverWs as unknown as EventEmitter).on('sent', (data: string) => {
+            transport.onmessage?.({ data } as any);
+        });
+
+        return transport;
+    };
+
+    return { serverWs, webFactory };
 }
 
 // ─── suite ──────────────────────────────────────────────────────────────────
 
-describe('User Login Flow', () => {
+describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
     let iamRequest: IamAgent;
     let adminUser: IUser;
     let customerUser: IUser;
-
     let wss: MockSocketServer;
+    let customerStores: Stores;
+    let adminStores: Stores;
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
@@ -55,71 +76,97 @@ describe('User Login Flow', () => {
         await stopIamServer();
     });
 
-    beforeEach(() => {
+    beforeEach(async () => {
+        await getRedisClient().del('online_users');
+
         wss = new MockSocketServer();
-        pendingIamCalls.length = 0;
+        pendingCalls.length = 0;
         jest.clearAllMocks();
 
-        // Wire addToIam to call the real IAM server and track the promise
+        customerStores = createStores();
+        adminStores = createStores();
+
         addToIamMock.mockImplementation((user: IOnlineUser, token: string) => {
             const op = iamRequest
                 .post('/online-users/add')
                 .set('Authorization', token)
                 .send(user);
-            pendingIamCalls.push(op);
+            pendingCalls.push(op);
             return op;
         });
     });
 
-    // ── test 1 ───────────────────────────────────────────────────────────────
-
-    it('admin login adds admin to IAM Redis', async () => {
-        const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
+    it('admin login broadcasts to web store and syncs IAM Redis', async () => {
+        const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
         wss.add(adminWs);
+        wss.add(customerWs);
+
+        initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
+        // ── admin connects ───────────────────────────────────────────────
         onConnection(wss)(adminWs);
+        await flushPendingCalls();
 
-        // Wait for the fire-and-forget addToIam HTTP call to complete
-        await flushIamCalls();
+        // customer's store receives admin via broadcast
+        const adminInStore = customerStores.onlineUsers.getState().users
+            .find(u => u.id === adminUser._id);
+        expect(adminInStore).toBeDefined();
+        expect(adminInStore!.status).toBe('idle');
+        expect(adminInStore!.role).toBe('admin');
 
-        // IAM Redis should contain admin
+        // IAM Redis contains admin
         const listRes = await iamRequest
             .get('/online-users/list')
             .set('Authorization', ADMIN_TOKEN);
-
         expect(listRes.status).toBe(200);
-        const redisUsers: IOnlineUser[] = listRes.body.users;
-        expect(redisUsers).toHaveLength(1);
-        expect(redisUsers[0].id).toBe(adminUser._id);
-        expect(redisUsers[0].role).toBe('admin');
+        expect(listRes.body.users).toHaveLength(1);
+        expect(listRes.body.users[0].id).toBe(adminUser._id);
+        expect(listRes.body.users[0].status).toBe('idle');
     });
 
-    // ── test 2 ───────────────────────────────────────────────────────────────
+    it('customer login after admin broadcasts both users to web store', async () => {
+        const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
-    it('customer login after admin → both appear in Redis', async () => {
-        // ── re-connect admin (wss is fresh per beforeEach) ───────────────────
-        const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
         wss.add(adminWs);
-        onConnection(wss)(adminWs);
-        await flushIamCalls();
-
-        // ── customer connects ─────────────────────────────────────────────────
-        const customerWs = createWsClient(customerUser, CUSTOMER_TOKEN);
         wss.add(customerWs);
-        onConnection(wss)(customerWs);
-        await flushIamCalls();
 
-        // ── assert Redis has both users ───────────────────────────────────────
+        initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
+        // ── admin connects ───────────────────────────────────────────────
+        onConnection(wss)(adminWs);
+        await flushPendingCalls();
+
+        // ── customer connects ────────────────────────────────────────────
+        onConnection(wss)(customerWs);
+        await flushPendingCalls();
+
+        // customer's store has both users as idle
+        const users = customerStores.onlineUsers.getState().users;
+        expect(users).toHaveLength(2);
+
+        const adminInStore = users.find(u => u.id === adminUser._id);
+        expect(adminInStore).toBeDefined();
+        expect(adminInStore!.status).toBe('idle');
+
+        const customerInStore = users.find(u => u.id === customerUser._id);
+        expect(customerInStore).toBeDefined();
+        expect(customerInStore!.status).toBe('idle');
+
+        // IAM Redis has both users
         const listRes = await iamRequest
             .get('/online-users/list')
             .set('Authorization', ADMIN_TOKEN);
-
         expect(listRes.status).toBe(200);
-        const redisUsers: IOnlineUser[] = listRes.body.users;
-        expect(redisUsers).toHaveLength(2);
+        expect(listRes.body.users).toHaveLength(2);
 
-        const redisIds = redisUsers.map((u) => u.id);
+        const redisIds = listRes.body.users.map((u: IOnlineUser) => u.id);
         expect(redisIds).toContain(adminUser._id);
         expect(redisIds).toContain(customerUser._id);
+        expect(listRes.body.users.every((u: IOnlineUser) => u.status === 'idle')).toBe(true);
     });
 });

@@ -20,7 +20,6 @@ export const onConnection = (wss: ISocketServer) => (ws: AuthenticatedWebSocket)
     const startGracePeriod = createGracePeriod(wss, user, token);
 
     const hb = createHeartbeat(ws, () => {
-        // startGracePeriod();
         ws.terminate();
     });
 
