@@ -6,6 +6,7 @@ import { GetUser } from '#middleware/get_user';
 import { authorizeMiddleware } from '#middleware/authorize';
 import { UserRole } from '@repo/shared-types';
 import { GetKeycloakUser } from '#middleware/get_keycloak_user';
+import { cacheMiddleware } from '#middleware/cache';
 
 export default (app: Application) => {
     app.get(
@@ -39,6 +40,7 @@ export default (app: Application) => {
     app.get(
         '/users/find-by-slug',
         GetKeycloakUser,
+        cacheMiddleware((req) => `user:slug:${req.query.slug}`),
         async (req, res) => {
             const controller = new UserController();
             const params = controller.findBySlug.mapper(req.query);
@@ -52,6 +54,7 @@ export default (app: Application) => {
     app.get(
         '/users/exists',
         GetKeycloakUser,
+        cacheMiddleware((req) => `user:email:${req.query.email}`),
         async (req, res) => {
             const controller = new UserController();
             const params = controller.exists!.mapper({ ...req.query, userKc: req.userKc });
