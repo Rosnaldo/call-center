@@ -11,6 +11,7 @@ import cors from 'cors';
 import Properties from './properties';
 import './extensions/transform_in_dict';
 import { createWebSocketServer } from './websocket/main';
+import dailyWebhook from './routes/webhooks/daily';
 
 
 const app = express();
@@ -24,6 +25,8 @@ export async function initializeServices(): Promise<void> {
 
         app.use(express.json({ limit: '10MB' }));
         app.use(express.urlencoded({ extended: false }));
+
+        dailyWebhook(app);
 
         const server = app.listen(Number(Properties.port), '0.0.0.0', () => {
             console.log(`Application running on  ${Properties.port}`);

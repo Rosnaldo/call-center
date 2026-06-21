@@ -1,5 +1,5 @@
 import type { DailyCall } from '@daily-co/daily-js';
-import { useOnlineUsersStore, useCurrentUserStore, useIncomingCallStore, useCallViewStore } from '../stores.ts';
+import { useOnlineUsersStore, useCurrentUserStore, useIncomingCallStore, useCallViewStore, useDevicesStore } from '../stores.ts';
 import { CallState, initialCallStore } from './state.ts';
 
 import { dailyService } from '../../services/daily.ts';
@@ -28,22 +28,15 @@ export const createCallActions = (
         const attendant = users.find(u => u.id === incomingCall.attendantId);
         if (!customer || !attendant) return {};
 
-        const now = Date.now();
-        const newCall: CallState = {
-          id: `call-${now}-${Math.floor(Math.random() * 1000)}`,
-          customerId: incomingCall.customerId,
-          customerName: customer.name,
-          attendantId: incomingCall.attendantId,
-          attendantName: attendant.name,
-          roomName: attendant.slug,
-          sessionId: '',
-          status: 'active',
-          wasAnswered: true,
-          startedAt: now,
-        };
-
         if (daily) {
-          dailyService.join(daily, attendant.slug);
+          const { cameraOn, microphoneOn } = useDevicesStore.getState();
+          dailyService.join(daily, {
+            room: attendant.slug,
+            userName: attendant.name,
+            userData: { id: attendant.id, role: attendant.role },
+            startAudioOff: !microphoneOn,
+            startVideoOff: !cameraOn,
+          });
         }
 
         updateUser(incomingCall.customerId, { status: 'in-call' as const });
@@ -54,8 +47,6 @@ export const createCallActions = (
 
         useIncomingCallStore.getState().clearIncomingCall();
         useCallViewStore.getState().setViewState('in-call');
-
-        return { call: newCall };
       });
     },
 

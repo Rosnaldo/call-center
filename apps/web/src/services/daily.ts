@@ -5,9 +5,23 @@ function roomUrl(roomName: string): string {
   return `https://${domain ?? 'meetcent'}.daily.co/${roomName}`;
 }
 
+interface JoinOptions {
+  room: string;
+  userName: string;
+  userData: Record<string, unknown>;
+  startAudioOff: boolean;
+  startVideoOff: boolean;
+}
+
 export const dailyService = {
-  async join(daily: DailyCall, room: string) {
-    await daily.join({ url: roomUrl(room) });
+  async join(daily: DailyCall, options: JoinOptions) {
+    await daily.join({
+      url: roomUrl(options.room),
+      userName: options.userName,
+      userData: options.userData,
+      startAudioOff: options.startAudioOff,
+      startVideoOff: options.startVideoOff,
+    });
   },
 
   async leave(daily: DailyCall) {

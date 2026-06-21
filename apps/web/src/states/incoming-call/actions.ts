@@ -1,7 +1,7 @@
 import type { DailyCall } from '@daily-co/daily-js';
 import { IncomingCallState } from '@repo/shared-types';
 import { IncomingCallStore } from './state.ts';
-import { useOnlineUsersStore, useCallStore, useCallViewStore } from '../stores.ts';
+import { useOnlineUsersStore, useCallStore, useCallViewStore, useDevicesStore } from '../stores.ts';
 import { initWs } from '@/src/services/init-ws.ts';
 import { dailyService } from '@/src/services/daily.ts';
 import { playNotificationChime } from '@/src/utils/helpers.ts';
@@ -53,7 +53,14 @@ export const createIncomingCallActions = (
       playNotificationChime();
 
       if (daily) {
-        dailyService.join(daily, attendant.slug);
+        const { cameraOn, microphoneOn } = useDevicesStore.getState();
+        dailyService.join(daily, {
+          room: attendant.slug,
+          userName: customer.name,
+          userData: { id: customer.id, role: customer.role },
+          startAudioOff: !microphoneOn,
+          startVideoOff: !cameraOn,
+        });
       }
 
       useCallViewStore.getState().setViewState('awaiting-answer');
