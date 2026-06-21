@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useDaily } from '@daily-co/daily-react';
 import { useCallStore } from '../../../../states/call/store.ts';
 import { useCallViewStore } from '../../../../states/call-view/store.ts';
 import { useCurrentUserStore } from '../../../../states/current-user/store.ts';
@@ -13,6 +14,7 @@ import { ReturnButton } from './ReturnButton.tsx';
 import { ConfirmCloseCallModal } from '../../ConfirmCloseCallModal.tsx';
 
 export const CallFooterActions: React.FC = () => {
+  const daily = useDaily();
   const call = useCallStore(s => s.call);
   const incomingCall = useIncomingCallStore(s => s.incomingCall);
   const sendIncomingCall = useIncomingCallStore(s => s.sendIncomingCall);
@@ -43,7 +45,7 @@ export const CallFooterActions: React.FC = () => {
   const isReceiving = currentUser?.id === incomingCall?.attendantId;
 
   const handleStartCall = () => {
-    sendIncomingCall(currentUser?.id, selectedAttendantId);
+    sendIncomingCall(daily, currentUser?.id, selectedAttendantId);
   };
 
   const handleReturnCall = () => {
@@ -52,7 +54,7 @@ export const CallFooterActions: React.FC = () => {
   };
 
   const handleAnswerCall = () => {
-    useCallStore.getState().answerIncomingCall();
+    useCallStore.getState().answerIncomingCall(daily);
   };
 
   const handleCancelCall = () => {

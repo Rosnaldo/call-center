@@ -59,7 +59,3 @@ export function generateRoomName(): string {
   };
   return `call-${segment(8)}`;
 }
-
-export function roomUrl(roomName: string): string {
-  return `https://meetcent.daily.co/${roomName}`;
-}

@@ -1,11 +1,12 @@
+import type { DailyCall } from '@daily-co/daily-js';
 import { useOnlineUsersStore } from '../online-users/store.ts';
 import { useCurrentUserStore } from '../current-user/store.ts';
 import { useIncomingCallStore } from '../incoming-call/store.ts';
 import { useCallViewStore } from '../call-view/store.ts';
-import { playNotificationChime, generateRoomName } from '../../utils/helpers.ts';
+import { playNotificationChime } from '../../utils/helpers.ts';
 import { CallState, CallStore, initialCallStore } from './state.ts';
-import { IncomingCallState } from '@repo/shared-types';
 import { notifyWsCancelCall } from '../../services/online-users-ws.ts';
+import { dailyService } from '../../services/daily.ts';
 
 export function billingRecurringChargeUpdate(
   prev: CallStore,
@@ -22,8 +23,7 @@ export function billingRecurringChargeUpdate(
 
 export interface CallActions {
   setCallState: (stateOrFn: any) => void;
-  receiveIncomingCall: (incoming: IncomingCallState) => void;
-  answerIncomingCall: () => void;
+  answerIncomingCall: (daily: DailyCall | null) => void;
   cancelCall: () => void;
   completeCall: () => void;
   updateCall: (callId: string, updates: Partial<CallState>) => void;
@@ -45,15 +45,7 @@ export const createCallActions = (
       });
     },
 
-    receiveIncomingCall: (incoming) => {
-      const { updateUser } = useOnlineUsersStore.getState();
-      updateUser(incoming.customerId, { status: 'in-call' as const });
-      useIncomingCallStore.getState().setIncomingCall(incoming);
-      useCallViewStore.getState().setViewState('lobby');
-      try { playNotificationChime(); } catch (_) {}
-    },
-
-    answerIncomingCall: () => {
+    answerIncomingCall: (daily) => {
       set((state) => {
         const incomingCall = useIncomingCallStore.getState().incomingCall;
         if (!incomingCall) return {};
@@ -73,13 +65,17 @@ export const createCallActions = (
           customerName: customer.name,
           attendantId: incomingCall.attendantId,
           attendantName: attendant.name,
-          roomName: generateRoomName(),
+          roomName: attendant.slug,
           sessionId: '',
           status: 'active',
           wasAnswered: true,
           startedAt: now,
           tokensCharged: 1,
         };
+
+        if (daily) {
+          dailyService.join(daily, attendant.slug);
+        }
 
         updateUser(incomingCall.customerId, { status: 'in-call' as const });
         updateUser(incomingCall.attendantId, { status: 'in-call' as const });

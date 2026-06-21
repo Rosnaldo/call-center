@@ -1,12 +1,14 @@
+import type { DailyCall } from '@daily-co/daily-js';
 import { IncomingCallState } from '@repo/shared-types';
 import { IncomingCallStore } from './state.ts';
 import { useOnlineUsersStore } from '../online-users/store.ts';
 import { notifyWsIncomingCall } from '@/src/services/online-users-ws.ts';
 import { useCallViewStore } from '../call-view/store.ts';
+import { dailyService } from '@/src/services/daily.ts';
 
 export interface IncomingCallActions {
   cancel: () => void;
-  sendIncomingCall: (customerId?: string, attendantId?: string | null) => void;
+  sendIncomingCall: (daily: DailyCall | null, customerId?: string, attendantId?: string | null) => void;
   setIncomingCall: (incomingCall: IncomingCallState) => void;
   clearIncomingCall: () => void;
 }
@@ -15,7 +17,7 @@ export const createIncomingCallActions = (
   set: (arg: Partial<IncomingCallStore> | ((state: IncomingCallStore) => Partial<IncomingCallStore>)) => void
 ): IncomingCallActions => ({
   cancel: () => set({ incomingCall: null }),
-  sendIncomingCall: (customerId, attendantId) => {
+  sendIncomingCall: (daily, customerId, attendantId) => {
     set(() => {
       const { users } = useOnlineUsersStore.getState();
       if (!customerId || !attendantId) return {};
@@ -33,6 +35,10 @@ export const createIncomingCallActions = (
 
       const incoming: IncomingCallState = { customerId, attendantId };
       notifyWsIncomingCall(attendantId, incoming);
+
+      if (daily) {
+        dailyService.join(daily, attendant.slug);
+      }
 
       useCallViewStore.getState().setViewState('awaiting-answer');
       return { incomingCall: incoming };
