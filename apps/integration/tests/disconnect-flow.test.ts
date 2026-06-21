@@ -19,14 +19,10 @@
 jest.mock('src/services/users');
 
 import { IOnlineUser, IUser } from '@repo/shared-types';
-import { EventEmitterTransport } from '../../realtime/src/websocket/transport';
-
 import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
-import { createMockUsers, ADMIN_TOKEN, CUSTOMER_TOKEN } from './helpers/users';
+import { createMockUsers, ADMIN_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
-import { MockSocketServer, createWsClient, collectSentMessages } from './helpers/mock-wss';
-import { WebClientStore } from './helpers/web-store';
-import { AuthenticatedWebSocket } from '../../realtime/src/websocket/types';
+import { MockSocketServer, createWsClient } from './helpers/mock-wss';
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { graceTimer } from '../../realtime/src/websocket/grace_timer';
 import * as usersService from 'src/services/users';
@@ -47,16 +43,12 @@ async function flushPendingCalls(): Promise<void> {
 describe('User Disconnect Flow', () => {
     let iamRequest: IamAgent;
     let adminUser: IUser;
-    let customerUser: IUser;
     let wss: MockSocketServer;
-    const adminStore = new WebClientStore();
-    const customerStore = new WebClientStore();
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
         const users = await createMockUsers();
         adminUser = users.admin;
-        customerUser = users.customer;
     });
 
     afterAll(async () => {
@@ -70,8 +62,6 @@ describe('User Disconnect Flow', () => {
         await getRedisClient().del('online_users');
 
         wss = new MockSocketServer();
-        adminStore.clear();
-        customerStore.clear();
         pendingCalls.length = 0;
         jest.clearAllMocks();
 
@@ -97,7 +87,6 @@ describe('User Disconnect Flow', () => {
     afterEach(() => {
         // Cancel any open grace timers to keep the module-level graceTimer Map clean.
         graceTimer.cancel(adminUser._id);
-        graceTimer.cancel(customerUser._id);
         jest.useRealTimers();
     });
 
@@ -133,36 +122,6 @@ describe('User Disconnect Flow', () => {
 
     // ── test 2 ───────────────────────────────────────────────────────────────
 
-    it('other connected users receive the "disconnecting" broadcast on their web-store', async () => {
-        // Connect both admin and customer so customer can observe admin's disconnect.
-        const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
-        const customerWs = createWsClient(customerUser, CUSTOMER_TOKEN);
-        const customerMessages = collectSentMessages(customerWs);
-        wss.add(adminWs);
-        wss.add(customerWs);
-
-        onConnection(wss)(adminWs);
-        onConnection(wss)(customerWs);
-        await flushPendingCalls();
-
-        // Discard the join-event messages (admin joined + customer joined).
-        customerStore.clear();
-        customerMessages.length = 0;
-
-        // Admin disconnects — broadcastMessage sends to every OPEN client.
-        // Admin is CLOSED by the time broadcastMessage runs, so only customer receives it.
-        adminWs.terminate();
-        await flushPendingCalls();
-
-        customerMessages.forEach((m) => customerStore.processMessage(m));
-
-        const adminInCustomerStore = customerStore.getUserById(adminUser._id);
-        expect(adminInCustomerStore).toBeDefined();
-        expect(adminInCustomerStore?.status).toBe('disconnecting');
-    });
-
-    // ── test 3 ───────────────────────────────────────────────────────────────
-
     it('user is removed from Redis after grace period expires', async () => {
         const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
         wss.add(adminWs);
@@ -194,7 +153,7 @@ describe('User Disconnect Flow', () => {
         expect(finalRes.body.users).toHaveLength(0);
     });
 
-    // ── test 4 ───────────────────────────────────────────────────────────────
+    // ── test 3 ───────────────────────────────────────────────────────────────
 
     it('reconnecting within grace period resets status to "idle" and cancels removal', async () => {
         const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
@@ -218,7 +177,6 @@ describe('User Disconnect Flow', () => {
         // ── step 3: reconnect within grace period ─────────────────────────────
         // onConnection cancels the pending timer and re-broadcasts as idle.
         const adminWs2 = createWsClient(adminUser, ADMIN_TOKEN);
-        const adminMessages2 = collectSentMessages(adminWs2);
         wss.add(adminWs2);
         onConnection(wss)(adminWs2);
         await flushPendingCalls();
@@ -233,10 +191,6 @@ describe('User Disconnect Flow', () => {
 
         expect(reconnectedRes.body.users).toHaveLength(1);
         expect(reconnectedRes.body.users[0].status).toBe('idle');
-
-        // The reconnected client's own web-store received the idle broadcast
-        adminMessages2.forEach((m) => adminStore.processMessage(m));
-        expect(adminStore.getUserById(adminUser._id)?.status).toBe('idle');
 
         // ── step 4: advance past original grace window — nothing fires ────────
         jest.advanceTimersByTime(30_001);

@@ -9,10 +9,14 @@ module.exports = {
     testMatch: ['**/?(*.)+(spec|test).[tj]s'],
     testTimeout: 60000,
     maxWorkers: 1,
+    setupFiles: ['<rootDir>/src/setup-import-meta.ts'],
     transform: {
         '^.+\\.tsx?$': ['ts-jest', {
             tsconfig: '<rootDir>/tsconfig.json',
             diagnostics: false, // imported IAM/realtime sources may have version-specific TS errors
+            astTransformers: {
+                before: [{ path: '<rootDir>/src/transforms/import-meta.ts' }],
+            },
         }],
     },
     moduleNameMapper: {
@@ -49,6 +53,9 @@ module.exports = {
         '^#route_bootstrap$': '<rootDir>/../iam/src/route_bootstrap',
         '^#mongoose_bootstrap$': '<rootDir>/../iam/src/mongoose_bootstrap',
         '^#redis_bootstrap$': '<rootDir>/../iam/src/redis_bootstrap',
+
+        // web path aliases
+        '^@/(.*)$': '<rootDir>/../web/$1',
 
         // generic src/* → IAM (realtime's src/services/users already captured above)
         '^src/(.*)$': '<rootDir>/../iam/src/$1',

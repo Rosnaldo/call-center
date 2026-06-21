@@ -17,7 +17,7 @@ type WsInboundMessage =
 
 export type IncomingCallPayload = IncomingCallState;
 
-class OnlineUsersWs {
+class InitWs {
     private heartbeatRef: ReturnType<typeof setInterval> | null = null;
     private ackRef: ReturnType<typeof setTimeout> | null = null;
     private activeWs: AuthenticatedWebSocket | null = null;
@@ -128,4 +128,4 @@ class OnlineUsersWs {
     }
 }
 
-export const onlineUsersWs = new OnlineUsersWs();
+export const initWs = new InitWs();

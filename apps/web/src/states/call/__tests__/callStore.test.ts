@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../../../services/online-users-ws.ts', () => ({
-  onlineUsersWs: {
+vi.mock('../../../services/init-ws.ts', () => ({
+  initWs: {
     notifyIncomingCall: vi.fn(),
     notifyCancelCall: vi.fn(),
   },

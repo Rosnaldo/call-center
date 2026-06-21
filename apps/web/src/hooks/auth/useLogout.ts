@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthentication } from './useAuthentication.ts';
 import { useCurrentUserStore } from '../../states/current-user/store.ts';
 import { useOnlineUsersStore } from '../../states/online-users/store.ts';
-import { onlineUsersWs } from '../../services/online-users-ws.ts';
+import { initWs } from '../../services/init-ws.ts';
 
 export function useLogout() {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ export function useLogout() {
   const removeUser = useOnlineUsersStore((s) => s.removeUser);
 
   return () => {
-    onlineUsersWs.notifyLogout();
+    initWs.notifyLogout();
 
     const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
     if (!isSimulation) {

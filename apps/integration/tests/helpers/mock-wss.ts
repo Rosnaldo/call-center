@@ -36,17 +36,6 @@ export function createWsClient(user: IUser, token: string): AuthenticatedWebSock
     return ws;
 }
 
-// Collects every message sent via ws.send() into an array.
-// The 'sent' event is emitted by EventEmitterTransport.send() but is not
-// declared in the typed overloads, so we access it via the base EventEmitter.
-export function collectSentMessages(ws: AuthenticatedWebSocket): string[] {
-    const messages: string[] = [];
-    (ws as unknown as EventEmitter).on('sent', (data: string) => {
-        messages.push(data);
-    });
-    return messages;
-}
-
 // Simulates a message arriving from the client side (e.g. user_logout).
 // The connection handler listens on the 'message' event of the underlying EventEmitter.
 export function simulateMessage(ws: AuthenticatedWebSocket, msg: Record<string, unknown>): void {

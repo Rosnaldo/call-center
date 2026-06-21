@@ -39,7 +39,8 @@
       "#mongoose_bootstrap": ["../iam/src/mongoose_bootstrap"],
       "#redis_bootstrap": ["../iam/src/redis_bootstrap"],
       "src/services/users": ["./src/mocks/realtime-users-service.ts"],
-      "src/*": ["../iam/src/*"]
+      "src/*": ["../iam/src/*"],
+      "@/*": ["../web/*"]
     }
   },
   "include": ["tests", "src", "../iam/src/@types"],

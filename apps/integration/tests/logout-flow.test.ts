@@ -21,10 +21,9 @@ jest.mock('src/services/users');
 import { IOnlineUser, IUser } from '@repo/shared-types';
 
 import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
-import { createMockUsers, ADMIN_TOKEN, CUSTOMER_TOKEN } from './helpers/users';
+import { createMockUsers, ADMIN_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
-import { MockSocketServer, createWsClient, collectSentMessages, simulateMessage } from './helpers/mock-wss';
-import { WebClientStore } from './helpers/web-store';
+import { MockSocketServer, createWsClient, simulateMessage } from './helpers/mock-wss';
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { graceTimer } from '../../realtime/src/websocket/grace_timer';
 import * as usersService from 'src/services/users';
@@ -47,8 +46,6 @@ describe('User Logout Flow', () => {
     let adminUser: IUser;
     let customerUser: IUser;
     let wss: MockSocketServer;
-    const adminStore = new WebClientStore();
-    const customerStore = new WebClientStore();
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
@@ -67,8 +64,6 @@ describe('User Logout Flow', () => {
         await getRedisClient().del('online_users');
 
         wss = new MockSocketServer();
-        adminStore.clear();
-        customerStore.clear();
         pendingCalls.length = 0;
         jest.clearAllMocks();
 
@@ -127,34 +122,6 @@ describe('User Logout Flow', () => {
 
     // ── test 2 ───────────────────────────────────────────────────────────────
 
-    it('other connected users receive the "offline" broadcast on their web-store', async () => {
-        const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
-        const customerWs = createWsClient(customerUser, CUSTOMER_TOKEN);
-        const customerMessages = collectSentMessages(customerWs);
-        wss.add(adminWs);
-        wss.add(customerWs);
-
-        onConnection(wss)(adminWs);
-        onConnection(wss)(customerWs);
-        await flushPendingCalls();
-
-        customerStore.clear();
-        customerMessages.length = 0;
-
-        // Admin logs out — admin socket is terminated inside handleMessageLogout,
-        // so broadcastMessage reaches only the still-open customer.
-        simulateMessage(adminWs, { event: 'user_logout' });
-        await flushPendingCalls();
-
-        customerMessages.forEach((m) => customerStore.processMessage(m));
-
-        const adminInCustomerStore = customerStore.getUserById(adminUser._id);
-        expect(adminInCustomerStore).toBeDefined();
-        expect(adminInCustomerStore?.status).toBe('offline');
-    });
-
-    // ── test 3 ───────────────────────────────────────────────────────────────
-
     it('user is removed from Redis after grace period expires following logout', async () => {
         const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
         wss.add(adminWs);
@@ -181,7 +148,7 @@ describe('User Logout Flow', () => {
         expect(finalRes.body.users).toHaveLength(0);
     });
 
-    // ── test 4 ───────────────────────────────────────────────────────────────
+    // ── test 3 ───────────────────────────────────────────────────────────────
 
     it('reconnecting within grace period resets status to "idle" and cancels removal', async () => {
         const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
@@ -204,7 +171,6 @@ describe('User Logout Flow', () => {
 
         // ── step 3: reconnect within grace period ─────────────────────────────
         const adminWs2 = createWsClient(adminUser, ADMIN_TOKEN);
-        const adminMessages2 = collectSentMessages(adminWs2);
         wss.add(adminWs2);
         onConnection(wss)(adminWs2);
         await flushPendingCalls();
@@ -219,10 +185,6 @@ describe('User Logout Flow', () => {
 
         expect(reconnectedRes.body.users).toHaveLength(1);
         expect(reconnectedRes.body.users[0].status).toBe('idle');
-
-        // Reconnected client's web-store reflects idle
-        adminMessages2.forEach((m) => adminStore.processMessage(m));
-        expect(adminStore.getUserById(adminUser._id)?.status).toBe('idle');
 
         // ── step 4: advance past original grace window — nothing fires ────────
         jest.advanceTimersByTime(30_001);

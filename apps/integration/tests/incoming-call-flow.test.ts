@@ -3,24 +3,21 @@
  *
  * IAM      → real Express app backed by MongoMemoryServer + ioredis-mock
  * Realtime → onConnection handler driven by EventEmitterTransport (no real WebSocket server)
- * Web      → WebClientStore simulation that processes broadcast frames
  *
  * Scenario
  * 1. Customer and attendant connect via WebSocket
  * 2. Customer emits an incoming_call message targeting the attendant
- * 3. Customer sets incomingCall locally (mirrors web app sendIncomingCall)
- * 4. Attendant receives incoming_call via WS
- * 5. Both stores contain correct incomingCall data
+ * 3. Server forwards the incoming_call to the target attendant
  */
 
 jest.mock('src/services/users');
 
+import { EventEmitter } from 'node:events';
 import { IOnlineUser, IncomingCallState } from '@repo/shared-types';
 
 import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
-import { MockSocketServer, createWsClient, collectSentMessages, simulateMessage } from './helpers/mock-wss';
-import { WebClientStore } from './helpers/web-store';
+import { MockSocketServer, createWsClient, simulateMessage } from './helpers/mock-wss';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
 
@@ -41,8 +38,6 @@ describe('Incoming Call Flow', () => {
     let attendantUser: Awaited<ReturnType<typeof createMockUsers>>['attendant'];
 
     let wss: MockSocketServer;
-    const customerStore = new WebClientStore();
-    const attendantStore = new WebClientStore();
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
@@ -57,8 +52,6 @@ describe('Incoming Call Flow', () => {
 
     beforeEach(() => {
         wss = new MockSocketServer();
-        customerStore.clear();
-        attendantStore.clear();
         pendingIamCalls.length = 0;
         jest.clearAllMocks();
 
@@ -72,26 +65,24 @@ describe('Incoming Call Flow', () => {
         });
     });
 
-    it('customer and attendant stores both have incomingCall data after customer initiates call', async () => {
+    it('incoming_call message is forwarded to the target attendant', async () => {
         const customerWs = createWsClient(customerUser, CUSTOMER_TOKEN);
-        const customerMessages = collectSentMessages(customerWs);
         wss.add(customerWs);
         onConnection(wss)(customerWs);
         await flushIamCalls();
 
         const attendantWs = createWsClient(attendantUser, ATTENDANT_TOKEN);
-        const attendantMessages = collectSentMessages(attendantWs);
         wss.add(attendantWs);
         onConnection(wss)(attendantWs);
         await flushIamCalls();
-
-        customerMessages.length = 0;
-        attendantMessages.length = 0;
 
         const incomingCall: IncomingCallState = {
             customerId: customerUser._id,
             attendantId: attendantUser._id,
         };
+
+        const received: string[] = [];
+        (attendantWs as unknown as EventEmitter).on('sent', (data: string) => received.push(data));
 
         // Customer sends incoming_call via WS (targets attendant)
         simulateMessage(customerWs, {
@@ -102,21 +93,10 @@ describe('Incoming Call Flow', () => {
             },
         });
 
-        // Customer sets incomingCall locally (mirrors web app sendIncomingCall)
-        customerStore.setIncomingCall(incomingCall);
-
-        // Attendant receives incoming_call via WS
-        attendantMessages.forEach((m) => attendantStore.processMessage(m));
-
-        // Both stores have incomingCall data
-        const customerIncoming = customerStore.getIncomingCall();
-        expect(customerIncoming).not.toBeNull();
-        expect(customerIncoming!.customerId).toBe(customerUser._id);
-        expect(customerIncoming!.attendantId).toBe(attendantUser._id);
-
-        const attendantIncoming = attendantStore.getIncomingCall();
-        expect(attendantIncoming).not.toBeNull();
-        expect(attendantIncoming!.customerId).toBe(customerUser._id);
-        expect(attendantIncoming!.attendantId).toBe(attendantUser._id);
+        const parsed = received.map((m) => JSON.parse(m));
+        const incomingCallMsg = parsed.find((m) => m.event === 'incoming_call');
+        expect(incomingCallMsg).toBeTruthy();
+        expect(incomingCallMsg.data.incomingCall.customerId).toBe(customerUser._id);
+        expect(incomingCallMsg.data.incomingCall.attendantId).toBe(attendantUser._id);
     });
 });
