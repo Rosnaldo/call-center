@@ -2,7 +2,6 @@ import type { DailyCall } from '@daily-co/daily-js';
 import { IncomingCallState } from '@repo/shared-types';
 import { IncomingCallStore } from './state.ts';
 import { useOnlineUsersStore, useCallViewStore, useDevicesStore } from '../stores.ts';
-import { initWs } from '@/src/services/init-ws.ts';
 import { dailyService } from '@/src/services/daily.ts';
 import { apiBack } from '@/src/api/backend.ts';
 import {
@@ -40,9 +39,11 @@ export const createIncomingCallActions = (
     if (!incomingCall) return;
 
     set({ incomingCall: null });
-    initWs.notifyCancelCall(incomingCall.attendantId);
     useCallViewStore.getState().setViewState('none');
     useCallViewStore.getState().setSelectedAttendantId(null);
+
+    apiBack.delete('/incoming-calls/delete', { data: { customerId: incomingCall.customerId, attendantId: incomingCall.attendantId } })
+      .catch((err) => console.error('[IAM] cancel incoming call failed:', err));
   },
 
   sendIncomingCall: (daily, customerId, attendantId) => {
@@ -89,5 +90,8 @@ export const createIncomingCallActions = (
   },
 
   setIncomingCall: (incomingCall) => set({ incomingCall }),
-  clearIncomingCall: () => set({ incomingCall: null }),
+  clearIncomingCall: () => {
+    set({ incomingCall: null });
+    useCallViewStore.getState().setViewState('none');
+  },
 });

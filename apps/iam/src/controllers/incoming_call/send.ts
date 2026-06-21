@@ -7,13 +7,13 @@ import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { validateInput } from 'src/validations/incoming_call/send';
 import { IIncomingCallController } from './params';
-import { IncomingCallState, IOnlineUser } from '@repo/shared-types';
+import { IOnlineUser } from '@repo/shared-types';
 import { realtimeApi } from '#apis/realtime';
 
 type IInput = IIncomingCallController['ISend']['IInput'];
 type IOutput = IIncomingCallController['ISend']['IOutput'];
 
-const REDIS_KEY = 'incoming_calls';
+const INCOMING_CALL_KEY = 'incoming_calls';
 const ONLINE_USERS_KEY = 'online_users';
 
 interface Props {
@@ -37,12 +37,9 @@ export class Send {
             const params = this.transform(props.mapped);
             const redis = getRedisClient();
 
-            const existing = await redis.hvals(REDIS_KEY);
-            const alreadyHasCall = existing
-                .map((v) => JSON.parse(v) as IncomingCallState)
-                .some((ic) => ic.attendantId === params.attendantId);
+            const existing = await redis.hget(INCOMING_CALL_KEY, params.attendantId);
 
-            if (alreadyHasCall) {
+            if (existing) {
                 const attendantJson = await redis.hget(ONLINE_USERS_KEY, params.attendantId);
                 const attendantName = attendantJson
                     ? (JSON.parse(attendantJson) as IOnlineUser).name
@@ -50,7 +47,7 @@ export class Send {
                 throw new BadRequestException(`Atendente ${attendantName} já está em ligação.`);
             }
 
-            await redis.hset(REDIS_KEY, params.customerId, JSON.stringify(params));
+            await redis.hset(INCOMING_CALL_KEY, params.attendantId, JSON.stringify(params));
 
             realtimeApi.post('/webhooks/iam', {
                 event: 'send_incoming_call',

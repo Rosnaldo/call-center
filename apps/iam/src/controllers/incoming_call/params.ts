@@ -6,6 +6,6 @@ export interface IIncomingCallController {
         IOutput: IncomingCallState;
     };
     IDelete: {
-        IInput: { customerId: string };
+        IInput: { customerId: string; attendantId: string };
     };
 }

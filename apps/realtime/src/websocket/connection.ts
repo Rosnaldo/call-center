@@ -38,7 +38,7 @@ export const onConnection = (wss: ISocketServer) => (ws: AuthenticatedWebSocket)
                 case 'send_incoming_call':
                     handleMessageIncomingCall(wss, msg.data);
                     break;
-                case 'call_cancelled':
+                case 'cancel_incoming_call':
                     handleMessageCallCancelled(wss, msg.data);
                     break;
             }

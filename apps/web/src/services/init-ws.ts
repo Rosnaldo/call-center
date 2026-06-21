@@ -17,7 +17,7 @@ type WsInboundMessage =
     | { event: 'heartbeat_ack' }
     | { event: 'user_logout'; data: { id: string } }
     | { event: 'send_incoming_call'; data: { incomingCall: IncomingCallState } }
-    | { event: 'call_cancelled'; data: { targetUserId: string } };
+    | { event: 'cancel_incoming_call'; data: { targetUserId: string } };
 
 export type IncomingCallPayload = IncomingCallState;
 
@@ -85,7 +85,7 @@ class InitWs {
                     case 'send_incoming_call':
                         setIncomingCall?.(msg.data.incomingCall);
                         break;
-                    case 'call_cancelled':
+                    case 'cancel_incoming_call':
                         clearIncomingCall?.();
                         break;
                 }
@@ -129,7 +129,7 @@ class InitWs {
     notifyCancelCall(targetUserId: string): void {
         if (this.isSimulation) return;
         if (this.activeWs?.readyState === TRANSPORT_OPEN) {
-            this.activeWs.send(JSON.stringify({ event: 'call_cancelled', data: { targetUserId } }));
+            this.activeWs.send(JSON.stringify({ event: 'cancel_incoming_call', data: { targetUserId } }));
         }
     }
 }

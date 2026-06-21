@@ -4,6 +4,7 @@ import { makeSmallStringSchema } from '#utils/zod/valid_small_string';
 
 export const inputSchema = z.object({
     customerId: makeSmallStringSchema('customerId'),
+    attendantId: makeSmallStringSchema('attendantId'),
 });
 
 export type IDeleteInput = z.infer<typeof inputSchema>;

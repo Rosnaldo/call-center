@@ -4,7 +4,7 @@ import { CancelledCallData } from '#websocket/types';
 
 export const handleMessageCallCancelled = (wss: ISocketServer, data: CancelledCallData): void => {
     sendToUser(wss, data.targetUserId, {
-        event: 'call_cancelled',
+        event: 'cancel_incoming_call',
         data: {},
     });
 };
