@@ -1,8 +1,15 @@
 import type { DailyCall } from '@daily-co/daily-js';
-import { useOnlineUsersStore, useCurrentUserStore, useIncomingCallStore, useCallViewStore, useDevicesStore } from '../stores.ts';
-import { CallState, initialCallStore } from './state.ts';
-
+import { useIncomingCallStore, useCallViewStore, useDevicesStore } from '../stores.ts';
+import { CallState } from './state.ts';
 import { dailyService } from '../../services/daily.ts';
+import {
+  simulateAnswerIncomingCall,
+  simulateCompleteCall,
+  simulateUpdateCall,
+  simulateResetCall,
+} from './simulation.ts';
+
+const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
 
 export interface CallActions {
   answerIncomingCall: (daily: DailyCall | null) => void;
@@ -16,81 +23,49 @@ export const createCallActions = (
 ): CallActions => {
   return {
     answerIncomingCall: (daily) => {
-      set((state) => {
-        const incomingCall = useIncomingCallStore.getState().incomingCall;
-        if (!incomingCall) return {};
+      if (isSimulation) {
+        simulateAnswerIncomingCall(set, daily);
+        return;
+      }
 
-        if (state.call?.status === 'active') return {};
+      const incomingCall = useIncomingCallStore.getState().incomingCall;
+      if (!incomingCall) return;
 
-        const { users, updateUser } = useOnlineUsersStore.getState();
-        const { currentUser, setCurrentUser } = useCurrentUserStore.getState();
-        const customer = users.find(u => u.id === incomingCall.customerId);
-        const attendant = users.find(u => u.id === incomingCall.attendantId);
-        if (!customer || !attendant) return {};
+      if (daily) {
+        const { cameraOn, microphoneOn } = useDevicesStore.getState();
+        dailyService.join(daily, {
+          room: incomingCall.attendantId,
+          userName: '',
+          userData: {},
+          startAudioOff: !microphoneOn,
+          startVideoOff: !cameraOn,
+        });
+      }
 
-        if (daily) {
-          const { cameraOn, microphoneOn } = useDevicesStore.getState();
-          dailyService.join(daily, {
-            room: attendant.slug,
-            userName: attendant.name,
-            userData: { id: attendant.id, role: attendant.role },
-            startAudioOff: !microphoneOn,
-            startVideoOff: !cameraOn,
-          });
-        }
-
-        updateUser(incomingCall.customerId, { status: 'in-call' as const });
-        updateUser(incomingCall.attendantId, { status: 'in-call' as const });
-        if (currentUser?.id === incomingCall.attendantId) {
-          setCurrentUser({ ...currentUser, status: 'in-call' as const });
-        }
-
-        useIncomingCallStore.getState().clearIncomingCall();
-        useCallViewStore.getState().setViewState('in-call');
-      });
+      useCallViewStore.getState().setViewState('in-call');
     },
 
     completeCall: () => {
-      set((state) => {
-        const { currentUser, setCurrentUser } = useCurrentUserStore.getState();
-        const { updateUser } = useOnlineUsersStore.getState();
+      if (isSimulation) {
+        simulateCompleteCall(set);
+        return;
+      }
 
-        if (currentUser) {
-          setCurrentUser({ ...currentUser, status: 'idle' as const });
-        }
-
-        if (state.call) {
-          updateUser(state.call.customerId, { status: 'idle' as const });
-          updateUser(state.call.attendantId, { status: 'idle' as const });
-        }
-
-        useCallViewStore.getState().setViewState('none');
-        useCallViewStore.getState().setSelectedAttendantId(null);
-
-        return { call: null };
-      });
+      useCallViewStore.getState().setViewState('none');
+      useCallViewStore.getState().setSelectedAttendantId(null);
     },
 
     updateCall: (callId, updates) => {
-      set((state) => {
-        const { updateUser } = useOnlineUsersStore.getState();
-        const { currentUser, setCurrentUser } = useCurrentUserStore.getState();
-        const call = state.call?.id === callId ? state.call : undefined;
-        if (!call) return {};
-
-        if (call.wasAnswered) updates = { ...updates, wasAnswered: true };
-
-        updateUser(call.attendantId, { status: 'in-call' as const });
-        if (currentUser && currentUser.id === call.attendantId) {
-          setCurrentUser({ ...currentUser, status: 'in-call' as const });
-        }
-
-        return { call: { ...call, ...updates } };
-      });
+      if (isSimulation) {
+        simulateUpdateCall(set, callId, updates);
+        return;
+      }
     },
 
     resetSimulation: () => {
-      set(() => ({ ...initialCallStore }));
+      if (isSimulation) {
+        simulateResetCall(set);
+      }
     },
   };
 };

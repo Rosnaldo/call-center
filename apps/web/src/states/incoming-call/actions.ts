@@ -1,10 +1,17 @@
 import type { DailyCall } from '@daily-co/daily-js';
 import { IncomingCallState } from '@repo/shared-types';
 import { IncomingCallStore } from './state.ts';
-import { useOnlineUsersStore, useCallStore, useCallViewStore, useDevicesStore } from '../stores.ts';
+import { useOnlineUsersStore, useCallViewStore, useDevicesStore } from '../stores.ts';
 import { initWs } from '@/src/services/init-ws.ts';
 import { dailyService } from '@/src/services/daily.ts';
-import { playNotificationChime } from '@/src/utils/helpers.ts';
+import {
+  simulateSendIncomingCall,
+  simulateCancelIncomingCall,
+  simulateIncomingCall,
+  simulateIncomingCallAsCustomer,
+} from './simulation.ts';
+
+const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
 
 export interface IncomingCallActions {
   cancel: () => void;
@@ -21,86 +28,68 @@ export const createIncomingCallActions = (
   get: () => IncomingCallStore,
 ): IncomingCallActions => ({
   cancel: () => set({ incomingCall: null }),
+
   cancelIncomingCall: () => {
+    if (isSimulation) {
+      simulateCancelIncomingCall(set, get);
+      return;
+    }
+
     const incomingCall = get().incomingCall;
     if (!incomingCall) return;
 
-    const { updateUser } = useOnlineUsersStore.getState();
-    updateUser(incomingCall.customerId, { status: 'idle' as const });
     set({ incomingCall: null });
     initWs.notifyCancelCall(incomingCall.attendantId);
     useCallViewStore.getState().setViewState('none');
     useCallViewStore.getState().setSelectedAttendantId(null);
   },
+
   sendIncomingCall: (daily, customerId, attendantId) => {
-    set(() => {
-      const { users } = useOnlineUsersStore.getState();
-      if (!customerId || !attendantId) return {};
+    if (isSimulation) {
+      simulateSendIncomingCall(set, customerId, attendantId);
+      return;
+    }
 
-      const customer = users.find(u => u.id === customerId);
-      const attendant = users.find(u => u.id === attendantId);
-      if (!customer || !attendant) return {};
+    const { users } = useOnlineUsersStore.getState();
+    if (!customerId || !attendantId) return;
 
-      if ((customer.tokens ?? 0) <= 0) return {};
-
-      const attendantIsOccupied =
-        attendant.status !== 'idle';
-
-      if (attendantIsOccupied) return {};
-
-      const incoming: IncomingCallState = { customerId, attendantId };
-      initWs.notifyIncomingCall(attendantId, incoming);
-      playNotificationChime();
-
-      if (daily) {
-        const { cameraOn, microphoneOn } = useDevicesStore.getState();
-        dailyService.join(daily, {
-          room: attendant.slug,
-          userName: customer.name,
-          userData: { id: customer.id, role: customer.role },
-          startAudioOff: !microphoneOn,
-          startVideoOff: !cameraOn,
-        });
-      }
-
-      useCallViewStore.getState().setViewState('awaiting-answer');
-      return { incomingCall: incoming };
-    });
-  },
-  simulateIncomingCall: (attendantId) => {
-    const { call } = useCallStore.getState();
-    const users = useOnlineUsersStore.getState().users;
-    const attendant = users.find(u => u.id === attendantId);
-    if (!attendant) return;
-
-    const customer = users.find(u => u.role === 'customer' && (u.tokens ?? 5) > 0 && u.status === 'idle');
-    if (!customer) return;
-
-    const existingIncoming = get().incomingCall;
-    const isOccupied =
-      (call?.attendantId === attendantId &&
-        call.status === 'active') ||
-      existingIncoming?.attendantId === attendantId;
-    if (isOccupied) return;
-
-    useOnlineUsersStore.getState().updateUser(customer.id, { status: 'in-call' as const });
-    set({ incomingCall: { customerId: customer.id, attendantId } });
-    useCallViewStore.getState().setViewState('lobby');
-  },
-  simulateIncomingCallAsCustomer: (customerId, attendantId) => {
-    const { call } = useCallStore.getState();
-    const users = useOnlineUsersStore.getState().users;
     const customer = users.find(u => u.id === customerId);
     const attendant = users.find(u => u.id === attendantId);
     if (!customer || !attendant) return;
+
     if ((customer.tokens ?? 0) <= 0) return;
     if (attendant.status !== 'idle') return;
-    if (get().incomingCall) return;
-    if (call?.customerId === customerId) return;
 
-    useOnlineUsersStore.getState().updateUser(customerId, { status: 'in-call' as const });
-    set({ incomingCall: { customerId, attendantId } });
+    const incoming: IncomingCallState = { customerId, attendantId };
+    initWs.notifyIncomingCall(attendantId, incoming);
+
+    if (daily) {
+      const { cameraOn, microphoneOn } = useDevicesStore.getState();
+      dailyService.join(daily, {
+        room: attendant.slug,
+        userName: customer.name,
+        userData: { id: customer.id, role: customer.role },
+        startAudioOff: !microphoneOn,
+        startVideoOff: !cameraOn,
+      });
+    }
+
+    useCallViewStore.getState().setViewState('awaiting-answer');
+    set({ incomingCall: incoming });
   },
+
+  simulateIncomingCall: (attendantId) => {
+    if (isSimulation) {
+      simulateIncomingCall(set, get, attendantId);
+    }
+  },
+
+  simulateIncomingCallAsCustomer: (customerId, attendantId) => {
+    if (isSimulation) {
+      simulateIncomingCallAsCustomer(set, get, customerId, attendantId);
+    }
+  },
+
   setIncomingCall: (incomingCall) => set({ incomingCall }),
   clearIncomingCall: () => set({ incomingCall: null }),
 });

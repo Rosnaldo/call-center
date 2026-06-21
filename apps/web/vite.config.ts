@@ -26,6 +26,9 @@ export default defineConfig(() => {
         singleThread: true,
       },
       setupFiles: ['./src/__tests__/setup.ts'],
+      env: {
+        VITE_ENV: 'simulation',
+      },
     },
   };
 });
