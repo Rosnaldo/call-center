@@ -21,3 +21,12 @@ export const removeFromIam = (userId: string, token: string): void => {
         data: { id: userId },
     }).catch((err) => console.error('[IAM] remove failed:', err));
 };
+
+export const findUserBySlug = async (slug: string): Promise<IUser | null> => {
+    try {
+        const { data } = await iamApi.get<IUser>('/users/find-by-slug', { params: { slug } });
+        return data;
+    } catch {
+        return null;
+    }
+};

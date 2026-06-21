@@ -12,7 +12,7 @@ export const inputSchema = z.object({
     attendantId: makeSmallStringSchema('attendantId'),
     attendantName: makeSmallStringSchema('attendantName'),
     roomName: makeSmallStringSchema('roomName'),
-    sessionId: makeSmallStringSchema('sessionId'),
+    meetingId: makeSmallStringSchema('meetingId'),
     status: z.enum(['active', 'completed']),
     wasAnswered: z.boolean(),
 });

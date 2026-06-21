@@ -37,6 +37,19 @@ export default (app: Application) => {
         }
     );
     app.get(
+        '/users/find-by-slug',
+        GetKeycloakUser,
+        async (req, res) => {
+            const controller = new UserController();
+            const params = controller.findBySlug.mapper(req.query);
+            const either = await controller.findBySlug.get({ params });
+            if (either.isError) {
+                return res.status(either.status).send(either);
+            }
+            return res.status(200).send(either.data);
+        }
+    );
+    app.get(
         '/users/exists',
         GetKeycloakUser,
         async (req, res) => {

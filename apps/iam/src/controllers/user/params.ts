@@ -48,6 +48,12 @@ interface ICountOutput {
     admins: number;
 }
 
+interface IFindBySlugInput {
+    slug: string;
+}
+
+type IFindBySlugOutput = IUser['IParams'];
+
 export interface IUserController {
     IPaginacao: {
         IInput: IPaginacaoInput;
@@ -60,6 +66,10 @@ export interface IUserController {
     IExists: {
         IInput: IExistsInput;
         IOutput: IExistsOutput;
+    };
+    IFindBySlug: {
+        IInput: IFindBySlugInput;
+        IOutput: IFindBySlugOutput;
     };
     IDelete: {
         IInput: IDeleteInput;

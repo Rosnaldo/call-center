@@ -28,7 +28,7 @@ export const CallLobbyView: React.FC = () => {
         attendantId: selectedAttendantId,
         attendantName: selectedAttendant.name,
         roomName: '',
-        sessionId: '',
+        meetingId: '',
         status: 'draft-lobby' as any,
         wasAnswered: false,
       }
@@ -55,7 +55,7 @@ export const CallLobbyView: React.FC = () => {
       return;
     }
     if (currentCall.status !== 'active') return;
-    const start = currentCall.startedAt || Date.now();
+    const start = Date.now();
     const tick = () => {
       const diff = Math.floor((Date.now() - start) / 1000);
       const clamped = diff >= 0 ? diff : 0;
@@ -65,7 +65,7 @@ export const CallLobbyView: React.FC = () => {
     tick();
     const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
-  }, [currentCall?.id, currentCall?.status, isCallActive, currentCall?.startedAt]);
+  }, [currentCall?.id, currentCall?.status, isCallActive]);
 
   // Billing countdown
   useEffect(() => {
@@ -74,7 +74,7 @@ export const CallLobbyView: React.FC = () => {
       return;
     }
     if (currentCall.status !== 'active') return;
-    const start = currentCall.startedAt || Date.now();
+    const start = Date.now();
     const tickBilling = () => {
       const elapsedSinceStart = Date.now() - start;
       const tokensCount = initialTokens || 1;
@@ -86,7 +86,7 @@ export const CallLobbyView: React.FC = () => {
     tickBilling();
     const interval = setInterval(tickBilling, 1000);
     return () => clearInterval(interval);
-  }, [currentCall?.id, currentCall?.status, isCallActive, initialTokens, currentCall?.startedAt, blockDurationSeconds]);
+  }, [currentCall?.id, currentCall?.status, isCallActive, initialTokens, blockDurationSeconds]);
 
   // Fullscreen
   const containerRef = useRef<HTMLDivElement>(null);

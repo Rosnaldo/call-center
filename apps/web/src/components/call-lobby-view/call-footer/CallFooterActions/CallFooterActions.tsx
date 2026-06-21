@@ -31,7 +31,7 @@ export const CallFooterActions: React.FC = () => {
         attendantId: selectedAttendantId,
         attendantName: selectedAttendant.name,
         roomName: '',
-        sessionId: '',
+        meetingId: '',
         status: 'draft-lobby' as any,
         wasAnswered: false,
       }

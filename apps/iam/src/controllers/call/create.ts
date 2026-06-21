@@ -41,7 +41,7 @@ export class Create {
     };
 
     public readonly mapper = (body: Request['body']): IInput => {
-        const { id, customerId, customerName, attendantId, attendantName, roomName, sessionId, status, wasAnswered } = body;
+        const { id, customerId, customerName, attendantId, attendantName, roomName, meetingId, status, wasAnswered } = body;
         return {
             id: mapString(id),
             customerId: mapString(customerId),
@@ -49,7 +49,7 @@ export class Create {
             attendantId: mapString(attendantId),
             attendantName: mapString(attendantName),
             roomName: mapString(roomName),
-            sessionId: mapString(sessionId),
+            meetingId: mapString(meetingId),
             status: mapString(status) as IInput['status'],
             wasAnswered: wasAnswered === true,
         };

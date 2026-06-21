@@ -46,7 +46,7 @@ export interface CallState {
     attendantId: string;
     attendantName: string;
     roomName: string;
-    sessionId: string;
+    meetingId: string;
     status: 'active' | 'completed';
     wasAnswered: boolean;
 }
