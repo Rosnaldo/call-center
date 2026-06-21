@@ -1,30 +1,19 @@
-/**
- * Integration test: user disconnection and grace-period expiry
- *
- * Disconnect flow:
- *   ws.terminate()
- *     → readyState = CLOSED, then 'close' event fires
- *     → handleClose: hb.stop() + startGracePeriod()
- *     → graceTimer.start(userId, onStart, onExpire)
- *         onStart (immediate):  broadcastMessage(status='disconnecting') + addToIam(disconnecting)
- *         onExpire (after 30s): removeFromIam(userId)
- *
- * Note: the disconnecting user has readyState=CLOSED when broadcastMessage runs,
- * so it does NOT receive its own disconnect event — only other connected clients do.
- *
- * jest.useFakeTimers() lets us advance past the 30-second grace period instantly.
- * addToIam / removeFromIam are mocked to hit the real IAM supertest server.
- */
-
 jest.mock('src/services/users');
 
+import { EventEmitter } from 'node:events';
 import { IOnlineUser, IUser } from '@repo/shared-types';
+
 import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
-import { createMockUsers, ADMIN_TOKEN } from './helpers/users';
+import { createMockUsers, ADMIN_TOKEN, CUSTOMER_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { MockSocketServer, createWsClient } from './helpers/mock-wss';
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { graceTimer } from '../../realtime/src/websocket/grace_timer';
+
+import { createStores, Stores } from '../../web/src/states/stores';
+import { initWs } from '../../web/src/services/init-ws';
+import { ITransport, TransportFactory } from '../../web/src/services/transport';
+
 import * as usersService from 'src/services/users';
 
 const addToIamMock = usersService.addToIam as jest.Mock;
@@ -38,17 +27,51 @@ async function flushPendingCalls(): Promise<void> {
     await Promise.all(snapshot);
 }
 
-// ─── suite ───────────────────────────────────────────────────────────────────
+// ─── bridge helpers ─────────────────────────────────────────────────────────
 
-describe('User Disconnect Flow', () => {
+function createBridgedClient(user: IUser, token: string) {
+    const serverWs = createWsClient(user, token);
+
+    const webFactory: TransportFactory = (_url: string): ITransport => {
+        const transport: ITransport = {
+            get readyState() { return serverWs.readyState; },
+            onopen: null,
+            onmessage: null,
+            onerror: null,
+            onclose: null,
+            send(data: string) {
+                (serverWs as unknown as EventEmitter).emit('message', data);
+            },
+            close() {
+                serverWs.terminate();
+            },
+        };
+
+        (serverWs as unknown as EventEmitter).on('sent', (data: string) => {
+            transport.onmessage?.({ data } as any);
+        });
+
+        return transport;
+    };
+
+    return { serverWs, webFactory };
+}
+
+// ─── suite ──────────────────────────────────────────────────────────────────
+
+describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
     let iamRequest: IamAgent;
     let adminUser: IUser;
+    let customerUser: IUser;
     let wss: MockSocketServer;
+    let customerStores: Stores;
+    let adminStores: Stores;
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
         const users = await createMockUsers();
         adminUser = users.admin;
+        customerUser = users.customer;
     });
 
     afterAll(async () => {
@@ -57,13 +80,14 @@ describe('User Disconnect Flow', () => {
 
     beforeEach(async () => {
         jest.useFakeTimers();
-
-        // Wipe Redis online_users between tests so state doesn't bleed across them.
         await getRedisClient().del('online_users');
 
         wss = new MockSocketServer();
         pendingCalls.length = 0;
         jest.clearAllMocks();
+
+        customerStores = createStores();
+        adminStores = createStores();
 
         addToIamMock.mockImplementation((user: IOnlineUser, token: string) => {
             const op = iamRequest
@@ -85,129 +109,159 @@ describe('User Disconnect Flow', () => {
     });
 
     afterEach(() => {
-        // Cancel any open grace timers to keep the module-level graceTimer Map clean.
         graceTimer.cancel(adminUser._id);
+        graceTimer.cancel(customerUser._id);
         jest.useRealTimers();
     });
 
-    // ── test 1 ───────────────────────────────────────────────────────────────
+    it('other web clients receive disconnecting status via broadcast', async () => {
+        const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
-    it('disconnecting user status changes to "disconnecting" in Redis', async () => {
-        const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
         wss.add(adminWs);
+        wss.add(customerWs);
 
-        // Login
+        initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
         onConnection(wss)(adminWs);
         await flushPendingCalls();
 
-        const loginRes = await iamRequest
-            .get('/online-users/list')
-            .set('Authorization', ADMIN_TOKEN);
-        expect(loginRes.body.users[0].status).toBe('idle');
+        onConnection(wss)(customerWs);
+        await flushPendingCalls();
 
-        // Disconnect — terminate() sets readyState=CLOSED before emitting 'close',
-        // so the user itself won't receive the subsequent broadcast.
+        expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
+
+        // ── admin disconnects — terminate() sets readyState=CLOSED before
+        //    the broadcast, so admin itself won't receive it ──────────────
         adminWs.terminate();
-        await flushPendingCalls(); // wait for addToIam(disconnecting)
+        await flushPendingCalls();
 
-        const disconnectRes = await iamRequest
+        // customer's store shows admin as disconnecting (broadcast)
+        const adminInStore = customerStores.onlineUsers.getState().users
+            .find(u => u.id === adminUser._id);
+        expect(adminInStore).toBeDefined();
+        expect(adminInStore!.status).toBe('disconnecting');
+
+        // IAM Redis shows admin as disconnecting (sync)
+        const res = await iamRequest
             .get('/online-users/list')
-            .set('Authorization', ADMIN_TOKEN);
-
-        expect(disconnectRes.status).toBe(200);
-        expect(disconnectRes.body.users).toHaveLength(1);
-        expect(disconnectRes.body.users[0].id).toBe(adminUser._id);
-        expect(disconnectRes.body.users[0].status).toBe('disconnecting');
+            .set('Authorization', CUSTOMER_TOKEN);
+        const adminInRedis = res.body.users
+            .find((u: IOnlineUser) => u.id === adminUser._id);
+        expect(adminInRedis).toBeDefined();
+        expect(adminInRedis!.status).toBe('disconnecting');
     });
 
-    // ── test 2 ───────────────────────────────────────────────────────────────
+    it('grace period expiry removes user and broadcasts removal', async () => {
+        const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
-    it('user is removed from Redis after grace period expires', async () => {
-        const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
         wss.add(adminWs);
+        wss.add(customerWs);
 
-        // Login → idle in Redis
+        initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
         onConnection(wss)(adminWs);
         await flushPendingCalls();
 
-        // Disconnect → onStart fires immediately (status = disconnecting in Redis)
+        onConnection(wss)(customerWs);
+        await flushPendingCalls();
+
+        // ── admin disconnects ────────────────────────────────────────────
         adminWs.terminate();
         await flushPendingCalls();
 
-        // Sanity check
-        const midRes = await iamRequest
-            .get('/online-users/list')
-            .set('Authorization', ADMIN_TOKEN);
-        expect(midRes.body.users[0].status).toBe('disconnecting');
+        expect(
+            customerStores.onlineUsers.getState().users
+                .find(u => u.id === adminUser._id)?.status,
+        ).toBe('disconnecting');
 
-        // Advance past the 30-second grace period — fires onExpire → removeFromIam
+        // ── advance past grace period (30s) ──────────────────────────────
         jest.advanceTimersByTime(30_001);
-        await flushPendingCalls(); // wait for removeFromIam HTTP call
+        await flushPendingCalls();
 
-        // User must be gone from Redis
+        // customer's store no longer contains admin (broadcast removal)
+        expect(
+            customerStores.onlineUsers.getState().users
+                .find(u => u.id === adminUser._id),
+        ).toBeUndefined();
+
+        expect(customerStores.onlineUsers.getState().users).toHaveLength(1);
+        expect(customerStores.onlineUsers.getState().users[0].id).toBe(customerUser._id);
+
+        // IAM Redis no longer contains admin (sync)
         const finalRes = await iamRequest
             .get('/online-users/list')
-            .set('Authorization', ADMIN_TOKEN);
-
-        expect(finalRes.status).toBe(200);
-        expect(finalRes.body.users).toHaveLength(0);
+            .set('Authorization', CUSTOMER_TOKEN);
+        expect(finalRes.body.users.find((u: IOnlineUser) => u.id === adminUser._id))
+            .toBeUndefined();
     });
 
-    // ── test 3 ───────────────────────────────────────────────────────────────
+    it('reconnect within grace period broadcasts idle status to users', async () => {
+        const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
-    it('reconnecting within grace period resets status to "idle" and cancels removal', async () => {
-        const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
         wss.add(adminWs);
+        wss.add(customerWs);
 
-        // ── step 1: login ─────────────────────────────────────────────────────
+        initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
         onConnection(wss)(adminWs);
         await flushPendingCalls();
 
-        // ── step 2: disconnect — grace timer starts, status → disconnecting ──
+        onConnection(wss)(customerWs);
+        await flushPendingCalls();
+
+        // ── admin disconnects — status transitions to disconnecting ──────
         adminWs.terminate();
         await flushPendingCalls();
 
-        const disconnectingRes = await iamRequest
-            .get('/online-users/list')
-            .set('Authorization', ADMIN_TOKEN);
+        expect(
+            customerStores.onlineUsers.getState().users
+                .find(u => u.id === adminUser._id)?.status,
+        ).toBe('disconnecting');
+        expect(graceTimer.has(adminUser._id)).toBe(true);
 
-        expect(disconnectingRes.body.users[0].status).toBe('disconnecting');
-        expect(graceTimer.has(adminUser._id)).toBe(true); // timer is running
-
-        // ── step 3: reconnect within grace period ─────────────────────────────
-        // onConnection cancels the pending timer and re-broadcasts as idle.
-        const adminWs2 = createWsClient(adminUser, ADMIN_TOKEN);
+        // ── admin reconnects within grace period ─────────────────────────
+        const { serverWs: adminWs2, webFactory: adminWebFactory2 } = createBridgedClient(adminUser, ADMIN_TOKEN);
         wss.add(adminWs2);
+
+        initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory2);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
         onConnection(wss)(adminWs2);
         await flushPendingCalls();
 
-        // Grace timer must be gone immediately after reconnect
+        // grace timer cancelled on reconnect
         expect(graceTimer.has(adminUser._id)).toBe(false);
 
-        // Status in Redis must be idle again
-        const reconnectedRes = await iamRequest
+        // customer's store shows admin back as idle (broadcast)
+        const adminAfterReconnect = customerStores.onlineUsers.getState().users
+            .find(u => u.id === adminUser._id);
+        expect(adminAfterReconnect).toBeDefined();
+        expect(adminAfterReconnect!.status).toBe('idle');
+
+        // IAM Redis shows admin as idle (sync)
+        const reconnectRes = await iamRequest
             .get('/online-users/list')
             .set('Authorization', ADMIN_TOKEN);
+        const adminInRedis = reconnectRes.body.users
+            .find((u: IOnlineUser) => u.id === adminUser._id);
+        expect(adminInRedis).toBeDefined();
+        expect(adminInRedis!.status).toBe('idle');
 
-        expect(reconnectedRes.body.users).toHaveLength(1);
-        expect(reconnectedRes.body.users[0].status).toBe('idle');
-
-        // ── step 4: advance past original grace window — nothing fires ────────
+        // ── advance past original grace window — nothing fires ───────────
         jest.advanceTimersByTime(30_001);
         await flushPendingCalls();
 
         expect(removeFromIamMock).not.toHaveBeenCalled();
 
-        // User is still in Redis
-        const finalRes = await iamRequest
-            .get('/online-users/list')
-            .set('Authorization', ADMIN_TOKEN);
-
-        expect(finalRes.body.users).toHaveLength(1);
-        expect(finalRes.body.users[0].status).toBe('idle');
-
-        // Cleanup
-        adminWs2.terminate();
-        await flushPendingCalls();
+        expect(
+            customerStores.onlineUsers.getState().users
+                .find(u => u.id === adminUser._id)?.status,
+        ).toBe('idle');
     });
 });
