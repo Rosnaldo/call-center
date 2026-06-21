@@ -66,7 +66,7 @@ export const createIncomingCallActions = (
     if (daily) {
       const { cameraOn, microphoneOn } = useDevicesStore.getState();
       dailyService.join(daily, {
-        room: attendant.slug,
+        room: `${customer.slug}--${attendant.slug}`,
         userName: customer.name,
         userData: { id: customer.id, role: customer.role },
         startAudioOff: !microphoneOn,

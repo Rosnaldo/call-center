@@ -1,5 +1,5 @@
 import type { DailyCall } from '@daily-co/daily-js';
-import { useIncomingCallStore, useCallViewStore, useDevicesStore } from '../stores.ts';
+import { useIncomingCallStore, useCallViewStore, useDevicesStore, useOnlineUsersStore } from '../stores.ts';
 import { CallState } from './state.ts';
 import { dailyService } from '../../services/daily.ts';
 import {
@@ -31,12 +31,17 @@ export const createCallActions = (
       const incomingCall = useIncomingCallStore.getState().incomingCall;
       if (!incomingCall) return;
 
+      const { users } = useOnlineUsersStore.getState();
+      const customer = users.find(u => u.id === incomingCall.customerId);
+      const attendant = users.find(u => u.id === incomingCall.attendantId);
+      if (!customer || !attendant) return;
+
       if (daily) {
         const { cameraOn, microphoneOn } = useDevicesStore.getState();
         dailyService.join(daily, {
-          room: incomingCall.attendantId,
-          userName: '',
-          userData: {},
+          room: `${customer.slug}--${attendant.slug}`,
+          userName: attendant.name,
+          userData: { id: attendant.id, role: attendant.role },
           startAudioOff: !microphoneOn,
           startVideoOff: !cameraOn,
         });

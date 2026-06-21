@@ -24,7 +24,7 @@ export const simulateAnswerIncomingCall = (
       customerName: customer.name,
       attendantId: incomingCall.attendantId,
       attendantName: attendant.name,
-      roomName: attendant.slug,
+      roomName: `${customer.slug}--${attendant.slug}`,
       sessionId: '',
       status: 'active',
       wasAnswered: true,

@@ -11,7 +11,7 @@ import cors from 'cors';
 import Properties from './properties';
 import './extensions/transform_in_dict';
 import { createWebSocketServer } from './websocket/main';
-import dailyWebhook from './routes/webhooks/daily';
+import dailyWebhook from './webhooks/daily';
 
 
 const app = express();
