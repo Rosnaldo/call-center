@@ -1,0 +1,76 @@
+import { Request } from 'express';
+
+import { logError } from '#utils/log_error';
+import { Either, successData } from '#utils/either';
+import { BadRequestException } from '#exceptions/bad_request';
+import { getRedisClient } from '#redis/singleton';
+import { mapString } from '#utils/mapper/string';
+import { validateInput } from 'src/validations/incoming_call/send';
+import { IIncomingCallController } from './params';
+import { IncomingCallState, IOnlineUser } from '@repo/shared-types';
+import { realtimeApi } from '#apis/realtime';
+
+type IInput = IIncomingCallController['ISend']['IInput'];
+type IOutput = IIncomingCallController['ISend']['IOutput'];
+
+const REDIS_KEY = 'incoming_calls';
+const ONLINE_USERS_KEY = 'online_users';
+
+interface Props {
+    mapped: IInput;
+}
+
+export class Send {
+    public static readonly classId = Symbol.for('Controller > IncomingCall > Send');
+
+    private constructor() {}
+
+    static construir(classId: symbol): Send {
+        if (classId !== Symbol.for('Controller > IncomingCall')) {
+            throw new Error(`${classId.toString()}: não pode ser instanciado`);
+        }
+        return new Send();
+    }
+
+    public readonly exec = async (props: Props): Promise<Either<IOutput>> => {
+        try {
+            const params = this.transform(props.mapped);
+            const redis = getRedisClient();
+
+            const existing = await redis.hvals(REDIS_KEY);
+            const alreadyHasCall = existing
+                .map((v) => JSON.parse(v) as IncomingCallState)
+                .some((ic) => ic.attendantId === params.attendantId);
+
+            if (alreadyHasCall) {
+                const attendantJson = await redis.hget(ONLINE_USERS_KEY, params.attendantId);
+                const attendantName = attendantJson
+                    ? (JSON.parse(attendantJson) as IOnlineUser).name
+                    : params.attendantId;
+                throw new BadRequestException(`Atendente ${attendantName} já está em ligação.`);
+            }
+
+            await redis.hset(REDIS_KEY, params.customerId, JSON.stringify(params));
+
+            realtimeApi.post('/webhooks/iam', {
+                event: 'send_incoming_call',
+                payload: { customerId: params.customerId, attendantId: params.attendantId },
+            }).catch((err) => console.error('[Realtime] send_incoming_call failed:', err));
+
+            return successData(params);
+        } catch (error: unknown) {
+            return logError(error, '/incoming-calls/send');
+        }
+    };
+
+    public readonly mapper = (body: Request['body']): IInput => ({
+        customerId: mapString(body.customerId),
+        attendantId: mapString(body.attendantId),
+    });
+
+    private readonly transform = (mapped: IInput): IInput => {
+        const zodResult = validateInput(mapped);
+        if (zodResult.hasError) throw new BadRequestException(zodResult.message!);
+        return zodResult.data as unknown as IInput;
+    };
+}

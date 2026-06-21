@@ -4,6 +4,7 @@ import { IncomingCallStore } from './state.ts';
 import { useOnlineUsersStore, useCallViewStore, useDevicesStore } from '../stores.ts';
 import { initWs } from '@/src/services/init-ws.ts';
 import { dailyService } from '@/src/services/daily.ts';
+import { apiBack } from '@/src/api/backend.ts';
 import {
   simulateSendIncomingCall,
   simulateCancelIncomingCall,
@@ -60,8 +61,8 @@ export const createIncomingCallActions = (
     if ((customer.tokens ?? 0) <= 0) return;
     if (attendant.status !== 'idle') return;
 
-    const incoming: IncomingCallState = { customerId, attendantId };
-    initWs.notifyIncomingCall(attendantId, incoming);
+    apiBack.post('/incoming-calls/send', { customerId, attendantId })
+      .catch((err) => console.error('[IAM] send incoming call failed:', err));
 
     if (daily) {
       const { cameraOn, microphoneOn } = useDevicesStore.getState();
@@ -73,9 +74,6 @@ export const createIncomingCallActions = (
         startVideoOff: !cameraOn,
       });
     }
-
-    useCallViewStore.getState().setViewState('awaiting-answer');
-    set({ incomingCall: incoming });
   },
 
   simulateIncomingCall: (attendantId) => {

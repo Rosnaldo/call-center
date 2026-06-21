@@ -4,7 +4,7 @@ import { IncomingCallData } from '#websocket/types';
 
 export const handleMessageIncomingCall = (wss: ISocketServer, data: IncomingCallData): void => {
     sendToUser(wss, data.targetUserId, {
-        event: 'incoming_call',
+        event: 'send_incoming_call',
         data: { incomingCall: data.incomingCall },
     });
 };

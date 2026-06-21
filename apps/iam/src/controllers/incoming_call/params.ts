@@ -1,7 +1,7 @@
 import { IncomingCallState } from '@repo/shared-types';
 
 export interface IIncomingCallController {
-    ICreate: {
+    ISend: {
         IInput: IncomingCallState;
         IOutput: IncomingCallState;
     };

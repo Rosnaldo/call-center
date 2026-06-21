@@ -4,12 +4,12 @@ import { GetKeycloakUser } from '#middleware/get_keycloak_user';
 
 export default (app: Application) => {
     app.post(
-        '/incoming-calls/create',
+        '/incoming-calls/send',
         GetKeycloakUser,
         async (req, res) => {
             const controller = new IncomingCallController();
-            const mapped = controller.create.mapper(req.body);
-            const either = await controller.create.exec({ mapped });
+            const mapped = controller.send.mapper(req.body);
+            const either = await controller.send.exec({ mapped });
             if (either.isError) {
                 return res.status(either.status).send(either);
             }

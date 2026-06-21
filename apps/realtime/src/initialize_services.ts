@@ -12,6 +12,7 @@ import Properties from './properties';
 import './extensions/transform_in_dict';
 import { createWebSocketServer } from './websocket/main';
 import dailyWebhook from './webhooks/daily';
+import iamWebhook from './webhooks/iam';
 
 
 const app = express();
@@ -34,6 +35,7 @@ export async function initializeServices(): Promise<void> {
         console.log('[WS] WebSocket server attached');
 
         dailyWebhook(app, wss);
+        iamWebhook(app, wss);
 
         const gracefulShutdown = async () => {
             if (isShuttingDown) return;

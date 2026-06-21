@@ -35,7 +35,7 @@ export const onConnection = (wss: ISocketServer) => (ws: AuthenticatedWebSocket)
                 case 'user_logout':
                     handleMessageLogout(ws, hb, startGracePeriod);
                     break;
-                case 'incoming_call':
+                case 'send_incoming_call':
                     handleMessageIncomingCall(wss, msg.data);
                     break;
                 case 'call_cancelled':
