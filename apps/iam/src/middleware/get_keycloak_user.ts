@@ -34,8 +34,13 @@ async function resolveToken(key: string, token: string, issuer: string): Promise
     });
 }
 
+const MOCK_TOKEN_PREFIX = 'mock:';
+
 export async function defaultValidateToken(token: string): Promise<JwtPayload> {
-    if (properties.nodeEnv === 'test') return JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
+    if (properties.nodeEnv === 'test' && token.startsWith(MOCK_TOKEN_PREFIX)) {
+        const encoded = token.slice(MOCK_TOKEN_PREFIX.length);
+        return JSON.parse(Buffer.from(encoded, 'base64').toString('utf8')) as JwtPayload;
+    }
 
     const payload = jwt.decode(token) as JwtPayload;
     const issuer = payload.iss || '';

@@ -17,7 +17,7 @@ export const createGracePeriod = (
             addToIam(transitionUser, token);
         },
         () => {
-            // broadcastMessage(wss, { event: 'user_logout', data: { id: user.id } });
+            broadcastMessage(wss, { event: 'user_logout', data: { id: user.id } });
             removeFromIam(user.id, token);
         },
     );

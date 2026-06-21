@@ -1,62 +1,33 @@
-/**
- * Integration test: logout broadcast → web store
- *
- * Tests that when the realtime server broadcasts during a user logout,
- * the web client's initWs receives the message and updates the zustand stores.
- *
- * Broadcast flow:
- *   handleMessageLogout → startGracePeriod('offline') → graceTimer.start(onStart, onExpire)
- *     onStart (immediate):  broadcastMessage({ event: 'online_users_updated', data: { status: 'offline' } })
- *     onExpire (after 30s):  removeFromIam (no broadcast)
- *
- *   startGracePeriod is called BEFORE ws.terminate(), so the logging-out user
- *   still has readyState=OPEN and receives its own offline broadcast.
- */
-
 jest.mock('src/services/users');
 
 import { EventEmitter } from 'node:events';
-import { IUser } from '@repo/shared-types';
+import { IOnlineUser, IUser } from '@repo/shared-types';
 
-import { MockSocketServer, createWsClient, simulateMessage } from './helpers/mock-wss';
+import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
+import { createMockUsers, ADMIN_TOKEN, CUSTOMER_TOKEN } from './helpers/users';
+import { getRedisClient } from '../../iam/src/redis/singleton';
+import { MockSocketServer, simulateMessage, createWsClient } from './helpers/mock-wss';
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { graceTimer } from '../../realtime/src/websocket/grace_timer';
 
-import { createStores, useOnlineUsersStore } from '../../web/src/states/stores';
-
-const stores = createStores();
+import { createStores, Stores } from '../../web/src/states/stores';
 import { initWs } from '../../web/src/services/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/transport';
 
-const ADMIN_TOKEN = 'mock-admin-token';
-const CUSTOMER_TOKEN = 'mock-customer-token';
+import * as usersService from 'src/services/users';
 
-const adminUser: IUser = {
-    _id: 'admin-broadcast-id',
-    slug: 'admin-integration',
-    firstName: 'Admin',
-    lastName: 'Integration',
-    email: 'admin@integration.test',
-    role: 'admin',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-};
+const addToIamMock = usersService.addToIam as jest.Mock;
+const removeFromIamMock = usersService.removeFromIam as jest.Mock;
 
-const customerUser: IUser = {
-    _id: 'customer-broadcast-id',
-    slug: 'customer-integration',
-    firstName: 'Customer',
-    lastName: 'Integration',
-    email: 'customer@integration.test',
-    role: 'customer',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-};
+const pendingCalls: Array<Promise<unknown>> = [];
 
-// ─── bridge helper ──────────────────────────────────────────────────────────
-// Creates a paired (server, webFactory) transport so that server broadcasts
-// (broadcastMessage → client.send → 'sent' event) arrive as onmessage calls
-// on the web transport that initWs manages.
+async function flushPendingCalls(): Promise<void> {
+    const snapshot = [...pendingCalls];
+    pendingCalls.length = 0;
+    await Promise.all(snapshot);
+}
+
+// ─── bridge helpers ─────────────────────────────────────────────────────────
 
 function createBridgedClient(user: IUser, token: string) {
     const serverWs = createWsClient(user, token);
@@ -88,14 +59,53 @@ function createBridgedClient(user: IUser, token: string) {
 
 // ─── suite ──────────────────────────────────────────────────────────────────
 
-describe('User Logout Flow — Broadcast → Web Store', () => {
+describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
+    let iamRequest: IamAgent;
+    let adminUser: IUser;
+    let customerUser: IUser;
     let wss: MockSocketServer;
+    let customerStores: Stores;
+    let adminStores: Stores;
 
-    beforeEach(() => {
+    beforeAll(async () => {
+        iamRequest = await startIamServer();
+        const users = await createMockUsers();
+        adminUser = users.admin;
+        customerUser = users.customer;
+    });
+
+    afterAll(async () => {
+        await stopIamServer();
+    });
+
+    beforeEach(async () => {
         jest.useFakeTimers();
+        await getRedisClient().del('online_users');
+
         wss = new MockSocketServer();
+        pendingCalls.length = 0;
         jest.clearAllMocks();
-        useOnlineUsersStore.setState({ users: [] });
+
+        customerStores = createStores();
+        adminStores = createStores();
+
+        addToIamMock.mockImplementation((user: IOnlineUser, token: string) => {
+            const op = iamRequest
+                .post('/online-users/add')
+                .set('Authorization', token)
+                .send(user);
+            pendingCalls.push(op);
+            return op;
+        });
+
+        removeFromIamMock.mockImplementation((userId: string, token: string) => {
+            const op = iamRequest
+                .delete('/online-users/remove')
+                .set('Authorization', token)
+                .send({ id: userId });
+            pendingCalls.push(op);
+            return op;
+        });
     });
 
     afterEach(() => {
@@ -104,106 +114,168 @@ describe('User Logout Flow — Broadcast → Web Store', () => {
         jest.useRealTimers();
     });
 
-    // ── test 1 ───────────────────────────────────────────────────────────────
+    it('other web clients receive offline status via broadcast', async () => {
+        const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
-    it('other web clients receive offline status via broadcast', () => {
-        // Customer connects first (bridged: server + web initWs)
-        const { serverWs: customerWs, webFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
-        wss.add(customerWs);
-        initWs.init(CUSTOMER_TOKEN, stores, webFactory);
-        onConnection(wss)(customerWs);
-
-        // Admin connects — handleOpen broadcasts to customer's initWs
-        const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
         wss.add(adminWs);
+        wss.add(customerWs);
+
+        // admin inits first; customer inits last so this.stores = customerStores
+        initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
         onConnection(wss)(adminWs);
+        await flushPendingCalls();
 
-        // Customer's web store should have both users as idle
-        expect(useOnlineUsersStore.getState().users).toHaveLength(2);
+        onConnection(wss)(customerWs);
+        await flushPendingCalls();
 
-        // Admin logs out — server broadcasts online_users_updated with status 'offline'
+        // both users appear in customer's store as idle
+        expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
+
+        // both users are idle in IAM Redis
+        const loginRes = await iamRequest
+            .get('/online-users/list')
+            .set('Authorization', ADMIN_TOKEN);
+        expect(loginRes.body.users).toHaveLength(2);
+        expect(loginRes.body.users.every((u: IOnlineUser) => u.status === 'idle')).toBe(true);
+
+        // ── admin logs out ───────────────────────────────────────────────
         simulateMessage(adminWs, { event: 'user_logout' });
+        await flushPendingCalls();
 
-        const adminInStore = useOnlineUsersStore.getState().users.find(u => u.id === adminUser._id);
-        expect(adminInStore).toBeDefined();
-        expect(adminInStore!.status).toBe('offline');
+        // customer's web store shows admin as offline (broadcast)
+        const adminInCustomerStore = customerStores.onlineUsers.getState().users
+            .find(u => u.id === adminUser._id);
+        expect(adminInCustomerStore).toBeDefined();
+        expect(adminInCustomerStore!.status).toBe('offline');
+
+        // IAM Redis shows admin as offline (sync)
+        const logoutRes = await iamRequest
+            .get('/online-users/list')
+            .set('Authorization', ADMIN_TOKEN);
+        const adminInRedis = logoutRes.body.users
+            .find((u: IOnlineUser) => u.id === adminUser._id);
+        expect(adminInRedis).toBeDefined();
+        expect(adminInRedis!.status).toBe('offline');
     });
 
-    // ── test 2 ───────────────────────────────────────────────────────────────
+    it('grace period expiry removes user and broadcasts removal', async () => {
+        const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
-    it('logging-out user receives own offline broadcast before terminate', () => {
-        // Admin connects (bridged: server + web initWs)
-        const { serverWs: adminWs, webFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         wss.add(adminWs);
-        initWs.init(ADMIN_TOKEN, stores, webFactory);
+        wss.add(customerWs);
+
+        initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
         onConnection(wss)(adminWs);
+        await flushPendingCalls();
+
+        onConnection(wss)(customerWs);
+        await flushPendingCalls();
+
+        expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
+
+        // ── admin logs out — status transitions to offline ───────────────
+        simulateMessage(adminWs, { event: 'user_logout' });
+        await flushPendingCalls();
 
         expect(
-            useOnlineUsersStore.getState().users.find(u => u.id === adminUser._id)?.status,
-        ).toBe('idle');
-
-        // Admin logs out — startGracePeriod fires broadcast BEFORE ws.terminate()
-        simulateMessage(adminWs, { event: 'user_logout' });
-
-        const adminAfter = useOnlineUsersStore.getState().users.find(u => u.id === adminUser._id);
-        expect(adminAfter).toBeDefined();
-        expect(adminAfter!.status).toBe('offline');
-    });
-
-    // ── test 3 ───────────────────────────────────────────────────────────────
-
-    it('grace period expiry does not broadcast removal to web clients', () => {
-        const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
-        wss.add(adminWs);
-        onConnection(wss)(adminWs);
-
-        const { serverWs: customerWs, webFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
-        wss.add(customerWs);
-        initWs.init(CUSTOMER_TOKEN, stores, webFactory);
-        onConnection(wss)(customerWs);
-
-        // Admin logs out — store transitions to offline
-        simulateMessage(adminWs, { event: 'user_logout' });
-
-        // Advance past grace period — removeFromIam fires but no broadcast
-        jest.advanceTimersByTime(30_001);
-
-        // Web store still has admin as offline (server never broadcast removal)
-        const adminInStore = useOnlineUsersStore.getState().users.find(u => u.id === adminUser._id);
-        expect(adminInStore).toBeDefined();
-        expect(adminInStore!.status).toBe('offline');
-    });
-
-    // ── test 4 ───────────────────────────────────────────────────────────────
-
-    it('reconnect within grace period broadcasts idle status to web clients', () => {
-        const adminWs = createWsClient(adminUser, ADMIN_TOKEN);
-        wss.add(adminWs);
-        onConnection(wss)(adminWs);
-
-        const { serverWs: customerWs, webFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
-        wss.add(customerWs);
-        initWs.init(CUSTOMER_TOKEN, stores, webFactory);
-        onConnection(wss)(customerWs);
-
-        // Admin logs out — web store shows admin offline
-        simulateMessage(adminWs, { event: 'user_logout' });
-
-        expect(
-            useOnlineUsersStore.getState().users.find(u => u.id === adminUser._id)?.status,
+            customerStores.onlineUsers.getState().users
+                .find(u => u.id === adminUser._id)?.status,
         ).toBe('offline');
 
-        // Admin reconnects within grace period — handleOpen broadcasts idle
-        const adminWs2 = createWsClient(adminUser, ADMIN_TOKEN);
-        wss.add(adminWs2);
-        onConnection(wss)(adminWs2);
+        // ── advance past grace period (30s) ──────────────────────────────
+        jest.advanceTimersByTime(30_001);
+        await flushPendingCalls();
 
-        const adminAfterReconnect = useOnlineUsersStore.getState().users.find(
-            u => u.id === adminUser._id,
-        );
+        // customer's store no longer contains admin (broadcast removal)
+        const adminAfterExpiry = customerStores.onlineUsers.getState().users
+            .find(u => u.id === adminUser._id);
+        expect(adminAfterExpiry).toBeUndefined();
+
+        // only customer remains in the store
+        expect(customerStores.onlineUsers.getState().users).toHaveLength(1);
+        expect(customerStores.onlineUsers.getState().users[0].id).toBe(customerUser._id);
+
+        // IAM Redis no longer contains admin (sync)
+        const finalRes = await iamRequest
+            .get('/online-users/list')
+            .set('Authorization', CUSTOMER_TOKEN);
+        const adminInRedis = finalRes.body.users
+            .find((u: IOnlineUser) => u.id === adminUser._id);
+        expect(adminInRedis).toBeUndefined();
+    });
+
+    it('reconnect within grace period broadcasts idle status to users', async () => {
+        const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
+
+        wss.add(adminWs);
+        wss.add(customerWs);
+
+        initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
+        onConnection(wss)(adminWs);
+        await flushPendingCalls();
+
+        onConnection(wss)(customerWs);
+        await flushPendingCalls();
+
+        expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
+
+        // ── admin logs out — status transitions to offline ───────────────
+        simulateMessage(adminWs, { event: 'user_logout' });
+        await flushPendingCalls();
+
+        expect(
+            customerStores.onlineUsers.getState().users
+                .find(u => u.id === adminUser._id)?.status,
+        ).toBe('offline');
+        expect(graceTimer.has(adminUser._id)).toBe(true);
+
+        // ── admin reconnects within grace period ─────────────────────────
+        const { serverWs: adminWs2, webFactory: adminWebFactory2 } = createBridgedClient(adminUser, ADMIN_TOKEN);
+        wss.add(adminWs2);
+
+        initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory2);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
+        onConnection(wss)(adminWs2);
+        await flushPendingCalls();
+
+        // grace timer cancelled on reconnect
+        expect(graceTimer.has(adminUser._id)).toBe(false);
+
+        // customer's store shows admin back as idle (broadcast)
+        const adminAfterReconnect = customerStores.onlineUsers.getState().users
+            .find(u => u.id === adminUser._id);
         expect(adminAfterReconnect).toBeDefined();
         expect(adminAfterReconnect!.status).toBe('idle');
 
-        adminWs2.terminate();
+        // IAM Redis shows admin as idle (sync)
+        const reconnectRes = await iamRequest
+            .get('/online-users/list')
+            .set('Authorization', ADMIN_TOKEN);
+        const adminInRedis = reconnectRes.body.users
+            .find((u: IOnlineUser) => u.id === adminUser._id);
+        expect(adminInRedis).toBeDefined();
+        expect(adminInRedis!.status).toBe('idle');
+
+        // ── advance past original grace window — nothing fires ───────────
+        jest.advanceTimersByTime(30_001);
+        await flushPendingCalls();
+
+        expect(removeFromIamMock).not.toHaveBeenCalled();
+
+        // admin still idle in customer's store
+        expect(
+            customerStores.onlineUsers.getState().users
+                .find(u => u.id === adminUser._id)?.status,
+        ).toBe('idle');
     });
 });
