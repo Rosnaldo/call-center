@@ -40,10 +40,6 @@ Object.defineProperty(navigator, 'clipboard', {
   writable: true,
 });
 
-// Mock chime helper
-vi.mock('../../../utils/helpers.ts', () => ({
-  playNotificationChime: vi.fn(),
-}));
 
 describe('DeveloperSimulator Component Unit Tests', () => {
   const mockUsers = [

@@ -14,7 +14,6 @@ import {
   Check,
   Coins
 } from 'lucide-react';
-import { playNotificationChime } from '../../utils/helpers.ts';
 import { useOnlineUsersStore } from '../../states/online-users/store.ts';
 import { useCallStore } from '../../states/call/store.ts';
 import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
@@ -28,7 +27,7 @@ interface DeveloperSimulatorProps {
   onUpdateCall?: (callId: string, updates: Partial<CallState>) => void;
   onAddTokens?: (userId: string, count: number) => void;
   onSimulateIncomingCall?: (attendantId: string) => void;
-  onSimulateCallAsCustomer?: (customerId: string, attendantId: string) => void;
+  onSimulateIncomingCallAsCustomer?: (customerId: string, attendantId: string) => void;
 }
 
 export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => {
@@ -36,7 +35,7 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
     onUpdateCall,
     onAddTokens,
     onSimulateIncomingCall,
-    onSimulateCallAsCustomer,
+    onSimulateIncomingCallAsCustomer,
   } = props;
 
   const reset = useResetSimulationState();
@@ -171,7 +170,7 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
                             </div>
                             <button
                               type="button"
-                              onClick={() => onSimulateCallAsCustomer?.(currentUser.id, att.id)}
+                              onClick={() => onSimulateIncomingCallAsCustomer?.(currentUser.id, att.id)}
                               className="px-2 py-1 text-[9px] font-bold bg-sky-600 hover:bg-sky-500 text-white rounded cursor-pointer transition active:scale-95"
                             >
                               Ligar 📞
@@ -339,9 +338,6 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
                               onUpdateCall(call.id, {
                                 status: 'call-interrupteded'
                               });
-                              try {
-                                playNotificationChime();
-                              } catch (err) {}
                             }
                           }}
                           id={`sim-disconnect-btn-${call.id}`}
@@ -356,9 +352,7 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
                               onUpdateCall(call.id, {
                                 status: 'active'
                               });
-                              try {
-                                playNotificationChime();
-                              } catch (err) {}
+
                             }
                           }}
                           id={`sim-reconnect-btn-${call.id}`}

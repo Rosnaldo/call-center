@@ -6,6 +6,7 @@
 import React from 'react';
 import { useOnlineUsersStore } from '../../states/online-users/store.ts';
 import { useCallStore } from '../../states/call/store.ts';
+import { useIncomingCallStore } from '../../states/incoming-call/store.ts';
 import { CustomerPageUI } from './ui.tsx';
 import { useCurrentUserStore } from '@/src/states/current-user/store.ts';
 import { useBillingTimer } from '@/src/hooks/useBillingTimer.ts';
@@ -17,7 +18,7 @@ export const CustomerPageContainer: React.FC = () => {
   const call = useCallStore((state) => state.call);
   const completeCall = useCallStore((s) => s.completeCall);
   const updateCall = useCallStore((s) => s.updateCall);
-  const simulateCallAsCustomer = useCallStore((s) => s.simulateCallAsCustomer);
+  const simulateIncomingCallAsCustomer = useIncomingCallStore((s) => s.simulateIncomingCallAsCustomer);
 
   useBillingTimer(call ?? undefined);
 
@@ -29,7 +30,7 @@ export const CustomerPageContainer: React.FC = () => {
       completeCall={completeCall}
       addTokensSimulation={addTokensSimulation}
       updateCall={updateCall}
-      simulateCallAsCustomer={simulateCallAsCustomer}
+      simulateIncomingCallAsCustomer={simulateIncomingCallAsCustomer}
     />
   );
 };

@@ -7,7 +7,6 @@ vi.mock('../../../services/online-users-ws.ts', () => ({
 
 vi.mock('../../../utils/helpers.ts', () => ({
   generateMeetUrl: vi.fn(() => 'https://meet.test/room'),
-  playNotificationChime: vi.fn(),
 }));
 
 

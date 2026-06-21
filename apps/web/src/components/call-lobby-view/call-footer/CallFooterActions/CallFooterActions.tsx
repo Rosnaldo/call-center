@@ -58,7 +58,7 @@ export const CallFooterActions: React.FC = () => {
   };
 
   const handleCancelCall = () => {
-    useCallStore.getState().cancelCall();
+    useIncomingCallStore.getState().cancelIncomingCall();
   };
 
   const handleHangUp = () => {

@@ -21,7 +21,7 @@ interface CustomerPageUIProps {
   completeCall: (attendantId: string, callId?: string, byAttendant?: boolean) => void;
   addTokensSimulation: (userId: string, count: number) => void;
   updateCall: (callId: string, updates: Partial<CallState>) => void;
-  simulateCallAsCustomer: (customerId: string, attendantId: string) => void;
+  simulateIncomingCallAsCustomer: (customerId: string, attendantId: string) => void;
 }
 
 export const CustomerPageUI: React.FC<CustomerPageUIProps> = ({
@@ -31,7 +31,7 @@ export const CustomerPageUI: React.FC<CustomerPageUIProps> = ({
   completeCall,
   addTokensSimulation,
   updateCall,
-  simulateCallAsCustomer,
+  simulateIncomingCallAsCustomer,
 }) => {
   const handleLogout = useLogout();
 
@@ -93,7 +93,7 @@ export const CustomerPageUI: React.FC<CustomerPageUIProps> = ({
           <DeveloperSimulator
             onUpdateCall={updateCall}
             onAddTokens={addTokensSimulation}
-            onSimulateCallAsCustomer={simulateCallAsCustomer}
+            onSimulateCallAsCustomer={simulateIncomingCallAsCustomer}
           />
         </div>
       </main>
