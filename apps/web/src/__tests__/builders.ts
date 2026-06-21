@@ -27,7 +27,6 @@ export const buildCall = (d?: Partial<CallState>): CallState => ({
   sessionId: d?.sessionId ?? '',
   status: d?.status ?? 'active',
   wasAnswered: d?.wasAnswered ?? false,
-  startedAt: d?.startedAt ?? Date.now(),
 });
 
 export const buildTokenTransaction = (d?: Partial<TokenTransaction>): TokenTransaction => ({

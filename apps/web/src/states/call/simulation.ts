@@ -28,7 +28,6 @@ export const simulateAnswerIncomingCall = (
       sessionId: '',
       status: 'active',
       wasAnswered: true,
-      startedAt: now,
     };
 
     updateUser(incomingCall.customerId, { status: 'in-call' as const });

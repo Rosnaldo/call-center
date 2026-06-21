@@ -49,7 +49,6 @@ export interface CallState {
     sessionId: string;
     status: 'active' | 'completed';
     wasAnswered: boolean;
-    startedAt?: number;
 }
 
 export interface Pagination {

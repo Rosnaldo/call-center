@@ -26,7 +26,7 @@ export function useTimerOrchestrator(
       return;
     }
 
-    const start = currentCall?.startedAt || Date.now();
+    const start = Date.now();
 
     const syncToWallClock = () => {
       const elapsed = Math.max(0, Math.floor((Date.now() - start) / 1000));
