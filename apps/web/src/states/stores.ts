@@ -30,8 +30,18 @@ export interface Stores {
     timer: TimerStoreInstance;
 }
 
+export let useAuthStore: AuthStoreInstance;
+export let useBillingStore: BillingStoreInstance;
+export let useCallStore: CallStoreInstance;
+export let useCallViewStore: CallViewStoreInstance;
+export let useCurrentUserStore: CurrentUserStoreInstance;
+export let useDevicesStore: DevicesStoreInstance;
+export let useIncomingCallStore: IncomingCallStoreInstance;
+export let useOnlineUsersStore: OnlineUsersStoreInstance;
+export let useTimerStore: TimerStoreInstance;
+
 export function createStores(): Stores {
-    return {
+    const s: Stores = {
         auth: createAuthStore(),
         billing: createBillingStore(),
         call: createCallStore(),
@@ -42,16 +52,17 @@ export function createStores(): Stores {
         onlineUsers: createOnlineUsersStore(),
         timer: createTimerStore(),
     };
+
+    useAuthStore = s.auth;
+    useBillingStore = s.billing;
+    useCallStore = s.call;
+    useCallViewStore = s.callView;
+    useCurrentUserStore = s.currentUser;
+    useDevicesStore = s.devices;
+    useIncomingCallStore = s.incomingCall;
+    useOnlineUsersStore = s.onlineUsers;
+    useTimerStore = s.timer;
+
+    return s;
 }
 
-export const stores = createStores();
-
-export const useAuthStore = stores.auth;
-export const useBillingStore = stores.billing;
-export const useCallStore = stores.call;
-export const useCallViewStore = stores.callView;
-export const useCurrentUserStore = stores.currentUser;
-export const useDevicesStore = stores.devices;
-export const useIncomingCallStore = stores.incomingCall;
-export const useOnlineUsersStore = stores.onlineUsers;
-export const useTimerStore = stores.timer;

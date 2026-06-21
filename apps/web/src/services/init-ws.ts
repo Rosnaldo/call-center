@@ -1,11 +1,16 @@
 import { IOnlineUser, IncomingCallState } from '@repo/shared-types';
-import { useOnlineUsersStore, useIncomingCallStore } from '../states/stores';
 import { AuthenticatedWebSocket, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
+import type { OnlineUsersStoreInstance, IncomingCallStoreInstance } from '../states/stores';
 
 const WS_URL = import.meta.env.VITE_REALTIME_WS_URL as string | undefined;
 const RECONNECT_DELAY_MS = 3_000;
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const HEARTBEAT_ACK_TIMEOUT_MS = 10_000;
+
+interface InitWsStores {
+    onlineUsers: OnlineUsersStoreInstance;
+    incomingCall: IncomingCallStoreInstance;
+}
 
 type WsInboundMessage =
     | { event: 'online_users_updated'; data: IOnlineUser }
@@ -22,6 +27,7 @@ class InitWs {
     private activeWs: AuthenticatedWebSocket | null = null;
     private running = false;
     private factory: TransportFactory = createWsTransport;
+    private stores: InitWsStores | null = null;
     private readonly isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
 
     private startHeartbeat(onTick: () => void): void {
@@ -64,8 +70,8 @@ class InitWs {
         ws.onmessage = (event) => {
             try {
                 const msg = JSON.parse(event.data as string) as WsInboundMessage;
-                const { upsertUser, removeUser } = useOnlineUsersStore.getState();
-                const { clearIncomingCall, setIncomingCall } = useIncomingCallStore.getState();
+                const { upsertUser, removeUser } = this.stores!.onlineUsers.getState();
+                const { clearIncomingCall, setIncomingCall } = this.stores!.incomingCall.getState();
                 switch (msg.event) {
                     case 'online_users_updated':
                         upsertUser(msg.data);
@@ -98,9 +104,10 @@ class InitWs {
         };
     }
 
-    init(token: string | undefined, factory: TransportFactory = createWsTransport): void {
+    init(token: string | undefined, stores: InitWsStores, factory: TransportFactory = createWsTransport): void {
         if (!token) return;
         this.running = true;
+        this.stores = stores;
         this.factory = factory;
         this.connect(this.createAuthWs(token));
     }

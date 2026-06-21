@@ -1,11 +1,10 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import { createStores, type Stores } from './stores.ts';
+import { createContext, useContext, type ReactNode } from 'react';
+import type { Stores } from './stores.ts';
 
 const StoreContext = createContext<Stores | null>(null);
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-    const [value] = useState(createStores);
-    return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+export function StoreProvider({ stores, children }: { stores: Stores; children: ReactNode }) {
+    return <StoreContext.Provider value={stores}>{children}</StoreContext.Provider>;
 }
 
 export function useStores(): Stores {

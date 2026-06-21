@@ -22,7 +22,9 @@ import { MockSocketServer, createWsClient, simulateMessage } from './helpers/moc
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { graceTimer } from '../../realtime/src/websocket/grace_timer';
 
-import { useOnlineUsersStore } from '../../web/src/states/stores';
+import { createStores, useOnlineUsersStore } from '../../web/src/states/stores';
+
+const stores = createStores();
 import { initWs } from '../../web/src/services/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/transport';
 
@@ -108,7 +110,7 @@ describe('User Logout Flow — Broadcast → Web Store', () => {
         // Customer connects first (bridged: server + web initWs)
         const { serverWs: customerWs, webFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         wss.add(customerWs);
-        initWs.init(CUSTOMER_TOKEN, webFactory);
+        initWs.init(CUSTOMER_TOKEN, stores, webFactory);
         onConnection(wss)(customerWs);
 
         // Admin connects — handleOpen broadcasts to customer's initWs
@@ -133,7 +135,7 @@ describe('User Logout Flow — Broadcast → Web Store', () => {
         // Admin connects (bridged: server + web initWs)
         const { serverWs: adminWs, webFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         wss.add(adminWs);
-        initWs.init(ADMIN_TOKEN, webFactory);
+        initWs.init(ADMIN_TOKEN, stores, webFactory);
         onConnection(wss)(adminWs);
 
         expect(
@@ -157,7 +159,7 @@ describe('User Logout Flow — Broadcast → Web Store', () => {
 
         const { serverWs: customerWs, webFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         wss.add(customerWs);
-        initWs.init(CUSTOMER_TOKEN, webFactory);
+        initWs.init(CUSTOMER_TOKEN, stores, webFactory);
         onConnection(wss)(customerWs);
 
         // Admin logs out — store transitions to offline
@@ -181,7 +183,7 @@ describe('User Logout Flow — Broadcast → Web Store', () => {
 
         const { serverWs: customerWs, webFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         wss.add(customerWs);
-        initWs.init(CUSTOMER_TOKEN, webFactory);
+        initWs.init(CUSTOMER_TOKEN, stores, webFactory);
         onConnection(wss)(customerWs);
 
         // Admin logs out — web store shows admin offline

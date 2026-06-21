@@ -15,3 +15,6 @@ Object.defineProperty(globalThis, 'localStorage', {
   writable: true,
   configurable: true,
 });
+
+import { createStores } from '../states/stores';
+createStores();
