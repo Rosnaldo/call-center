@@ -1,3 +1,5 @@
+import { EventEmitter } from 'events';
+
 export const TRANSPORT_OPEN = 1;
 const TRANSPORT_CLOSED = 3;
 
@@ -13,36 +15,53 @@ export interface ITransport {
 
 export type TransportFactory = (url: string) => ITransport;
 
+export interface AuthenticatedWebSocket extends ITransport {
+    token: string;
+}
+
 export const createWsTransport: TransportFactory = (url) =>
     new WebSocket(url) as unknown as ITransport;
 
-export class EventEmitterTransport implements ITransport {
-    readyState = TRANSPORT_OPEN;
-    onopen: ((ev: Event) => void) | null = null;
-    onmessage: ((ev: MessageEvent) => void) | null = null;
-    onerror: ((ev: Event) => void) | null = null;
-    onclose: ((ev: CloseEvent) => void) | null = null;
+export interface ISocket {
+    readonly readyState: number;
+    send(data: string): void;
+    terminate(): void;
+    ping(): void;
+    on(event: 'pong', listener: () => void): void;
+    on(event: 'message', listener: (raw: Buffer | string) => void): void;
+    on(event: 'close', listener: () => void): void;
+}
 
-    readonly sent: string[] = [];
+export class EventEmitterTransport extends EventEmitter implements ISocket {
+    protected _readyState: number;
+
+    get readyState(): number {
+        return this._readyState;
+    }
+
+    constructor(readyState = TRANSPORT_OPEN) {
+        super();
+        this._readyState = readyState;
+    }
+
+    on(event: 'pong', listener: () => void): this;
+    on(event: 'message', listener: (raw: Buffer | string) => void): this;
+    on(event: 'close', listener: () => void): this;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    on(event: string, listener: (...args: any[]) => void): this {
+        return super.on(event, listener);
+    }
 
     send(data: string): void {
-        this.sent.push(data);
+        this.emit('sent', data);
     }
 
-    close(): void {
-        this.readyState = TRANSPORT_CLOSED;
-        this.onclose?.(new CloseEvent('close'));
+    terminate(): void {
+        this._readyState = TRANSPORT_CLOSED;
+        this.emit('close');
     }
 
-    simulateOpen(): void {
-        this.onopen?.(new Event('open'));
-    }
-
-    simulateMessage(data: string): void {
-        this.onmessage?.(new MessageEvent('message', { data }));
-    }
-
-    simulateError(): void {
-        this.onerror?.(new Event('error'));
+    ping(): void {
+        this.emit('ping');
     }
 }

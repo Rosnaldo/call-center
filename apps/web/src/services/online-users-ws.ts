@@ -1,6 +1,6 @@
 import { IOnlineUser, IncomingCallState } from '@repo/shared-types';
 import { useOnlineUsersStore } from '../states/online-users/store';
-import { ITransport, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
+import { AuthenticatedWebSocket, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
 import { useIncomingCallStore } from '../states/incoming-call/store';
 
 const WS_URL = import.meta.env.VITE_REALTIME_WS_URL as string | undefined;
@@ -15,116 +15,117 @@ type WsInboundMessage =
     | { event: 'incoming_call'; data: { incomingCall: IncomingCallState } }
     | { event: 'call_cancelled'; data: { targetUserId: string } };
 
-let _heartbeatRef: ReturnType<typeof setInterval> | null = null;
-
-const heartbeat = {
-    start(onTick: () => void): void {
-        if (_heartbeatRef) return;
-        _heartbeatRef = setInterval(onTick, HEARTBEAT_INTERVAL_MS);
-    },
-    stop(): void {
-        if (_heartbeatRef) clearInterval(_heartbeatRef);
-        _heartbeatRef = null;
-    },
-};
-
-let _ackRef: ReturnType<typeof setTimeout> | null = null;
-
-const ackTimer = {
-    arm(onTimeout: () => void): void {
-        if (_ackRef) clearTimeout(_ackRef);
-        _ackRef = setTimeout(onTimeout, HEARTBEAT_ACK_TIMEOUT_MS);
-    },
-    cancel(): void {
-        if (_ackRef) clearTimeout(_ackRef);
-        _ackRef = null;
-    },
-};
-
 export type IncomingCallPayload = IncomingCallState;
 
-let activeWs: ITransport | null = null;
-let running = false;
+class OnlineUsersWs {
+    private heartbeatRef: ReturnType<typeof setInterval> | null = null;
+    private ackRef: ReturnType<typeof setTimeout> | null = null;
+    private activeWs: AuthenticatedWebSocket | null = null;
+    private running = false;
+    private factory: TransportFactory = createWsTransport;
+    private readonly isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
 
-const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
-
-export function notifyWsLogout(): void {
-    if (isSimulation) return;
-    if (activeWs?.readyState === TRANSPORT_OPEN) {
-        activeWs.send(JSON.stringify({ event: 'user_logout' }));
+    private startHeartbeat(onTick: () => void): void {
+        if (this.heartbeatRef) return;
+        this.heartbeatRef = setInterval(onTick, HEARTBEAT_INTERVAL_MS);
     }
-}
 
-export function notifyWsIncomingCall(targetUserId: string, incomingCall: IncomingCallState): void {
-    if (isSimulation) return;
-    if (activeWs?.readyState === TRANSPORT_OPEN) {
-        activeWs.send(JSON.stringify({ event: 'incoming_call', data: { targetUserId, incomingCall } }));
+    private stopHeartbeat(): void {
+        if (this.heartbeatRef) clearInterval(this.heartbeatRef);
+        this.heartbeatRef = null;
     }
-}
 
-export function notifyWsCancelCall(targetUserId: string): void {
-    if (isSimulation) return;
-    if (activeWs?.readyState === TRANSPORT_OPEN) {
-        activeWs.send(JSON.stringify({ event: 'call_cancelled', data: { targetUserId } }));
+    private armAck(onTimeout: () => void): void {
+        if (this.ackRef) clearTimeout(this.ackRef);
+        this.ackRef = setTimeout(onTimeout, HEARTBEAT_ACK_TIMEOUT_MS);
     }
-}
 
-function connect(token: string, factory: TransportFactory) {
-    if (!running || !WS_URL) return;
+    private cancelAck(): void {
+        if (this.ackRef) clearTimeout(this.ackRef);
+        this.ackRef = null;
+    }
 
-    const transport = factory(`${WS_URL}?token=${token}`);
-    activeWs = transport;
+    private createAuthWs(token: string): AuthenticatedWebSocket {
+        const transport = this.factory(`${WS_URL}?token=${token}`);
+        return Object.assign(transport, { token });
+    }
 
-    transport.onopen = () => {
-        heartbeat.start(() => {
-            if (transport.readyState !== TRANSPORT_OPEN) return;
-            transport.send(JSON.stringify({ event: 'heartbeat' }));
-            ackTimer.arm(() => transport.close());
-        });
-    };
+    private connect(ws: AuthenticatedWebSocket): void {
+        if (!this.running || !WS_URL) return;
+        this.activeWs = ws;
 
-    transport.onmessage = (event) => {
-        try {
-            const msg = JSON.parse(event.data as string) as WsInboundMessage;
-            const { upsertUser, removeUser } = useOnlineUsersStore.getState();
-            const { clearIncomingCall, setIncomingCall } = useIncomingCallStore.getState();
-            switch (msg.event) {
-                case 'online_users_updated':
-                    upsertUser(msg.data);
-                    break;
-                case 'heartbeat_ack':
-                    ackTimer.cancel();
-                    break;
-                case 'user_logout':
-                    removeUser(msg.data.id);
-                    break;
-                case 'incoming_call':
-                    setIncomingCall?.(msg.data.incomingCall);
-                    break;
-                case 'call_cancelled':
-                    clearIncomingCall?.();
-                    break;
+        ws.onopen = () => {
+            this.startHeartbeat(() => {
+                if (ws.readyState !== TRANSPORT_OPEN) return;
+                ws.send(JSON.stringify({ event: 'heartbeat' }));
+                this.armAck(() => ws.close());
+            });
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data as string) as WsInboundMessage;
+                const { upsertUser, removeUser } = useOnlineUsersStore.getState();
+                const { clearIncomingCall, setIncomingCall } = useIncomingCallStore.getState();
+                switch (msg.event) {
+                    case 'online_users_updated':
+                        upsertUser(msg.data);
+                        break;
+                    case 'heartbeat_ack':
+                        this.cancelAck();
+                        break;
+                    case 'user_logout':
+                        removeUser(msg.data.id);
+                        break;
+                    case 'incoming_call':
+                        setIncomingCall?.(msg.data.incomingCall);
+                        break;
+                    case 'call_cancelled':
+                        clearIncomingCall?.();
+                        break;
+                }
+            } catch {
+                // malformed frame — ignore
             }
-        } catch {
-            // malformed frame — ignore
+        };
+
+        ws.onerror = (err) => console.error('[WS] error', err);
+
+        ws.onclose = () => {
+            this.stopHeartbeat();
+            this.cancelAck();
+            if (!this.running) return;
+            setTimeout(() => this.connect(this.createAuthWs(ws.token)), RECONNECT_DELAY_MS);
+        };
+    }
+
+    init(token: string | undefined, factory: TransportFactory = createWsTransport): void {
+        if (!token) return;
+        this.running = true;
+        this.factory = factory;
+        this.connect(this.createAuthWs(token));
+    }
+
+    notifyLogout(): void {
+        if (this.isSimulation) return;
+        if (this.activeWs?.readyState === TRANSPORT_OPEN) {
+            this.activeWs.send(JSON.stringify({ event: 'user_logout' }));
         }
-    };
+    }
 
-    transport.onerror = (err) => console.error('[WS] error', err);
+    notifyIncomingCall(targetUserId: string, incomingCall: IncomingCallState): void {
+        if (this.isSimulation) return;
+        if (this.activeWs?.readyState === TRANSPORT_OPEN) {
+            this.activeWs.send(JSON.stringify({ event: 'incoming_call', data: { targetUserId, incomingCall } }));
+        }
+    }
 
-    transport.onclose = () => {
-        heartbeat.stop();
-        ackTimer.cancel();
-        if (!running) return;
-        setTimeout(() => connect(token, factory), RECONNECT_DELAY_MS);
-    };
+    notifyCancelCall(targetUserId: string): void {
+        if (this.isSimulation) return;
+        if (this.activeWs?.readyState === TRANSPORT_OPEN) {
+            this.activeWs.send(JSON.stringify({ event: 'call_cancelled', data: { targetUserId } }));
+        }
+    }
 }
 
-export function initOnlineUsersWebSocket(
-    token: string | undefined,
-    factory: TransportFactory = createWsTransport,
-): void {
-    if (!token) return;
-    running = true;
-    connect(token, factory);
-}
+export const onlineUsersWs = new OnlineUsersWs();

@@ -3,7 +3,7 @@ import { IncomingCallState } from '@repo/shared-types';
 import { IncomingCallStore } from './state.ts';
 import { useOnlineUsersStore } from '../online-users/store.ts';
 import { useCallStore } from '../call/store.ts';
-import { notifyWsIncomingCall, notifyWsCancelCall } from '@/src/services/online-users-ws.ts';
+import { onlineUsersWs } from '@/src/services/online-users-ws.ts';
 import { useCallViewStore } from '../call-view/store.ts';
 import { dailyService } from '@/src/services/daily.ts';
 import { playNotificationChime } from '@/src/utils/helpers.ts';
@@ -30,7 +30,7 @@ export const createIncomingCallActions = (
     const { updateUser } = useOnlineUsersStore.getState();
     updateUser(incomingCall.customerId, { status: 'idle' as const });
     set({ incomingCall: null });
-    notifyWsCancelCall(incomingCall.attendantId);
+    onlineUsersWs.notifyCancelCall(incomingCall.attendantId);
     useCallViewStore.getState().setViewState('none');
     useCallViewStore.getState().setSelectedAttendantId(null);
   },
@@ -51,7 +51,7 @@ export const createIncomingCallActions = (
       if (attendantIsOccupied) return {};
 
       const incoming: IncomingCallState = { customerId, attendantId };
-      notifyWsIncomingCall(attendantId, incoming);
+      onlineUsersWs.notifyIncomingCall(attendantId, incoming);
       playNotificationChime();
 
       if (daily) {
