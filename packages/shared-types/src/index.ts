@@ -52,10 +52,6 @@ export interface CallState {
     startedAt?: number;
 }
 
-export type PresenceEventType =
-    | 'JOINED'
-    | 'LEFT';
-
 export interface Pagination {
     currentPage: number;
     totalPages: number;
