@@ -20,7 +20,7 @@ export interface IncomingCallActions {
   simulateIncomingCall: (attendantId: string) => void;
   simulateIncomingCallAsCustomer: (customerId: string, attendantId: string) => void;
   setIncomingCall: (incomingCall: IncomingCallState) => void;
-  clearIncomingCall: () => void;
+  incomingCallCancelled: () => void;
 }
 
 export const createIncomingCallActions = (
@@ -90,7 +90,7 @@ export const createIncomingCallActions = (
   },
 
   setIncomingCall: (incomingCall) => set({ incomingCall }),
-  clearIncomingCall: () => {
+  incomingCallCancelled: () => {
     set({ incomingCall: null });
     useCallViewStore.getState().setViewState('none');
   },

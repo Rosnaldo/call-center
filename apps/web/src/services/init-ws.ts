@@ -71,7 +71,7 @@ class InitWs {
             try {
                 const msg = JSON.parse(event.data as string) as WsInboundMessage;
                 const { upsertUser, removeUser } = this.stores!.onlineUsers.getState();
-                const { clearIncomingCall, setIncomingCall } = this.stores!.incomingCall.getState();
+                const { incomingCallCancelled, setIncomingCall } = this.stores!.incomingCall.getState();
                 switch (msg.event) {
                     case 'online_users_updated':
                         upsertUser(msg.data);
@@ -86,7 +86,7 @@ class InitWs {
                         setIncomingCall?.(msg.data.incomingCall);
                         break;
                     case 'cancel_incoming_call':
-                        clearIncomingCall?.();
+                        incomingCallCancelled?.();
                         break;
                 }
             } catch {

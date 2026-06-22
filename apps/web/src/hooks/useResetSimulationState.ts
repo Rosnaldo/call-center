@@ -10,7 +10,7 @@ export const useResetSimulationState = () => {
   const resetOnlineUsers = useOnlineUsersStore((s) => s.resetSimulation);
   const resetCurrentUser = useCurrentUserStore((s) => s.resetSimulation);
   const resetCallView = useCallViewStore((s) => s.resetCallViewState);
-  const clearIncomingCall = useIncomingCallStore((s) => s.clearIncomingCall);
+  const incomingCallCancelled = useIncomingCallStore((s) => s.incomingCallCancelled);
   const resetTimer = useTimerStore((s) => s.reset);
   const resetBilling = useBillingStore((s) => s.resetSimulation);
 
@@ -19,7 +19,7 @@ export const useResetSimulationState = () => {
     resetOnlineUsers();
     resetCurrentUser();
     resetCallView();
-    clearIncomingCall();
+    incomingCallCancelled();
     resetTimer();
     resetBilling();
   };

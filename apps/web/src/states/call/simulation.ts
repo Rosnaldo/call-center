@@ -36,7 +36,7 @@ export const simulateAnswerIncomingCall = (
       setCurrentUser({ ...currentUser, status: 'in-call' as const });
     }
 
-    useIncomingCallStore.getState().clearIncomingCall();
+    useIncomingCallStore.getState().incomingCallCancelled();
     useCallViewStore.getState().setViewState('in-call');
 
     return { call: newCall };
