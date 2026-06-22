@@ -65,9 +65,9 @@ export const GetKeycloakUser = async (req: Request, res: Response, next: NextFun
 
         req.userKc = {
             id: result.sub!,
-            email: result.email,
-            firstName: result.given_name,
-            lastName: result.family_name,
+            email: result?.email,
+            firstName: result?.given_name,
+            lastName: result?.family_name,
         };
 
         return next();
