@@ -3,6 +3,7 @@ import _ from 'lodash';
 
 import { makeSmallStringSchema, makeStringSchema } from '#utils/zod/valid_small_string';
 import { makeEmailSchema } from '#utils/zod/valid_email';
+import { makeNumberSchema } from '#utils/zod/valid_number';
 
 import { IUser } from './types';
 import { cleanMongooseObject } from '#entities/utils/clean_mongoose_doc';
@@ -35,6 +36,7 @@ export class UserUtils {
         email: makeEmailSchema().optional(),
         phone: makePhoneSchema().optional(),
         role: makeEnumSchema(UserRoleAll, 'role'),
+        tokens: makeNumberSchema('tokens').optional(),
         avatar: this.zodAvatarSchema.optional(),
         createdAt: makeDateSchema('createdAt'),
         updatedAt: makeDateSchema('updatedAt'),

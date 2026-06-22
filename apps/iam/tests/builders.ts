@@ -1,4 +1,4 @@
-import { IOnlineUser } from '@repo/shared-types';
+import { IOnlineUser, IncomingCallState, CallState } from '@repo/shared-types';
 
 let seq = 0;
 const nextId = () => `mock-${++seq}`;
@@ -13,4 +13,23 @@ export const buildOnlineUser = (d?: Partial<IOnlineUser>): IOnlineUser => ({
     status: d?.status ?? 'idle',
     tokens: d?.tokens,
     phone: d?.phone,
+});
+
+export const buildIncomingCall = (d?: Partial<IncomingCallState>): IncomingCallState => ({
+    customerId: d?.customerId ?? nextId(),
+    attendantId: d?.attendantId ?? nextId(),
+    whoIsCalling: d?.whoIsCalling ?? 'customer',
+});
+
+export const buildCallState = (d?: Partial<CallState>): CallState => ({
+    id: d?.id ?? nextId(),
+    customerId: d?.customerId ?? nextId(),
+    customerName: d?.customerName ?? 'Test Customer',
+    attendantId: d?.attendantId ?? nextId(),
+    attendantName: d?.attendantName ?? 'Test Attendant',
+    roomName: d?.roomName ?? 'test-room',
+    meetingId: d?.meetingId ?? nextId(),
+    customerInCall: d?.customerInCall ?? false,
+    attendantInCall: d?.attendantInCall ?? false,
+    wasAccepted: d?.wasAccepted ?? false,
 });

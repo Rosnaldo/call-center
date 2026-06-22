@@ -18,7 +18,5 @@ export const mockOnlineUser = (params: IParams = {}): IOnlineUser['IParams'] => 
         role: params.init?.role ?? 'customer',
         avatarUrl: params.init?.avatarUrl,
         status: params.init?.status ?? 'idle',
-        createdAt: params.init?.createdAt ?? new Date(),
-        updatedAt: params.init?.updatedAt ?? new Date(),
     };
 };

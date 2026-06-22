@@ -6,6 +6,8 @@ import { validateOutput } from 'src/validations/user/exists';
 import { UserController } from 'src/controllers/user';
 import { isSuccess } from 'src/utils/either';
 
+import { getKcMain } from 'src/keycloak/singleton';
+
 let user: IUser['IParams'];
 
 jest.mock('src/keycloak/singleton', () => ({
@@ -26,6 +28,8 @@ beforeAll(async () => {
     await mongooseBootstrap();
     const builder = mockUser();
     user = await builder.save();
+    const client = await getKcMain().getKcClientCredentials();
+    (client.users.find as jest.Mock).mockResolvedValue([{ id: 'mock-kc-user-id', email: user.email }]);
 }, 300_000);
 
 afterAll(async () => {

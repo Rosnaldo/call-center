@@ -1,21 +1,19 @@
-import { getRedisClient } from 'src/redis/singleton';
+import { connectRedis, getRedisClient, disconnectRedis } from 'src/redis/singleton';
 import { OnlineUserController } from 'src/controllers/online_user';
 import { isSuccess } from 'src/utils/either';
 import { validateOutput } from 'src/validations/online_user/add';
 import { mockOnlineUser } from '../../entities/schemas/online_user/mock';
 
-jest.mock('src/redis/singleton', () => ({
-    getRedisClient: jest.fn().mockReturnValue({
-        hset: jest.fn().mockResolvedValue(1),
-        hvals: jest.fn().mockResolvedValue([]),
-    }),
-}));
+beforeAll(async () => {
+    await connectRedis();
+});
 
-const redisClient = () => getRedisClient() as jest.Mocked<ReturnType<typeof getRedisClient>>;
+afterAll(async () => {
+    await disconnectRedis();
+});
 
-beforeEach(() => {
-    jest.clearAllMocks();
-    (redisClient().hset as jest.Mock).mockResolvedValue(1);
+beforeEach(async () => {
+    await getRedisClient().flushall();
 });
 
 describe('Controller > OnlineUser > Add', () => {
@@ -27,10 +25,14 @@ describe('Controller > OnlineUser > Add', () => {
 
         if (!isSuccess(either)) throw new Error('Should not return error');
 
-        expect(redisClient().hset).toHaveBeenCalledWith('online_users', user.id, JSON.stringify(user));
         expect(either.data.id).toBe(user.id);
         expect(either.data.name).toBe(user.name);
         expect(either.data.status).toBe(user.status);
+
+        const redis = getRedisClient();
+        const stored = await redis.hget('online_users', user.id);
+        expect(stored).not.toBeNull();
+        expect(JSON.parse(stored!).id).toBe(user.id);
     });
 
     it('output passes schema validation', async () => {
@@ -57,6 +59,7 @@ describe('Controller > OnlineUser > Add', () => {
 
     it('returns error when id is missing', async () => {
         const controller = new OnlineUserController();
+        const mapped = controller.add.mapper({ name: 'Test', status: 'idle' });
         const either = await controller.add.exec({ mapped });
 
         expect(either.isError).toBe(true);
@@ -65,6 +68,7 @@ describe('Controller > OnlineUser > Add', () => {
 
     it('returns error when status is invalid', async () => {
         const controller = new OnlineUserController();
+        const mapped = controller.add.mapper({ id: 'user-1', name: 'Test', status: 'bad-status' });
         const either = await controller.add.exec({ mapped });
 
         expect(either.isError).toBe(true);

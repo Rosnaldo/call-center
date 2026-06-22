@@ -1,129 +1,45 @@
-import { mongooseBootstrap } from 'src/mongoose_bootstrap';
-import { disconnectMain } from 'src/db/singleton';
+import { connectRedis, getRedisClient, disconnectRedis } from 'src/redis/singleton';
 import { CallController } from 'src/controllers/call';
 import { isSuccess } from 'src/utils/either';
-import { getCallModel } from 'src/entities/models/singleton';
-import { validateOutput } from 'src/validations/call/create';
-import { buildCall } from '../../builders';
-import { dailyApi } from 'src/apis/daily';
-
-jest.mock('src/keycloak/singleton', () => ({
-    getKcMain: jest.fn().mockReturnValue({
-        getKcClientCredentials: jest.fn().mockResolvedValue({
-            users: {
-                create: jest.fn().mockResolvedValue({}),
-                find: jest.fn().mockResolvedValue([{ id: 'mock-kc-user-id' }]),
-                del: jest.fn().mockResolvedValue(undefined),
-                update: jest.fn().mockResolvedValue(undefined),
-            },
-        }),
-    }),
-    buildKcMain: jest.fn().mockResolvedValue({}),
-}));
-
-jest.mock('src/apis/daily', () => ({
-    dailyApi: { post: jest.fn() },
-}));
-
-const mockDailyRoom = {
-    id: 'daily-room-id',
-    name: 'generated-room',
-    api_created: true,
-    privacy: 'public',
-    url: 'https://meetcent.daily.co/generated-room',
-    created_at: '2024-01-01T00:00:00.000Z',
-};
-
-const api = dailyApi as jest.Mocked<typeof dailyApi>;
+import { buildCallState } from '../../builders';
 
 beforeAll(async () => {
-    await mongooseBootstrap();
-}, 300_000);
-
-afterAll(async () => {
-    await disconnectMain();
+    await connectRedis();
 });
 
-beforeEach(() => {
-    jest.clearAllMocks();
-    (api.post as jest.Mock).mockResolvedValue({ data: mockDailyRoom });
+afterAll(async () => {
+    await disconnectRedis();
+});
+
+beforeEach(async () => {
+    await getRedisClient().flushall();
 });
 
 describe('Controller > Call > Create', () => {
-    it('persists the call in the database with the correct fields', async () => {
-        const call = buildCall();
-        const body = {
-            customerId: call.customerId,
-            customerName: call.customerName,
-            attendantId: call.attendantId,
-            attendantName: call.attendantName,
-        };
-
+    it('stores the call in redis and returns it', async () => {
+        const call = buildCallState();
         const controller = new CallController();
-        const mapped = controller.create.mapper(body);
+        const mapped = controller.create.mapper(call);
         const either = await controller.create.exec({ mapped });
 
         if (!isSuccess(either)) throw new Error(`Expected success, got: ${either.message}`);
 
-        expect(either.data._id).toBeDefined();
-        expect(either.data.customerId).toBe(body.customerId);
-        expect(either.data.customerName).toBe(body.customerName);
-        expect(either.data.attendantId).toBe(body.attendantId);
-        expect(either.data.attendantName).toBe(body.attendantName);
-        expect(either.data.roomName).toBe(mockDailyRoom.name);
-        expect(either.data.createdAt).toBeInstanceOf(Date);
-        expect(either.data.updatedAt).toBeInstanceOf(Date);
+        expect(either.data.id).toBe(call.id);
+        expect(either.data.customerId).toBe(call.customerId);
+        expect(either.data.customerName).toBe(call.customerName);
+        expect(either.data.attendantId).toBe(call.attendantId);
+        expect(either.data.attendantName).toBe(call.attendantName);
+        expect(either.data.roomName).toBe(call.roomName);
 
-        const saved = await getCallModel().findById(either.data._id).lean();
-        expect(saved).not.toBeNull();
-        expect(saved!.customerId).toBe(body.customerId);
-        expect(saved!.attendantId).toBe(body.attendantId);
-        expect(saved!.roomName).toBe(mockDailyRoom.url);
-
-        const zodResult = validateOutput(either.data);
-        expect(zodResult.hasError).toBeFalsy();
-    });
-
-    it('cria a room no Daily.co ao criar a call', async () => {
-        const call = buildCall();
-        const body = {
-            customerId: call.customerId,
-            customerName: call.customerName,
-            attendantId: call.attendantId,
-            attendantName: call.attendantName,
-        };
-
-        const controller = new CallController();
-        const mapped = controller.create.mapper(body);
-        await controller.create.exec({ mapped });
-
-        expect(api.post).toHaveBeenCalledWith('/rooms');
-    });
-
-    it('retorna a roomName vinda do Daily.co', async () => {
-        const call = buildCall();
-        const body = {
-            customerId: call.customerId,
-            customerName: call.customerName,
-            attendantId: call.attendantId,
-            attendantName: call.attendantName,
-        };
-
-        const controller = new CallController();
-        const mapped = controller.create.mapper(body);
-        const either = await controller.create.exec({ mapped });
-
-        if (!isSuccess(either)) throw new Error(`Expected success, got: ${either.message}`);
-
-        expect(either.data.roomName).toBe(mockDailyRoom.name);
+        const redis = getRedisClient();
+        const stored = await redis.hget('calls', call.id);
+        expect(stored).not.toBeNull();
+        expect(JSON.parse(stored!).customerId).toBe(call.customerId);
     });
 
     it('returns 400 when required fields are missing', async () => {
-        const call = buildCall();
-        const body = { customerId: call.customerId };
-
         const controller = new CallController();
-        const mapped = controller.create.mapper(body);
+        const mapped = controller.create.mapper({ customerId: 'cust-1' });
         const either = await controller.create.exec({ mapped });
 
         expect(either.isError).toBe(true);
@@ -131,44 +47,34 @@ describe('Controller > Call > Create', () => {
     });
 
     it('persists multiple calls independently', async () => {
-        const call1 = buildCall({ customerName: 'Cliente A', attendantName: 'Agente A' });
-        const call2 = buildCall({ customerName: 'Cliente B', attendantName: 'Agente B' });
+        const call1 = buildCallState({ customerName: 'Cliente A', attendantName: 'Agente A' });
+        const call2 = buildCallState({ customerName: 'Cliente B', attendantName: 'Agente B' });
 
         const controller = new CallController();
 
-        const toBody = (c: typeof call1) => ({
-            customerId: c.customerId,
-            customerName: c.customerName,
-            attendantId: c.attendantId,
-            attendantName: c.attendantName,
-        });
-
-        const either1 = await controller.create.exec({ mapped: controller.create.mapper(toBody(call1)) });
-        const either2 = await controller.create.exec({ mapped: controller.create.mapper(toBody(call2)) });
+        const either1 = await controller.create.exec({ mapped: controller.create.mapper(call1) });
+        const either2 = await controller.create.exec({ mapped: controller.create.mapper(call2) });
 
         if (!isSuccess(either1) || !isSuccess(either2)) throw new Error('Both should succeed');
 
-        expect(either1.data._id).not.toBe(either2.data._id);
+        expect(either1.data.id).not.toBe(either2.data.id);
         expect(either1.data.customerName).toBe('Cliente A');
         expect(either2.data.customerName).toBe('Cliente B');
+
+        const redis = getRedisClient();
+        const stored1 = await redis.hget('calls', call1.id);
+        const stored2 = await redis.hget('calls', call2.id);
+        expect(stored1).not.toBeNull();
+        expect(stored2).not.toBeNull();
     });
 
-    it('retorna 500 quando o Daily.co falha', async () => {
-        (api.post as jest.Mock).mockRejectedValue(new Error('Daily API unavailable'));
-
-        const call = buildCall();
-        const body = {
-            customerId: call.customerId,
-            customerName: call.customerName,
-            attendantId: call.attendantId,
-            attendantName: call.attendantName,
-        };
-
+    it('returns isError false and status 200 on success', async () => {
+        const call = buildCallState();
         const controller = new CallController();
-        const mapped = controller.create.mapper(body);
+        const mapped = controller.create.mapper(call);
         const either = await controller.create.exec({ mapped });
 
-        expect(either.isError).toBe(true);
-        expect(either.status).toBe(500);
+        expect(either.isError).toBe(false);
+        expect(either.status).toBe(200);
     });
 });

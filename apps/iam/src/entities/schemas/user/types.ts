@@ -20,8 +20,10 @@ export interface IUserSchema {
     lastName: string;
     slug: string;
     email?: string;
+    phone?: string;
     role: string;
     avatar?: IUserAvatar;
+    tokens?: number;
 }
 
 type IUserDocument = HydratedDocument<IUserSchema> & { _id: Types.ObjectId } ;

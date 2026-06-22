@@ -13,6 +13,5 @@ export default {
     isRuntime: process.env.RUNTIME || '',
     s3Host: `https://${process.env.AWS_S3_BUCKET}.s3.sa-east-1.amazonaws.com`,
     cdnHost: process.env.CDN_HOST || 'cdnHost',
-    dailyApiKey: process.env.DAILY_API_KEY || '',
     realtimeUri: process.env.REALTIME_URI || 'http://localhost:5003',
 };
