@@ -8,7 +8,7 @@ type IInput = IIncomingCallController['ISend']['IInput'];
 export const inputSchema = z.object({
     customerId: makeSmallStringSchema('customerId'),
     attendantId: makeSmallStringSchema('attendantId'),
-    whoIsCalling: z.enum(['admin', 'customer', 'attendant']),
+    calledBy: z.enum(['admin', 'customer', 'attendant']),
 });
 
 export const validateInput = (params: IInput): ValidateParseResult => {

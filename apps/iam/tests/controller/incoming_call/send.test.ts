@@ -34,7 +34,7 @@ describe('Controller > IncomingCall > Send', () => {
 
         expect(either.data.customerId).toBe(incoming.customerId);
         expect(either.data.attendantId).toBe(incoming.attendantId);
-        expect(either.data.whoIsCalling).toBe(incoming.whoIsCalling);
+        expect(either.data.calledBy).toBe(incoming.calledBy);
 
         const redis = getRedisClient();
         const stored = await redis.hget('incoming_calls', incoming.attendantId);
@@ -85,7 +85,7 @@ describe('Controller > IncomingCall > Send', () => {
             payload: {
                 customerId: incoming.customerId,
                 attendantId: incoming.attendantId,
-                whoIsCalling: incoming.whoIsCalling,
+                calledBy: incoming.calledBy,
             },
         });
     });
@@ -106,7 +106,7 @@ describe('Controller > IncomingCall > Send', () => {
 
     it('returns 400 when customerId is missing', async () => {
         const controller = new IncomingCallController();
-        const mapped = controller.send.mapper({ attendantId: 'att-1', whoIsCalling: 'customer' });
+        const mapped = controller.send.mapper({ attendantId: 'att-1', calledBy: 'customer' });
         const either = await controller.send.exec({ mapped });
 
         expect(either.isError).toBe(true);
@@ -115,7 +115,7 @@ describe('Controller > IncomingCall > Send', () => {
 
     it('returns 400 when attendantId is missing', async () => {
         const controller = new IncomingCallController();
-        const mapped = controller.send.mapper({ customerId: 'cust-1', whoIsCalling: 'customer' });
+        const mapped = controller.send.mapper({ customerId: 'cust-1', calledBy: 'customer' });
         const either = await controller.send.exec({ mapped });
 
         expect(either.isError).toBe(true);

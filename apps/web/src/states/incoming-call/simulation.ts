@@ -19,7 +19,7 @@ export const simulateSendIncomingCall = (
     if ((customer.tokens ?? 0) <= 0) return {};
     if (attendant.status !== 'idle') return {};
 
-    const incoming: IncomingCallState = { customerId, attendantId, whoIsCalling: 'customer' };
+    const incoming: IncomingCallState = { customerId, attendantId, calledBy: 'customer' };
     playNotificationChime();
 
     useCallViewStore.getState().setViewState('awaiting-answer');
@@ -61,7 +61,7 @@ export const simulateIncomingCall = (
   if (isOccupied) return;
 
   useOnlineUsersStore.getState().updateUser(customer.id, { status: 'in-call' as const });
-  set({ incomingCall: { customerId: customer.id, attendantId, whoIsCalling: 'customer' } });
+  set({ incomingCall: { customerId: customer.id, attendantId, calledBy: 'customer' } });
   useCallViewStore.getState().setViewState('lobby');
 };
 
@@ -82,5 +82,5 @@ export const simulateIncomingCallAsCustomer = (
   if (call?.customerId === customerId) return;
 
   useOnlineUsersStore.getState().updateUser(customerId, { status: 'in-call' as const });
-  set({ incomingCall: { customerId, attendantId, whoIsCalling: 'customer' } });
+  set({ incomingCall: { customerId, attendantId, calledBy: 'customer' } });
 };

@@ -1,8 +1,7 @@
-import type { DailyCall } from '@daily-co/daily-js';
 import { IncomingCallState } from '@repo/shared-types';
 import { IncomingCallStore } from './state.ts';
 import { useOnlineUsersStore, useCallViewStore, useDevicesStore } from '../stores.ts';
-import { dailyService } from '@/src/services/daily.ts';
+import { DailyService } from '@/src/services/daily.ts';
 import { apiBack } from '@/src/api/backend.ts';
 import { fetchOnlineUsers } from '@/src/services/online-users.ts';
 import {
@@ -17,7 +16,7 @@ const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
 export interface IncomingCallActions {
   cancel: () => void;
   cancelIncomingCall: () => void;
-  sendIncomingCall: (daily: DailyCall | null, customerId?: string, attendantId?: string | null) => void;
+  sendIncomingCall: (customerId?: string, attendantId?: string | null) => void;
   simulateIncomingCall: (attendantId: string) => void;
   simulateIncomingCallAsCustomer: (customerId: string, attendantId: string) => void;
   incomingCallSent: (incomingCall: IncomingCallState) => void;
@@ -49,7 +48,7 @@ export const createIncomingCallActions = (
       .catch((err) => console.error('[IAM] cancel incoming call failed:', err));
   },
 
-  sendIncomingCall: (daily, customerId, attendantId) => {
+  sendIncomingCall: (customerId, attendantId) => {
     if (isSimulation) {
       simulateSendIncomingCall(set, customerId, attendantId);
       return;
@@ -68,16 +67,14 @@ export const createIncomingCallActions = (
     apiBack.post('/incoming-calls/send', { customerId, attendantId, whoIsCalling: 'customer' })
       .catch((err) => console.error('[IAM] send incoming call failed:', err));
 
-    if (daily) {
-      const { cameraOn, microphoneOn } = useDevicesStore.getState();
-      dailyService.join(daily, {
-        room: `${customer.slug}--${attendant.slug}`,
-        userName: customer.name,
-        userData: { id: customer.id, role: customer.role },
-        startAudioOff: !microphoneOn,
-        startVideoOff: !cameraOn,
-      });
-    }
+    const { cameraOn, microphoneOn } = useDevicesStore.getState();
+    DailyService.getInstance().join({
+      room: `${customer.slug}--${attendant.slug}`,
+      userName: customer.name,
+      userData: { id: customer.id, role: customer.role },
+      startAudioOff: !microphoneOn,
+      startVideoOff: !cameraOn,
+    });
   },
 
   simulateIncomingCall: (attendantId) => {

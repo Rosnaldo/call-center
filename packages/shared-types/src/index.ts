@@ -37,7 +37,7 @@ export interface IUser {
 export interface IncomingCallState {
     customerId: string;
     attendantId: string;
-    whoIsCalling: keyof typeof UserRole;
+    calledBy: keyof typeof UserRole;
 }
 
 export interface CallState {

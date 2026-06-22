@@ -79,7 +79,7 @@ describe('Incoming Call Flow', () => {
         const incomingCall: IncomingCallState = {
             customerId: customerUser._id,
             attendantId: attendantUser._id,
-            whoIsCalling: 'customer',
+            calledBy: 'customer',
         };
 
         const received: string[] = [];

@@ -1,10 +1,8 @@
-import type { DailyCall } from '@daily-co/daily-js';
 import { useOnlineUsersStore, useCurrentUserStore, useIncomingCallStore, useCallViewStore } from '../stores.ts';
 import { CallState, initialCallStore } from './state.ts';
 
 export const simulateacceptedIncomingCall = (
   set: (fn: (state: any) => any) => void,
-  _daily: DailyCall | null,
 ) => {
   set((state: any) => {
     const incomingCall = useIncomingCallStore.getState().incomingCall;

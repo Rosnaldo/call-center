@@ -18,7 +18,7 @@ export const buildOnlineUser = (d?: Partial<IOnlineUser>): IOnlineUser => ({
 export const buildIncomingCall = (d?: Partial<IncomingCallState>): IncomingCallState => ({
     customerId: d?.customerId ?? nextId(),
     attendantId: d?.attendantId ?? nextId(),
-    whoIsCalling: d?.whoIsCalling ?? 'customer',
+    calledBy: d?.calledBy ?? 'customer',
 });
 
 export const buildCallState = (d?: Partial<CallState>): CallState => ({

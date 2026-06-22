@@ -63,7 +63,7 @@ export class Send {
 
             realtimeApi.post('/webhooks/iam', {
                 event: 'incoming_call_sent',
-                payload: { customerId: params.customerId, attendantId: params.attendantId, whoIsCalling: params.whoIsCalling },
+                payload: { customerId: params.customerId, attendantId: params.attendantId, calledBy: params.calledBy },
             }).catch((err) => console.error('[Realtime] send_incoming_call failed:', err));
 
             return successData(params);
@@ -75,7 +75,7 @@ export class Send {
     public readonly mapper = (body: Request['body']): IInput => ({
         customerId: mapString(body.customerId),
         attendantId: mapString(body.attendantId),
-        whoIsCalling: mapString(body.whoIsCalling) as IInput['whoIsCalling'] || 'customer',
+        calledBy: mapString(body.calledBy) as IInput['calledBy'] || 'customer',
     });
 
     private readonly transform = (mapped: IInput): IInput => {

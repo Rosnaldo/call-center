@@ -5,8 +5,6 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "sonner";
-import DailyIframe from '@daily-co/daily-js';
-import { DailyProvider } from '@daily-co/daily-react';
 import { LoginPage } from './pages/LoginPage.tsx';
 import { ErrorPage } from './pages/ErrorPage.tsx';
 import { CustomerPageContainer } from './pages/customer-page/container.tsx';
@@ -20,11 +18,16 @@ import { UserPainelPage } from './pages/UserPainelPage.tsx';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RoleProtectedRoute } from './role-protected-route.tsx';
 import { useAuthStore } from './states/stores.ts';
+import { DailyServiceProvider } from './providers/DailyServiceProvider.tsx';
+import type { DailyService } from './services/daily.ts';
 
 const queryClient = new QueryClient();
-const callObject = DailyIframe.createCallObject();
 
-export default function App() {
+interface AppProps {
+  dailyService: DailyService;
+}
+
+export default function App({ dailyService }: AppProps) {
   const ready = useAuthStore((s) => s.ready);
   const error = useAuthStore((s) => s.error);
   const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
@@ -47,34 +50,34 @@ export default function App() {
   if (!ready && !isSimulation) return <div>Loading session…</div>;
 
   return (
-    <DailyProvider callObject={callObject}>
-    <QueryClientProvider client={queryClient}>
-      <Toaster />
-      <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<LoginPage />} />
+    <DailyServiceProvider dailyService={dailyService}>
+      <QueryClientProvider client={queryClient}>
+        <Toaster />
+        <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<LoginPage />} />
 
-        <Route element={<ProtectedRoute />}>
-          <Route path="/painel" element={<UserPainelPage />} />
-          <Route path="/profile" element={<UserProfileContainer />} />
-          <Route path="/payments" element={<PaymentsPageContainer />} />
-          <Route path="/token-history" element={<TokenHistoryPageContainer />} />
-        </Route>
+          <Route element={<ProtectedRoute />}>
+            <Route path="/painel" element={<UserPainelPage />} />
+            <Route path="/profile" element={<UserProfileContainer />} />
+            <Route path="/payments" element={<PaymentsPageContainer />} />
+            <Route path="/token-history" element={<TokenHistoryPageContainer />} />
+          </Route>
 
-        <Route element={<RoleProtectedRoute allowedRoles={['admin', 'customer']} />}>
-          <Route path="/customer" element={<CustomerPageContainer />} />
-        </Route>
+          <Route element={<RoleProtectedRoute allowedRoles={['admin', 'customer']} />}>
+            <Route path="/customer" element={<CustomerPageContainer />} />
+          </Route>
 
-        <Route element={<RoleProtectedRoute allowedRoles={['admin', 'attendant']} />}>
-          <Route path="/attendant" element={<AttendantPageContainer />} />
-        </Route>
+          <Route element={<RoleProtectedRoute allowedRoles={['admin', 'attendant']} />}>
+            <Route path="/attendant" element={<AttendantPageContainer />} />
+          </Route>
 
-        <Route path="/error" element={<ErrorPage />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+          <Route path="/error" element={<ErrorPage />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
 
-      <Footer />
-    </QueryClientProvider>
-    </DailyProvider>
+        <Footer />
+      </QueryClientProvider>
+    </DailyServiceProvider>
   );
 }

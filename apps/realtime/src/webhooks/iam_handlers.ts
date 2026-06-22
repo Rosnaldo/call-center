@@ -3,12 +3,12 @@ import { sendToUser } from '#websocket/broadcast';
 import { SendIncomingCallPayload, CancelIncomingCallPayload, AcceptCallPayload } from './iam_types';
 
 export function onSendIncomingCall(wss: ISocketServer, payload: SendIncomingCallPayload): void {
-    console.log(`[IAM] incoming_call_sent customer=${payload.customerId} attendant=${payload.attendantId} whoIsCalling=${payload.whoIsCalling}`);
+    console.log(`[IAM] incoming_call_sent customer=${payload.customerId} attendant=${payload.attendantId} calledBy=${payload.calledBy}`);
 
-    const incomingCall = { customerId: payload.customerId, attendantId: payload.attendantId, whoIsCalling: payload.whoIsCalling };
+    const incomingCall = { customerId: payload.customerId, attendantId: payload.attendantId, calledBy: payload.calledBy };
 
-    const callerId = payload.whoIsCalling === 'customer' ? payload.customerId : payload.attendantId;
-    const receiverId = payload.whoIsCalling === 'customer' ? payload.attendantId : payload.customerId;
+    const callerId = payload.calledBy === 'customer' ? payload.customerId : payload.attendantId;
+    const receiverId = payload.calledBy === 'customer' ? payload.attendantId : payload.customerId;
 
     sendToUser(wss, callerId, {
         event: 'incoming_call_sent',

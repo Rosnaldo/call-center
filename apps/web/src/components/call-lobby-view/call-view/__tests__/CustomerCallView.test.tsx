@@ -99,7 +99,7 @@ describe('Customer - CallView state machine', () => {
   describe('awaiting-answer — aguardando atendente atender', () => {
     beforeEach(() => {
       useCallViewStore.setState({ viewState: 'awaiting-answer', selectedAttendantId: ATTENDANT_ID });
-      useIncomingCallStore.setState({ incomingCall: { customerId: CUSTOMER_ID, attendantId: ATTENDANT_ID, whoIsCalling: 'customer' } });
+      useIncomingCallStore.setState({ incomingCall: { customerId: CUSTOMER_ID, attendantId: ATTENDANT_ID, calledBy: 'customer' } });
     });
 
     it('viewport exibe mensagem aguardando com nome do atendente', () => {

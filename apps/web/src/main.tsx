@@ -6,18 +6,23 @@ import './index.css';
 import { bootstrap } from './bootstrap.ts';
 import { StoreProvider } from './states/StoreProvider.tsx';
 import { createStores } from './states/stores.ts';
+import { DailyService } from './services/daily.ts';
 
 const stores = createStores();
+const dailyService = DailyService.getInstance({
+    domain: (import.meta.env.VITE_DAILY_DOMAIN as string) ?? 'meetcent',
+    apiKey: (import.meta.env.VITE_DAILY_API_KEY as string) ?? '',
+});
 
 if ((import.meta as any).env?.VITE_ENV !== 'simulation') {
-    bootstrap(stores);
+    bootstrap(stores, dailyService);
 }
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
         <StoreProvider stores={stores}>
             <BrowserRouter>
-                <App />
+                <App dailyService={dailyService} />
             </BrowserRouter>
         </StoreProvider>
     </StrictMode>,

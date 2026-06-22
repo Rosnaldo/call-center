@@ -96,7 +96,7 @@ describe('Attendant - CallView state machine', () => {
   describe('awaiting-answer — recebendo chamada de cliente', () => {
     beforeEach(() => {
       useCallViewStore.setState({ viewState: 'lobby', selectedAttendantId: null });
-      useIncomingCallStore.setState({ incomingCall: { customerId: CUSTOMER_ID, attendantId: ATTENDANT_ID, whoIsCalling: 'customer' } });
+      useIncomingCallStore.setState({ incomingCall: { customerId: CUSTOMER_ID, attendantId: ATTENDANT_ID, calledBy: 'customer' } });
     });
 
     it('viewport exibe nome do cliente e mensagem tentando ligar', () => {

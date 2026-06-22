@@ -1,7 +1,7 @@
 export interface SendIncomingCallPayload {
     customerId: string;
     attendantId: string;
-    whoIsCalling: string;
+    calledBy: string;
 }
 
 export interface CancelIncomingCallPayload {
