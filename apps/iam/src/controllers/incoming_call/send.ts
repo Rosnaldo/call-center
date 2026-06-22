@@ -49,9 +49,21 @@ export class Send {
 
             await redis.hset(INCOMING_CALL_KEY, params.attendantId, JSON.stringify(params));
 
+            const customerJson = await redis.hget(ONLINE_USERS_KEY, params.customerId);
+            if (customerJson) {
+                const customer = JSON.parse(customerJson) as IOnlineUser;
+                await redis.hset(ONLINE_USERS_KEY, customer.id, JSON.stringify({ ...customer, status: 'occupied' }));
+            }
+
+            const attendantJson2 = await redis.hget(ONLINE_USERS_KEY, params.attendantId);
+            if (attendantJson2) {
+                const attendant = JSON.parse(attendantJson2) as IOnlineUser;
+                await redis.hset(ONLINE_USERS_KEY, attendant.id, JSON.stringify({ ...attendant, status: 'occupied' }));
+            }
+
             realtimeApi.post('/webhooks/iam', {
-                event: 'send_incoming_call',
-                payload: { customerId: params.customerId, attendantId: params.attendantId },
+                event: 'incoming_call_sent',
+                payload: { customerId: params.customerId, attendantId: params.attendantId, whoIsCalling: params.whoIsCalling },
             }).catch((err) => console.error('[Realtime] send_incoming_call failed:', err));
 
             return successData(params);
@@ -63,6 +75,7 @@ export class Send {
     public readonly mapper = (body: Request['body']): IInput => ({
         customerId: mapString(body.customerId),
         attendantId: mapString(body.attendantId),
+        whoIsCalling: mapString(body.whoIsCalling) as IInput['whoIsCalling'] || 'customer',
     });
 
     private readonly transform = (mapped: IInput): IInput => {

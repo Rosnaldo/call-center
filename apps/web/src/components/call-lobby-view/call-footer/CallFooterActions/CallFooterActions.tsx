@@ -32,6 +32,9 @@ export const CallFooterActions: React.FC = () => {
         attendantName: selectedAttendant.name,
         roomName: '',
         meetingId: '',
+        customerInCall: false,
+        attendantInCall: false,
+        wasAnswered: false,
       }
     : undefined;
 

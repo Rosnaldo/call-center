@@ -29,7 +29,7 @@ describe('CallView Component - Call Interrupted (Awaiting Return) Unit Tests', (
 
   it('renders lobby state when no active call', () => {
     useCurrentUserStore.setState({
-      currentUser: { id: 'cust-1', name: 'Customer', slug: 'customer', email: 'customer@example.com', role: 'customer', avatarUrl: '', status: 'idle', },
+      currentUser: { id: 'cust-1', name: 'Customer', slug: 'customer', email: 'customer@example.com', role: 'customer', avatarUrl: '', status: 'idle' },
     });
 
     const { container } = render(

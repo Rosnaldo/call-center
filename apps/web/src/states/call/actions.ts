@@ -2,6 +2,7 @@ import type { DailyCall } from '@daily-co/daily-js';
 import { useIncomingCallStore, useCallViewStore, useDevicesStore, useOnlineUsersStore } from '../stores.ts';
 import { CallState } from './state.ts';
 import { dailyService } from '../../services/daily.ts';
+import { fetchOnlineUsers } from '@/src/services/online-users.ts';
 import {
   simulateAnswerIncomingCall,
   simulateCompleteCall,
@@ -15,6 +16,8 @@ export interface CallActions {
   answerIncomingCall: (daily: DailyCall | null) => void;
   completeCall: () => void;
   updateCall: (callId: string, updates: Partial<CallState>) => void;
+  updateJoinedView: (call: CallState) => void;
+  updateLeftView: (call: CallState) => void;
   resetSimulation: () => void;
 }
 
@@ -64,6 +67,34 @@ export const createCallActions = (
       if (isSimulation) {
         simulateUpdateCall(set, callId, updates);
         return;
+      }
+    },
+
+    updateJoinedView: async (call: CallState) => {
+      try {
+        const callId = call.id;
+        const [users] = await Promise.all([
+          fetchOnlineUsers(),
+        ]);
+        set((state: any) => ({ call: state.call?.id === callId ? { ...state.call, ...call } : state.call }));
+        useOnlineUsersStore.setState({ users });
+
+      } catch (err) {
+        console.error('[Call] updateJoinedView failed:', err);
+      }
+    },
+
+    updateLeftView: async (call: CallState) => {
+      try {
+        const callId = call.id;
+        const [users] = await Promise.all([
+          fetchOnlineUsers(),
+        ]);
+        set((state: any) => ({ call: state.call?.id === callId ? { ...state.call, ...call } : state.call }));
+        useOnlineUsersStore.setState({ users });
+
+      } catch (err) {
+        console.error('[Call] updateLeftView failed:', err);
       }
     },
 

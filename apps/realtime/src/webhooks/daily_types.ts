@@ -2,7 +2,7 @@ export type DailyWebhookEvent =
     | 'meeting.started'
     | 'meeting.ended'
     | 'participant.joined'
-    | 'participant.left';
+    | 'participant.left'
 
 export interface DailyMeetingPayload {
     id: string;

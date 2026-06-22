@@ -4,6 +4,7 @@ import { IncomingCallStore } from './state.ts';
 import { useOnlineUsersStore, useCallViewStore, useDevicesStore } from '../stores.ts';
 import { dailyService } from '@/src/services/daily.ts';
 import { apiBack } from '@/src/api/backend.ts';
+import { fetchOnlineUsers } from '@/src/services/online-users.ts';
 import {
   simulateSendIncomingCall,
   simulateCancelIncomingCall,
@@ -19,8 +20,10 @@ export interface IncomingCallActions {
   sendIncomingCall: (daily: DailyCall | null, customerId?: string, attendantId?: string | null) => void;
   simulateIncomingCall: (attendantId: string) => void;
   simulateIncomingCallAsCustomer: (customerId: string, attendantId: string) => void;
-  setIncomingCall: (incomingCall: IncomingCallState) => void;
+  incomingCallSent: (incomingCall: IncomingCallState) => void;
+  incomingCallReceived: (incomingCall: IncomingCallState) => void;
   incomingCallCancelled: () => void;
+  incomingCallAnswered: () => void;
 }
 
 export const createIncomingCallActions = (
@@ -42,7 +45,7 @@ export const createIncomingCallActions = (
     useCallViewStore.getState().setViewState('none');
     useCallViewStore.getState().setSelectedAttendantId(null);
 
-    apiBack.delete('/incoming-calls/delete', { data: { customerId: incomingCall.customerId, attendantId: incomingCall.attendantId } })
+    apiBack.post('/incoming-calls/cancel', { customerId: incomingCall.customerId, attendantId: incomingCall.attendantId })
       .catch((err) => console.error('[IAM] cancel incoming call failed:', err));
   },
 
@@ -62,7 +65,7 @@ export const createIncomingCallActions = (
     if ((customer.tokens ?? 0) <= 0) return;
     if (attendant.status !== 'idle') return;
 
-    apiBack.post('/incoming-calls/send', { customerId, attendantId })
+    apiBack.post('/incoming-calls/send', { customerId, attendantId, whoIsCalling: 'customer' })
       .catch((err) => console.error('[IAM] send incoming call failed:', err));
 
     if (daily) {
@@ -88,10 +91,28 @@ export const createIncomingCallActions = (
       simulateIncomingCallAsCustomer(set, get, customerId, attendantId);
     }
   },
-
-  setIncomingCall: (incomingCall) => set({ incomingCall }),
-  incomingCallCancelled: () => {
+  incomingCallAnswered: async () => {
+    set({ incomingCall: null });
+    useCallViewStore.getState().setViewState('in-call');
+    const users = await fetchOnlineUsers();
+    useOnlineUsersStore.setState({ users });
+  },
+  incomingCallSent: async (incomingCall: IncomingCallState) => {
+    set({ incomingCall });
+    useCallViewStore.getState().setViewState('awaiting-answer');
+    const users = await fetchOnlineUsers();
+    useOnlineUsersStore.setState({ users });
+  },
+  incomingCallReceived: async (incomingCall: IncomingCallState) => {
+    set({ incomingCall });
+    useCallViewStore.getState().setViewState('awaiting-to-answer');
+    const users = await fetchOnlineUsers();
+    useOnlineUsersStore.setState({ users });
+  },
+  incomingCallCancelled: async () => {
     set({ incomingCall: null });
     useCallViewStore.getState().setViewState('none');
+    const users = await fetchOnlineUsers();
+    useOnlineUsersStore.setState({ users });
   },
 });

@@ -7,8 +7,8 @@ export const inputSchema = z.object({
     attendantId: makeSmallStringSchema('attendantId'),
 });
 
-export type IDeleteInput = z.infer<typeof inputSchema>;
+export type ICancelInput = z.infer<typeof inputSchema>;
 
-export const validateInput = (params: IDeleteInput): ValidateParseResult => {
-    return validateParse<IDeleteInput>(inputSchema, params);
+export const validateInput = (params: ICancelInput): ValidateParseResult => {
+    return validateParse<ICancelInput>(inputSchema, params);
 };

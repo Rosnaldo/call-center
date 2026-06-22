@@ -101,8 +101,8 @@ export const SimulationLogin = () => {
               <button
                 key={preset.id}
                 id={`preset-join-${preset.id}`}
-                onClick={() => { setCurrentUser({ ...preset, status: 'idle' }); navigate('/painel'); }}
                 className="flex items-center justify-between border border-slate-200/80 rounded-xl p-3.5 bg-white hover:bg-slate-50 hover:border-slate-300 hover:shadow-xs text-left group transition cursor-pointer"
+                onClick={() => { setCurrentUser({ ...preset, status: 'idle' }); navigate('/painel'); }}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-100 bg-slate-50">

@@ -5,7 +5,11 @@ export interface IIncomingCallController {
         IInput: IncomingCallState;
         IOutput: IncomingCallState;
     };
-    IDelete: {
+    IAnswerCall: {
+        IInput: { attendantId: string; userId: string };
+        IOutput: IncomingCallState;
+    };
+    ICancel: {
         IInput: { customerId: string; attendantId: string };
     };
 }

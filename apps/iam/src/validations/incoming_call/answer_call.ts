@@ -3,12 +3,11 @@ import { validateParse, ValidateParseResult } from '#utils/zod/validate_parse';
 import { makeSmallStringSchema } from '#utils/zod/valid_small_string';
 import { IIncomingCallController } from 'src/controllers/incoming_call/params';
 
-type IInput = IIncomingCallController['ISend']['IInput'];
+type IInput = IIncomingCallController['IAnswerCall']['IInput'];
 
 export const inputSchema = z.object({
-    customerId: makeSmallStringSchema('customerId'),
     attendantId: makeSmallStringSchema('attendantId'),
-    whoIsCalling: z.enum(['admin', 'customer', 'attendant']),
+    userId: makeSmallStringSchema('userId'),
 });
 
 export const validateInput = (params: IInput): ValidateParseResult => {

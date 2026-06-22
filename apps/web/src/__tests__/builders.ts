@@ -25,6 +25,9 @@ export const buildCall = (d?: Partial<CallState>): CallState => ({
   attendantName: d?.attendantName ?? 'Test Attendant',
   roomName: d?.roomName ?? 'test-room',
   meetingId: d?.meetingId ?? '',
+  customerInCall: d?.customerInCall ?? false,
+  attendantInCall: d?.attendantInCall ?? false,
+  wasAnswered: d?.wasAnswered ?? false,
 });
 
 export const buildTokenTransaction = (d?: Partial<TokenTransaction>): TokenTransaction => ({

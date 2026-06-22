@@ -37,6 +37,7 @@ export interface IUser {
 export interface IncomingCallState {
     customerId: string;
     attendantId: string;
+    whoIsCalling: keyof typeof UserRole;
 }
 
 export interface CallState {
@@ -47,6 +48,9 @@ export interface CallState {
     attendantName: string;
     roomName: string;
     meetingId: string;
+    customerInCall: boolean;
+    attendantInCall: boolean;
+    wasAnswered: boolean;
 }
 
 export interface Pagination {
@@ -63,7 +67,7 @@ export interface IOnlineUser extends Omit<IUser, '_id' | 'firstName' | 'lastName
     id: string;
     name: string;
     avatarUrl?: string;
-    status: 'idle' | 'waiting' | 'in-call' | 'disconnecting' | 'offline';
+    status: 'idle' | 'occupied' | 'in-call' | 'disconnecting' | 'offline';
 }
 
 type _t = [

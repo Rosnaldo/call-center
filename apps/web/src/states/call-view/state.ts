@@ -7,6 +7,7 @@ export type ViewState =
   | 'none'
   | 'lobby'
   | 'awaiting-answer'
+  | 'awaiting-to-answer'
   | 'in-call'
   | 'call-interrupted';
 

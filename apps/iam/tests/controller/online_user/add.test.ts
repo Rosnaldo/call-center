@@ -57,7 +57,6 @@ describe('Controller > OnlineUser > Add', () => {
 
     it('returns error when id is missing', async () => {
         const controller = new OnlineUserController();
-        const mapped = controller.add.mapper({ name: 'Test', status: 'idle' });
         const either = await controller.add.exec({ mapped });
 
         expect(either.isError).toBe(true);
@@ -66,7 +65,6 @@ describe('Controller > OnlineUser > Add', () => {
 
     it('returns error when status is invalid', async () => {
         const controller = new OnlineUserController();
-        const mapped = controller.add.mapper({ id: '123', name: 'Test', status: 'unknown' });
         const either = await controller.add.exec({ mapped });
 
         expect(either.isError).toBe(true);

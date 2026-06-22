@@ -34,7 +34,7 @@ describe('Validations > OnlineUser > Add', () => {
             name: 'João Silva',
             slug: 'joao-silva',
             role: 'attendant',
-            status: 'waiting',
+            status: 'occupied',
             createdAt: new Date(),
             updatedAt: new Date(),
         });
@@ -80,7 +80,7 @@ describe('Validations > OnlineUser > Add', () => {
     });
 
     it('accepts all valid statuses', () => {
-        for (const status of ['idle', 'waiting', 'in-call', 'disconnecting', 'offline'] as const) {
+        for (const status of ['idle', 'occupied', 'in-call', 'disconnecting', 'offline'] as const) {
             const result = inputSchema.safeParse({
                 id: '1',
                 name: 'João',

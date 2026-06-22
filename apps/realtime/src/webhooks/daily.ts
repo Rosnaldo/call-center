@@ -23,7 +23,7 @@ export default (app: Application, wss: ISocketServer) => {
                 onParticipantJoined(wss, body.payload);
                 break;
             case 'participant.left':
-                onParticipantLeft(body.payload);
+                onParticipantLeft(wss, body.payload);
                 break;
         }
 

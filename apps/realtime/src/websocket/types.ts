@@ -7,9 +7,9 @@ export interface AuthenticatedWebSocket extends EventEmitterTransport {
     isAlive: boolean;
 }
 
-export type WsEvent = 'online_users_updated' | 'heartbeat_ack' | 'user_logout' | 'send_incoming_call' | 'cancel_incoming_call';
+export type WsEvent = 'online_users_updated' | 'heartbeat_ack' | 'user_logout' | 'incoming_call_sent' | 'incoming_call_received' | 'incoming_call_cancelled' | 'call_answered' | 'participant_joined' | 'participant_left';
 
-export type WsClientEvent = 'heartbeat' | 'user_logout' | 'send_incoming_call' | 'cancel_incoming_call';
+export type WsClientEvent = 'heartbeat' | 'user_logout' | 'incoming_call_sent' | 'incoming_call_cancelled';
 
 export interface IncomingCallData {
     targetUserId: string;
@@ -23,8 +23,8 @@ export interface CancelledCallData {
 export type WsClientMessage =
     | { event: 'heartbeat' }
     | { event: 'user_logout' }
-    | { event: 'send_incoming_call'; data: IncomingCallData }
-    | { event: 'cancel_incoming_call'; data: CancelledCallData };
+    | { event: 'incoming_call_sent'; data: IncomingCallData }
+    | { event: 'incoming_call_cancelled'; data: CancelledCallData };
 
 export interface WsMessage<T = unknown> {
     event: WsEvent;

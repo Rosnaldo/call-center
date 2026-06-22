@@ -12,7 +12,7 @@ export const createGracePeriod = (
     graceTimer.start(
         user.id,
         () => {
-            const transitionUser: IOnlineUser = { ...user, status };
+            const transitionUser: IOnlineUser = { ...user, status: status };
             broadcastMessage(wss, { event: 'online_users_updated', data: transitionUser });
             addToIam(transitionUser, token);
         },

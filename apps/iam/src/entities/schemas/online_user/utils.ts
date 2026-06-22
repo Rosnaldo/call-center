@@ -10,7 +10,7 @@ export class OnlineUserUtils {
         phone: makeSmallStringSchema('phone').optional(),
         role: z.enum(['admin', 'customer', 'attendant']),
         avatarUrl: makeStringSchema('avatarUrl').optional(),
-        status: z.enum(['idle', 'waiting', 'in-call', 'disconnecting', 'offline']),
+        status: z.enum(['idle', 'occupied', 'in-call', 'disconnecting', 'offline']),
         tokens: z.number().optional(),
     });
 }

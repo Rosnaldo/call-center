@@ -1,6 +1,6 @@
-import { IOnlineUser, IncomingCallState } from '@repo/shared-types';
+import { CallState, IOnlineUser, IncomingCallState } from '@repo/shared-types';
 import { AuthenticatedWebSocket, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
-import type { OnlineUsersStoreInstance, IncomingCallStoreInstance } from '../states/stores';
+import type { OnlineUsersStoreInstance, IncomingCallStoreInstance, CallStoreInstance } from '../states/stores';
 
 const WS_URL = import.meta.env.VITE_REALTIME_WS_URL as string | undefined;
 const RECONNECT_DELAY_MS = 3_000;
@@ -10,14 +10,19 @@ const HEARTBEAT_ACK_TIMEOUT_MS = 10_000;
 interface InitWsStores {
     onlineUsers: OnlineUsersStoreInstance;
     incomingCall: IncomingCallStoreInstance;
+    call: CallStoreInstance;
 }
 
 type WsInboundMessage =
     | { event: 'online_users_updated'; data: IOnlineUser }
     | { event: 'heartbeat_ack' }
     | { event: 'user_logout'; data: { id: string } }
-    | { event: 'send_incoming_call'; data: { incomingCall: IncomingCallState } }
-    | { event: 'cancel_incoming_call'; data: { targetUserId: string } };
+    | { event: 'incoming_call_sent'; data: { incomingCall: IncomingCallState } }
+    | { event: 'incoming_call_received'; data: { incomingCall: IncomingCallState } }
+    | { event: 'incoming_call_cancelled'; data: { targetUserId: string } }
+    | { event: 'call_answered' }
+    | { event: 'participant_joined'; data: { call: CallState } }
+    | { event: 'participant_left'; data: { call: CallState } }
 
 export type IncomingCallPayload = IncomingCallState;
 
@@ -70,8 +75,9 @@ class InitWs {
         ws.onmessage = (event) => {
             try {
                 const msg = JSON.parse(event.data as string) as WsInboundMessage;
+                const { updateJoinedView, updateLeftView } = this.stores!.call.getState();
                 const { upsertUser, removeUser } = this.stores!.onlineUsers.getState();
-                const { incomingCallCancelled, setIncomingCall } = this.stores!.incomingCall.getState();
+                const { incomingCallCancelled, incomingCallSent, incomingCallReceived, incomingCallAnswered } = this.stores!.incomingCall.getState();
                 switch (msg.event) {
                     case 'online_users_updated':
                         upsertUser(msg.data);
@@ -82,11 +88,23 @@ class InitWs {
                     case 'user_logout':
                         removeUser(msg.data.id);
                         break;
-                    case 'send_incoming_call':
-                        setIncomingCall?.(msg.data.incomingCall);
+                    case 'incoming_call_sent':
+                        incomingCallSent?.(msg.data.incomingCall);
                         break;
-                    case 'cancel_incoming_call':
+                    case 'incoming_call_received':
+                        incomingCallReceived?.(msg.data.incomingCall);
+                        break;
+                    case 'incoming_call_cancelled':
                         incomingCallCancelled?.();
+                        break;
+                    case 'call_answered':
+                        incomingCallAnswered?.();
+                        break;
+                    case 'participant_joined':
+                        updateJoinedView(msg.data.call);
+                        break;
+                    case 'participant_left':
+                        updateLeftView(msg.data.call);
                         break;
                 }
             } catch {
@@ -119,19 +137,6 @@ class InitWs {
         }
     }
 
-    notifyIncomingCall(targetUserId: string, incomingCall: IncomingCallState): void {
-        if (this.isSimulation) return;
-        if (this.activeWs?.readyState === TRANSPORT_OPEN) {
-            this.activeWs.send(JSON.stringify({ event: 'send_incoming_call', data: { targetUserId, incomingCall } }));
-        }
-    }
-
-    notifyCancelCall(targetUserId: string): void {
-        if (this.isSimulation) return;
-        if (this.activeWs?.readyState === TRANSPORT_OPEN) {
-            this.activeWs.send(JSON.stringify({ event: 'cancel_incoming_call', data: { targetUserId } }));
-        }
-    }
 }
 
 export const initWs = new InitWs();

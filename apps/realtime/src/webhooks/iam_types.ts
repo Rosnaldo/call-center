@@ -1,6 +1,7 @@
 export interface SendIncomingCallPayload {
     customerId: string;
     attendantId: string;
+    whoIsCalling: string;
 }
 
 export interface CancelIncomingCallPayload {
@@ -8,6 +9,12 @@ export interface CancelIncomingCallPayload {
     attendantId: string;
 }
 
+export interface AnswerCallPayload {
+    customerId: string;
+    attendantId: string;
+}
+
 export type IamWebhookBody =
-    | { event: 'send_incoming_call'; payload: SendIncomingCallPayload }
-    | { event: 'cancel_incoming_call'; payload: CancelIncomingCallPayload };
+    | { event: 'incoming_call_sent'; payload: SendIncomingCallPayload }
+    | { event: 'incoming_call_cancelled'; payload: CancelIncomingCallPayload }
+    | { event: 'call_answered'; payload: AnswerCallPayload };

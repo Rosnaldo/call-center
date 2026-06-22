@@ -26,6 +26,9 @@ export const simulateAnswerIncomingCall = (
       attendantName: attendant.name,
       roomName: `${customer.slug}--${attendant.slug}`,
       meetingId: '',
+      customerInCall: false,
+      attendantInCall: false,
+      wasAnswered: false,
     };
 
     updateUser(incomingCall.customerId, { status: 'in-call' as const });

@@ -32,7 +32,7 @@ export const createCurrentUserActions = (
               name: user.name,
               avatarUrl: user.avatarUrl,
               email: user.email,
-              status: 'idle' as const
+              status: 'idle' as const,
             } : null;
         }
       });
