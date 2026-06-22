@@ -4,22 +4,12 @@
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { CurrentUserState, initialCurrentUserState } from './state.ts';
 import { CurrentUserActions, createCurrentUserActions } from './actions.ts';
 
 export const createCurrentUserStore = () => create<CurrentUserState & CurrentUserActions>()(
-  persist(
-    (set) => ({
-      ...initialCurrentUserState,
-      ...createCurrentUserActions(set),
-    }),
-    {
-      name: 'zustand_current_user_store',
-      version: 1,
-      partialize: (state) => ({
-        currentUser: state.currentUser,
-      }),
-    }
-  )
+  (set) => ({
+    ...initialCurrentUserState,
+    ...createCurrentUserActions(set),
+  })
 );

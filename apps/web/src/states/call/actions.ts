@@ -3,7 +3,7 @@ import { CallState } from './state.ts';
 import { DailyService } from '../../services/daily.ts';
 import { fetchOnlineUsers } from '@/src/services/online-users.ts';
 import {
-  simulateacceptedIncomingCall,
+  simulateAcceptedIncomingCall,
   simulateCompleteCall,
   simulateUpdateCall,
   simulateResetCall,
@@ -26,7 +26,7 @@ export const createCallActions = (
   return {
     acceptedIncomingCall: () => {
       if (isSimulation) {
-        simulateacceptedIncomingCall(set);
+        simulateAcceptedIncomingCall(set);
         return;
       }
 

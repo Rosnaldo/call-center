@@ -1,7 +1,7 @@
-import { useOnlineUsersStore, useCurrentUserStore, useIncomingCallStore, useCallViewStore } from '../stores.ts';
+import { useOnlineUsersStore, useCurrentUserStore, useIncomingCallStore, useCallViewStore, useCallStore } from '../stores.ts';
 import { CallState, initialCallStore } from './state.ts';
 
-export const simulateacceptedIncomingCall = (
+export const simulateAcceptedIncomingCall = (
   set: (fn: (state: any) => any) => void,
 ) => {
   set((state: any) => {
@@ -24,9 +24,9 @@ export const simulateacceptedIncomingCall = (
       attendantName: attendant.name,
       roomName: `${customer.slug}--${attendant.slug}`,
       meetingId: '',
-      customerInCall: false,
-      attendantInCall: false,
-      wasAccepted: false,
+      customerInCall: true,
+      attendantInCall: true,
+      wasAccepted: true,
     };
 
     updateUser(incomingCall.customerId, { status: 'in-call' as const });
@@ -35,8 +35,9 @@ export const simulateacceptedIncomingCall = (
       setCurrentUser({ ...currentUser, status: 'in-call' as const });
     }
 
-    useIncomingCallStore.getState().incomingCallCancelled();
+    useIncomingCallStore.getState().cancel();
     useCallViewStore.getState().setViewState('in-call');
+    useCallStore.getState().updateCall(newCall.id, newCall);
 
     return { call: newCall };
   });
