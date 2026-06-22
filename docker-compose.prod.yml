@@ -58,6 +58,26 @@ services:
       - frontend
       - backend
   
+  realtime:
+    image: realtime
+    container_name: realtime
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: apps/realtime/dockerfile.prod
+    expose:
+      - "5003"
+    env_file:
+      - ./apps/realtime/.env
+      - ./apps/realtime/.env.production
+    restart: unless-stopped
+    depends_on:
+      iam:
+        condition: service_healthy
+        restart: true
+    networks:
+      - backend
+
   postgres:
     image: postgres:18rc1
     pull_policy: always

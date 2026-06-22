@@ -70,6 +70,29 @@ services:
     networks:
       - backend
   
+  realtime:
+    image: realtime
+    container_name: realtime
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: apps/realtime/dockerfile.dev
+    ports:
+      - "5003:5003"
+    env_file:
+      - ./apps/realtime/.env
+      - ./apps/realtime/.env.dev
+    restart: unless-stopped
+    volumes:
+      - ./apps/realtime:/app/apps/realtime
+      - /app/apps/realtime/node_modules
+    depends_on:
+      iam:
+        condition: service_healthy
+        restart: true
+    networks:
+      - backend
+
   postgres:
     image: postgres:18rc1
     pull_policy: always
