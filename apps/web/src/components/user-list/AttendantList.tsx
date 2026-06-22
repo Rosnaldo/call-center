@@ -38,20 +38,17 @@ export const AttendantList: React.FC<AttendantListProps> = ({
   const onlineAttendants = users.filter(u => u.role === 'attendant' || u.role === 'admin');
 
   const getAttendantCall = (atId: string) => {
-    return call?.attendantId === atId &&
-      (call.status === 'active')
+    return call?.attendantId === atId
       ? call : undefined;
   };
 
   const getAttendantcall = (atId: string) => {
-    return call?.attendantId === atId &&
-      (call.status === 'active')
+    return call?.attendantId === atId
       ? call : undefined;
   };
 
   const getAttendantOccupiedOrRinging = (atId: string) => {
-    return call?.attendantId === atId &&
-      (call.status === 'active')
+    return call?.attendantId === atId
       ? call : undefined;
   };
 
@@ -81,8 +78,7 @@ export const AttendantList: React.FC<AttendantListProps> = ({
   });
 
   const isCustomerCurrentlyBusy = (customerId: string) => {
-    return call?.customerId === customerId &&
-      call?.status === 'active';
+    return call?.customerId === customerId;
   };
 
   return (

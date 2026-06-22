@@ -35,7 +35,6 @@ describe('DeveloperSimulator Component Unit Tests', () => {
     id: 'call-1',
     customerId: 'cust-1',
     attendantId: 'att-1',
-    status: 'active',
   });
 
   const defaultProps = {

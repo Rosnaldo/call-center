@@ -137,7 +137,7 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
                       Simular atendente atender ✅
                     </button>
                   </div>
-                ) : (call?.customerId === currentUser.id && call.status === 'active') ? (
+                ) : (call?.customerId === currentUser.id) ? (
                   <div className="text-[10px] bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded p-2 text-center">
                     Ligação em andamento.
                   </div>
@@ -187,7 +187,7 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
                   Gere um cenário de chamada recebida de um cliente (se necessário, um novo cliente será criado).
                 </p>
                 {(incomingCall?.attendantId === currentUser.id ||
-                  (call?.attendantId === currentUser.id && call.status === 'active')) ? (
+                  (call?.attendantId === currentUser.id)) ? (
                   <div className="text-[10px] bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded p-2 text-center">
                     Você já possui uma chamada ativa ou em escala de resposta.
                   </div>
@@ -291,7 +291,7 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
             </div>
 
             {/* Connection Drop Simulation */}
-            {call?.status === 'active' && (
+            {call && (
               <div id="sim-connection-drop-section" className="pt-2.5 border-t border-slate-800/50">
                 <h5 className="text-[10px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 mb-2">
                   <WifiOff className="w-3 h-3 text-amber-500" />

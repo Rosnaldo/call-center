@@ -21,24 +21,13 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-// ─── updateCall — wasAnswered ─────────────────────────────────────────────────
-
-describe('updateCall — wasAnswered', () => {
-  it('cannot set wasAnswered back to false once it is true', () => {
-    const call = buildCall({ status: 'active', wasAnswered: true });
+describe('updateCall', () => {
+  it('updates call fields', () => {
+    const call = buildCall();
     useCallStore.setState({ call });
 
-    useCallStore.getState().updateCall(call.id, { wasAnswered: false } as any);
+    useCallStore.getState().updateCall(call.id, { roomName: 'new-room' });
 
-    expect(useCallStore.getState().call?.wasAnswered).toBe(true);
-  });
-
-  it('preserves wasAnswered true across unrelated updates', () => {
-    const call = buildCall({ status: 'active', wasAnswered: true });
-    useCallStore.setState({ call });
-
-    useCallStore.getState().updateCall(call.id, { status: 'completed' });
-
-    expect(useCallStore.getState().call?.wasAnswered).toBe(true);
+    expect(useCallStore.getState().call?.roomName).toBe('new-room');
   });
 });

@@ -29,8 +29,6 @@ export const CallLobbyView: React.FC = () => {
         attendantName: selectedAttendant.name,
         roomName: '',
         meetingId: '',
-        status: 'draft-lobby' as any,
-        wasAnswered: false,
       }
     : undefined;
 
@@ -44,9 +42,7 @@ export const CallLobbyView: React.FC = () => {
   const fastBilling = false;
   const blockDurationSeconds = fastBilling ? 10 : 600;
 
-  const isCallActive = currentCall
-    ? currentCall.status === 'active'
-    : false;
+  const isCallActive = !!currentCall;
 
   // Elapsed timer
   useEffect(() => {
@@ -54,7 +50,6 @@ export const CallLobbyView: React.FC = () => {
       setSeconds(0);
       return;
     }
-    if (currentCall.status !== 'active') return;
     const start = Date.now();
     const tick = () => {
       const diff = Math.floor((Date.now() - start) / 1000);
@@ -65,7 +60,7 @@ export const CallLobbyView: React.FC = () => {
     tick();
     const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
-  }, [currentCall?.id, currentCall?.status, isCallActive]);
+  }, [currentCall?.id, isCallActive]);
 
   // Billing countdown
   useEffect(() => {
@@ -73,7 +68,6 @@ export const CallLobbyView: React.FC = () => {
       setBillingCountdown(blockDurationSeconds);
       return;
     }
-    if (currentCall.status !== 'active') return;
     const start = Date.now();
     const tickBilling = () => {
       const elapsedSinceStart = Date.now() - start;
@@ -86,7 +80,7 @@ export const CallLobbyView: React.FC = () => {
     tickBilling();
     const interval = setInterval(tickBilling, 1000);
     return () => clearInterval(interval);
-  }, [currentCall?.id, currentCall?.status, isCallActive, initialTokens, blockDurationSeconds]);
+  }, [currentCall?.id, isCallActive, initialTokens, blockDurationSeconds]);
 
   // Fullscreen
   const containerRef = useRef<HTMLDivElement>(null);
@@ -183,10 +177,10 @@ export const CallLobbyView: React.FC = () => {
 
       const timeoutId = setTimeout(() => {
         const storeCall = useCallStore.getState().call;
-        const finalCall = storeCall?.id === endedCallId && storeCall.status === 'completed'
+        const finalCall = storeCall?.id === endedCallId
           ? storeCall
           : null;
-        setCompletedCallSummary(finalCall ?? { ...endedCall, status: 'completed' });
+        setCompletedCallSummary(finalCall ?? { ...endedCall });
         setIsCalculatingTokens(false);
       }, 5000);
 

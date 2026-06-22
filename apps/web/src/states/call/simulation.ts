@@ -9,7 +9,7 @@ export const simulateAnswerIncomingCall = (
   set((state: any) => {
     const incomingCall = useIncomingCallStore.getState().incomingCall;
     if (!incomingCall) return {};
-    if (state.call?.status === 'active') return {};
+    if (state.call) return {};
 
     const { users, updateUser } = useOnlineUsersStore.getState();
     const { currentUser, setCurrentUser } = useCurrentUserStore.getState();
@@ -26,8 +26,6 @@ export const simulateAnswerIncomingCall = (
       attendantName: attendant.name,
       roomName: `${customer.slug}--${attendant.slug}`,
       meetingId: '',
-      status: 'active',
-      wasAnswered: true,
     };
 
     updateUser(incomingCall.customerId, { status: 'in-call' as const });
@@ -76,8 +74,6 @@ export const simulateUpdateCall = (
     const { currentUser, setCurrentUser } = useCurrentUserStore.getState();
     const call = state.call?.id === callId ? state.call : undefined;
     if (!call) return {};
-
-    if (call.wasAnswered) updates = { ...updates, wasAnswered: true };
 
     updateUser(call.attendantId, { status: 'in-call' as const });
     if (currentUser && currentUser.id === call.attendantId) {

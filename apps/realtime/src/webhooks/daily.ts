@@ -6,8 +6,6 @@ import {
     onMeetingEnded,
     onParticipantJoined,
     onParticipantLeft,
-    onWaitingParticipantJoined,
-    onWaitingParticipantLeft,
 } from './daily_handlers';
 
 export default (app: Application, wss: ISocketServer) => {
@@ -26,12 +24,6 @@ export default (app: Application, wss: ISocketServer) => {
                 break;
             case 'participant.left':
                 onParticipantLeft(body.payload);
-                break;
-            case 'waiting-participant.joined':
-                onWaitingParticipantJoined(body.payload);
-                break;
-            case 'waiting-participant.left':
-                onWaitingParticipantLeft(body.payload);
                 break;
         }
 

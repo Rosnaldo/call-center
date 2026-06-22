@@ -24,8 +24,6 @@ export async function onMeetingStarted(payload: DailyMeetingPayload): Promise<vo
         attendantName: `${attendant.firstName} ${attendant.lastName}`,
         roomName: payload.room,
         meetingId: payload.id,
-        status: 'active',
-        wasAnswered: false,
     });
 }
 

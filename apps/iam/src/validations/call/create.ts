@@ -13,8 +13,6 @@ export const inputSchema = z.object({
     attendantName: makeSmallStringSchema('attendantName'),
     roomName: makeSmallStringSchema('roomName'),
     meetingId: makeSmallStringSchema('meetingId'),
-    status: z.enum(['active', 'completed']),
-    wasAnswered: z.boolean(),
 });
 
 export const validateInput = (params: IInput): ValidateParseResult => {

@@ -120,7 +120,7 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
         <BillingSummaryModal
           callDurationSeconds={0}
           isOpen={false}
-          completedCallSummary={buildCall({ status: 'completed' })}
+          completedCallSummary={buildCall()}
           currentUser={buildOnlineUserState({ role: 'customer' })}
           onClose={vi.fn()}
         />
@@ -146,7 +146,7 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
         <BillingSummaryModal
           callDurationSeconds={0}
           isOpen={true}
-          completedCallSummary={buildCall({ status: 'completed', attendantName: 'Dr. John' })}
+          completedCallSummary={buildCall({ attendantName: 'Dr. John' })}
           currentUser={buildOnlineUserState({ role: 'customer' })}
           onClose={onClose}
         />
@@ -175,7 +175,7 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
         <BillingSummaryModal
           callDurationSeconds={0}
           isOpen={true}
-          completedCallSummary={buildCall({ status: 'completed', attendantName: 'Dr. John' })}
+          completedCallSummary={buildCall({ attendantName: 'Dr. John' })}
           currentUser={buildOnlineUserState({ role: 'customer' })}
           onClose={vi.fn()}
         />
@@ -193,7 +193,7 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
         <BillingSummaryModal
           callDurationSeconds={0}
           isOpen={true}
-          completedCallSummary={buildCall({ status: 'completed', customerName: 'Alice Mary' })}
+          completedCallSummary={buildCall({ customerName: 'Alice Mary' })}
           currentUser={buildOnlineUserState({ role: 'attendant' })}
           onClose={vi.fn()}
         />

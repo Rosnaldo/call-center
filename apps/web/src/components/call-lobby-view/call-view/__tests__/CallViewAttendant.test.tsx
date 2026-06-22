@@ -17,21 +17,17 @@ const attendant = buildOnlineUserState({
   status: 'in-call',
 });
 
-const makeCall = (status: CallState['status']): CallState =>
+const makeCall = (): CallState =>
   buildCall({
     id: CALL_ID,
     attendantId: ATTENDANT_ID,
     attendantName: attendant.name,
     customerId: CUSTOMER_ID,
     customerName: CUSTOMER_NAME,
-    status,
   });
 
 const makeProps = (call: CallState, stateOverride?: CallViewState, extra = {}) => ({
-  state: stateOverride ?? (
-    call.status === 'active' ? CallViewState.InCall :
-    CallViewState.Lobby
-  ),
+  state: stateOverride ?? CallViewState.InCall,
   isScreenSharing: false,
   isVideoOff: false,
   isMuted: false,
@@ -62,7 +58,7 @@ afterEach(() => {
 describe('CallView — attendant full call lifecycle', () => {
   describe('2. attendant answers the call', () => {
     it('renders the active in-call viewport after answering', () => {
-      const { container } = render(<CallView {...makeProps(makeCall('active'), CallViewState.InCall)} />);
+      const { container } = render(<CallView {...makeProps(makeCall(), CallViewState.InCall)} />);
       expect(container.querySelector('#viewport-active-video')).not.toBeNull();
     });
 
@@ -70,7 +66,7 @@ describe('CallView — attendant full call lifecycle', () => {
 
   describe('4. attendant reconnects and resumes the call', () => {
     it('re-renders the active viewport after resuming', () => {
-      const { container } = render(<CallView {...makeProps(makeCall('active'), CallViewState.InCall)} />);
+      const { container } = render(<CallView {...makeProps(makeCall(), CallViewState.InCall)} />);
       expect(container.querySelector('#viewport-active-video')).not.toBeNull();
     });
   });
@@ -78,7 +74,7 @@ describe('CallView — attendant full call lifecycle', () => {
   describe('5. call ends', () => {
     it('does not render the call viewport after the call ends (no call)', () => {
       const { container } = render(
-        <CallView {...makeProps(makeCall('active'), CallViewState.None, { currentCall: undefined })} />
+        <CallView {...makeProps(makeCall(), CallViewState.None, { currentCall: undefined })} />
       );
       expect(container.querySelector('#viewport-none')).not.toBeNull();
       expect(container.querySelector('#viewport-active-video')).toBeNull();

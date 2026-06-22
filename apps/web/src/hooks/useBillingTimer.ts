@@ -38,56 +38,47 @@ export function useBillingTimer(call: CallState | undefined) {
       useTimerStore.getState().reset();
     }
 
-    if (call.status === 'active') {
-      if (segmentStartRef.current === null) {
-        segmentStartRef.current = Date.now();
-        useTimerStore.getState().play();
+    if (segmentStartRef.current === null) {
+      segmentStartRef.current = Date.now();
+      useTimerStore.getState().play();
+    }
+
+    const interval = setInterval(() => {
+      if (segmentStartRef.current === null) return;
+
+      const elapsed = accumulatedRef.current + Math.floor((Date.now() - segmentStartRef.current) / 1000);
+      useTimerStore.setState({ elapsedSeconds: elapsed });
+
+      const user = currentUserRef.current;
+      if (!user) return;
+
+      const snapshot = useCallStore.getState().call;
+      if (!snapshot) return;
+
+      const isMyCall = user.id === snapshot.customerId || user.id === snapshot.attendantId;
+      if (!isMyCall) return;
+
+      const { initialTokens } = useBillingStore.getState();
+      const tokensCount = initialTokens || 1;
+      if (elapsed >= tokensCount * BILLING_INTERVAL_SECONDS) {
+        const customerUser = useOnlineUsersStore.getState().users.find(u => u.id === snapshot.customerId);
+        const availableTokens = customerUser?.tokens ?? 5;
+
+        if (tokensCount >= availableTokens) {
+          // useCallStore.getState().billingOutOfTokens(snapshot.id);
+        } else {
+          useBillingStore.getState().addOneToken();
+        }
       }
+    }, 1000);
 
-      const interval = setInterval(() => {
-        if (segmentStartRef.current === null) return;
-
-        const elapsed = accumulatedRef.current + Math.floor((Date.now() - segmentStartRef.current) / 1000);
-        useTimerStore.setState({ elapsedSeconds: elapsed });
-
-        const user = currentUserRef.current;
-        if (!user) return;
-
-        const snapshot = useCallStore.getState().call;
-        if (!snapshot || snapshot.status !== 'active') return;
-
-        const isMyCall = user.id === snapshot.customerId || user.id === snapshot.attendantId;
-        if (!isMyCall) return;
-
-        const { initialTokens } = useBillingStore.getState();
-        const tokensCount = initialTokens || 1;
-        if (elapsed >= tokensCount * BILLING_INTERVAL_SECONDS) {
-          const customerUser = useOnlineUsersStore.getState().users.find(u => u.id === snapshot.customerId);
-          const availableTokens = customerUser?.tokens ?? 5;
-
-          if (tokensCount >= availableTokens) {
-            // useCallStore.getState().billingOutOfTokens(snapshot.id);
-          } else {
-            useBillingStore.getState().addOneToken();
-          }
-        }
-      }, 1000);
-
-      return () => {
-        clearInterval(interval);
-        // Freeze elapsed time before this segment ends
-        if (segmentStartRef.current !== null) {
-          accumulatedRef.current += Math.floor((Date.now() - segmentStartRef.current) / 1000);
-          segmentStartRef.current = null;
-        }
-      };
-    }
-
-    // Interrupted or awaiting — freeze timer without losing accumulated time
-    useTimerStore.getState().stop();
-    if (segmentStartRef.current !== null) {
-      accumulatedRef.current += Math.floor((Date.now() - segmentStartRef.current) / 1000);
-      segmentStartRef.current = null;
-    }
-  }, [call?.id, call?.status]);
+    return () => {
+      clearInterval(interval);
+      // Freeze elapsed time before this segment ends
+      if (segmentStartRef.current !== null) {
+        accumulatedRef.current += Math.floor((Date.now() - segmentStartRef.current) / 1000);
+        segmentStartRef.current = null;
+      }
+    };
+  }, [call?.id]);
 }

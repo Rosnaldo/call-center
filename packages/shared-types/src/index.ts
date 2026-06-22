@@ -47,8 +47,6 @@ export interface CallState {
     attendantName: string;
     roomName: string;
     meetingId: string;
-    status: 'active' | 'completed';
-    wasAnswered: boolean;
 }
 
 export interface Pagination {

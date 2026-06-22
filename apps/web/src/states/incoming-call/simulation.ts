@@ -56,7 +56,7 @@ export const simulateIncomingCall = (
 
   const existingIncoming = get().incomingCall;
   const isOccupied =
-    (call?.attendantId === attendantId && call.status === 'active') ||
+    (call?.attendantId === attendantId) ||
     existingIncoming?.attendantId === attendantId;
   if (isOccupied) return;
 

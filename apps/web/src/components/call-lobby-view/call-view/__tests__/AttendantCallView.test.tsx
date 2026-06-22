@@ -133,7 +133,6 @@ describe('Attendant - CallView state machine', () => {
       customerId: CUSTOMER_ID,
       customerName: customer.name,
       attendantId: ATTENDANT_ID,
-      status: 'active',
     });
 
     beforeEach(() => {

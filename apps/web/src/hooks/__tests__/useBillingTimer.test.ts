@@ -7,8 +7,8 @@ import { CallState } from '../../states/call/state.ts';
 
 const CALL_ID = 'call-timer-test';
 
-const makeCall = (status: CallState['status']): CallState =>
-  buildCall({ id: CALL_ID, status });
+const makeCall = (): CallState =>
+  buildCall({ id: CALL_ID });
 
 beforeEach(() => {
   useTimerStore.getState().reset();
@@ -24,7 +24,7 @@ describe('useBillingTimer — timer / call store integration', () => {
   describe('call active', () => {
     it('plays the timer as soon as the call is active', () => {
       renderHook(({ call }) => useBillingTimer(call), {
-        initialProps: { call: makeCall('active') },
+        initialProps: { call: makeCall() },
       });
 
       expect(useTimerStore.getState().status).toBe('playing');
@@ -32,7 +32,7 @@ describe('useBillingTimer — timer / call store integration', () => {
 
     it('increments elapsedSeconds once per second while active', () => {
       renderHook(({ call }) => useBillingTimer(call), {
-        initialProps: { call: makeCall('active') },
+        initialProps: { call: makeCall() },
       });
 
       act(() => { vi.advanceTimersByTime(3000); });
@@ -45,7 +45,7 @@ describe('useBillingTimer — timer / call store integration', () => {
     it('resets the timer when call becomes undefined', () => {
       const { rerender } = renderHook(
         ({ call }: { call: CallState | undefined }) => useBillingTimer(call),
-        { initialProps: { call: makeCall('active') as CallState | undefined } },
+        { initialProps: { call: makeCall() as CallState | undefined } },
       );
 
       act(() => { vi.advanceTimersByTime(5000); });
@@ -58,13 +58,13 @@ describe('useBillingTimer — timer / call store integration', () => {
     it('starts fresh if a new call begins after a previous one ended', () => {
       const { rerender } = renderHook(
         ({ call }: { call: CallState | undefined }) => useBillingTimer(call),
-        { initialProps: { call: makeCall('active') as CallState | undefined } },
+        { initialProps: { call: makeCall() as CallState | undefined } },
       );
 
       act(() => { vi.advanceTimersByTime(5000); });
       act(() => { rerender({ call: undefined }); });
 
-      const newCall = buildCall({ status: 'active' }); // different ID
+      const newCall = buildCall(); // different ID
       act(() => { rerender({ call: newCall }); });
       act(() => { vi.advanceTimersByTime(2000); });
 

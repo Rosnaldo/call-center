@@ -26,8 +26,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
   const customers = users.filter(u => u.role === 'customer');
 
   const getCustomerCall = (custId: string) => {
-    return call?.customerId === custId &&
-      (call.status === 'active')
+    return call?.customerId === custId
       ? call : undefined;
   };
 
