@@ -1,3 +1,4 @@
+import type { IDailyService } from '../services/daily.ts';
 import { createAuthStore } from './auth/store.ts';
 import { createBillingStore } from './billing/store.ts';
 import { createCallStore } from './call/store.ts';
@@ -40,15 +41,20 @@ export let useIncomingCallStore: IncomingCallStoreInstance;
 export let useOnlineUsersStore: OnlineUsersStoreInstance;
 export let useTimerStore: TimerStoreInstance;
 
-export function createStores(): Stores {
+const noopDailyService: IDailyService = {
+    join: async () => {},
+    leave: async () => {},
+};
+
+export function createStores(dailyService: IDailyService = noopDailyService): Stores {
     const s: Stores = {
         auth: createAuthStore(),
         billing: createBillingStore(),
-        call: createCallStore(),
+        call: createCallStore(dailyService),
         callView: createCallViewStore(),
         currentUser: createCurrentUserStore(),
         devices: createDevicesStore(),
-        incomingCall: createIncomingCallStore(),
+        incomingCall: createIncomingCallStore(dailyService),
         onlineUsers: createOnlineUsersStore(),
         timer: createTimerStore(),
     };

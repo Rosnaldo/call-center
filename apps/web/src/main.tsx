@@ -8,11 +8,11 @@ import { StoreProvider } from './states/StoreProvider.tsx';
 import { createStores } from './states/stores.ts';
 import { DailyService } from './services/daily.ts';
 
-const stores = createStores();
 const dailyService = DailyService.getInstance({
     domain: (import.meta.env.VITE_DAILY_DOMAIN as string) ?? 'meetcent',
     apiKey: (import.meta.env.VITE_DAILY_API_KEY as string) ?? '',
 });
+const stores = createStores(dailyService);
 
 if ((import.meta as any).env?.VITE_ENV !== 'simulation') {
     bootstrap(stores, dailyService);

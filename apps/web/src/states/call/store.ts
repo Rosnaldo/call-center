@@ -4,12 +4,13 @@
  */
 
 import { create } from 'zustand';
+import type { IDailyService } from '../../services/daily.ts';
 import { CallStore, initialCallStore } from './state.ts';
 import { CallActions, createCallActions } from './actions.ts';
 
-export const createCallStore = () => create<CallStore & CallActions>()(
+export const createCallStore = (dailyService: IDailyService) => create<CallStore & CallActions>()(
   (set) => ({
     ...initialCallStore,
-    ...createCallActions(set),
+    ...createCallActions(set, dailyService),
   })
 );

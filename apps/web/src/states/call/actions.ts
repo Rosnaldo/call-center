@@ -1,6 +1,6 @@
 import { useIncomingCallStore, useCallViewStore, useDevicesStore, useOnlineUsersStore } from '../stores.ts';
 import { CallState } from './state.ts';
-import { DailyService } from '../../services/daily.ts';
+import type { IDailyService } from '../../services/daily.ts';
 import { fetchOnlineUsers } from '@/src/services/online-users.ts';
 import {
   simulateAcceptedIncomingCall,
@@ -21,7 +21,8 @@ export interface CallActions {
 }
 
 export const createCallActions = (
-  set: (fn: (state: any) => any) => void
+  set: (fn: (state: any) => any) => void,
+  dailyService: IDailyService,
 ): CallActions => {
   return {
     acceptedIncomingCall: () => {
@@ -39,7 +40,7 @@ export const createCallActions = (
       if (!customer || !attendant) return;
 
       const { cameraOn, microphoneOn } = useDevicesStore.getState();
-      DailyService.getInstance().join({
+      dailyService.join({
         room: `${customer.slug}--${attendant.slug}`,
         userName: attendant.name,
         userData: { id: attendant.id, role: attendant.role },

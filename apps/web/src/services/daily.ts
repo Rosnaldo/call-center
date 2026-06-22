@@ -1,6 +1,6 @@
 import DailyIframe, { type DailyCall } from "@daily-co/daily-js";
 
-interface JoinOptions {
+export interface JoinOptions {
   room: string;
   userName: string;
   userData: Record<string, unknown>;
@@ -8,12 +8,17 @@ interface JoinOptions {
   startVideoOff: boolean;
 }
 
+export interface IDailyService {
+  join(options: JoinOptions): Promise<void>;
+  leave(): Promise<void>;
+}
+
 interface DailyServiceConfig {
   domain: string;
   apiKey: string;
 }
 
-export class DailyService {
+export class DailyService implements IDailyService {
   private static instance: DailyService;
   readonly callObject: DailyCall;
 

@@ -1,7 +1,7 @@
 import { IncomingCallState } from '@repo/shared-types';
 import { IncomingCallStore } from './state.ts';
 import { useOnlineUsersStore, useCallViewStore, useDevicesStore } from '../stores.ts';
-import { DailyService } from '@/src/services/daily.ts';
+import type { IDailyService } from '@/src/services/daily.ts';
 import { apiBack } from '@/src/api/backend.ts';
 import { fetchOnlineUsers } from '@/src/services/online-users.ts';
 import {
@@ -28,6 +28,7 @@ export interface IncomingCallActions {
 export const createIncomingCallActions = (
   set: (arg: Partial<IncomingCallStore> | ((state: IncomingCallStore) => Partial<IncomingCallStore>)) => void,
   get: () => IncomingCallStore,
+  dailyService: IDailyService,
 ): IncomingCallActions => ({
   cancel: () => set({ incomingCall: null }),
 
@@ -68,7 +69,7 @@ export const createIncomingCallActions = (
       .catch((err) => console.error('[IAM] send incoming call failed:', err));
 
     const { cameraOn, microphoneOn } = useDevicesStore.getState();
-    DailyService.getInstance().join({
+    dailyService.join({
       room: `${customer.slug}--${attendant.slug}`,
       userName: customer.name,
       userData: { id: customer.id, role: customer.role },
