@@ -26,7 +26,7 @@ type WsInboundMessage =
 
 export type IncomingCallPayload = IncomingCallState;
 
-class InitWs {
+export class InitWs {
     private heartbeatRef: ReturnType<typeof setInterval> | null = null;
     private ackRef: ReturnType<typeof setTimeout> | null = null;
     private activeWs: AuthenticatedWebSocket | null = null;
