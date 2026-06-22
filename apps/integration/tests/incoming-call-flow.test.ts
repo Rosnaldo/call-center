@@ -4,7 +4,7 @@ jest.mock('@/src/services/online-users', () => ({
 }));
 
 import { EventEmitter } from 'node:events';
-import { IOnlineUser, IncomingCallState, IUser } from '@repo/shared-types';
+import { IOnlineUser, IUser } from '@repo/shared-types';
 
 import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
@@ -72,12 +72,11 @@ describe('Incoming Call Flow', () => {
     let wss: MockSocketServer;
     let customerStores: Stores;
     let attendantStores: Stores;
-    let mockDaily: DailyCoService;
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
         const users = await createMockUsers();
-        customerUser = users.customer;
+        customerUser = { ...users.customer, tokens: 10 };
         attendantUser = users.attendant;
     });
 
@@ -92,10 +91,6 @@ describe('Incoming Call Flow', () => {
         pendingCalls.length = 0;
         jest.clearAllMocks();
         DailyCoService.reset();
-
-        mockDaily = DailyCoService.getInstance();
-        customerStores = createStores(mockDaily);
-        attendantStores = createStores(mockDaily);
 
         addToIamMock.mockImplementation((user: IOnlineUser, token: string) => {
             const op = iamRequest
@@ -114,7 +109,7 @@ describe('Incoming Call Flow', () => {
         });
     });
 
-    it('incoming_call_sent emits to customer and attendant stores', async () => {
+    it('sendIncomingCall emits to customer and attendant stores', async () => {
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         const { serverWs: attendantWs, webFactory: attendantWebFactory } = createBridgedClient(attendantUser, ATTENDANT_TOKEN);
 
@@ -123,6 +118,12 @@ describe('Incoming Call Flow', () => {
 
         const customerInitWs = new InitWs();
         const attendantInitWs = new InitWs();
+
+        const dailyService = DailyCoService.getInstance();
+
+        // attendantStores first so module-level singletons end up on customerStores
+        attendantStores = createStores(dailyService);
+        customerStores = createStores(dailyService);
 
         customerInitWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
         attendantInitWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
@@ -134,31 +135,21 @@ describe('Incoming Call Flow', () => {
         onConnection(wss)(attendantWs);
         await flushPendingCalls();
 
-        // verify both are online and idle
         expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
         expect(attendantStores.onlineUsers.getState().users).toHaveLength(2);
 
         const customerIdle = customerStores.onlineUsers.getState().users
             .find(u => u.id === customerUser._id);
-        const attendantIdle = attendantStores.onlineUsers.getState().users
+        const attendantIdle = customerStores.onlineUsers.getState().users
             .find(u => u.id === attendantUser._id);
         expect(customerIdle?.status).toBe('idle');
         expect(attendantIdle?.status).toBe('idle');
 
-        // ── customer sends incoming_call_sent via WS ────────────────────
-        const incomingCall: IncomingCallState = {
-            customerId: customerUser._id,
-            attendantId: attendantUser._id,
-            calledBy: 'customer',
-        };
-
-        (customerWs as unknown as EventEmitter).emit('message', JSON.stringify({
-            event: 'incoming_call_sent',
-            data: {
-                targetUserId: attendantUser._id,
-                incomingCall,
-            },
-        }));
+        // ── customer calls sendIncomingCall ──────────────────────────────
+        customerStores.incomingCall.getState().sendIncomingCall(
+            customerUser._id,
+            attendantUser._id,
+        );
 
         // allow async store actions (fetchOnlineUsers) to settle
         await new Promise((r) => setTimeout(r, 50));
@@ -176,5 +167,9 @@ describe('Incoming Call Flow', () => {
         expect(attendantIncoming!.customerId).toBe(customerUser._id);
         expect(attendantIncoming!.attendantId).toBe(attendantUser._id);
         expect(attendantIncoming!.calledBy).toBe('customer');
+
+        // ── dailyService.join was called ─────────────────────────────────
+        expect(dailyService.joinCalls).toHaveLength(1);
+        expect(dailyService.joinCalls[0].room).toContain(customerUser.slug);
     });
 });

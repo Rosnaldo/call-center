@@ -1,12 +1,12 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import App from './App.tsx';
-import './index.css';
 import { bootstrap } from './bootstrap.ts';
 import { StoreProvider } from './states/StoreProvider.tsx';
 import { createStores } from './states/stores.ts';
 import { DailyService } from './services/daily.ts';
+import App from './App.tsx';
+import './index.css';
 
 const dailyService = DailyService.getInstance({
     domain: (import.meta.env.VITE_DAILY_DOMAIN as string) ?? 'meetcent',
@@ -15,14 +15,14 @@ const dailyService = DailyService.getInstance({
 const stores = createStores(dailyService);
 
 if ((import.meta as any).env?.VITE_ENV !== 'simulation') {
-    bootstrap(stores, dailyService);
+    bootstrap(stores);
 }
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
         <StoreProvider stores={stores}>
             <BrowserRouter>
-                <App dailyService={dailyService} />
+                <App />
             </BrowserRouter>
         </StoreProvider>
     </StrictMode>,

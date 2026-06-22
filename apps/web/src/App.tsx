@@ -18,16 +18,10 @@ import { UserPainelPage } from './pages/UserPainelPage.tsx';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RoleProtectedRoute } from './role-protected-route.tsx';
 import { useAuthStore } from './states/stores.ts';
-import { DailyServiceProvider } from './providers/DailyServiceProvider.tsx';
-import type { DailyService } from './services/daily.ts';
 
 const queryClient = new QueryClient();
 
-interface AppProps {
-  dailyService: DailyService;
-}
-
-export default function App({ dailyService }: AppProps) {
+export default function App() {
   const ready = useAuthStore((s) => s.ready);
   const error = useAuthStore((s) => s.error);
   const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
@@ -50,7 +44,6 @@ export default function App({ dailyService }: AppProps) {
   if (!ready && !isSimulation) return <div>Loading session…</div>;
 
   return (
-    <DailyServiceProvider dailyService={dailyService}>
       <QueryClientProvider client={queryClient}>
         <Toaster />
         <Routes>
@@ -78,6 +71,5 @@ export default function App({ dailyService }: AppProps) {
 
         <Footer />
       </QueryClientProvider>
-    </DailyServiceProvider>
   );
 }
