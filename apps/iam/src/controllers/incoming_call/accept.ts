@@ -8,10 +8,10 @@ import { mapString } from '#utils/mapper/string';
 import { IIncomingCallController } from './params';
 import { IncomingCallState, CallState, IOnlineUser } from '@repo/shared-types';
 import { realtimeApi } from '#apis/realtime';
-import { validateInput } from 'src/validations/incoming_call/answer_call';
+import { validateInput } from 'src/validations/incoming_call/accept';
 
-type IInput = IIncomingCallController['IAnswerCall']['IInput'];
-type IOutput = IIncomingCallController['IAnswerCall']['IOutput'];
+type IInput = IIncomingCallController['IAccept']['IInput'];
+type IOutput = IIncomingCallController['IAccept']['IOutput'];
 
 const INCOMING_CALL_KEY = 'incoming_calls';
 const CALLS_KEY = 'calls';
@@ -21,16 +21,16 @@ interface Props {
     mapped: IInput;
 }
 
-export class AnswerCall {
-    public static readonly classId = Symbol.for('Controller > IncomingCall > AnswerCall');
+export class Accept {
+    public static readonly classId = Symbol.for('Controller > IncomingCall > Accept');
 
     private constructor() {}
 
-    static construir(classId: symbol): AnswerCall {
+    static construir(classId: symbol): Accept {
         if (classId !== Symbol.for('Controller > IncomingCall')) {
             throw new Error(`${classId.toString()}: não pode ser instanciado`);
         }
-        return new AnswerCall();
+        return new Accept();
     }
 
     public readonly exec = async (props: Props): Promise<Either<IOutput>> => {
@@ -53,7 +53,7 @@ export class AnswerCall {
                 .find((c) => c.customerId === incomingCall.customerId && c.attendantId === incomingCall.attendantId);
 
             if (call) {
-                await redis.hset(CALLS_KEY, call.id, JSON.stringify({ ...call, customerInCall: true, attendantInCall: true, wasAnswered: true }));
+                await redis.hset(CALLS_KEY, call.id, JSON.stringify({ ...call, customerInCall: true, attendantInCall: true, wasAccepted: true }));
             }
 
             await redis.hdel(INCOMING_CALL_KEY, attendantId);
@@ -71,13 +71,13 @@ export class AnswerCall {
             }
 
             realtimeApi.post('/webhooks/iam', {
-                event: 'call_answered',
+                event: 'call_accepted',
                 payload: { customerId: incomingCall.customerId, attendantId: incomingCall.attendantId },
-            }).catch((err) => console.error('[Realtime] answer_call failed:', err));
+            }).catch((err) => console.error('[Realtime] accept failed:', err));
 
             return successData(incomingCall);
         } catch (error: unknown) {
-            return logError(error, '/incoming-calls/answer-call');
+            return logError(error, '/incoming-calls/accept');
         }
     };
 

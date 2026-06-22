@@ -5,7 +5,7 @@ export interface IIncomingCallController {
         IInput: IncomingCallState;
         IOutput: IncomingCallState;
     };
-    IAnswerCall: {
+    IAccept: {
         IInput: { attendantId: string; userId: string };
         IOutput: IncomingCallState;
     };

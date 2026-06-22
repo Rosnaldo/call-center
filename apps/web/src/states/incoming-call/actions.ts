@@ -23,7 +23,7 @@ export interface IncomingCallActions {
   incomingCallSent: (incomingCall: IncomingCallState) => void;
   incomingCallReceived: (incomingCall: IncomingCallState) => void;
   incomingCallCancelled: () => void;
-  incomingCallAnswered: () => void;
+  incomingCallAccepted: () => void;
 }
 
 export const createIncomingCallActions = (
@@ -91,7 +91,7 @@ export const createIncomingCallActions = (
       simulateIncomingCallAsCustomer(set, get, customerId, attendantId);
     }
   },
-  incomingCallAnswered: async () => {
+  incomingCallAccepted: async () => {
     set({ incomingCall: null });
     useCallViewStore.getState().setViewState('in-call');
     const users = await fetchOnlineUsers();

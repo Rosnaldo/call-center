@@ -1,15 +1,15 @@
 import React from 'react';
 import { Phone } from 'lucide-react';
 
-interface AnswerCallButtonProps {
+interface AcceptCallButtonProps {
   onClick: () => void;
 }
 
-export const AnswerCallButton: React.FC<AnswerCallButtonProps> = ({ onClick }) => {
+export const AcceptCallButton: React.FC<AcceptCallButtonProps> = ({ onClick }) => {
   return (
     <button
       type="button"
-      id="lobby-answer-call"
+      id="lobby-accept-call"
       onClick={onClick}
       className="px-6 py-3 rounded-full flex items-center gap-2 text-white font-semibold transition-all active:scale-95 shadow-lg border cursor-pointer animate-pulse bg-emerald-600 hover:bg-emerald-700 border-emerald-500/20"
     >

@@ -38,7 +38,7 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
   const timerStatus = useTimerStore((s) => s.status);
   const timerElapsed = useTimerStore((s) => s.elapsedSeconds);
   const incomingCall = useIncomingCallStore((s) => s.incomingCall);
-  const answerIncomingCall = useCallStore((s) => s.answerIncomingCall);
+  const acceptedIncomingCall = useCallStore((s) => s.acceptedIncomingCall);
   const callViewState = useCallViewStore();
 
   if ((import.meta as any).env?.VITE_ENV !== 'simulation') {
@@ -131,7 +131,7 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
                     </div>
                     <button
                       type="button"
-                      onClick={() => answerIncomingCall(null)}
+                      onClick={() => acceptedIncomingCall(null)}
                       className="w-full text-center py-2 px-3 text-xs font-bold text-emerald-950 bg-emerald-500 hover:bg-emerald-400 rounded-lg transition border border-emerald-600/25 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5"
                     >
                       Simular atendente atender ✅

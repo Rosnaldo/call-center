@@ -7,7 +7,7 @@ export interface AuthenticatedWebSocket extends EventEmitterTransport {
     isAlive: boolean;
 }
 
-export type WsEvent = 'online_users_updated' | 'heartbeat_ack' | 'user_logout' | 'incoming_call_sent' | 'incoming_call_received' | 'incoming_call_cancelled' | 'call_answered' | 'participant_joined' | 'participant_left';
+export type WsEvent = 'online_users_updated' | 'heartbeat_ack' | 'user_logout' | 'incoming_call_sent' | 'incoming_call_received' | 'incoming_call_cancelled' | 'call_accepted' | 'participant_joined' | 'participant_left';
 
 export type WsClientEvent = 'heartbeat' | 'user_logout' | 'incoming_call_sent' | 'incoming_call_cancelled';
 

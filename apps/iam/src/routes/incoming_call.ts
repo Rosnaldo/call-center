@@ -18,12 +18,12 @@ export default (app: Application) => {
     );
 
     app.post(
-        '/incoming-calls/answer-call',
+        '/incoming-calls/accept',
         GetKeycloakUser,
         async (req, res) => {
             const controller = new IncomingCallController();
-            const mapped = controller.answerCall.mapper(req.body);
-            const either = await controller.answerCall.exec({ mapped });
+            const mapped = controller.accept.mapper(req.body);
+            const either = await controller.accept.exec({ mapped });
             if (either.isError) {
                 return res.status(either.status).send(either);
             }

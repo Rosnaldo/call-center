@@ -20,7 +20,7 @@ type WsInboundMessage =
     | { event: 'incoming_call_sent'; data: { incomingCall: IncomingCallState } }
     | { event: 'incoming_call_received'; data: { incomingCall: IncomingCallState } }
     | { event: 'incoming_call_cancelled'; data: { targetUserId: string } }
-    | { event: 'call_answered' }
+    | { event: 'call_accepted' }
     | { event: 'participant_joined'; data: { call: CallState } }
     | { event: 'participant_left'; data: { call: CallState } }
 
@@ -77,7 +77,7 @@ class InitWs {
                 const msg = JSON.parse(event.data as string) as WsInboundMessage;
                 const { updateJoinedView, updateLeftView } = this.stores!.call.getState();
                 const { upsertUser, removeUser } = this.stores!.onlineUsers.getState();
-                const { incomingCallCancelled, incomingCallSent, incomingCallReceived, incomingCallAnswered } = this.stores!.incomingCall.getState();
+                const { incomingCallCancelled, incomingCallSent, incomingCallReceived, incomingCallAccepted } = this.stores!.incomingCall.getState();
                 switch (msg.event) {
                     case 'online_users_updated':
                         upsertUser(msg.data);
@@ -97,8 +97,8 @@ class InitWs {
                     case 'incoming_call_cancelled':
                         incomingCallCancelled?.();
                         break;
-                    case 'call_answered':
-                        incomingCallAnswered?.();
+                    case 'call_accepted':
+                        incomingCallAccepted?.();
                         break;
                     case 'participant_joined':
                         updateJoinedView(msg.data.call);

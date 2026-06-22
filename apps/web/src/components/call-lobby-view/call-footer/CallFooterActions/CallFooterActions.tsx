@@ -3,7 +3,7 @@ import { useDaily } from '@daily-co/daily-react';
 import { useCallStore, useCallViewStore, useCurrentUserStore, useOnlineUsersStore, useIncomingCallStore } from '../../../../states/stores.ts';
 import { CallState } from '@/src/states/call/state.ts';
 import { StartCallButton } from './StartCallButton.tsx';
-import { AnswerCallButton } from './AnswerCallButton.tsx';
+import { AcceptCallButton } from './AcceptCallButton.tsx';
 import { EndCallButton } from './EndCallButton.tsx';
 import { CancelCallButton } from './CancelCallButton.tsx';
 
@@ -34,7 +34,7 @@ export const CallFooterActions: React.FC = () => {
         meetingId: '',
         customerInCall: false,
         attendantInCall: false,
-        wasAnswered: false,
+        wasAccepted: false,
       }
     : undefined;
 
@@ -49,8 +49,8 @@ export const CallFooterActions: React.FC = () => {
     useCallViewStore.getState().setViewState('in-call');
   };
 
-  const handleAnswerCall = () => {
-    useCallStore.getState().answerIncomingCall(daily);
+  const handleAcceptCall = () => {
+    useCallStore.getState().acceptedIncomingCall(daily);
   };
 
   const handleCancelCall = () => {
@@ -107,7 +107,7 @@ export const CallFooterActions: React.FC = () => {
   if (incomingCall && isReceiving) {
     return (
       <div className="flex gap-2.5 items-center">
-        <AnswerCallButton onClick={handleAnswerCall} />
+        <AcceptCallButton onClick={handleAcceptCall} />
         <CancelCallButton onClick={handleCancelCall} />
       </div>
     );

@@ -31,7 +31,7 @@ export const CallLobbyView: React.FC = () => {
         meetingId: '',
         customerInCall: false,
         attendantInCall: false,
-        wasAnswered: false,
+        wasAccepted: false,
       }
     : undefined;
 

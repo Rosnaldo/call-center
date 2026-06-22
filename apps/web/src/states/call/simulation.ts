@@ -2,7 +2,7 @@ import type { DailyCall } from '@daily-co/daily-js';
 import { useOnlineUsersStore, useCurrentUserStore, useIncomingCallStore, useCallViewStore } from '../stores.ts';
 import { CallState, initialCallStore } from './state.ts';
 
-export const simulateAnswerIncomingCall = (
+export const simulateacceptedIncomingCall = (
   set: (fn: (state: any) => any) => void,
   _daily: DailyCall | null,
 ) => {
@@ -28,7 +28,7 @@ export const simulateAnswerIncomingCall = (
       meetingId: '',
       customerInCall: false,
       attendantInCall: false,
-      wasAnswered: false,
+      wasAccepted: false,
     };
 
     updateUser(incomingCall.customerId, { status: 'in-call' as const });

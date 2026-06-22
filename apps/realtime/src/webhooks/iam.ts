@@ -1,7 +1,7 @@
 import { type Application, type Request, type Response } from 'express';
 import { ISocketServer } from '#websocket/socket';
 import { IamWebhookBody } from './iam_types';
-import { onSendIncomingCall, onCancelIncomingCall, onAnswerCall } from './iam_handlers';
+import { onSendIncomingCall, onCancelIncomingCall, onCallAccepted } from './iam_handlers';
 
 export default (app: Application, wss: ISocketServer) => {
     app.post('/webhooks/iam', (req: Request, res: Response) => {
@@ -14,8 +14,8 @@ export default (app: Application, wss: ISocketServer) => {
             case 'incoming_call_cancelled':
                 onCancelIncomingCall(wss, body.payload);
                 break;
-            case 'call_answered':
-                onAnswerCall(wss, body.payload);
+            case 'call_accepted':
+                onCallAccepted(wss, body.payload);
                 break;
         }
 

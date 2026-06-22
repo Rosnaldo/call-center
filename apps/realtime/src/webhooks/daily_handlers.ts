@@ -27,7 +27,7 @@ export async function onMeetingStarted(payload: DailyMeetingPayload): Promise<vo
         meetingId: payload.id,
         customerInCall: false,
         attendantInCall: false,
-        wasAnswered: false,
+        wasAccepted: false,
     });
 }
 
@@ -60,7 +60,7 @@ export async function onParticipantJoined(wss: ISocketServer, payload: DailyPart
             meetingId: payload.id,
             customerInCall: false,
             attendantInCall: false,
-            wasAnswered: false,
+            wasAccepted: false,
         });
     }
 

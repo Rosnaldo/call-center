@@ -70,7 +70,7 @@ describe('Attendant - CallView state machine', () => {
 
     it('footer não exibe botões de chamada', () => {
       const { container } = render(<CallView {...makeProps(CallViewState.None)} />);
-      expect(container.querySelector('#lobby-answer-call')).toBeNull();
+      expect(container.querySelector('#lobby-accept-call')).toBeNull();
       expect(container.querySelector('#lobby-end-call')).toBeNull();
     });
   });
@@ -113,7 +113,7 @@ describe('Attendant - CallView state machine', () => {
 
     it('footer exibe botão atender chamada', () => {
       const { container } = render(<CallView {...makeProps(CallViewState.Lobby)} />);
-      expect(container.querySelector('#lobby-answer-call')).not.toBeNull();
+      expect(container.querySelector('#lobby-accept-call')).not.toBeNull();
     });
 
     it('footer exibe botão cancel', () => {

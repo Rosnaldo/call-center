@@ -50,7 +50,7 @@ export interface CallState {
     meetingId: string;
     customerInCall: boolean;
     attendantInCall: boolean;
-    wasAnswered: boolean;
+    wasAccepted: boolean;
 }
 
 export interface Pagination {

@@ -4,7 +4,7 @@ import { CallState } from './state.ts';
 import { dailyService } from '../../services/daily.ts';
 import { fetchOnlineUsers } from '@/src/services/online-users.ts';
 import {
-  simulateAnswerIncomingCall,
+  simulateacceptedIncomingCall,
   simulateCompleteCall,
   simulateUpdateCall,
   simulateResetCall,
@@ -13,7 +13,7 @@ import {
 const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
 
 export interface CallActions {
-  answerIncomingCall: (daily: DailyCall | null) => void;
+  acceptedIncomingCall: (daily: DailyCall | null) => void;
   completeCall: () => void;
   updateCall: (callId: string, updates: Partial<CallState>) => void;
   updateJoinedView: (call: CallState) => void;
@@ -25,9 +25,9 @@ export const createCallActions = (
   set: (fn: (state: any) => any) => void
 ): CallActions => {
   return {
-    answerIncomingCall: (daily) => {
+    acceptedIncomingCall: (daily) => {
       if (isSimulation) {
-        simulateAnswerIncomingCall(set, daily);
+        simulateacceptedIncomingCall(set, daily);
         return;
       }
 

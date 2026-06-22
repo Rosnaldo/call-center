@@ -1,6 +1,6 @@
 import { ISocketServer } from '#websocket/socket';
 import { sendToUser } from '#websocket/broadcast';
-import { SendIncomingCallPayload, CancelIncomingCallPayload, AnswerCallPayload } from './iam_types';
+import { SendIncomingCallPayload, CancelIncomingCallPayload, AcceptCallPayload } from './iam_types';
 
 export function onSendIncomingCall(wss: ISocketServer, payload: SendIncomingCallPayload): void {
     console.log(`[IAM] incoming_call_sent customer=${payload.customerId} attendant=${payload.attendantId} whoIsCalling=${payload.whoIsCalling}`);
@@ -35,16 +35,16 @@ export function onCancelIncomingCall(wss: ISocketServer, payload: CancelIncoming
     });
 }
 
-export function onAnswerCall(wss: ISocketServer, payload: AnswerCallPayload): void {
-    console.log(`[IAM] answer_call customer=${payload.customerId} attendant=${payload.attendantId}`);
+export function onCallAccepted(wss: ISocketServer, payload: AcceptCallPayload): void {
+    console.log(`[IAM] call_accepted customer=${payload.customerId} attendant=${payload.attendantId}`);
 
     sendToUser(wss, payload.customerId, {
-        event: 'call_answered',
+        event: 'call_accepted',
         data: { customerId: payload.customerId, attendantId: payload.attendantId },
     });
 
     sendToUser(wss, payload.attendantId, {
-        event: 'call_answered',
+        event: 'call_accepted',
         data: { customerId: payload.customerId, attendantId: payload.attendantId },
     });
 }
