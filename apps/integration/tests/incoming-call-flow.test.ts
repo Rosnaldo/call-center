@@ -171,5 +171,22 @@ describe('Incoming Call Flow', () => {
         // ── dailyService.join was called ─────────────────────────────────
         expect(dailyService.joinCalls).toHaveLength(1);
         expect(dailyService.joinCalls[0].room).toContain(customerUser.slug);
+
+        // ── customer cancels the incoming call ──────────────────────────
+        customerStores.incomingCall.getState().cancelIncomingCall();
+
+        await new Promise((r) => setTimeout(r, 50));
+
+        // ── both stores cleared incomingCall ─────────────────────────────
+        expect(customerStores.incomingCall.getState().incomingCall).toBeNull();
+        expect(attendantStores.incomingCall.getState().incomingCall).toBeNull();
+
+        // ── both users back to idle ─────────────────────────────────────
+        const customerAfterCancel = customerStores.onlineUsers.getState().users
+            .find(u => u.id === customerUser._id);
+        const attendantAfterCancel = customerStores.onlineUsers.getState().users
+            .find(u => u.id === attendantUser._id);
+        expect(customerAfterCancel?.status).toBe('idle');
+        expect(attendantAfterCancel?.status).toBe('idle');
     });
 });
