@@ -7,6 +7,7 @@ import { IOnlineUser } from '@repo/shared-types';
 import { VideoTile } from '../VideoTile.tsx';
 import { PartnerAvatar } from '../PartnerAvatar.tsx';
 import { useParticipantIds } from '@daily-co/daily-react';
+import { useDevicesContext } from '../../../providers/devices.tsx';
 import { getInitials } from '@/src/utils/helpers.ts';
 
 interface CallViewportProps {
@@ -202,12 +203,12 @@ const renderScreenSharingViewport = () => (
 
 const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ partner }) => {
   const remoteParticipantIds = useParticipantIds({ filter: "remote" });
+  const { cameraOn } = useDevicesContext();
   const id = remoteParticipantIds[0];
-  const [partnerCameraOn, setPartnerCameraOn] = React.useState(true);
 
   return (
     <div id="viewport-active-video" className="flex flex-col items-center">
-      {partnerCameraOn ? <VideoTile sessionId={id} onCameraChange={setPartnerCameraOn} /> : <PartnerAvatar partner={partner} />}
+      {cameraOn ? <VideoTile sessionId={id} /> : <PartnerAvatar partner={partner} />}
     </div>
   );
 };

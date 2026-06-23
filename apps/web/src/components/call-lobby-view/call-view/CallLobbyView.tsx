@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useCallViewStore, useCallStore, useCurrentUserStore, useOnlineUsersStore, useIncomingCallStore, useBillingStore } from '../../../states/stores.ts';
 import { InfoCard } from '../info-card/InfoCard.tsx';
-import { MediaSettingsModal } from '../MediaSettingsModal.tsx';
+import { MediaSettingsModal } from '../media-settings-modal/MediaSettingsModal.tsx';
 import { BillingCalculationModal } from '../BillingCalculationModal.tsx';
 import { BillingSummaryModal } from '../BillingSummaryModal.tsx';
 import { CallView, CallViewState } from './CallView.tsx';

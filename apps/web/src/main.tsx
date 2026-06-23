@@ -5,6 +5,7 @@ import { bootstrap } from './bootstrap.ts';
 import { StoreProvider } from './states/StoreProvider.tsx';
 import { createStores } from './states/stores.ts';
 import { DailyService } from './services/daily.ts';
+import { DevicesProvider } from './providers/devices.tsx';
 import App from './App.tsx';
 import './index.css';
 
@@ -21,9 +22,11 @@ if ((import.meta as any).env?.VITE_ENV !== 'simulation') {
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
         <StoreProvider stores={stores}>
-            <BrowserRouter>
-                <App />
-            </BrowserRouter>
+            <DevicesProvider>
+                <BrowserRouter>
+                    <App />
+                </BrowserRouter>
+            </DevicesProvider>
         </StoreProvider>
     </StrictMode>,
 );

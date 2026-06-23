@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ConfirmCloseCallModal } from '../../ConfirmCloseCallModal.tsx';
 import { BillingCalculationModal } from '../../BillingCalculationModal.tsx';
 import { BillingSummaryModal } from '../../BillingSummaryModal.tsx';
-import { MediaSettingsModal } from '../../MediaSettingsModal.tsx';
+import { MediaSettingsModal } from '../../media-settings-modal/MediaSettingsModal.tsx';
 import { buildCall, buildOnlineUserState } from '../../../../__tests__/builders.ts';
 import { useBillingStore } from '../../../../states/stores.ts';
 

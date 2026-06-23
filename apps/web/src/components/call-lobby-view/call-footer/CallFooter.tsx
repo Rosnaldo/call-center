@@ -1,5 +1,5 @@
 import React from 'react';
-
+import { useDevicesContext } from '../../../providers/devices.tsx';
 import { CallViewState } from '../call-view/CallView.tsx';
 import { MicToggleButton } from './MicToggleButton.tsx';
 import { CamToggleButton } from './CamToggleButton.tsx';
@@ -25,18 +25,19 @@ export const CallFooter: React.FC<CallFooterProps> = ({
   isFullscreen,
   toggleFullscreen,
 }) => {
+  const { cameraOn, microphoneOn, toggleCamera, toggleMicrophone } = useDevicesContext();
   const showCallControls = state === CallViewState.InCall;
 
   return (
     <div className="bg-[#17191b] p-4 border-t border-[#222528] flex justify-center items-center gap-4">
       <MicToggleButton
-        isMuted={false}
-        onClick={() => {}}
+        isMuted={!microphoneOn}
+        onClick={toggleMicrophone}
       />
 
       <CamToggleButton
-        isVideoOff={false}
-        onClick={() => {}}
+        isVideoOff={!cameraOn}
+        onClick={toggleCamera}
       />
 
       {showCallControls && (

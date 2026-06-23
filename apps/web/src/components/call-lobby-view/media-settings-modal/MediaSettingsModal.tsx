@@ -1,76 +1,11 @@
-import React from 'react';
-import { Camera, CameraOff, Mic, MicOff, Volume2, X, Sliders } from 'lucide-react';
-import type { DailyCall } from '@daily-co/daily-js';
-
-const btnBase = 'mt-1.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider border transition-colors cursor-pointer';
-const btnDefault = `${btnBase} bg-[#1e2022] hover:bg-[#222528] border-[#2d3135] text-slate-300 hover:text-white`;
-const btnDanger = `${btnBase} bg-red-600/20 hover:bg-red-600/30 border-red-500/30 text-red-400 hover:text-red-300`;
-
-interface CameraToggleButtonProps {
-  blocked: boolean;
-  enabled: boolean;
-  daily: DailyCall | null;
-  onRequestPermission: () => void;
-  onToggle: (daily: DailyCall | null) => void;
-}
-
-const CameraToggleButton: React.FC<CameraToggleButtonProps> = ({ blocked, enabled, daily, onRequestPermission, onToggle }) => {
-  const state = blocked ? 'blocked' : enabled ? 'on' : 'off';
-
-  switch (state) {
-    case 'blocked':
-      return (
-        <button id="is-camera-enabled" type="button" onClick={onRequestPermission} className={btnDanger}>
-          <CameraOff className="w-3.5 h-3.5 shrink-0" />Câmera Bloqueada — Permitir
-        </button>
-      );
-    case 'on':
-      return (
-        <button id="is-camera-enabled" type="button" onClick={() => onToggle(daily)} className={btnDefault}>
-          <Camera className="w-3.5 h-3.5 shrink-0" />Desabilitar Câmera
-        </button>
-      );
-    case 'off':
-      return (
-        <button id="is-camera-enabled" type="button" onClick={() => onToggle(daily)} className={btnDanger}>
-          <CameraOff className="w-3.5 h-3.5 shrink-0" />Habilitar Câmera
-        </button>
-      );
-  }
-};
-
-interface MicrophoneToggleButtonProps {
-  blocked: boolean;
-  enabled: boolean;
-  daily: DailyCall | null;
-  onRequestPermission: () => void;
-  onToggle: (daily: DailyCall | null) => void;
-}
-
-const MicrophoneToggleButton: React.FC<MicrophoneToggleButtonProps> = ({ blocked, enabled, daily, onRequestPermission, onToggle }) => {
-  const state = blocked ? 'blocked' : enabled ? 'on' : 'off';
-
-  switch (state) {
-    case 'blocked':
-      return (
-        <button id="is-microphone-enabled" type="button" onClick={onRequestPermission} className={btnDanger}>
-          <MicOff className="w-3.5 h-3.5 shrink-0" />Microfone Bloqueado — Permitir
-        </button>
-      );
-    case 'on':
-      return (
-        <button id="is-microphone-enabled" type="button" onClick={() => onToggle(daily)} className={btnDefault}>
-          <Mic className="w-3.5 h-3.5 shrink-0" />Desabilitar Microfone
-        </button>
-      );
-    case 'off':
-      return (
-        <button id="is-microphone-enabled" type="button" onClick={() => onToggle(daily)} className={btnDanger}>
-          <MicOff className="w-3.5 h-3.5 shrink-0" />Habilitar Microfone
-        </button>
-      );
-  }
-};
+import React, { useState, useCallback } from 'react';
+import { Camera, Mic, Volume2, X, Sliders } from 'lucide-react';
+import { CameraToggleButton } from './CameraToggleButton.tsx';
+import { MicrophoneToggleButton } from './MicrophoneToggleButton.tsx';
+import { CameraPermissionButton } from './CameraPermissionButton.tsx';
+import { MicrophonePermissionButton } from './MicrophonePermissionButton.tsx';
+import { useDevicesContext } from '../../../providers/devices.tsx';
+import { useMediaTest } from '../../../hooks/useMediaTest.ts';
 
 interface MediaSettingsModalProps {
   isOpen: boolean;
@@ -78,6 +13,57 @@ interface MediaSettingsModalProps {
 }
 
 export const MediaSettingsModal: React.FC<MediaSettingsModalProps> = ({ isOpen, onClose }) => {
+  const {
+    detectedCameras, detectedMicrophones, detectedSpeakers,
+    camera, microphone, speaker,
+    setCamera, setMicrophone, setSpeaker,
+    cameraPermission, micPermission,
+    requestCamera, requestMicrophone,
+    cameraOn, microphoneOn,
+    toggleCamera, toggleMicrophone,
+  } = useDevicesContext();
+
+  const { videoRef, micLevel } = useMediaTest({
+    cameraPermission,
+    micPermission,
+    cameraId: camera,
+    micId: microphone,
+    cameraOn,
+    microphoneOn,
+  });
+
+  const [isPlayingTestSound, setIsPlayingTestSound] = useState(false);
+
+  const playTestSound = useCallback(async (speakerId: string) => {
+    setIsPlayingTestSound(true);
+    try {
+      const options: AudioContextOptions & { sinkId?: string } = {};
+      if (speakerId) options.sinkId = speakerId;
+      const ctx = new AudioContext(options);
+
+      const notes = [523.25, 659.25, 783.99];
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.4);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.4 + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.4);
+        osc.stop(ctx.currentTime + i * 0.4 + 0.4);
+      });
+
+      setTimeout(() => {
+        ctx.close().catch(() => {});
+        setIsPlayingTestSound(false);
+      }, 1500);
+    } catch {
+      setIsPlayingTestSound(false);
+    }
+  }, []);
+
   if (!isOpen) return null;
 
   return (
@@ -104,7 +90,7 @@ export const MediaSettingsModal: React.FC<MediaSettingsModalProps> = ({ isOpen, 
                 Preview da Câmera
               </label>
               <div className="relative bg-[#0e1012] aspect-video w-full rounded-xl border border-[#222528] overflow-hidden flex items-center justify-center shadow-inner">
-                <video autoPlay playsInline muted className="w-full h-full object-cover" />
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
               </div>
 
               <div className="space-y-1.5">
@@ -114,9 +100,14 @@ export const MediaSettingsModal: React.FC<MediaSettingsModalProps> = ({ isOpen, 
                 <div className="h-2 w-full bg-[#222528] rounded-full overflow-hidden border border-[#2d3135]">
                   <div
                     className="h-full bg-emerald-500 transition-all duration-75 rounded-full"
-                    style={{ width: '0%' }}
+                    style={{ width: `${micLevel}%` }}
                   />
                 </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <CameraToggleButton enabled={cameraOn} onToggle={toggleCamera} />
+                <MicrophoneToggleButton enabled={microphoneOn} onToggle={toggleMicrophone} />
               </div>
             </div>
 
@@ -125,36 +116,60 @@ export const MediaSettingsModal: React.FC<MediaSettingsModalProps> = ({ isOpen, 
                 <label className="text-[10px] font-bold text-slate-400 block uppercase tracking-widest flex items-center gap-1.5">
                   <Camera className="w-3.5 h-3.5 shrink-0" /><span>Câmera</span>
                 </label>
-                <select
+                <select value={camera} onChange={(e) => setCamera(e.target.value)}
                   className="w-full bg-[#1e2022] hover:bg-[#222528] border border-[#2d3135] rounded-xl px-4 py-2.5 text-xs text-slate-100 font-medium focus:outline-none focus:border-amber-400/50 shadow-sm cursor-pointer transition-colors max-w-full truncate shrink">
-                  <option value="">Nenhuma câmera detectada</option>
+                  {detectedCameras.length === 0 ? (
+                    <option value="">Nenhuma câmera detectada</option>
+                  ) : (
+                    detectedCameras.map((cam) => (
+                      <option key={cam.deviceId} value={cam.deviceId} className="bg-[#1e2022] text-slate-100">
+                        {cam.label}
+                      </option>
+                    ))
+                  )}
                 </select>
-                <CameraToggleButton blocked={false} enabled={false} daily={null} onRequestPermission={() => {}} onToggle={() => {}} />
+                <CameraPermissionButton permission={cameraPermission} onRequest={requestCamera} />
               </div>
 
               <div className="space-y-1.5 min-w-0">
                 <label className="text-[10px] font-bold text-slate-400 block uppercase tracking-widest flex items-center gap-1.5">
                   <Mic className="w-3.5 h-3.5 shrink-0" /><span>Microfone</span>
                 </label>
-                <select
+                <select value={microphone} onChange={(e) => setMicrophone(e.target.value)}
                   className="w-full bg-[#1e2022] hover:bg-[#222528] border border-[#2d3135] rounded-xl px-4 py-2.5 text-xs text-slate-100 font-medium focus:outline-none focus:border-amber-400/50 shadow-sm cursor-pointer transition-colors max-w-full truncate shrink">
-                  <option value="">Nenhum microfone detectado</option>
+                  {detectedMicrophones.length === 0 ? (
+                    <option value="">Nenhum microfone detectado</option>
+                  ) : (
+                    detectedMicrophones.map((mic) => (
+                      <option key={mic.deviceId} value={mic.deviceId} className="bg-[#1e2022] text-slate-100">
+                        {mic.label}
+                      </option>
+                    ))
+                  )}
                 </select>
-                <MicrophoneToggleButton blocked={false} enabled={false} daily={null} onRequestPermission={() => {}} onToggle={() => {}} />
+                <MicrophonePermissionButton permission={micPermission} onRequest={requestMicrophone} />
               </div>
 
               <div className="space-y-1.5 min-w-0">
                 <label className="text-[10px] font-bold text-slate-400 block uppercase tracking-widest flex items-center gap-1.5">
                   <Volume2 className="w-3.5 h-3.5 shrink-0" /><span>Alto-falantes / Saída</span>
                 </label>
-                <select
+                <select value={speaker} onChange={(e) => setSpeaker(e.target.value)}
                   className="w-full bg-[#1e2022] hover:bg-[#222528] border border-[#2d3135] rounded-xl px-4 py-2.5 text-xs text-slate-100 font-medium focus:outline-none focus:border-amber-400/50 shadow-sm cursor-pointer transition-colors max-w-full truncate shrink">
-                  <option value="">Dispositivo de áudio padrão</option>
+                  {detectedSpeakers.length === 0 ? (
+                    <option value="">Dispositivo de áudio padrão</option>
+                  ) : (
+                    detectedSpeakers.map((spk) => (
+                      <option key={spk.deviceId} value={spk.deviceId} className="bg-[#1e2022] text-slate-100">
+                        {spk.label}
+                      </option>
+                    ))
+                  )}
                 </select>
-                <button type="button" disabled
+                <button type="button" onClick={() => playTestSound(speaker)} disabled={isPlayingTestSound}
                   className="mt-1.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider bg-[#1e2022] hover:bg-[#222528] border border-[#2d3135] text-slate-300 hover:text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                   <Volume2 className="w-3.5 h-3.5 shrink-0" />
-                  Testar Som
+                  {isPlayingTestSound ? 'Reproduzindo...' : 'Testar Som'}
                 </button>
               </div>
 

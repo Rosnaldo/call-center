@@ -4,28 +4,49 @@ import { useEffect, useRef } from "react";
 interface VideoTileProps {
   sessionId: string;
   isLocal?: boolean;
-  onCameraChange?: (cameraOn: boolean) => void;
 }
 
-export function VideoTile({ sessionId, isLocal, onCameraChange }: VideoTileProps) {
+export function VideoTile({ sessionId, isLocal }: VideoTileProps) {
   const videoTrack = useVideoTrack(sessionId);
   const audioTrack = useAudioTrack(sessionId);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    if (!videoTrack?.persistentTrack || !videoRef.current) return;
-    videoRef.current.srcObject = new MediaStream([videoTrack.persistentTrack]);
+    const el = videoRef.current;
+    if (!el || !videoTrack?.persistentTrack) return;
+
+    const track = videoTrack.persistentTrack;
+
+    const stream = (el.srcObject as MediaStream) ?? new MediaStream();
+
+    const existing = stream.getVideoTracks()[0];
+    if (existing === track) return;
+
+    stream.getVideoTracks().forEach(t => stream.removeTrack(t));
+    stream.addTrack(track);
+
+    el.srcObject = stream;
   }, [videoTrack?.persistentTrack]);
 
   useEffect(() => {
-    if (!audioTrack?.persistentTrack || !audioRef.current || isLocal) return;
-    audioRef.current.srcObject = new MediaStream([audioTrack.persistentTrack]);
-  }, [audioTrack?.persistentTrack, isLocal]);
+    const el = audioRef.current;
+    if (!el || isLocal || !audioTrack?.persistentTrack) return;
 
-  useEffect(() => {
-    onCameraChange?.(!videoTrack?.isOff);
-  }, [videoTrack?.isOff, onCameraChange]);
+    let stream = el.srcObject as MediaStream | null;
+
+    if (!stream) {
+      stream = new MediaStream();
+      el.srcObject = stream;
+    }
+
+    const currentTrack = stream.getAudioTracks()[0];
+
+    if (currentTrack === audioTrack.persistentTrack) return;
+
+    stream.getAudioTracks().forEach(t => stream.removeTrack(t));
+    stream.addTrack(audioTrack.persistentTrack);
+  }, [audioTrack?.persistentTrack]);
 
   return (
     <div className="video-tile">
