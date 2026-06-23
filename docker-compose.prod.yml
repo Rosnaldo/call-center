@@ -162,8 +162,8 @@ services:
     restart: no
     expose:
       - "6379"
-    volumes:
-      - redis:/data
+    tmpfs:
+      - /data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -178,8 +178,6 @@ volumes:
     name: call_center_prod_keycloak_postgres
   mongodb:
     name: call_center_prod_mongodb
-  redis:
-    name: call_center_prod_redis
 
 networks:
   frontend:

@@ -83,8 +83,8 @@ services:
     restart: no
     ports:
       - 6379:6379
-    volumes:
-      - redis:/data
+    tmpfs:
+      - /data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -97,5 +97,3 @@ volumes:
     name: call_center_keycloak_postgres
   mongodb:
     name: call_center_mongodb
-  redis:
-    name: call_center_redis
