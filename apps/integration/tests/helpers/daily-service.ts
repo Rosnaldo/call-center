@@ -37,4 +37,8 @@ export class DailyCoService implements IDailyService {
     }
 
     async leave(): Promise<void> {}
+
+    destroy(): void {}
+
+    rebuild(): void {}
 }

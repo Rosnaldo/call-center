@@ -44,6 +44,8 @@ export let useTimerStore: TimerStoreInstance;
 const noopDailyService: IDailyService = {
     join: async () => {},
     leave: async () => {},
+    destroy: () => {},
+    rebuild: () => {},
 };
 
 export function createStores(dailyService: IDailyService = noopDailyService): Stores {

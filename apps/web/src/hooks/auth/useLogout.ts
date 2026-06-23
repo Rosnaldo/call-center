@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthentication } from './useAuthentication.ts';
 import { useCurrentUserStore, useOnlineUsersStore } from '../../states/stores.ts';
 import { initWs } from '../../services/init-ws.ts';
+import { DailyService } from '../../services/daily.ts';
 
 export function useLogout() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export function useLogout() {
   const removeUser = useOnlineUsersStore((s) => s.removeUser);
 
   return () => {
+    DailyService.getInstance().destroy();
     initWs.notifyLogout();
 
     const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';

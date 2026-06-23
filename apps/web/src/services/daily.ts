@@ -11,6 +11,8 @@ export interface JoinOptions {
 export interface IDailyService {
   join(options: JoinOptions): Promise<void>;
   leave(): Promise<void>;
+  destroy(): void;
+  rebuild(): void;
 }
 
 interface DailyServiceConfig {
@@ -18,12 +20,19 @@ interface DailyServiceConfig {
   apiKey: string;
 }
 
+export type CallObjectChangedCallback = (callObject: DailyCall) => void;
+
 export class DailyService implements IDailyService {
   private static instance: DailyService;
-  readonly callObject: DailyCall;
+  private _callObject: DailyCall;
+  private _onCallObjectChanged?: CallObjectChangedCallback;
+
+  get callObject(): DailyCall {
+    return this._callObject;
+  }
 
   private constructor(private readonly config: DailyServiceConfig) {
-    this.callObject = DailyIframe.createCallObject();
+    this._callObject = DailyIframe.createCallObject();
   }
 
   static getInstance(config?: DailyServiceConfig): DailyService {
@@ -32,6 +41,20 @@ export class DailyService implements IDailyService {
       DailyService.instance = new DailyService(config);
     }
     return DailyService.instance;
+  }
+
+  onCallObjectChanged(cb: CallObjectChangedCallback): void {
+    this._onCallObjectChanged = cb;
+  }
+
+  destroy(): void {
+    this._callObject.destroy();
+  }
+
+  rebuild(): void {
+    this._callObject.destroy();
+    this._callObject = DailyIframe.createCallObject();
+    this._onCallObjectChanged?.(this._callObject);
   }
 
   roomUrl(roomName: string): string {
@@ -62,7 +85,7 @@ export class DailyService implements IDailyService {
   async join(options: JoinOptions) {
     const token = await this.getMeetingToken(options.room);
 
-    await this.callObject.join({
+    await this._callObject.join({
       url: this.roomUrl(options.room),
       token: token ?? undefined,
       userName: options.userName,
@@ -73,7 +96,7 @@ export class DailyService implements IDailyService {
   }
 
   async leave() {
-    await this.callObject.leave();
+    await this._callObject.leave();
   }
 }
 

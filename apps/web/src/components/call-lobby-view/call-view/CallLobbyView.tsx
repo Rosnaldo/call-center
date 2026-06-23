@@ -6,6 +6,7 @@ import { BillingCalculationModal } from '../BillingCalculationModal.tsx';
 import { BillingSummaryModal } from '../BillingSummaryModal.tsx';
 import { CallView, CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
+import { useRebuildOnLeave } from '@/src/hooks/useRebuildOnLeave.ts';
 
 
 export const CallLobbyView: React.FC = () => {
@@ -16,6 +17,8 @@ export const CallLobbyView: React.FC = () => {
   const selectedAttendantId = useCallViewStore((s) => s.selectedAttendantId);
   const persistedViewState = useCallViewStore((s) => s.viewState);
   const initialTokens = useBillingStore((s) => s.initialTokens);
+
+  useRebuildOnLeave();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
