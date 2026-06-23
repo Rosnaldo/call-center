@@ -152,7 +152,24 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 40s 
+      start_period: 40s
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    pull_policy: always
+    restart: no
+    expose:
+      - "6379"
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     networks:
       - backend
 
@@ -161,6 +178,8 @@ volumes:
     name: call_center_prod_keycloak_postgres
   mongodb:
     name: call_center_prod_mongodb
+  redis:
+    name: call_center_prod_redis
 
 networks:
   frontend:
