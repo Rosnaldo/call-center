@@ -6,6 +6,7 @@ import { useCurrentUserStore } from '../stores';
 import { AuthState } from './state';
 
 export interface AuthActions {
+    reset(): void;
     bootstrap(): Promise<void>;
     init(): Promise<void>;
     login(): void;
@@ -16,6 +17,18 @@ export const createAuthActions = (
     set: (fn: (state: any) => any) => void,
     get: () => AuthState & AuthActions,
 ): AuthActions => ({
+    reset() {
+        useCurrentUserStore.getState().setCurrentUser(null);
+
+        set(() => ({
+            isAuthenticated: false,
+            token: undefined,
+            email: undefined,
+        }));
+
+        keycloak.logout({ redirectUri: window.location.origin });
+    },
+
     async bootstrap() {
         await get().init();
 
@@ -31,6 +44,7 @@ export const createAuthActions = (
             set(() => ({ ready: true }));
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Erro desconhecido.';
+            this.reset();
             set(() => ({ error: message }));
         }
     },
@@ -45,7 +59,7 @@ export const createAuthActions = (
             });
 
             keycloak.onAuthSuccess = () => set(() => ({ isAuthenticated: true }));
-            keycloak.onAuthLogout = () => set(() => ({ isAuthenticated: false }));
+            keycloak.onAuthLogout = () => {this.reset()};
             keycloak.onTokenExpired = () => {
                 keycloak.updateToken(30).catch(() => {
                     set(() => ({ isAuthenticated: false }));

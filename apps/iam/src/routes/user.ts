@@ -54,7 +54,7 @@ export default (app: Application) => {
     app.get(
         '/users/exists',
         GetKeycloakUser,
-        cacheMiddleware((req) => `user:email:${req.query.email}`),
+        GetUser,
         async (req, res) => {
             const controller = new UserController();
             const params = controller.exists!.mapper({ ...req.query, userKc: req.userKc });
