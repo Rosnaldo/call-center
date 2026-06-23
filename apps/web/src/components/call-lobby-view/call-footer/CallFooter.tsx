@@ -1,7 +1,6 @@
 import React from 'react';
-import { useDaily } from '@daily-co/daily-react';
+
 import { CallViewState } from '../call-view/CallView.tsx';
-import { useDevicesStore } from '../../../states/stores.ts';
 import { MicToggleButton } from './MicToggleButton.tsx';
 import { CamToggleButton } from './CamToggleButton.tsx';
 import { ScreenShareToggleButton } from './ScreenShareToggleButton.tsx';
@@ -26,24 +25,18 @@ export const CallFooter: React.FC<CallFooterProps> = ({
   isFullscreen,
   toggleFullscreen,
 }) => {
-  const daily = useDaily();
-  const cameraOn = useDevicesStore(s => s.cameraOn);
-  const microphoneOn = useDevicesStore(s => s.microphoneOn);
-  const toggleCamera = useDevicesStore(s => s.toggleCamera);
-  const toggleMicrophone = useDevicesStore(s => s.toggleMicrophone);
-
   const showCallControls = state === CallViewState.InCall;
 
   return (
     <div className="bg-[#17191b] p-4 border-t border-[#222528] flex justify-center items-center gap-4">
       <MicToggleButton
-        isMuted={!microphoneOn}
-        onClick={() => toggleMicrophone(daily)}
+        isMuted={false}
+        onClick={() => {}}
       />
 
       <CamToggleButton
-        isVideoOff={!cameraOn}
-        onClick={() => toggleCamera(daily)}
+        isVideoOff={false}
+        onClick={() => {}}
       />
 
       {showCallControls && (

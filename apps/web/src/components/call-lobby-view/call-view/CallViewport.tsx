@@ -1,8 +1,8 @@
 import React from 'react';
-import { ScreenShare, MicOff, Clock, User } from 'lucide-react';
+import { ScreenShare, Clock, User } from 'lucide-react';
 import { CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
-import { useIncomingCallStore, useCurrentUserStore, useOnlineUsersStore, useDevicesStore, useCallViewStore } from '../../../states/stores.ts';
+import { useIncomingCallStore, useCurrentUserStore, useOnlineUsersStore, useCallViewStore } from '../../../states/stores.ts';
 import { IOnlineUser } from '@repo/shared-types';
 import { VideoTile } from '../VideoTile.tsx';
 import { PartnerAvatar } from '../PartnerAvatar.tsx';
@@ -218,7 +218,6 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   timerText,
   currentCall,
 }) => {
-  const microphoneOn = useDevicesStore(s => s.microphoneOn);
   const incomingCall = useIncomingCallStore(s => s.incomingCall);
   let content: React.ReactNode = null;
   const currentUser = useCurrentUserStore(s => s.currentUser);
@@ -286,15 +285,7 @@ export const CallViewport: React.FC<CallViewportProps> = ({
     );
   }
 
-  let muteBadge: React.ReactNode = null;
-  if (state === CallViewState.InCall && !microphoneOn) {
-    muteBadge = (
-      <div className="bg-red-600/90 text-white text-[10px] uppercase font-bold px-2.5 py-1.5 rounded-full border border-red-500/20 shadow-md flex items-center gap-1.5 backdrop-blur-sm">
-        <MicOff className="w-3 h-3 text-white" />
-        <span>Mudo</span>
-      </div>
-    );
-  }
+  const muteBadge: React.ReactNode = null;
 
   return (
     <div

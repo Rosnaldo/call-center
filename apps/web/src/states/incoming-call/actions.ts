@@ -1,6 +1,6 @@
 import { IncomingCallState } from '@repo/shared-types';
 import { IncomingCallStore } from './state.ts';
-import { useOnlineUsersStore, useCallViewStore, useDevicesStore } from '../stores.ts';
+import { useOnlineUsersStore, useCallViewStore } from '../stores.ts';
 import type { IDailyService } from '@/src/services/daily.ts';
 import { apiBack } from '@/src/api/backend.ts';
 import { fetchOnlineUsers } from '@/src/services/online-users.ts';
@@ -68,13 +68,12 @@ export const createIncomingCallActions = (
     apiBack.post('/incoming-calls/send', { customerId, attendantId, whoIsCalling: 'customer' })
       .catch((err) => console.error('[IAM] send incoming call failed:', err));
 
-    const { cameraOn, microphoneOn } = useDevicesStore.getState();
     dailyService.join({
       room: `${customer.slug}--${attendant.slug}`,
       userName: customer.name,
       userData: { id: customer.id, role: customer.role },
-      startAudioOff: !microphoneOn,
-      startVideoOff: !cameraOn,
+      startAudioOff: false,
+      startVideoOff: false,
     });
   },
 
