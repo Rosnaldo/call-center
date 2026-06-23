@@ -1,20 +1,23 @@
 import { type Request, type Response, type NextFunction } from 'express';
+import { UserRole } from '@repo/shared-types';
 
-import { getUserDao } from '#daos/singleton';
-import { UserUtils } from '#schemas/user/utils';
+import { UserCrud } from '#crud/user';
+import { UserBuilder } from '#schemas/user/utils';
 
 export const GetUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const email = req.userKc.email;
-        const user = await getUserDao().findByEmail(email);
+        const { email, firstName, lastName } = req.userKc;
+        const crud = new UserCrud();
+        let user = await crud.findByEmail(email);
 
         if (!user) {
-            throw new Error('Usuário não encontrado');
+            const builder = new UserBuilder();
+            builder.create({ firstName, lastName, email, role: UserRole.customer });
+            user = await builder.save();
         }
 
-        const utils = new UserUtils();
-        req.user = utils.toObject(user);
-    
+        req.user = user;
+
         return next();
     } catch (error) {
         console.log('GetUser: Não autorizado', error)

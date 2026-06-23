@@ -33,6 +33,12 @@ export class UserCrud implements ICrud<IUser['IParams']> {
         return this.utils.toObject(user);
     };
 
+    public readonly findByEmail = async (email: string): Promise<IUser['IParams'] | null> => {
+        const user = await getUserDao().findByEmail(email);
+        if (!user) return null;
+        return this.utils.toObject(user);
+    };
+
     public create = async (data: Partial<IUser['IParams']>): Promise<IUser['IParams']> => {
         try {
             const user = await getUserDao().inserir(data);
