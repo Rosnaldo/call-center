@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import type { PermissionState } from "./useDevices";
+import type { PermissionState } from "../states/devices/store";
 
 interface UseMediaTestProps {
   cameraPermission: PermissionState;

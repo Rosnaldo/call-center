@@ -72,8 +72,6 @@ export const createIncomingCallActions = (
       room: `${customer.slug}--${attendant.slug}`,
       userName: customer.name,
       userData: { id: customer.id, role: customer.role },
-      startAudioOff: false,
-      startVideoOff: false,
     });
   },
 

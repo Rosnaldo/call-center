@@ -1,11 +1,10 @@
 import DailyIframe, { type DailyCall } from "@daily-co/daily-js";
+import { useDevicesStore } from "../states/stores.ts";
 
 export interface JoinOptions {
   room: string;
   userName: string;
   userData: Record<string, unknown>;
-  startAudioOff: boolean;
-  startVideoOff: boolean;
 }
 
 export interface IDailyService {
@@ -82,7 +81,29 @@ export class DailyService implements IDailyService {
     return data.token;
   }
 
+  private async ensureRoom(roomName: string): Promise<void> {
+    const res = await fetch(`https://api.daily.co/v1/rooms/${roomName}`, {
+      headers: { Authorization: `Bearer ${this.config.apiKey}` },
+    });
+
+    if (res.ok) return;
+
+    const createRes = await fetch('https://api.daily.co/v1/rooms', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.config.apiKey}`,
+      },
+      body: JSON.stringify({ name: roomName }),
+    });
+
+    if (!createRes.ok) {
+      console.error('[Daily] failed to create room:', createRes.status);
+    }
+  }
+
   async join(options: JoinOptions) {
+    await this.ensureRoom(options.room);
     const token = await this.getMeetingToken(options.room);
 
     await this._callObject.join({
@@ -90,8 +111,8 @@ export class DailyService implements IDailyService {
       token: token ?? undefined,
       userName: options.userName,
       userData: options.userData,
-      startAudioOff: options.startAudioOff,
-      startVideoOff: options.startVideoOff,
+      startAudioOff: !useDevicesStore.getState().microphoneOn,
+      startVideoOff: !useDevicesStore.getState().cameraOn,
     });
   }
 

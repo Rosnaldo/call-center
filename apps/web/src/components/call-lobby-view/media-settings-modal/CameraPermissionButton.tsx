@@ -1,6 +1,6 @@
 import React from 'react';
 import { Camera, CameraOff, ShieldCheck } from 'lucide-react';
-import type { PermissionState } from '../../../hooks/useDevices.ts';
+import type { PermissionState } from '../../../states/devices/store.ts';
 
 const btnBase = 'mt-1.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider border transition-colors cursor-pointer';
 

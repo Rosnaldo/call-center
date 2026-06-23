@@ -43,8 +43,6 @@ export const createCallActions = (
         room: `${customer.slug}--${attendant.slug}`,
         userName: attendant.name,
         userData: { id: attendant.id, role: attendant.role },
-        startAudioOff: false,
-        startVideoOff: false,
       });
 
       useCallViewStore.getState().setViewState('in-call');

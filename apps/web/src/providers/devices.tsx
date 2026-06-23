@@ -1,12 +1,12 @@
 import { createContext, useContext } from "react";
-import { useDevices } from "../hooks/useDevices";
+import { useSyncDevices } from "../hooks/useSyncDevices";
 
-type DevicesContextValue = ReturnType<typeof useDevices>;
+type DevicesContextValue = ReturnType<typeof useSyncDevices>;
 
 const DevicesContext = createContext<DevicesContextValue | null>(null);
 
 export function DevicesProvider({ children }: { children: React.ReactNode }) {
-  const devices = useDevices();
+  const devices = useSyncDevices();
   return (
     <DevicesContext.Provider value={devices}>
       {children}

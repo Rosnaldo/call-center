@@ -1,12 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { DailyService } from "../services/daily.ts";
+import { useDevicesStore } from "../states/stores.ts";
+import type { PermissionState } from "../states/devices/store.ts";
 
-export interface MediaDeviceOption {
-  deviceId: string;
-  label: string;
-}
-
-export type PermissionState = "prompt" | "granted" | "denied";
+export type { MediaDeviceOption, PermissionState } from "../states/devices/store.ts";
 
 async function queryPermission(name: "camera" | "microphone"): Promise<PermissionState> {
   try {
@@ -17,35 +14,24 @@ async function queryPermission(name: "camera" | "microphone"): Promise<Permissio
   }
 }
 
-export function useDevices() {
-  const [detectedCameras, setDetectedCameras] = useState<MediaDeviceOption[]>([]);
-  const [detectedMicrophones, setDetectedMicrophones] = useState<MediaDeviceOption[]>([]);
-  const [detectedSpeakers, setDetectedSpeakers] = useState<MediaDeviceOption[]>([]);
-  const [camera, setCamera] = useState("");
-  const [microphone, setMicrophone] = useState("");
-  const [speaker, setSpeaker] = useState("");
-  const [cameraPermission, setCameraPermission] = useState<PermissionState>("prompt");
-  const [micPermission, setMicPermission] = useState<PermissionState>("prompt");
-  const [cameraOn, setCameraOn] = useState(true);
-  const [microphoneOn, setMicrophoneOn] = useState(true);
+export function useSyncDevices() {
+  const store = useDevicesStore();
+
   const toggleCamera = useCallback(() => {
-    setCameraOn((prev) => {
-      const next = !prev;
-      DailyService.getInstance().callObject.setLocalVideo(next);
-      return next;
-    });
+    const next = !useDevicesStore.getState().cameraOn;
+    useDevicesStore.getState().setCameraOn(next);
+    DailyService.getInstance().callObject.setLocalVideo(next);
   }, []);
 
   const toggleMicrophone = useCallback(() => {
-    setMicrophoneOn((prev) => {
-      const next = !prev;
-      DailyService.getInstance().callObject.setLocalAudio(next);
-      return next;
-    });
+    const next = !useDevicesStore.getState().microphoneOn;
+    useDevicesStore.getState().setMicrophoneOn(next);
+    DailyService.getInstance().callObject.setLocalAudio(next);
   }, []);
 
   const populateDevices = useCallback(async (stream?: MediaStream) => {
     const devices = await navigator.mediaDevices.enumerateDevices();
+    const s = useDevicesStore.getState();
 
     const videoInputs = devices
       .filter((d) => d.kind === "videoinput")
@@ -59,13 +45,13 @@ export function useDevices() {
       .filter((d) => d.kind === "audiooutput")
       .map((d) => ({ deviceId: d.deviceId, label: d.label || `Speaker ${d.deviceId.slice(0, 5)}` }));
 
-    setDetectedCameras(videoInputs);
-    setDetectedMicrophones(audioInputs);
-    setDetectedSpeakers(audioOutputs);
+    s.setDetectedCameras(videoInputs);
+    s.setDetectedMicrophones(audioInputs);
+    s.setDetectedSpeakers(audioOutputs);
 
-    if (videoInputs.length) setCamera((prev) => prev || videoInputs[0].deviceId);
-    if (audioInputs.length) setMicrophone((prev) => prev || audioInputs[0].deviceId);
-    if (audioOutputs.length) setSpeaker((prev) => prev || audioOutputs[0].deviceId);
+    if (videoInputs.length && !s.camera) s.setCamera(videoInputs[0].deviceId);
+    if (audioInputs.length && !s.microphone) s.setMicrophone(audioInputs[0].deviceId);
+    if (audioOutputs.length && !s.speaker) s.setSpeaker(audioOutputs[0].deviceId);
 
     if (stream) stream.getTracks().forEach((t) => t.stop());
   }, []);
@@ -75,8 +61,9 @@ export function useDevices() {
       queryPermission("camera"),
       queryPermission("microphone"),
     ]);
-    setCameraPermission(cam);
-    setMicPermission(mic);
+    const s = useDevicesStore.getState();
+    s.setCameraPermission(cam);
+    s.setMicPermission(mic);
     return { cam, mic };
   }, []);
 
@@ -153,22 +140,10 @@ export function useDevices() {
   }, [populateDevices, syncPermissions]);
 
   return {
-    detectedCameras,
-    detectedMicrophones,
-    detectedSpeakers,
-    camera,
-    microphone,
-    speaker,
-    setCamera,
-    setMicrophone,
-    setSpeaker,
-    cameraPermission,
-    micPermission,
+    ...store,
+    toggleCamera,
+    toggleMicrophone,
     requestCamera,
     requestMicrophone,
-    cameraOn,
-    microphoneOn,
-    toggleCamera,
-    toggleMicrophone
   };
 }
