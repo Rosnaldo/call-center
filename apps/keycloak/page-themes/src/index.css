@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Space+Grotesk:ital,wght@0,400;0,500;0,700;1,400;1,700&family=JetBrains+Mono:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-fraunces: "Fraunces", serif;
+  --font-cormorant: "Cormorant Garamond", serif;
+  --font-eb-garamond: "EB Garamond", serif;
+
+  /* Custom colors matching the OpenHive style extracted parameters */
+  --bg-brand-canvas: #faf8f5;           /* Light warm ivory/beige body */
+  --bg-brand-panel: #f3efe6;            /* Warmer sand-beige container background */
+  --bg-brand-card: #ffffff;             /* Crisp white internal elements */
+  --color-brand-ochre: #c07a00;         /* Honey gold/ochre accent button */
+  --color-brand-ochre-hover: #a36500;   /* Muted accent hover */
+  --color-brand-dark: #1b1916;          /* Deep warm charcoal/black */
+  --color-brand-muted: #736b5d;         /* Neutral warm-brownish secondary grey */
+  --color-brand-border: #e4dcce;        /* Thin, soft light-sand lines */
+  --color-brand-border-dark: #ded5c5;   /* Secondary darker thin lines */
+}
+
+/* Global resets for body using variables */
+body {
+  background-color: var(--bg-brand-canvas);
+  color: var(--color-brand-dark);
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.font-fraunces {
+  font-family: var(--font-fraunces) !important;
+}
+
+.font-cormorant {
+  font-family: var(--font-cormorant) !important;
+}
+
+.font-eb-garamond {
+  font-family: var(--font-eb-garamond) !important;
+}

@@ -36,7 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div id="logo-branding-container" className="flex items-center gap-2">
           <div>
             <h1 className="font-bold text-brand-dark text-sm sm:text-base tracking-tight leading-none font-display">
-              Open<span className="text-brand-ochre">CallCenter</span>
+              Open<span className="text-brand-ochre">Call</span>
             </h1>
             <p className="text-[9px] font-mono tracking-widest text-brand-muted uppercase mt-0.5 hidden sm:block">Automated Dispatch</p>
           </div>

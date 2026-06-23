@@ -811,7 +811,7 @@
         "oidc.ciba.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
         "standard.token.exchange.enabled": "false",
-        "login_theme": "chacara",
+        "login_theme": "callcenter",
         "frontchannel.logout.session.required": "true",
         "post.logout.redirect.uris": "https://free-porn-block.local/*##http://localhost:5173/*",
         "display.on.consent.screen": "false",
@@ -1757,10 +1757,10 @@
     "envelopeFrom": "",
     "ssl": "false"
   },
-  "loginTheme": "chacara",
+  "loginTheme": "callcenter",
   "accountTheme": "",
   "adminTheme": "",
-  "emailTheme": "chacara",
+  "emailTheme": "callcenter",
   "eventsEnabled": false,
   "eventsListeners": [
     "jboss-logging"

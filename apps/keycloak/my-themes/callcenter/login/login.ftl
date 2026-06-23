@@ -1,52 +1,19 @@
 <#import "template.ftl" as layout>
 
-<style>
-  .input-py { padding-block: 0.75rem; }
-  .btn-py { padding-block: 0.875rem; }
-  .left-icon { left: 0.875rem; }
-  .right-icon { right: 0.75rem; }
-  .mt-1 { margin-top: 0.25rem; }
-  .mt-2 { margin-top: 0.5rem; }
-  .mt-6 { margin-top: 1.5rem; }
-  .mb-6 { margin-bottom: 1.5rem; }
-  .mb-4 { margin-bottom: 1rem; }
-  .pb-3 { padding-bottom: 0.75rem; }
-  .text-10 { font-size: 0.625rem; }
-  .gap-1-5 { gap: 0.375rem; }
-  .gap-2-5 { gap: 0.625rem; }
-</style>
 
-<@layout.registrationLayout title="Acessar Sua Conta • ChácaraMeets">
-
-  <!-- Brand Logo -->
-  <div class="flex flex-col items-center text-center gap-2 select-none mb-6">
-    <div class="p-4 bg-primary text-primary-foreground rounded-2xl shadow-sm inline-flex items-center justify-center">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M15 10l4.553-2.069A1 1 0 0121 8.816v6.368a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
-      </svg>
-    </div>
-    <div>
-      <h1 class="font-bold text-foreground text-2xl tracking-tight">
-        Chácara<span class="text-primary">Meets</span>
-      </h1>
-      <p class="text-10 tracking-widest text-muted-foreground uppercase mt-1">
-        Automated Operations Portal
-      </p>
-    </div>
-  </div>
+<@layout.registrationLayout title="Acessar Sua Conta • Call">
 
   <!-- Card Header -->
-  <div class="flex items-center justify-between pb-3 border-t border-input mb-6">
-    <h3 class="text-sm font-bold tracking-tight text-foreground mt-2">
+  <div class="flex items-center justify-between pb-3 border-b border-brand-border">
+    <h3 class="text-sm font-bold tracking-tight text-brand-dark">
       Acessar Sua Conta
     </h3>
   </div>
 
   <!-- Global Error Alert -->
   <#if message?has_content && message.type == "error">
-    <div class="bg-destructive/10 border border-accent/20 text-destructive rounded-xl px-4 py-2 text-xs font-medium flex items-start gap-2-5 mb-4">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div class="bg-red-50 border border-red-100 text-red-800 rounded-xl p-3.5 text-xs font-medium flex items-start gap-2.5">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
@@ -58,12 +25,12 @@
   <form id="kc-form-login" action="${url.loginAction}" method="post" class="flex flex-col gap-4">
 
     <!-- Email -->
-    <div class="flex flex-col gap-1-5">
-      <label for="username" class="text-10 font-bold tracking-widest text-muted-foreground uppercase">
+    <div class="flex flex-col gap-1.5">
+      <label for="username" class="text-[10px] font-bold font-mono tracking-wider text-brand-muted uppercase">
         E-mail institucional / pessoal
       </label>
       <div class="relative">
-        <span class="absolute left-icon top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-muted/70 pointer-events-none">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M3 8l9 6 9-6M4 6h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" />
@@ -74,32 +41,32 @@
           name="username"
           type="email"
           value="${(login.username!'')}"
-          placeholder="exemplo@chacarameets.io"
+          placeholder="exemplo@mail.io"
           required
           autofocus
-          class="w-full input-py pl-10 pr-4 bg-background/50 border border-input rounded-xl text-sm text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-all outline-none"
+          class="w-full pl-10 pr-4 py-3 bg-brand-canvas border border-brand-border rounded-xl text-xs sm:text-sm text-brand-dark focus:outline-none focus:ring-1 focus:ring-brand-ochre focus:border-brand-ochre transition-all"
         />
       </div>
       <#if messagesPerField.existsError("username")>
-        <p class="text-xs text-destructive">${messagesPerField.get("username")}</p>
+        <p class="text-xs text-red-500">${messagesPerField.get("username")}</p>
       </#if>
     </div>
 
     <!-- Password -->
-    <div class="flex flex-col gap-1-5">
+    <div class="flex flex-col gap-1.5">
       <div class="flex items-center justify-between">
-        <label for="password" class="text-10 font-bold tracking-widest text-muted-foreground uppercase">
+        <label for="password" class="text-[10px] font-bold font-mono tracking-wider text-brand-muted uppercase">
           Senha de segurança
         </label>
         <#if realm.resetPasswordAllowed>
           <a href="${url.loginResetCredentialsUrl}"
-             class="text-xs text-primary hover:text-primary/80 font-semibold transition-colors">
+             class="text-[10px] text-brand-ochre hover:text-brand-ochre-hover font-semibold transition">
             Esqueceu?
           </a>
         </#if>
       </div>
       <div class="relative">
-        <span class="absolute left-icon top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-muted/70 pointer-events-none">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M12 11c1.105 0 2 .895 2 2v3H10v-3c0-1.105.895-2 2-2z" />
@@ -113,12 +80,12 @@
           type="password"
           placeholder="••••••••"
           required
-          class="w-full input-py pl-10 pr-10 bg-background/50 border border-input rounded-xl text-sm text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-all outline-none"
+          class="w-full pl-10 pr-10 py-3 bg-brand-canvas border border-brand-border rounded-xl text-xs sm:text-sm text-brand-dark focus:outline-none focus:ring-1 focus:ring-brand-ochre focus:border-brand-ochre transition-all"
         />
         <button
           type="button"
           onclick="kcTogglePassword()"
-          class="absolute right-icon top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground cursor-pointer outline-none"
+          class="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-brand-muted hover:text-brand-dark cursor-pointer focus:outline-none"
           title="Ver/Ocultar senha"
         >
           <!-- Eye icon (visible password hidden) -->
@@ -136,7 +103,7 @@
         </button>
       </div>
       <#if messagesPerField.existsError("password")>
-        <p class="text-xs text-destructive">${messagesPerField.get("password")}</p>
+        <p class="text-xs text-red-500">${messagesPerField.get("password")}</p>
       </#if>
     </div>
 
@@ -145,14 +112,14 @@
       <div class="flex items-center gap-2">
         <input id="rememberMe" name="rememberMe" type="checkbox"
                <#if login.rememberMe?? && login.rememberMe>checked</#if> />
-        <label for="rememberMe" class="text-sm text-muted-foreground">Lembrar-me</label>
+        <label for="rememberMe" class="text-sm text-brand-muted">Lembrar-me</label>
       </div>
     </#if>
 
     <!-- Submit -->
     <button
       type="submit"
-      class="w-full btn-py bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-bold tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1-5 mt-2"
+      class="w-full py-3.5 bg-brand-ochre hover:bg-brand-ochre-hover text-white rounded-xl text-xs sm:text-sm font-bold tracking-wide shadow-none transition-all cursor-pointer flex items-center justify-center gap-1.5 mt-2"
     >
       <span>Acessar Painel Central</span>
       <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -164,11 +131,11 @@
 
   <!-- Register Link -->
   <#if realm.registrationAllowed>
-    <div class="text-center pb-3 border-t border-input mt-6">
-      <span class="text-xs text-muted-foreground mt-2 block">
+    <div class="text-center pt-2 border-t border-brand-border">
+      <span class="text-xs text-brand-muted">
         Não tem uma conta?
         <a href="${url.registrationUrl}"
-           class="text-primary hover:text-primary/80 font-bold transition-colors">
+           class="text-brand-ochre hover:text-brand-ochre-hover font-bold transition">
           Cadastre-se grátis
         </a>
       </span>
