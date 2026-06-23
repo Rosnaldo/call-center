@@ -111,8 +111,8 @@ export class DailyService implements IDailyService {
       token: token ?? undefined,
       userName: options.userName,
       userData: options.userData,
-      startAudioOff: !useDevicesStore.getState().microphoneOn,
-      startVideoOff: !useDevicesStore.getState().cameraOn,
+      startAudioOff: !useDevicesStore.getState().microphoneDailycoOn,
+      startVideoOff: !useDevicesStore.getState().cameraDailycoOn,
     });
   }
 

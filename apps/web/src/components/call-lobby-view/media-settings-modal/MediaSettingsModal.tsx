@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Camera, Mic, Volume2, X, Sliders } from 'lucide-react';
 import { CameraToggleButton } from './CameraToggleButton.tsx';
 import { MicrophoneToggleButton } from './MicrophoneToggleButton.tsx';
@@ -6,6 +6,7 @@ import { CameraPermissionButton } from './CameraPermissionButton.tsx';
 import { MicrophonePermissionButton } from './MicrophonePermissionButton.tsx';
 import { useDevicesContext } from '../../../providers/devices.tsx';
 import { useMediaTest } from '../../../hooks/useMediaTest.ts';
+import { useSyncEnabledDevices } from '../../../hooks/useSyncEnabledDevices.ts';
 
 interface MediaSettingsModalProps {
   isOpen: boolean;
@@ -20,10 +21,12 @@ export const MediaSettingsModal: React.FC<MediaSettingsModalProps> = ({ isOpen, 
     cameraPermission, micPermission,
     requestCamera, requestMicrophone,
     cameraOn, microphoneOn,
-    toggleCamera, toggleMicrophone,
+    toggleCameraDailyco, toggleMicrophoneDailyco,
   } = useDevicesContext();
 
-  const { videoRef, micLevel } = useMediaTest({
+  useSyncEnabledDevices();
+
+  const { videoRef, micLevel, startTest, stopTest } = useMediaTest({
     cameraPermission,
     micPermission,
     cameraId: camera,
@@ -31,6 +34,14 @@ export const MediaSettingsModal: React.FC<MediaSettingsModalProps> = ({ isOpen, 
     cameraOn,
     microphoneOn,
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      startTest();
+    } else {
+      stopTest();
+    }
+  }, [isOpen, startTest, stopTest]);
 
   const [isPlayingTestSound, setIsPlayingTestSound] = useState(false);
 
@@ -106,8 +117,8 @@ export const MediaSettingsModal: React.FC<MediaSettingsModalProps> = ({ isOpen, 
               </div>
 
               <div className="flex items-center gap-2 pt-1">
-                <CameraToggleButton enabled={cameraOn} onToggle={toggleCamera} />
-                <MicrophoneToggleButton enabled={microphoneOn} onToggle={toggleMicrophone} />
+                <CameraToggleButton enabled={cameraOn} onToggle={toggleCameraDailyco} />
+                <MicrophoneToggleButton enabled={microphoneOn} onToggle={toggleMicrophoneDailyco} />
               </div>
             </div>
 

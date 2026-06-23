@@ -1,23 +1,25 @@
 import { useVideoTrack, useAudioTrack } from "@daily-co/daily-react";
 import { useEffect, useRef } from "react";
+import { PartnerAvatar } from "./PartnerAvatar.tsx";
 
 interface VideoTileProps {
   sessionId: string;
-  isLocal?: boolean;
+  partnerName?: string;
 }
 
-export function VideoTile({ sessionId, isLocal }: VideoTileProps) {
+export function VideoTile({ sessionId, partnerName }: VideoTileProps) {
   const videoTrack = useVideoTrack(sessionId);
   const audioTrack = useAudioTrack(sessionId);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  const remoteCameraOff = videoTrack.isOff;
 
   useEffect(() => {
     const el = videoRef.current;
     if (!el || !videoTrack?.persistentTrack) return;
 
     const track = videoTrack.persistentTrack;
-
     const stream = (el.srcObject as MediaStream) ?? new MediaStream();
 
     const existing = stream.getVideoTracks()[0];
@@ -31,7 +33,7 @@ export function VideoTile({ sessionId, isLocal }: VideoTileProps) {
 
   useEffect(() => {
     const el = audioRef.current;
-    if (!el || isLocal || !audioTrack?.persistentTrack) return;
+    if (!el || !audioTrack?.persistentTrack) return;
 
     let stream = el.srcObject as MediaStream | null;
 
@@ -50,13 +52,12 @@ export function VideoTile({ sessionId, isLocal }: VideoTileProps) {
 
   return (
     <div className="video-tile">
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-      />
-      {!isLocal && <audio ref={audioRef} autoPlay playsInline />}
+      {remoteCameraOff ? (
+        <PartnerAvatar partner={partnerName ? { name: partnerName } as any : undefined} />
+      ) : (
+        <video ref={videoRef} autoPlay playsInline muted />
+      )}
+      <audio ref={audioRef} autoPlay playsInline />
     </div>
   );
 }

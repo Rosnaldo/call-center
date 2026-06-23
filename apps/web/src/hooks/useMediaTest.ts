@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { PermissionState } from "../states/devices/store";
 
 interface UseMediaTestProps {
@@ -13,20 +13,36 @@ interface UseMediaTestProps {
 export function useMediaTest({ cameraPermission, micPermission, cameraId, micId, cameraOn, microphoneOn }: UseMediaTestProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [micLevel, setMicLevel] = useState(0);
+  const [running, setRunning] = useState(false);
+
+  const streamRef = useRef<MediaStream | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const animFrameRef = useRef(0);
 
   const wantCamera = cameraPermission === "granted" && cameraOn;
   const wantMic = micPermission === "granted" && microphoneOn;
 
+  const cleanup = useCallback(() => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    animFrameRef.current = 0;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close();
+      audioCtxRef.current = null;
+    }
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setMicLevel(0);
+  }, []);
+
   useEffect(() => {
-    if (!wantCamera && !wantMic) {
-      if (videoRef.current) videoRef.current.srcObject = null;
-      setMicLevel(0);
+    if (!running || (!wantCamera && !wantMic)) {
+      cleanup();
       return;
     }
 
-    let animFrame = 0;
-    let stream: MediaStream | null = null;
-    let audioCtx: AudioContext | null = null;
     let cancelled = false;
 
     async function start() {
@@ -35,18 +51,21 @@ export function useMediaTest({ cameraPermission, micPermission, cameraId, micId,
         if (wantCamera) constraints.video = cameraId ? { deviceId: { exact: cameraId } } : true;
         if (wantMic) constraints.audio = micId ? { deviceId: { exact: micId } } : true;
 
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
+
+        streamRef.current = stream;
 
         if (videoRef.current) {
           videoRef.current.srcObject = wantCamera ? stream : null;
         }
 
         if (wantMic) {
-          audioCtx = new AudioContext();
+          const audioCtx = new AudioContext();
+          audioCtxRef.current = audioCtx;
           const source = audioCtx.createMediaStreamSource(stream);
           const analyser = audioCtx.createAnalyser();
           analyser.fftSize = 256;
@@ -58,7 +77,7 @@ export function useMediaTest({ cameraPermission, micPermission, cameraId, micId,
             analyser.getByteFrequencyData(dataArray);
             const avg = dataArray.reduce((sum, v) => sum + v, 0) / dataArray.length;
             setMicLevel(Math.min(100, Math.round((avg / 128) * 100)));
-            animFrame = requestAnimationFrame(updateLevel);
+            animFrameRef.current = requestAnimationFrame(updateLevel);
           };
           updateLevel();
         } else {
@@ -73,13 +92,15 @@ export function useMediaTest({ cameraPermission, micPermission, cameraId, micId,
 
     return () => {
       cancelled = true;
-      if (animFrame) cancelAnimationFrame(animFrame);
-      if (stream) stream.getTracks().forEach((t) => t.stop());
-      if (audioCtx) audioCtx.close();
-      if (videoRef.current) videoRef.current.srcObject = null;
-      setMicLevel(0);
+      cleanup();
     };
-  }, [wantCamera, wantMic, cameraId, micId]);
+  }, [running, wantCamera, wantMic, cameraId, micId, cleanup]);
 
-  return { videoRef, micLevel };
+  const startTest = useCallback(() => setRunning(true), []);
+  const stopTest = useCallback(() => {
+    setRunning(false);
+    cleanup();
+  }, [cleanup]);
+
+  return { videoRef, micLevel, running, startTest, stopTest };
 }

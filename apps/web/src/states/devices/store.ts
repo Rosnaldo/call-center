@@ -18,6 +18,8 @@ export interface DevicesState {
   micPermission: PermissionState;
   cameraOn: boolean;
   microphoneOn: boolean;
+  cameraDailycoOn: boolean;
+  microphoneDailycoOn: boolean;
 }
 
 export interface DevicesActions {
@@ -31,6 +33,8 @@ export interface DevicesActions {
   setMicPermission: (state: PermissionState) => void;
   setCameraOn: (on: boolean) => void;
   setMicrophoneOn: (on: boolean) => void;
+  setCameraDailycoOn: (on: boolean) => void;
+  setMicrophoneDailycoOn: (on: boolean) => void;
 }
 
 export const createDevicesStore = () => create<DevicesState & DevicesActions>((set) => ({
@@ -42,8 +46,10 @@ export const createDevicesStore = () => create<DevicesState & DevicesActions>((s
   speaker: '',
   cameraPermission: 'prompt',
   micPermission: 'prompt',
-  cameraOn: true,
-  microphoneOn: true,
+  cameraOn: false,
+  microphoneOn: false,
+  cameraDailycoOn: false,
+  microphoneDailycoOn: false,
 
   setDetectedCameras: (cameras) => set({ detectedCameras: cameras }),
   setDetectedMicrophones: (microphones) => set({ detectedMicrophones: microphones }),
@@ -55,4 +61,6 @@ export const createDevicesStore = () => create<DevicesState & DevicesActions>((s
   setMicPermission: (state) => set({ micPermission: state }),
   setCameraOn: (on) => set({ cameraOn: on }),
   setMicrophoneOn: (on) => set({ microphoneOn: on }),
+  setCameraDailycoOn: (on) => set({ cameraDailycoOn: on }),
+  setMicrophoneDailycoOn: (on) => set({ microphoneDailycoOn: on }),
 }));

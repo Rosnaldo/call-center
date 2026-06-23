@@ -14,18 +14,32 @@ async function queryPermission(name: "camera" | "microphone"): Promise<Permissio
   }
 }
 
-export function useSyncDevices() {
+export function useConfigDevices() {
   const store = useDevicesStore();
 
   const toggleCamera = useCallback(() => {
-    const next = !useDevicesStore.getState().cameraOn;
-    useDevicesStore.getState().setCameraOn(next);
-    DailyService.getInstance().callObject.setLocalVideo(next);
+    const s = useDevicesStore.getState();
+    s.setCameraOn(!s.cameraOn);
   }, []);
 
   const toggleMicrophone = useCallback(() => {
-    const next = !useDevicesStore.getState().microphoneOn;
-    useDevicesStore.getState().setMicrophoneOn(next);
+    const s = useDevicesStore.getState();
+    s.setMicrophoneOn(!s.microphoneOn);
+  }, []);
+
+  const toggleCameraDailyco = useCallback(() => {
+    const s = useDevicesStore.getState();
+    const next = !s.cameraOn;
+    s.setCameraOn(next);
+    s.setCameraDailycoOn(next);
+    DailyService.getInstance().callObject.setLocalVideo(next);
+  }, []);
+
+  const toggleMicrophoneDailyco = useCallback(() => {
+    const s = useDevicesStore.getState();
+    const next = !s.microphoneOn;
+    s.setMicrophoneOn(next);
+    s.setMicrophoneDailycoOn(next);
     DailyService.getInstance().callObject.setLocalAudio(next);
   }, []);
 
@@ -34,15 +48,15 @@ export function useSyncDevices() {
     const s = useDevicesStore.getState();
 
     const videoInputs = devices
-      .filter((d) => d.kind === "videoinput")
+      .filter((d) => d.kind === "videoinput" && d.deviceId)
       .map((d) => ({ deviceId: d.deviceId, label: d.label || `Camera ${d.deviceId.slice(0, 5)}` }));
 
     const audioInputs = devices
-      .filter((d) => d.kind === "audioinput")
+      .filter((d) => d.kind === "audioinput" && d.deviceId)
       .map((d) => ({ deviceId: d.deviceId, label: d.label || `Mic ${d.deviceId.slice(0, 5)}` }));
 
     const audioOutputs = devices
-      .filter((d) => d.kind === "audiooutput")
+      .filter((d) => d.kind === "audiooutput" && d.deviceId)
       .map((d) => ({ deviceId: d.deviceId, label: d.label || `Speaker ${d.deviceId.slice(0, 5)}` }));
 
     s.setDetectedCameras(videoInputs);
@@ -143,6 +157,8 @@ export function useSyncDevices() {
     ...store,
     toggleCamera,
     toggleMicrophone,
+    toggleCameraDailyco,
+    toggleMicrophoneDailyco,
     requestCamera,
     requestMicrophone,
   };
