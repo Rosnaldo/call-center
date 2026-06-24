@@ -1,15 +1,7 @@
-import * as dotenv from 'dotenv';
-dotenv.config({ path: '.env' });
-
-dotenv.config({
-  path: `.env.${process.env.NODE_ENV}`,
-  override: true
-});
-
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
-import Properties from './properties';
+import { Properties } from './properties';
 import './extensions/transform_in_dict';
 
 import { mongooseBootstrap } from '#mongoose_bootstrap';
@@ -17,61 +9,87 @@ import { routeBootstrap } from '#route_bootstrap';
 import { buildKcMain } from '#keycloak/singleton';
 import { connectRedis, disconnectRedis } from '#redis/singleton';
 
-const app = express();
+class InitializeServices {
+    private static instance: InitializeServices;
 
-export async function initializeServices(): Promise<void> {
-    let isShuttingDown = false;
+    app = express();
+    properties: Properties;
 
-    try {
-        await buildKcMain();
-        await mongooseBootstrap();
-        await connectRedis();
+    private constructor(properties: Properties) {
+        this.properties = properties;
+    }
 
-        app.use(cors());
-        app.use(express.json());
+    static getInstance(properties?: Properties): InitializeServices {
+        if (!InitializeServices.instance) {
+            InitializeServices.instance = new InitializeServices(
+                properties ?? Properties.getInstance()
+            );
+        }
+        return InitializeServices.instance;
+    }
 
-        app.use(express.json({ limit: '10MB' }));
-        app.use(express.urlencoded({ extended: false }));
+    static reset(): void {
+        InitializeServices.instance = undefined as unknown as InitializeServices;
+    }
 
-        await routeBootstrap(app);
+    async start(): Promise<void> {
+        let isShuttingDown = false;
 
-        const server = app.listen(Number(Properties.port), '0.0.0.0', () => {
-            console.log(`Application running on  ${Properties.port}`);
-        });
-
-        const gracefulShutdown = async () => {
-            if (isShuttingDown) return;
-            isShuttingDown = true;
-
-            try {
-                await Promise.all(mongoose.connections.map((conn) => conn.close(false)));
-                console.log('[DB] Todas as conexões Mongo fechadas');
-            } catch (err) {
-                console.error('[DB] Erro ao fechar conexões', err);
+        try {
+            if (this.properties.nodeEnv !== 'test') {
+                await buildKcMain();
             }
 
-            try {
-                await disconnectRedis();
-                console.log('[Redis] Conexão fechada');
-            } catch (err) {
-                console.error('[Redis] Erro ao fechar conexão', err);
-            }
-            server.close(() => {
-                console.log(`[*] - WEB Service - Closed`);
-                process.exit(0);
+            await mongooseBootstrap();
+            await connectRedis();
+
+            this.app.use(cors());
+            this.app.use(express.json());
+
+            this.app.use(express.json({ limit: '10MB' }));
+            this.app.use(express.urlencoded({ extended: false }));
+
+            await routeBootstrap(this.app);
+
+            const server = this.app.listen(Number(this.properties.port), '0.0.0.0', () => {
+                console.log(`Application running on  ${this.properties.port}`);
             });
 
-            // Fallback de segurança (ex: conexões presas)
-            setTimeout(() => {
-                console.error('Forçando shutdown após timeout');
-                process.exit(1);
-            }, 10_000);
-        }
+            const gracefulShutdown = async () => {
+                if (isShuttingDown) return;
+                isShuttingDown = true;
 
-        process.on('SIGINT', gracefulShutdown);
-        process.on('SIGTERM', gracefulShutdown);
-    } catch (error) {
-        console.error('Error initializing services:', error);
-        process.exit(1);
+                try {
+                    await Promise.all(mongoose.connections.map((conn) => conn.close(false)));
+                    console.log('[DB] Todas as conexões Mongo fechadas');
+                } catch (err) {
+                    console.error('[DB] Erro ao fechar conexões', err);
+                }
+
+                try {
+                    await disconnectRedis();
+                    console.log('[Redis] Conexão fechada');
+                } catch (err) {
+                    console.error('[Redis] Erro ao fechar conexão', err);
+                }
+                server.close(() => {
+                    console.log(`[*] - WEB Service - Closed`);
+                    process.exit(0);
+                });
+
+                setTimeout(() => {
+                    console.error('Forçando shutdown após timeout');
+                    process.exit(1);
+                }, 10_000);
+            }
+
+            process.on('SIGINT', gracefulShutdown);
+            process.on('SIGTERM', gracefulShutdown);
+        } catch (error) {
+            console.error('Error initializing services:', error);
+            process.exit(1);
+        }
     }
 }
+
+export { InitializeServices };
