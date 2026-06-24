@@ -1,15 +1,14 @@
 import axios from 'axios';
-import { keycloak } from './keycloak';
 import properties from '../properties';
+import authSession from '../auth/session';
 
-export const apiBack = axios.create({
-  baseURL: properties.backendUrl,
-});
+export const apiBack = axios.create();
 
 apiBack.interceptors.request.use(async (config) => {
-  if (keycloak.authenticated) {
-    await keycloak.updateToken(30);
-    config.headers.Authorization = `${keycloak.token}`;
+  config.baseURL = properties.backendUrl;
+  const token = await authSession.getToken();
+  if (token) {
+    config.headers.Authorization = token;
   }
   return config;
 });

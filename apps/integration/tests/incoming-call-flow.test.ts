@@ -18,6 +18,7 @@ import { onConnection } from '../../realtime/src/websocket/connection';
 import { createStores, Stores } from '../../web/src/states/stores';
 import { InitWs } from '../../web/src/services/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/transport';
+import { AuthSession } from '../../web/src/auth/session';
 
 import * as usersService from 'src/services/users';
 import * as onlineUsersService from '@/src/services/online-users';
@@ -95,6 +96,7 @@ describe('Incoming Call Flow', () => {
         pendingCalls.length = 0;
         jest.clearAllMocks();
         DailyCoService.reset();
+        AuthSession.override({ token: CUSTOMER_TOKEN });
 
         addToIamMock.mockImplementation((user: IOnlineUser, token: string) => {
             const op = iamRequest

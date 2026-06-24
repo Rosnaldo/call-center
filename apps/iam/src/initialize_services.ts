@@ -1,5 +1,6 @@
 import express from 'express';
 import mongoose from 'mongoose';
+import http from 'http';
 import cors from 'cors';
 import { Properties } from './properties';
 import './extensions/transform_in_dict';
@@ -13,6 +14,7 @@ class InitializeServices {
     private static instance: InitializeServices;
 
     app = express();
+    server: http.Server | null = null;
     properties: Properties;
 
     private constructor(properties: Properties) {
@@ -51,11 +53,19 @@ class InitializeServices {
 
             await routeBootstrap(this.app);
 
-            if (this.properties.nodeEnv === 'test') return;
+            const port = this.properties.nodeEnv === 'test' ? 0 : Number(this.properties.port);
 
-            const server = this.app.listen(Number(this.properties.port), '0.0.0.0', () => {
-                console.log(`Application running on  ${this.properties.port}`);
+            this.server = await new Promise<http.Server>((resolve) => {
+                const s = this.app.listen(port, '0.0.0.0', () => {
+                    const addr = s.address();
+                    const boundPort = typeof addr === 'object' ? addr!.port : port;
+                    this.properties.port = boundPort;
+                    console.log(`Application running on  ${boundPort}`);
+                    resolve(s);
+                });
             });
+
+            if (this.properties.nodeEnv === 'test') return;
 
             const gracefulShutdown = async () => {
                 if (isShuttingDown) return;
@@ -74,7 +84,7 @@ class InitializeServices {
                 } catch (err) {
                     console.error('[Redis] Erro ao fechar conexão', err);
                 }
-                server.close(() => {
+                this.server!.close(() => {
                     console.log(`[*] - WEB Service - Closed`);
                     process.exit(0);
                 });
@@ -94,6 +104,11 @@ class InitializeServices {
     }
 
     async stop(): Promise<void> {
+        if (this.server) {
+            await new Promise<void>((resolve) => this.server!.close(() => resolve()));
+            this.server = null;
+        }
+
         try {
             await Promise.all(mongoose.connections.map((conn) => conn.close(false)));
         } catch (err) {

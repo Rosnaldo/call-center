@@ -4,6 +4,7 @@ import { fetchUser } from '../../services/user';
 import { addOnlineUser } from '../../services/online-users';
 import { useCurrentUserStore } from '../stores';
 import { AuthState } from './state';
+import authSession from '../../auth/session';
 
 export interface AuthActions {
     reset(): void;
@@ -67,10 +68,13 @@ export const createAuthActions = (
                 });
             };
 
+            authSession.token = keycloak.token;
+            authSession.email = keycloak.tokenParsed?.email;
+
             set(() => ({
                 isAuthenticated: auth,
-                token: keycloak.token,
-                email: keycloak.tokenParsed?.email,
+                token: authSession.token,
+                email: authSession.email,
             }));
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Erro desconhecido.';
