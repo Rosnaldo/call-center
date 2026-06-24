@@ -35,6 +35,7 @@
       "#keycloak/*": ["../iam/src/keycloak/*"],
       "#const/*": ["../iam/src/const/*"],
       "#apis/*": ["../iam/src/apis/*"],
+      "#auth/*": ["../iam/src/auth/*"],
       "#route_bootstrap": ["../iam/src/route_bootstrap"],
       "#mongoose_bootstrap": ["../iam/src/mongoose_bootstrap"],
       "#redis_bootstrap": ["../iam/src/redis_bootstrap"],

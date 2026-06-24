@@ -36,6 +36,7 @@
             "#redis_bootstrap": ["./src/redis_bootstrap"],
             "#populate": ["./src/populate"],
             "#properties": ["./src/properties"],
+            "#auth/*": ["./src/auth/*"],
             "#db/*": ["./src/db/*"],
             "#redis/*": ["./src/redis/*"]
         },

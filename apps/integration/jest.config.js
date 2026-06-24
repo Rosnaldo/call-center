@@ -51,6 +51,7 @@ module.exports = {
         '^#keycloak/(.*)$': '<rootDir>/../iam/src/keycloak/$1',
         '^#const/(.*)$': '<rootDir>/../iam/src/const/$1',
         '^#apis/(.*)$': '<rootDir>/../iam/src/apis/$1',
+        '^#auth/(.*)$': '<rootDir>/../iam/src/auth/$1',
         '^#route_bootstrap$': '<rootDir>/../iam/src/route_bootstrap',
         '^#mongoose_bootstrap$': '<rootDir>/../iam/src/mongoose_bootstrap',
         '^#redis_bootstrap$': '<rootDir>/../iam/src/redis_bootstrap',
