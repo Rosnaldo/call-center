@@ -7,6 +7,7 @@ import { EventEmitter } from 'node:events';
 import { IOnlineUser, IUser } from '@repo/shared-types';
 
 import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
+import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { MockSocketServer, createWsClient } from './helpers/mock-wss';
@@ -75,19 +76,22 @@ describe('Incoming Call Flow', () => {
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
+        wss = new MockSocketServer();
+        await startRealtimeServer(wss);
         const users = await createMockUsers();
         customerUser = { ...users.customer, tokens: 10 };
         attendantUser = users.attendant;
     });
 
     afterAll(async () => {
+        stopRealtimeServer();
         await stopIamServer();
     });
 
     beforeEach(async () => {
         await getRedisClient().del('online_users');
 
-        wss = new MockSocketServer();
+        wss.clear();
         pendingCalls.length = 0;
         jest.clearAllMocks();
         DailyCoService.reset();

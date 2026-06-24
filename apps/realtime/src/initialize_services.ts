@@ -1,16 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import { Properties } from './properties';
-import './extensions/transform_in_dict';
-import { createWebSocketServer } from './websocket/main';
-import dailyWebhook from './webhooks/daily';
-import iamWebhook from './webhooks/iam';
+import { ISocketServer } from './websocket/socket';
 
 class InitializeServices {
     private static instance: InitializeServices;
 
     app = express();
     properties: Properties;
+    wss: ISocketServer | null = null;
 
     private constructor(properties: Properties) {
         this.properties = properties;
@@ -29,25 +27,38 @@ class InitializeServices {
         InitializeServices.instance = undefined as unknown as InitializeServices;
     }
 
+    setupMiddleware(): void {
+        this.app.use(cors());
+        this.app.use(express.json());
+        this.app.use(express.json({ limit: '10MB' }));
+        this.app.use(express.urlencoded({ extended: false }));
+    }
+
+    setupWebhooks(wss: ISocketServer): void {
+        this.wss = wss;
+        const dailyWebhook = require('./webhooks/daily').default;
+        const iamWebhook = require('./webhooks/iam').default;
+        dailyWebhook(this.app, wss);
+        iamWebhook(this.app, wss);
+    }
+
     async start(): Promise<void> {
         let isShuttingDown = false;
 
         try {
-            this.app.use(cors());
-            this.app.use(express.json());
+            this.setupMiddleware();
 
-            this.app.use(express.json({ limit: '10MB' }));
-            this.app.use(express.urlencoded({ extended: false }));
+            if (this.properties.nodeEnv === 'test') return;
+
+            const { createWebSocketServer } = await import('./websocket/main');
 
             const server = this.app.listen(Number(this.properties.port), '0.0.0.0', () => {
                 console.log(`Application running on  ${this.properties.port}`);
             });
 
             const wss = createWebSocketServer(server);
+            this.setupWebhooks(wss);
             console.log('[WS] WebSocket server attached');
-
-            dailyWebhook(this.app, wss);
-            iamWebhook(this.app, wss);
 
             const gracefulShutdown = async () => {
                 if (isShuttingDown) return;

@@ -1,34 +1,25 @@
-import express from 'express';
-import cors from 'cors';
 import supertest from 'supertest';
-
-// Direct relative paths — jest moduleNameMapper resolves internal IAM # aliases
-import { mongooseBootstrap } from '../../../iam/src/mongoose_bootstrap';
-import { connectRedis, disconnectRedis } from '../../../iam/src/redis/singleton';
-import { disconnectMain } from '../../../iam/src/db/singleton';
-import { routeBootstrap } from '../../../iam/src/route_bootstrap';
+import { Properties } from '../../../iam/src/properties';
+import { InitializeServices } from '../../../iam/src/initialize_services';
 
 export type IamAgent = ReturnType<typeof supertest.agent>;
 
+let iamServices: InitializeServices;
 let iamAgent: IamAgent;
 
 export async function startIamServer(): Promise<IamAgent> {
-    const app = express();
-    app.use(cors());
-    app.use(express.json());
-    app.use(express.urlencoded({ extended: false }));
+    const properties = Properties.getInstance();
+    iamServices = InitializeServices.getInstance(properties);
 
-    await mongooseBootstrap();
-    await connectRedis();
-    await routeBootstrap(app);
+    await iamServices.start();
 
-    iamAgent = supertest.agent(app);
+    iamAgent = supertest.agent(iamServices.app);
     return iamAgent;
 }
 
 export async function stopIamServer(): Promise<void> {
-    await disconnectMain();
-    await disconnectRedis();
+    await iamServices.stop();
+    InitializeServices.reset();
 }
 
 export function getIamAgent(): IamAgent {

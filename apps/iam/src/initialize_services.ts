@@ -51,6 +51,8 @@ class InitializeServices {
 
             await routeBootstrap(this.app);
 
+            if (this.properties.nodeEnv === 'test') return;
+
             const server = this.app.listen(Number(this.properties.port), '0.0.0.0', () => {
                 console.log(`Application running on  ${this.properties.port}`);
             });
@@ -88,6 +90,20 @@ class InitializeServices {
         } catch (error) {
             console.error('Error initializing services:', error);
             process.exit(1);
+        }
+    }
+
+    async stop(): Promise<void> {
+        try {
+            await Promise.all(mongoose.connections.map((conn) => conn.close(false)));
+        } catch (err) {
+            console.error('[DB] Erro ao fechar conexões', err);
+        }
+
+        try {
+            await disconnectRedis();
+        } catch (err) {
+            console.error('[Redis] Erro ao fechar conexão', err);
         }
     }
 }

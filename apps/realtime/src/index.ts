@@ -8,6 +8,7 @@ dotenv.config({
 
 import { Properties } from "./properties";
 import { InitializeServices } from "./initialize_services";
+import './extensions/transform_in_dict';
 
 const properties = Properties.getInstance();
 void InitializeServices.getInstance(properties).start();
