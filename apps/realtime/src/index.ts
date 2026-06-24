@@ -1,3 +1,13 @@
-import { initializeServices } from "./initialize_services";
+import * as dotenv from 'dotenv';
+dotenv.config({ path: '.env' });
 
-void initializeServices();
+dotenv.config({
+  path: `.env.${process.env.NODE_ENV}`,
+  override: true
+});
+
+import { Properties } from "./properties";
+import { InitializeServices } from "./initialize_services";
+
+const properties = Properties.getInstance();
+void InitializeServices.getInstance(properties).start();

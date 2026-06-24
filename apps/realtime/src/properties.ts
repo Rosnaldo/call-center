@@ -1,9 +1,40 @@
-export default {
-    nodeEnv: process.env.NODE_ENV || '',
-    port: process.env.PORT || 5003,
-    isRuntime: process.env.RUNTIME || '',
-    keycloakUri: process.env.KEYCLOAK_URI || '',
-    keycloakClientId: process.env.KEYCLOAK_CLIENT_ID || '',
-    keycloakClientSecret: process.env.KEYCLOAK_CLIENT_SECRET || '',
-    iamUri: process.env.IAM_URI || 'http://localhost:5002',
-};
+class Properties {
+    private static instance: Properties;
+
+    nodeEnv: string;
+    port: string | number;
+    isRuntime: string;
+    keycloakUri: string;
+    keycloakClientId: string;
+    keycloakClientSecret: string;
+    iamUri: string;
+
+    private constructor() {
+        this.nodeEnv = process.env.NODE_ENV || '';
+        this.port = process.env.PORT || 5003;
+        this.isRuntime = process.env.RUNTIME || '';
+        this.keycloakUri = process.env.KEYCLOAK_URI || '';
+        this.keycloakClientId = process.env.KEYCLOAK_CLIENT_ID || '';
+        this.keycloakClientSecret = process.env.KEYCLOAK_CLIENT_SECRET || '';
+        this.iamUri = process.env.IAM_URI || 'http://localhost:5002';
+    }
+
+    static getInstance(): Properties {
+        if (!Properties.instance) {
+            Properties.instance = new Properties();
+        }
+        return Properties.instance;
+    }
+
+    static override(overrides: Partial<Properties>): void {
+        const instance = Properties.getInstance();
+        Object.assign(instance, overrides);
+    }
+
+    static reset(): void {
+        Properties.instance = new Properties();
+    }
+}
+
+export default Properties.getInstance();
+export { Properties };
