@@ -5,9 +5,10 @@
 
 import { useRealAuthentication } from './useRealAuthentication.ts';
 import { useSimulateAuthentication } from './useSimulateAuthentication.ts';
+import properties from '../../properties';
 
 export function useAuthentication() {
-  const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
+  const { isSimulation } = properties;
 
   const simulateAuth = useSimulateAuthentication();
   const realAuth = useRealAuthentication();

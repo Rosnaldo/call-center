@@ -5,6 +5,7 @@ import { useOnlineUsersQuery } from '../../queries/online-users/query';
 import { useOnlineUsersStore } from '../../states/stores';
 import { OnlineUserState } from '../../states/online-users/state';
 import { CallState } from '../../states/call/state';
+import properties from '../../properties';
 
 interface Props {
   currentUser: OnlineUserState | null;
@@ -12,7 +13,7 @@ interface Props {
   onCompleteCall: (attendantId: string) => void;
 }
 
-const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
+const { isSimulation } = properties;
 
 function UserListsFetcher({ currentUser, call, onCompleteCall }: Props) {
   const { data: users } = useOnlineUsersQuery();

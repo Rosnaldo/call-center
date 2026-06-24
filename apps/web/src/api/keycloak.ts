@@ -1,7 +1,8 @@
 import Keycloak from 'keycloak-js';
+import properties from '../properties';
 
 export const keycloak = new Keycloak({
-    url: import.meta.env.VITE_KEYCLOAK_URL,
-    realm: import.meta.env.VITE_KEYCLOAK_REALM,
-    clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID,
+    url: properties.keycloakUrl,
+    realm: properties.keycloakRealm,
+    clientId: properties.keycloakClientId,
 });

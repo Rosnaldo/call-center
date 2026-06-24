@@ -7,15 +7,16 @@ import { createStores } from './states/stores.ts';
 import { DailyService } from './services/daily.ts';
 import { DevicesProvider } from './providers/devices.tsx';
 import App from './App.tsx';
+import properties from './properties';
 import './index.css';
 
 const dailyService = DailyService.getInstance({
-    domain: (import.meta.env.VITE_DAILY_DOMAIN as string) ?? 'meetcent',
-    apiKey: (import.meta.env.VITE_DAILY_API_KEY as string) ?? '',
+    domain: properties.dailyDomain,
+    apiKey: properties.dailyApiKey,
 });
 const stores = createStores(dailyService);
 
-if ((import.meta as any).env?.VITE_ENV !== 'simulation') {
+if (!properties.isSimulation) {
     bootstrap(stores);
 }
 

@@ -1,8 +1,9 @@
 import { CallState, IOnlineUser, IncomingCallState } from '@repo/shared-types';
 import { AuthenticatedWebSocket, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
 import type { OnlineUsersStoreInstance, IncomingCallStoreInstance, CallStoreInstance } from '../states/stores';
+import properties from '../properties';
 
-const WS_URL = import.meta.env.VITE_REALTIME_WS_URL as string | undefined;
+const WS_URL = properties.realtimeWsUrl || undefined;
 const RECONNECT_DELAY_MS = 3_000;
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const HEARTBEAT_ACK_TIMEOUT_MS = 10_000;
@@ -33,7 +34,7 @@ export class InitWs {
     private running = false;
     private factory: TransportFactory = createWsTransport;
     private stores: InitWsStores | null = null;
-    private readonly isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
+    private readonly isSimulation = properties.isSimulation;
 
     private startHeartbeat(onTick: () => void): void {
         if (this.heartbeatRef) return;

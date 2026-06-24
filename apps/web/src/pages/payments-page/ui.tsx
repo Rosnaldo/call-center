@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
 import { useLogout } from '../../hooks/auth/useLogout.ts';
+import properties from '../../properties';
 
 interface PaymentsPageUIProps {
   currentUser: OnlineUserState | null;
@@ -101,10 +102,8 @@ export const PaymentsPageUI: React.FC<PaymentsPageUIProps> = ({
     setIsProcessing(true);
     setSuccessInfo(null);
 
-    const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
-
     try {
-      if (!isSimulation) {
+      if (!properties.isSimulation) {
         // Envia requisição real ao backend em desenvolvimento
         const response = await fetch('/api/buy-tokens', {
           method: 'POST',

@@ -8,6 +8,7 @@ import { useAuthentication } from './useAuthentication.ts';
 import { useCurrentUserStore, useOnlineUsersStore } from '../../states/stores.ts';
 import { initWs } from '../../services/init-ws.ts';
 import { DailyService } from '../../services/daily.ts';
+import properties from '../../properties';
 
 export function useLogout() {
   const navigate = useNavigate();
@@ -19,8 +20,7 @@ export function useLogout() {
     DailyService.getInstance().destroy();
     initWs.notifyLogout();
 
-    const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
-    if (!isSimulation) {
+    if (!properties.isSimulation) {
       removeUser(currentUser?.id || '');
     }
     logout();

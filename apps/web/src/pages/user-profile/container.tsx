@@ -9,6 +9,7 @@ import { useOnlineUsersStore, useCurrentUserStore } from '../../states/stores.ts
 import { UserProfilePage } from './ui.tsx';
 import { mytoast } from '@/src/components/toast.tsx';
 import { fetchUserUpload } from '@/src/services/user.ts';
+import properties from '../../properties';
 
 export const UserProfileContainer: React.FC = () => {
   const navigate = useNavigate();
@@ -33,8 +34,7 @@ export const UserProfileContainer: React.FC = () => {
     formData.append("image", file);
     setFileError(null);
 
-    const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
-    if (isSimulation) {
+    if (properties.isSimulation) {
       const reader = new FileReader();
       reader.onload = () => {
         if (typeof reader.result === 'string') {

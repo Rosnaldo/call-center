@@ -20,13 +20,14 @@ import { RoleProtectedRoute } from './role-protected-route.tsx';
 import { useAuthStore } from './states/stores.ts';
 import { DailyProvider } from '@daily-co/daily-react';
 import { DailyService } from './services/daily.ts';
+import properties from './properties';
 
 const queryClient = new QueryClient();
 
 export default function App() {
   const ready = useAuthStore((s) => s.ready);
   const error = useAuthStore((s) => s.error);
-  const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
+  const { isSimulation } = properties;
 
   if (error) return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--bg-brand-canvas)]">

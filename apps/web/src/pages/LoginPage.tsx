@@ -2,11 +2,12 @@ import { useNavigate } from "react-router-dom";
 import { useAuthentication } from "../hooks/auth/useAuthentication";
 import { useEffect } from "react";
 import { SimulationLogin } from "../components/login/SimulationLogin";
+import properties from '../properties';
 
 export function LoginPage() {
     const { login, isAuthenticated } = useAuthentication();
     const navigate = useNavigate();
-    const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
+    const { isSimulation } = properties;
 
     useEffect(() => {
         if (isSimulation) return;

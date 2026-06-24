@@ -1,4 +1,5 @@
 import { IDailyService, JoinOptions } from '../../../web/src/services/daily';
+import properties from '../../../web/src/properties';
 
 interface DailyCoServiceConfig {
     domain: string;
@@ -16,10 +17,9 @@ export class DailyCoService implements IDailyService {
 
     static getInstance(): DailyCoService {
         if (!DailyCoService.instance) {
-            const meta = (globalThis as any).__importMeta?.env ?? {};
             DailyCoService.instance = new DailyCoService({
-                domain: meta.VITE_DAILY_DOMAIN ?? '',
-                apiKey: meta.VITE_DAILY_API_KEY ?? '',
+                domain: properties.dailyDomain,
+                apiKey: properties.dailyApiKey,
             });
         }
         return DailyCoService.instance;

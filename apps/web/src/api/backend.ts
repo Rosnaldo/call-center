@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { keycloak } from './keycloak';
+import properties from '../properties';
 
 export const apiBack = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL,
+  baseURL: properties.backendUrl,
 });
 
 apiBack.interceptors.request.use(async (config) => {

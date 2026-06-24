@@ -9,7 +9,7 @@ module.exports = {
     testMatch: ['**/?(*.)+(spec|test).[tj]s'],
     testTimeout: 60000,
     maxWorkers: 1,
-    setupFiles: ['<rootDir>/src/setup-import-meta.ts'],
+    setupFiles: ['<rootDir>/src/setup-properties.ts'],
     transform: {
         '^.+\\.tsx?$': ['ts-jest', {
             tsconfig: '<rootDir>/tsconfig.json',

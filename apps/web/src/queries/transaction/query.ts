@@ -5,6 +5,7 @@
 
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { MOCK_TRANSACTIONS } from './mock.ts';
+import properties from '../../properties';
 
 export interface PaginatedTransactionsResponse {
   transactions: any[];
@@ -21,9 +22,7 @@ export async function fetchTransactions(
   search?: string,
   type?: string
 ): Promise<PaginatedTransactionsResponse> {
-  const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
-
-  if (isSimulation) {
+  if (properties.isSimulation) {
     const userTxs = MOCK_TRANSACTIONS.filter(tx => tx.userId === userId);
     const totalCredited = userTxs
       .filter(tx => tx.type === 'credit')

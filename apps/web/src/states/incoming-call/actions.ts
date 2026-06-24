@@ -10,8 +10,9 @@ import {
   simulateIncomingCall,
   simulateIncomingCallAsCustomer,
 } from './simulation.ts';
+import properties from '../../properties';
 
-const isSimulation = (import.meta as any).env?.VITE_ENV === 'simulation';
+const { isSimulation } = properties;
 
 export interface IncomingCallActions {
   cancel: () => void;

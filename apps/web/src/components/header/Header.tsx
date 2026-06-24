@@ -7,6 +7,7 @@ import React, { useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserProfileBadge } from './UserProfileBadge.tsx';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import properties from '../../properties';
 
 interface HeaderProps {
   users: OnlineUserState[];
@@ -43,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Navigation Route Tabs */}
-        {((import.meta as any).env?.VITE_ENV === 'simulation') && (
+        {properties.isSimulation && (
           <nav id="header-navigation-tabs" className="flex items-center gap-1 bg-brand-panel border border-brand-border p-1 rounded-xl">
             <button
               id="nav-route-login"

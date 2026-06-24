@@ -17,6 +17,7 @@ import {
 import { useOnlineUsersStore, useCallStore, useCurrentUserStore, useTimerStore, useIncomingCallStore, useCallViewStore } from '../../states/stores.ts';
 
 import { useResetSimulationState } from '@/src/hooks/useResetSimulationState.ts';
+import properties from '../../properties';
 
 interface DeveloperSimulatorProps {
   onAddTokens?: (userId: string, count: number) => void;
@@ -41,7 +42,7 @@ export const DeveloperSimulator: React.FC<DeveloperSimulatorProps> = (props) => 
   const acceptedIncomingCall = useCallStore((s) => s.acceptedIncomingCall);
   const callViewState = useCallViewStore();
 
-  if ((import.meta as any).env?.VITE_ENV !== 'simulation') {
+  if (!properties.isSimulation) {
     return null;
   }
 
