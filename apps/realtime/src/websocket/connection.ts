@@ -30,7 +30,7 @@ export const onConnection = (wss: ISocketServer) => (ws: AuthenticatedWebSocket)
             const msg = JSON.parse(raw.toString()) as WsClientMessage;
             switch (msg.event) {
                 case 'heartbeat':
-                    handleMessageHeartbeat(ws, hb);
+                    handleMessageHeartbeat(ws, hb, user);
                     break;
                 case 'user_logout':
                     handleMessageLogout(ws, hb, startGracePeriod);

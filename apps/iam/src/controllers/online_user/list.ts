@@ -6,7 +6,7 @@ import { IOnlineUser } from '#schemas/online_user/types';
 
 type IOutput = IOnlineUserController['IList']['IOutput'];
 
-const REDIS_KEY = 'online_users';
+const REDIS_PREFIX = 'online_user:';
 
 export class List {
     public static readonly classId = Symbol.for('Controller > OnlineUser > List');
@@ -23,8 +23,12 @@ export class List {
     public readonly get = async (): Promise<Either<IOutput>> => {
         try {
             const redis = getRedisClient();
-            const values = await redis.hvals(REDIS_KEY);
-            const users: IOnlineUser['IParams'][] = values.map((v) => JSON.parse(v));
+            const keys = await redis.keys(`${REDIS_PREFIX}*`);
+            if (keys.length === 0) return successData({ users: [] });
+            const values = await redis.mget(...keys);
+            const users: IOnlineUser['IParams'][] = values
+                .filter((v): v is string => v !== null)
+                .map((v) => JSON.parse(v));
             return successData({ users });
         } catch (error: unknown) {
             return logError(error, '/online-users/list');
