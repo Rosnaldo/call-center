@@ -21,6 +21,11 @@ vi.mock('../../../../hooks/useMediaTest.ts', () => ({
   useMediaTest: () => ({ videoRef: { current: null }, micLevel: 0, startTest: vi.fn(), stopTest: vi.fn() }),
 }));
 vi.mock('../../../../hooks/useSyncEnabledDevices.ts', () => ({ useSyncEnabledDevices: vi.fn() }));
+vi.mock('@daily-co/daily-react', () => ({
+  useParticipantIds: () => ['remote-1'],
+  useVideoTrack: () => ({ track: null, isOff: true }),
+  useAudioTrack: () => ({ track: null, isOff: true }),
+}));
 
 const ATTENDANT_ID = 'att-test-1';
 const CUSTOMER_ID = 'cust-test-1';
