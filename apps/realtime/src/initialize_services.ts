@@ -30,7 +30,12 @@ class InitializeServices {
     }
 
     setupMiddleware(): void {
-        this.app.use(cors());
+        this.app.use(cors({
+            origin: this.properties.corsOrigins,
+            credentials: true,
+            methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            allowedHeaders: ["Content-Type", "Authorization"],
+        }));
         this.app.use(express.json());
         this.app.use(express.json({ limit: '10MB' }));
         this.app.use(express.urlencoded({ extended: false }));

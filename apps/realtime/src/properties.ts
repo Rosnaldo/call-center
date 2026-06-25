@@ -8,6 +8,7 @@ class Properties {
     keycloakClientId: string;
     keycloakClientSecret: string;
     iamUri: string;
+    corsOrigins: string[];
 
     private constructor() {
         this.nodeEnv = process.env.NODE_ENV || '';
@@ -17,6 +18,7 @@ class Properties {
         this.keycloakClientId = process.env.KEYCLOAK_CLIENT_ID || '';
         this.keycloakClientSecret = process.env.KEYCLOAK_CLIENT_SECRET || '';
         this.iamUri = process.env.IAM_URI || 'http://localhost:5002';
+        this.corsOrigins = (process.env.CORS_ORIGINS || '').split(',').filter(Boolean);
     }
 
     static getInstance(): Properties {

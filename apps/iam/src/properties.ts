@@ -16,6 +16,7 @@ class Properties {
     s3Host: string;
     cdnHost: string;
     realtimeUri: string;
+    corsOrigins: string[];
 
     private constructor() {
         this.nodeEnv = process.env.NODE_ENV || '';
@@ -33,6 +34,7 @@ class Properties {
         this.s3Host = `https://${process.env.AWS_S3_BUCKET}.s3.sa-east-1.amazonaws.com`;
         this.cdnHost = process.env.CDN_HOST || 'cdnHost';
         this.realtimeUri = process.env.REALTIME_URI || '';
+        this.corsOrigins = (process.env.CORS_ORIGINS || '').split(',').filter(Boolean);
     }
 
     static getInstance(): Properties {
