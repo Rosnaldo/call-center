@@ -4,6 +4,23 @@ import { CallView, CallViewState } from '../CallView.tsx';
 import { buildCall } from '../../../../__tests__/builders.ts';
 import { useCurrentUserStore } from '../../../../states/stores.ts';
 
+vi.mock('../../../../providers/devices.tsx', () => ({
+  useDevicesContext: () => ({
+    detectedCameras: [], detectedMicrophones: [], detectedSpeakers: [],
+    camera: '', microphone: '', speaker: '',
+    setCamera: vi.fn(), setMicrophone: vi.fn(), setSpeaker: vi.fn(),
+    cameraPermission: 'prompt' as const, micPermission: 'prompt' as const,
+    requestCamera: vi.fn(), requestMicrophone: vi.fn(),
+    cameraOn: false, microphoneOn: false,
+    toggleCameraDailyco: vi.fn(), toggleMicrophoneDailyco: vi.fn(),
+  }),
+  DevicesProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+vi.mock('../../../../hooks/useMediaTest.ts', () => ({
+  useMediaTest: () => ({ videoRef: { current: null }, micLevel: 0, startTest: vi.fn(), stopTest: vi.fn() }),
+}));
+vi.mock('../../../../hooks/useSyncEnabledDevices.ts', () => ({ useSyncEnabledDevices: vi.fn() }));
+
 const defaultProps = (overrides = {}) => ({
   state: CallViewState.InCall,
   isScreenSharing: false,

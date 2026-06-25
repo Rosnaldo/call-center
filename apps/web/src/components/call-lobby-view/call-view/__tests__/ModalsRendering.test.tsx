@@ -7,6 +7,42 @@ import { MediaSettingsModal } from '../../media-settings-modal/MediaSettingsModa
 import { buildCall, buildOnlineUserState } from '../../../../__tests__/builders.ts';
 import { useBillingStore } from '../../../../states/stores.ts';
 
+vi.mock('../../../../providers/devices.tsx', () => ({
+  useDevicesContext: () => ({
+    detectedCameras: [],
+    detectedMicrophones: [],
+    detectedSpeakers: [],
+    camera: '',
+    microphone: '',
+    speaker: '',
+    setCamera: vi.fn(),
+    setMicrophone: vi.fn(),
+    setSpeaker: vi.fn(),
+    cameraPermission: 'prompt' as const,
+    micPermission: 'prompt' as const,
+    requestCamera: vi.fn(),
+    requestMicrophone: vi.fn(),
+    cameraOn: false,
+    microphoneOn: false,
+    toggleCameraDailyco: vi.fn(),
+    toggleMicrophoneDailyco: vi.fn(),
+  }),
+  DevicesProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+vi.mock('../../../../hooks/useMediaTest.ts', () => ({
+  useMediaTest: () => ({
+    videoRef: { current: null },
+    micLevel: 0,
+    startTest: vi.fn(),
+    stopTest: vi.fn(),
+  }),
+}));
+
+vi.mock('../../../../hooks/useSyncEnabledDevices.ts', () => ({
+  useSyncEnabledDevices: vi.fn(),
+}));
+
 
 describe('Modals Rendering and Behavior Unit Tests', () => {
 
