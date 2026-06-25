@@ -18,7 +18,7 @@ interface CallViewProps {
   setIsSettingsOpen: (value: boolean) => void;
   isFullscreen: boolean;
   toggleFullscreen: () => void;
-  currentCall?: CallState;
+  currentCall?: CallState | null;
   timerText?: string;
   attendantName?: string;
   queueCount?: number;

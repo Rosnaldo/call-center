@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Braces, Copy, Check } from 'lucide-react';
-import { useOnlineUsersStore, useCallStore, useCurrentUserStore, useTimerStore, useIncomingCallStore, useCallViewStore } from '../../states/stores.ts';
+import { useOnlineUsersStore, useCallStore, useTimerStore, useIncomingCallStore, useCallViewStore } from '../../states/stores.ts';
+import properties from '../../properties';
 
 export const StoreBoard: React.FC = () => {
-  const currentUser = useCurrentUserStore((s) => s.currentUser);
   const users = useOnlineUsersStore((s) => s.users);
   const call = useCallStore((s) => s.call);
   const timerStatus = useTimerStore((s) => s.status);
@@ -11,8 +11,7 @@ export const StoreBoard: React.FC = () => {
   const incomingCall = useIncomingCallStore((s) => s.incomingCall);
   const callViewState = useCallViewStore();
 
-  const env = (import.meta as any).env?.VITE_ENV ?? '';
-  if (env === 'production') return null;
+  if (properties.isProduction) return null;
 
   const [jsonTab, setJsonTab] = useState<'calls' | 'users' | 'timer' | 'incoming' | 'view-state' | 'full'>('calls');
   const [copied, setCopied] = useState(false);

@@ -9,6 +9,7 @@ class Properties {
     dailyDomain: string;
     dailyApiKey: string;
     isSimulation: boolean;
+    isProduction: boolean;
 
     private constructor() {
         const env = (import.meta as any).env ?? {};
@@ -20,6 +21,7 @@ class Properties {
         this.dailyDomain = env.VITE_DAILY_DOMAIN ?? 'meetcent';
         this.dailyApiKey = env.VITE_DAILY_API_KEY ?? '';
         this.isSimulation = env.VITE_ENV === 'simulation';
+        this.isProduction = env.VITE_ENV === 'production';
     }
 
     static getInstance(): Properties {

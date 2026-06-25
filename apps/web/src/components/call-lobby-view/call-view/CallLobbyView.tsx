@@ -21,24 +21,7 @@ export const CallLobbyView: React.FC = () => {
   useRebuildOnLeave();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
-  const selectedAttendant = selectedAttendantId ? users.find(u => u.id === selectedAttendantId) : null;
-  const draftCall: CallState | undefined = (selectedAttendantId && selectedAttendant && !call && currentUser)
-    ? {
-        id: `draft-call-${selectedAttendantId}`,
-        customerId: currentUser.id,
-        customerName: currentUser.name,
-        attendantId: selectedAttendantId,
-        attendantName: selectedAttendant.name,
-        roomName: '',
-        meetingId: '',
-        customerInCall: false,
-        attendantInCall: false,
-        wasAccepted: false,
-      }
-    : undefined;
-
-  const currentCall = call ?? draftCall;
+  const currentCall = call;
 
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -48,7 +31,7 @@ export const CallLobbyView: React.FC = () => {
   const fastBilling = false;
   const blockDurationSeconds = fastBilling ? 10 : 600;
 
-  const isCallActive = !!currentCall;
+  const isCallActive = !!call;
 
   // Elapsed timer
   useEffect(() => {

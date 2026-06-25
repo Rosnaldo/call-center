@@ -3,7 +3,7 @@ import { CallState } from '../../../states/call/state.ts';
 import { useBillingStore } from '../../../states/stores.ts';
 
 interface InfoCardProps {
-  currentCall?: CallState;
+  currentCall?: CallState | null;
   currentTokens: number;
   blockDurationSeconds: number;
   billingCountdown?: number;

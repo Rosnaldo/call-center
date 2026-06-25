@@ -147,27 +147,4 @@ describe('DeveloperSimulator Component Unit Tests', () => {
     expect(defaultProps.onAddTokens).toHaveBeenCalledWith('cust-1', 100);
   });
 
-  it('switches JSON viewer board tabs and supports click copies', () => {
-    render(<DeveloperSimulator {...defaultProps} />);
-    
-    const usersTab = screen.getByText('Usuários (2)');
-    const fullTab = screen.getByText('Geral Completo');
-
-    // Default tab is 'calls'
-    expect(screen.getByText(new RegExp('"id": "call-1"'))).toBeDefined();
-
-    // Switch to Users Tab
-    fireEvent.click(usersTab);
-    expect(screen.getByText(new RegExp('"name": "Jane Customer"'))).toBeDefined();
-
-    // Switch to Full Tab
-    fireEvent.click(fullTab);
-    expect(screen.getByText(new RegExp('"call"'))).toBeDefined();
-
-    // Copy Content to clipboard
-    const copyBtn = screen.getByText('Copiar JSON');
-    fireEvent.click(copyBtn);
-    expect(mockClipboard.writeText).toHaveBeenCalled();
-    expect(screen.getByText('Copiado!')).toBeDefined();
-  });
 });

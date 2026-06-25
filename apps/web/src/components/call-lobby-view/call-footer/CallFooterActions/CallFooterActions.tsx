@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { useCallStore, useCallViewStore, useCurrentUserStore, useOnlineUsersStore, useIncomingCallStore } from '../../../../states/stores.ts';
-import { CallState } from '@/src/states/call/state.ts';
+import { useCallStore, useCallViewStore, useCurrentUserStore, useIncomingCallStore } from '../../../../states/stores.ts';
 import { StartCallButton } from './StartCallButton.tsx';
 import { AcceptCallButton } from './AcceptCallButton.tsx';
 import { EndCallButton } from './EndCallButton.tsx';
@@ -16,27 +15,10 @@ export const CallFooterActions: React.FC = () => {
   const selectedAttendantId = useCallViewStore(s => s.selectedAttendantId);
   const viewState = useCallViewStore(s => s.viewState);
   const currentUser = useCurrentUserStore(s => s.currentUser);
-  const users = useOnlineUsersStore(s => s.users);
 
   const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
 
-  const selectedAttendant = selectedAttendantId ? users.find(u => u.id === selectedAttendantId) : null;
-  const draftCall: CallState | undefined = (selectedAttendantId && selectedAttendant && !call && currentUser)
-    ? {
-        id: `draft-call-${selectedAttendantId}`,
-        customerId: currentUser.id,
-        customerName: currentUser.name,
-        attendantId: selectedAttendantId,
-        attendantName: selectedAttendant.name,
-        roomName: '',
-        meetingId: '',
-        customerInCall: false,
-        attendantInCall: false,
-        wasAccepted: false,
-      }
-    : undefined;
-
-  const currentCall = call ?? draftCall;
+  const currentCall = call;
   const isReceiving = currentUser?.id === incomingCall?.attendantId;
 
   const handleStartCall = () => {

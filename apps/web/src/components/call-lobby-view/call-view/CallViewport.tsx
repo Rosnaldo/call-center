@@ -16,7 +16,7 @@ interface CallViewportProps {
   timerText?: string;
   attendantName?: string;
   queueCount?: number;
-  currentCall?: CallState;
+  currentCall?: CallState | null;
   isAttendant?: boolean;
 }
 
@@ -260,10 +260,12 @@ export const CallViewport: React.FC<CallViewportProps> = ({
     content = renderAwaitingClient(partnerName, partnerInitials, partinerAvatarUrl);
   } else if (state === CallViewState.Lobby) {
     content = attendant ? renderLobbyViewport(attendant) : renderNoneViewport();
-  } else if (isScreenSharing) {
+  } else if (state === CallViewState.InCall && isScreenSharing) {
     content = renderScreenSharingViewport();
-  } else {
+  } else if (state === CallViewState.InCall) {
     content = <ActiveVideoViewport partner={partner} />;
+  } else {
+    content = renderNoneViewport();
   }
 
   let topLeftBadge: React.ReactNode = null;
