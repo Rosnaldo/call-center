@@ -302,6 +302,7 @@
           "attributes": {}
         }
       ],
+      "realtime": [],
       "iam": [],
       "myadmin": [],
       "security-admin-console": [],
@@ -473,17 +474,14 @@
       "serviceAccountClientId": "iam",
       "disableableCredentialTypes": [],
       "requiredActions": [],
-       "realmRoles": [
-        "default-roles-poc"
-      ],
       "clientRoles": {
         "realm-management": [
           "manage-users",
-          "view-clients",
           "view-users"
         ]
       },
-      "notBefore": 0
+      "notBefore": 0,
+      "groups": []
     },
     {
       "id": "bf615c55-8a7e-4b05-a57b-b3c5760ef496",
@@ -495,7 +493,8 @@
       "serviceAccountClientId": "realtime",
       "disableableCredentialTypes": [],
       "requiredActions": [],
-      "notBefore": 0
+      "notBefore": 0,
+      "groups": []
     },
     {
       "id": "e2e-customer-0001",
@@ -801,7 +800,7 @@
         "request.object.encryption.enc": "any",
         "dpop.bound.access.tokens": "false",
         "id.token.as.detached.signature": "false",
-        "client.secret.creation.time": "1782407698",
+        "client.secret.creation.time": "1782420915",
         "request.object.encryption.alg": "any",
         "client.introspection.response.allow.jwt.claim.enabled": "false",
         "standard.token.exchange.enabled": "false",
@@ -906,8 +905,8 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "https://free-porn-block.local/myadmin/*",
         "http://localhost:5174/myadmin/*",
+        "https://free-porn-block.local/myadmin/*",
         "http://localhost:5174/myadmin"
       ],
       "webOrigins": [
@@ -1047,9 +1046,10 @@
       "attributes": {
         "realm_client": "false",
         "oidc.ciba.grant.enabled": "false",
-        "client.secret.creation.time": "1782407651",
+        "client.secret.creation.time": "1782420931",
         "backchannel.logout.session.required": "true",
         "standard.token.exchange.enabled": "false",
+        "post.logout.redirect.uris": "+",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
         "dpop.bound.access.tokens": "false"
@@ -1941,14 +1941,14 @@
         "subComponents": {},
         "config": {
           "allowed-protocol-mapper-types": [
-            "oidc-usermodel-attribute-mapper",
-            "oidc-full-name-mapper",
             "saml-user-property-mapper",
             "oidc-usermodel-property-mapper",
             "saml-role-list-mapper",
             "saml-user-attribute-mapper",
+            "oidc-full-name-mapper",
             "oidc-sha256-pairwise-sub-mapper",
-            "oidc-address-mapper"
+            "oidc-address-mapper",
+            "oidc-usermodel-attribute-mapper"
           ]
         }
       },
@@ -1975,14 +1975,14 @@
         "subComponents": {},
         "config": {
           "allowed-protocol-mapper-types": [
-            "saml-user-property-mapper",
-            "oidc-full-name-mapper",
-            "saml-user-attribute-mapper",
             "saml-role-list-mapper",
+            "saml-user-property-mapper",
+            "oidc-usermodel-property-mapper",
             "oidc-address-mapper",
             "oidc-sha256-pairwise-sub-mapper",
-            "oidc-usermodel-attribute-mapper",
-            "oidc-usermodel-property-mapper"
+            "oidc-full-name-mapper",
+            "saml-user-attribute-mapper",
+            "oidc-usermodel-attribute-mapper"
           ]
         }
       },

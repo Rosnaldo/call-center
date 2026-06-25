@@ -24,6 +24,13 @@
     "simulation": {
       "cache": false,
       "persistent": true
+    },
+    "cy:open": {
+      "cache": false,
+      "persistent": true
+    },
+    "cy:run": {
+      "cache": false
     }
   }
 }

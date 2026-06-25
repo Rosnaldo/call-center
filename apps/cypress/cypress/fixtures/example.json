@@ -1,0 +1,14 @@
+{
+  "customer": {
+    "email": "customer@e2e.test",
+    "password": "Test1234!",
+    "firstName": "Maria",
+    "lastName": "Cliente"
+  },
+  "attendant": {
+    "email": "attendant@e2e.test",
+    "password": "Test1234!",
+    "firstName": "João",
+    "lastName": "Atendente"
+  }
+}
