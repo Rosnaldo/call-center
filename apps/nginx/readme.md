@@ -45,3 +45,34 @@ The port 80 redirects http requests to https.
 The port 443 makes TLS handshake for encryption and validation.
 
 The private key remains stored on the private server. The private key is used to prove the server's identity.
+
+
+## IN Dev
+
+Install mkcert:  
+```
+sudo apt install libnss3-tools
+
+curl -JLO https://dl.filippo.io/mkcert/latest?for=linux/amd64
+chmod +x mkcert-v*-linux-amd64
+sudo mv mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+
+mkcert -install
+```
+
+generate certificate:  
+```
+mkcert free-porn-block.local
+```
+
+config nginx:
+
+```
+ssl_certificate     /etc/nginx/certs/free-porn-block.local.pem;
+ssl_certificate_key /etc/nginx/certs/free-porn-block.local-key.pem;
+```
+
+add to local host:  
+```
+127.0.0.1 free-porn-block.local
+```

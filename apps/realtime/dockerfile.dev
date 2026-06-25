@@ -7,7 +7,7 @@ WORKDIR /app
 FROM base AS prepare
 
 RUN npm install -g turbo
-COPY ./apps/dailyco/out ./out
+COPY ./apps/realtime/out ./out
 
 
 FROM base AS builder
@@ -28,4 +28,4 @@ COPY --from=builder /app .
 # RUN apt-get update && apt-get install -y tree
 # RUN tree -L 3
 
-CMD ["npm", "run", "dev", "--workspace", "apps/dailyco"]
+CMD ["npm", "run", "dev", "--workspace", "apps/realtime"]

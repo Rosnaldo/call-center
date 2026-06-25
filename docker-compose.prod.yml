@@ -19,7 +19,9 @@ services:
       - "443:443"
     depends_on:
       - iam
+      - realtime
       - mongo
+      - redis
       - keycloak
       - nginx-http
     volumes:
@@ -30,6 +32,18 @@ services:
     networks:
       - frontend
       - backend
+
+  certbot:
+    image: certbot/certbot:v1.4.0
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./volumes/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - nginx-http
+      - nginx-https
+    entrypoint: "/bin/sh -c 'certbot certonly --non-interactive --agree-tos -m $$ADMIN_EMAIL --webroot -w /var/www/certbot -d $$BASE_DOMAIN'"
+    env_file:
+      - ./apps/nginx/.env.prod
 
   iam:
     image: iam

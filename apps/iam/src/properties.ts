@@ -21,7 +21,7 @@ class Properties {
         this.nodeEnv = process.env.NODE_ENV || '';
         this.port = process.env.PORT || 5002;
         this.mongoUri = process.env.MONGO_URI || '';
-        this.redisUri = process.env.REDIS_URI || 'redis://localhost:6379';
+        this.redisUri = process.env.REDIS_URI || '';
         this.awsRegion = process.env.AWS_REGION;
         this.awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
         this.awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
@@ -32,7 +32,7 @@ class Properties {
         this.isRuntime = process.env.RUNTIME || '';
         this.s3Host = `https://${process.env.AWS_S3_BUCKET}.s3.sa-east-1.amazonaws.com`;
         this.cdnHost = process.env.CDN_HOST || 'cdnHost';
-        this.realtimeUri = process.env.REALTIME_URI || 'http://localhost:5003';
+        this.realtimeUri = process.env.REALTIME_URI || '';
     }
 
     static getInstance(): Properties {
