@@ -3,7 +3,7 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["cypress"],
+    "types": ["cypress", "node"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true

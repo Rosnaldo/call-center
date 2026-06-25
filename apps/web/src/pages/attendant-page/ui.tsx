@@ -6,6 +6,7 @@
 import React from 'react';
 import { Header } from '../../components/header/Header.tsx';
 import { DeveloperSimulator } from '../../components/developer-simulator/DeveloperSimulator.tsx';
+import { StoreBoard } from '../../components/store-board/StoreBoard.tsx';
 import { CallLobbyView } from '../../components/call-lobby-view/call-view/CallLobbyView.tsx';
 import { UserListsContainer } from '../../components/user-list/UserListsContainer.tsx';
 import { SectionHeader } from '../../components/SectionHeader.tsx';
@@ -90,6 +91,7 @@ export const AttendantPageUI: React.FC<AttendantPageUIProps> = ({
             onAddTokens={addTokensSimulation}
             onSimulateIncomingCall={simulateIncomingCall}
           />
+          <StoreBoard />
         </div>
       </main>
     </div>

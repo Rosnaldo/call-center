@@ -132,6 +132,7 @@ services:
       - backend
 
   mongo:
+    container_name: mongo
     image: mongo:8.0.14-noble
     pull_policy: always
     restart: no

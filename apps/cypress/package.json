@@ -8,7 +8,9 @@
     "test": "cypress run"
   },
   "devDependencies": {
+    "@types/node": "^26.0.1",
     "cypress": "^14.4.0",
+    "mongodb": "^7.3.0",
     "typescript": "5.9.2"
   }
 }
