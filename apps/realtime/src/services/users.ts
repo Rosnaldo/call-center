@@ -1,8 +1,9 @@
 import { IOnlineUser, IUser } from "@repo/shared-types";
 import { iamApi } from "src/apis/iam";
 
-export const userExists = async (email: string): Promise<IUser> => {
+export const userExists = async (email: string, token: string): Promise<IUser> => {
     const { data } = await iamApi.get<IUser>('/users/exists', {
+        headers: { Authorization: token },
         params: { email },
     });
     return data;

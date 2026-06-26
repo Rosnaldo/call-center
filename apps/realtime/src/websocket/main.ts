@@ -37,7 +37,7 @@ export function createWebSocketServer(server: Server): ISocketServer {
         }
 
         verifyToken(token)
-            .then((tokenUser) => userExists(tokenUser.email))
+            .then((tokenUser) => userExists(tokenUser.email, token))
             .then((fullUser: IUser) => {
                 wss.handleUpgrade(req, socket, head, (ws) => {
                     const transport = new WsTransport(ws);
