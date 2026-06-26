@@ -27,7 +27,7 @@ describe('Controller > IncomingCall > Accept', () => {
     it('accepts the incoming call and returns it', async () => {
         const incoming = buildIncomingCall();
         const redis = getRedisClient();
-        await redis.hset('incoming_calls', incoming.attendantId, JSON.stringify(incoming));
+        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
 
         const controller = new IncomingCallController();
         const mapped = controller.accept.mapper({ attendantId: incoming.attendantId, userId: incoming.attendantId });
@@ -42,13 +42,13 @@ describe('Controller > IncomingCall > Accept', () => {
     it('removes the incoming call from redis after accepting', async () => {
         const incoming = buildIncomingCall();
         const redis = getRedisClient();
-        await redis.hset('incoming_calls', incoming.attendantId, JSON.stringify(incoming));
+        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
 
         const controller = new IncomingCallController();
         const mapped = controller.accept.mapper({ attendantId: incoming.attendantId, userId: incoming.attendantId });
         await controller.accept.exec({ mapped });
 
-        const stored = await redis.hget('incoming_calls', incoming.attendantId);
+        const stored = await redis.get(`incoming_call:${incoming.attendantId}`);
         expect(stored).toBeNull();
     });
 
@@ -56,7 +56,7 @@ describe('Controller > IncomingCall > Accept', () => {
         const incoming = buildIncomingCall();
         const call = buildCallState({ customerId: incoming.customerId, attendantId: incoming.attendantId });
         const redis = getRedisClient();
-        await redis.hset('incoming_calls', incoming.attendantId, JSON.stringify(incoming));
+        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
         await redis.hset('calls', call.id, JSON.stringify(call));
 
         const controller = new IncomingCallController();
@@ -74,7 +74,7 @@ describe('Controller > IncomingCall > Accept', () => {
         const attendant = buildOnlineUser({ role: 'attendant' });
         const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
         const redis = getRedisClient();
-        await redis.hset('incoming_calls', incoming.attendantId, JSON.stringify(incoming));
+        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
         await redis.hset('online_users', customer.id, JSON.stringify(customer));
         await redis.hset('online_users', attendant.id, JSON.stringify(attendant));
 
@@ -91,7 +91,7 @@ describe('Controller > IncomingCall > Accept', () => {
         const attendant = buildOnlineUser({ role: 'attendant' });
         const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
         const redis = getRedisClient();
-        await redis.hset('incoming_calls', incoming.attendantId, JSON.stringify(incoming));
+        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
         await redis.hset('online_users', customer.id, JSON.stringify(customer));
         await redis.hset('online_users', attendant.id, JSON.stringify(attendant));
 
@@ -106,7 +106,7 @@ describe('Controller > IncomingCall > Accept', () => {
     it('notifies the realtime service', async () => {
         const incoming = buildIncomingCall();
         const redis = getRedisClient();
-        await redis.hset('incoming_calls', incoming.attendantId, JSON.stringify(incoming));
+        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
 
         const controller = new IncomingCallController();
         const mapped = controller.accept.mapper({ attendantId: incoming.attendantId, userId: incoming.attendantId });
@@ -130,7 +130,7 @@ describe('Controller > IncomingCall > Accept', () => {
     it('returns 400 when customer tries to accept', async () => {
         const incoming = buildIncomingCall();
         const redis = getRedisClient();
-        await redis.hset('incoming_calls', incoming.attendantId, JSON.stringify(incoming));
+        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
 
         const controller = new IncomingCallController();
         const mapped = controller.accept.mapper({ attendantId: incoming.attendantId, userId: incoming.customerId });
@@ -152,7 +152,7 @@ describe('Controller > IncomingCall > Accept', () => {
     it('returns isError false and status 200 on success', async () => {
         const incoming = buildIncomingCall();
         const redis = getRedisClient();
-        await redis.hset('incoming_calls', incoming.attendantId, JSON.stringify(incoming));
+        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
 
         const controller = new IncomingCallController();
         const mapped = controller.accept.mapper({ attendantId: incoming.attendantId, userId: incoming.attendantId });

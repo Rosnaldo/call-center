@@ -37,7 +37,7 @@ describe('Controller > IncomingCall > Send', () => {
         expect(either.data.calledBy).toBe(incoming.calledBy);
 
         const redis = getRedisClient();
-        const stored = await redis.hget('incoming_calls', incoming.attendantId);
+        const stored = await redis.get(`incoming_call:${incoming.attendantId}`);
         expect(stored).not.toBeNull();
         expect(JSON.parse(stored!).customerId).toBe(incoming.customerId);
     });
@@ -93,7 +93,7 @@ describe('Controller > IncomingCall > Send', () => {
     it('returns 400 when attendant already has an incoming call', async () => {
         const existing = buildIncomingCall();
         const redis = getRedisClient();
-        await redis.hset('incoming_calls', existing.attendantId, JSON.stringify(existing));
+        await redis.set(`incoming_call:${existing.attendantId}`, JSON.stringify(existing));
 
         const incoming = buildIncomingCall({ attendantId: existing.attendantId });
         const controller = new IncomingCallController();

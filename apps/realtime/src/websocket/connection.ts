@@ -1,5 +1,4 @@
 import { AuthenticatedWebSocket, WsClientMessage } from '#websocket/types';
-import { ISocketServer } from '#websocket/socket';
 import { IOnlineUser, mapUserToOnlineUser } from '@repo/shared-types';
 import { graceTimer } from '#websocket/grace_timer';
 import { createHeartbeat } from '#websocket/heartbeat';
@@ -9,15 +8,15 @@ import { handleClose } from '#websocket/handler/on_close';
 import { handlePong } from '#websocket/handler/on_pong';
 import { handleMessageHeartbeat } from '#websocket/handler/message/heartbeat';
 import { handleMessageLogout } from '#websocket/handler/message/logout';
-import { handleMessageIncomingCall } from '#websocket/handler/message/incoming_call';
-import { handleMessageCallCancelled } from '#websocket/handler/message/call_cancelled';
+import { clientRegistry } from '#websocket/client_registry';
 
-export const onConnection = (wss: ISocketServer) => (ws: AuthenticatedWebSocket): void => {
+export const onConnection = () => (ws: AuthenticatedWebSocket): void => {
     const token = ws.token;
     graceTimer.cancel(ws.user._id);
+    clientRegistry.add(ws);
 
     const user: IOnlineUser = mapUserToOnlineUser(ws.user);
-    const startGracePeriod = createGracePeriod(wss, user, token);
+    const startGracePeriod = createGracePeriod(user, token);
 
     const hb = createHeartbeat(ws, () => {
         ws.terminate();
@@ -35,19 +34,16 @@ export const onConnection = (wss: ISocketServer) => (ws: AuthenticatedWebSocket)
                 case 'user_logout':
                     handleMessageLogout(ws, hb, startGracePeriod);
                     break;
-                case 'incoming_call_sent':
-                    handleMessageIncomingCall(wss, msg.data);
-                    break;
-                case 'incoming_call_cancelled':
-                    handleMessageCallCancelled(wss, msg.data);
-                    break;
             }
         } catch {
             // malformed message — ignore
         }
     });
 
-    handleOpen(wss, user, token);
+    handleOpen(user, token);
 
-    ws.on('close', () => handleClose(hb, startGracePeriod));
+    ws.on('close', () => {
+        clientRegistry.remove(ws);
+        handleClose(hb, startGracePeriod);
+    });
 };

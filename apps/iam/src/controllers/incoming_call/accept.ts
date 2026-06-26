@@ -13,7 +13,7 @@ import { validateInput } from 'src/validations/incoming_call/accept';
 type IInput = IIncomingCallController['IAccept']['IInput'];
 type IOutput = IIncomingCallController['IAccept']['IOutput'];
 
-const INCOMING_CALL_KEY = 'incoming_calls';
+const INCOMING_CALL_PREFIX = 'incoming_call:';
 const CALLS_KEY = 'calls';
 const ONLINE_USERS_KEY = 'online_users';
 
@@ -38,7 +38,7 @@ export class Accept {
             const { attendantId, userId } = this.transform(props.mapped);
             const redis = getRedisClient();
 
-            const existing = await redis.hget(INCOMING_CALL_KEY, attendantId);
+            const existing = await redis.get(`${INCOMING_CALL_PREFIX}${attendantId}`);
             if (!existing) throw new BadRequestException('Incomingcall não existe');
 
             const incomingCall = JSON.parse(existing) as IncomingCallState;
@@ -56,7 +56,7 @@ export class Accept {
                 await redis.hset(CALLS_KEY, call.id, JSON.stringify({ ...call, customerInCall: true, attendantInCall: true, wasAccepted: true }));
             }
 
-            await redis.hdel(INCOMING_CALL_KEY, attendantId);
+            await redis.del(`${INCOMING_CALL_PREFIX}${attendantId}`);
 
             const customerJson = await redis.hget(ONLINE_USERS_KEY, incomingCall.customerId);
             if (customerJson) {

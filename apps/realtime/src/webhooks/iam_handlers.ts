@@ -1,8 +1,7 @@
-import { ISocketServer } from '#websocket/socket';
 import { sendToUser } from '#websocket/broadcast';
 import { SendIncomingCallPayload, CancelIncomingCallPayload, AcceptCallPayload } from './iam_types';
 
-export function onSendIncomingCall(wss: ISocketServer, payload: SendIncomingCallPayload): void {
+export function onSendIncomingCall(payload: SendIncomingCallPayload): void {
     console.log(`[IAM] incoming_call_sent customer=${payload.customerId} attendant=${payload.attendantId} calledBy=${payload.calledBy}`);
 
     const incomingCall = { customerId: payload.customerId, attendantId: payload.attendantId, calledBy: payload.calledBy };
@@ -10,40 +9,40 @@ export function onSendIncomingCall(wss: ISocketServer, payload: SendIncomingCall
     const callerId = payload.calledBy === 'customer' ? payload.customerId : payload.attendantId;
     const receiverId = payload.calledBy === 'customer' ? payload.attendantId : payload.customerId;
 
-    sendToUser(wss, callerId, {
+    sendToUser(callerId, {
         event: 'incoming_call_sent',
         data: { incomingCall },
     });
 
-    sendToUser(wss, receiverId, {
+    sendToUser(receiverId, {
         event: 'incoming_call_received',
         data: { incomingCall },
     });
 }
 
-export function onCancelIncomingCall(wss: ISocketServer, payload: CancelIncomingCallPayload): void {
+export function onCancelIncomingCall(payload: CancelIncomingCallPayload): void {
     console.log(`[IAM] cancel_incoming_call customer=${payload.customerId} attendant=${payload.attendantId}`);
 
-    sendToUser(wss, payload.customerId, {
+    sendToUser(payload.customerId, {
         event: 'incoming_call_cancelled',
         data: {},
     });
 
-    sendToUser(wss, payload.attendantId, {
+    sendToUser(payload.attendantId, {
         event: 'incoming_call_cancelled',
         data: {},
     });
 }
 
-export function onCallAccepted(wss: ISocketServer, payload: AcceptCallPayload): void {
+export function onCallAccepted(payload: AcceptCallPayload): void {
     console.log(`[IAM] call_accepted customer=${payload.customerId} attendant=${payload.attendantId}`);
 
-    sendToUser(wss, payload.customerId, {
+    sendToUser(payload.customerId, {
         event: 'call_accepted',
         data: { customerId: payload.customerId, attendantId: payload.attendantId },
     });
 
-    sendToUser(wss, payload.attendantId, {
+    sendToUser(payload.attendantId, {
         event: 'call_accepted',
         data: { customerId: payload.customerId, attendantId: payload.attendantId },
     });

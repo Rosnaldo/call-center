@@ -7,8 +7,9 @@ import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
 import { createMockUsers, ADMIN_TOKEN, CUSTOMER_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
-import { MockSocketServer, createWsClient } from './helpers/mock-wss';
+import { createWsClient } from './helpers/mock-wss';
 import { onConnection } from '../../realtime/src/websocket/connection';
+import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 
 import { createStores, Stores } from '../../web/src/states/stores';
 import { initWs } from '../../web/src/services/init-ws';
@@ -62,14 +63,12 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
     let iamRequest: IamAgent;
     let adminUser: IUser;
     let customerUser: IUser;
-    let wss: MockSocketServer;
     let customerStores: Stores;
     let adminStores: Stores;
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
-        wss = new MockSocketServer();
-        await startRealtimeServer(wss);
+        await startRealtimeServer();
         const users = await createMockUsers();
         adminUser = users.admin;
         customerUser = users.customer;
@@ -83,7 +82,7 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
     beforeEach(async () => {
         await getRedisClient().del('online_users');
 
-        wss.clear();
+        clientRegistry.clear();
         pendingCalls.length = 0;
         jest.clearAllMocks();
 
@@ -104,14 +103,14 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
         const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
-        wss.add(adminWs);
-        wss.add(customerWs);
+        clientRegistry.add(adminWs);
+        clientRegistry.add(customerWs);
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
         // ── admin connects ───────────────────────────────────────────────
-        onConnection(wss)(adminWs);
+        onConnection()(adminWs);
         await flushPendingCalls();
 
         // customer's store receives admin via broadcast
@@ -135,18 +134,18 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
         const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
-        wss.add(adminWs);
-        wss.add(customerWs);
+        clientRegistry.add(adminWs);
+        clientRegistry.add(customerWs);
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
         // ── admin connects ───────────────────────────────────────────────
-        onConnection(wss)(adminWs);
+        onConnection()(adminWs);
         await flushPendingCalls();
 
         // ── customer connects ────────────────────────────────────────────
-        onConnection(wss)(customerWs);
+        onConnection()(customerWs);
         await flushPendingCalls();
 
         // customer's store has both users as idle

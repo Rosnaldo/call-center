@@ -1,20 +1,20 @@
-import { ISocketServer, SOCKET_OPEN } from '#websocket/socket';
-import { AuthenticatedWebSocket, WsMessage } from '#websocket/types';
+import { SOCKET_OPEN } from '#websocket/socket';
+import { WsMessage } from '#websocket/types';
+import { clientRegistry } from '#websocket/client_registry';
 
-export const broadcastMessage = (wss: ISocketServer, payload: WsMessage<unknown>): void => {
+export const broadcastMessage = (payload: WsMessage<unknown>): void => {
     const message = JSON.stringify(payload);
-    for (const client of wss.clients) {
+    for (const client of clientRegistry) {
         if (client.readyState === SOCKET_OPEN) {
             client.send(message);
         }
     }
 };
 
-export const sendToUser = (wss: ISocketServer, userId: string, payload: WsMessage<unknown>): void => {
+export const sendToUser = (userId: string, payload: WsMessage<unknown>): void => {
     const message = JSON.stringify(payload);
-    for (const client of wss.clients) {
-        const authClient = client as unknown as AuthenticatedWebSocket;
-        if (authClient.user?._id === userId && client.readyState === SOCKET_OPEN) {
+    for (const client of clientRegistry) {
+        if (client.user?._id === userId && client.readyState === SOCKET_OPEN) {
             client.send(message);
         }
     }

@@ -1,19 +1,17 @@
 import { Properties } from '../../../realtime/src/properties';
 import { InitializeServices } from '../../../realtime/src/initialize_services';
 import { Properties as IamProperties } from '../../../iam/src/properties';
-import { ISocketServer } from '../../../realtime/src/websocket/socket';
 import iamWebhook from '../../../realtime/src/webhooks/iam';
 
 let realtimeServices: InitializeServices;
 
-export async function startRealtimeServer(wss: ISocketServer): Promise<InitializeServices> {
+export async function startRealtimeServer(): Promise<InitializeServices> {
     const properties = Properties.getInstance();
     realtimeServices = InitializeServices.getInstance(properties);
 
     await realtimeServices.start();
 
-    realtimeServices.wss = wss;
-    iamWebhook(realtimeServices.app, wss);
+    iamWebhook(realtimeServices.app);
 
     const port = realtimeServices.properties.port;
     IamProperties.override({ realtimeUri: `http://localhost:${port}` });

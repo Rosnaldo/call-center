@@ -7,9 +7,10 @@ import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
 import { createMockUsers, ADMIN_TOKEN, CUSTOMER_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
-import { MockSocketServer, createWsClient } from './helpers/mock-wss';
+import { createWsClient } from './helpers/mock-wss';
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { graceTimer } from '../../realtime/src/websocket/grace_timer';
+import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 
 import { createStores, Stores } from '../../web/src/states/stores';
 import { initWs } from '../../web/src/services/init-ws';
@@ -64,14 +65,12 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
     let iamRequest: IamAgent;
     let adminUser: IUser;
     let customerUser: IUser;
-    let wss: MockSocketServer;
     let customerStores: Stores;
     let adminStores: Stores;
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
-        wss = new MockSocketServer();
-        await startRealtimeServer(wss);
+        await startRealtimeServer();
         const users = await createMockUsers();
         adminUser = users.admin;
         customerUser = users.customer;
@@ -86,7 +85,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         jest.useFakeTimers();
         await getRedisClient().del('online_users');
 
-        wss.clear();
+        clientRegistry.clear();
         pendingCalls.length = 0;
         jest.clearAllMocks();
 
@@ -122,16 +121,16 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
-        wss.add(adminWs);
-        wss.add(customerWs);
+        clientRegistry.add(adminWs);
+        clientRegistry.add(customerWs);
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
-        onConnection(wss)(adminWs);
+        onConnection()(adminWs);
         await flushPendingCalls();
 
-        onConnection(wss)(customerWs);
+        onConnection()(customerWs);
         await flushPendingCalls();
 
         expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
@@ -161,16 +160,16 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
-        wss.add(adminWs);
-        wss.add(customerWs);
+        clientRegistry.add(adminWs);
+        clientRegistry.add(customerWs);
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
-        onConnection(wss)(adminWs);
+        onConnection()(adminWs);
         await flushPendingCalls();
 
-        onConnection(wss)(customerWs);
+        onConnection()(customerWs);
         await flushPendingCalls();
 
         // ── admin disconnects ────────────────────────────────────────────
@@ -207,16 +206,16 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
-        wss.add(adminWs);
-        wss.add(customerWs);
+        clientRegistry.add(adminWs);
+        clientRegistry.add(customerWs);
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
-        onConnection(wss)(adminWs);
+        onConnection()(adminWs);
         await flushPendingCalls();
 
-        onConnection(wss)(customerWs);
+        onConnection()(customerWs);
         await flushPendingCalls();
 
         // ── admin disconnects — status transitions to disconnecting ──────
@@ -231,12 +230,12 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
 
         // ── admin reconnects within grace period ─────────────────────────
         const { serverWs: adminWs2, webFactory: adminWebFactory2 } = createBridgedClient(adminUser, ADMIN_TOKEN);
-        wss.add(adminWs2);
+        clientRegistry.add(adminWs2);
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory2);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
-        onConnection(wss)(adminWs2);
+        onConnection()(adminWs2);
         await flushPendingCalls();
 
         // grace timer cancelled on reconnect

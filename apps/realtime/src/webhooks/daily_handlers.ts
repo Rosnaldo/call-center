@@ -1,4 +1,3 @@
-import { ISocketServer } from '#websocket/socket';
 import { sendToUser } from '#websocket/broadcast';
 import { findUserBySlug } from 'src/services/users';
 import { createCall, deleteCall, getCallByRoom, updateCall } from 'src/services/calls';
@@ -36,7 +35,7 @@ export function onMeetingEnded(payload: DailyMeetingPayload): void {
     // create call history + tokens charged
 }
 
-export async function onParticipantJoined(wss: ISocketServer, payload: DailyParticipantPayload): Promise<void> {
+export async function onParticipantJoined(payload: DailyParticipantPayload): Promise<void> {
     console.log(`[Daily] participant.joined room=${payload.room} user=${payload.user_name}`);
 
     const parsed = parseRoomName(payload.room);
@@ -69,18 +68,18 @@ export async function onParticipantJoined(wss: ISocketServer, payload: DailyPart
         call = await updateCall(call.id, isCustomer ? { customerInCall: true } : { attendantInCall: true });
     }
 
-    sendToUser(wss, customer._id, {
+    sendToUser(customer._id, {
         event: 'participant_joined',
         data: { call },
     });
 
-    sendToUser(wss, attendant._id, {
+    sendToUser(attendant._id, {
         event: 'participant_joined',
         data: { call },
     });
 }
 
-export async function onParticipantLeft(wss: ISocketServer, payload: DailyParticipantPayload): Promise<void> {
+export async function onParticipantLeft(payload: DailyParticipantPayload): Promise<void> {
     console.log(`[Daily] participant.left room=${payload.room} user=${payload.user_name}`);
 
     const parsed = parseRoomName(payload.room);
@@ -102,12 +101,12 @@ export async function onParticipantLeft(wss: ISocketServer, payload: DailyPartic
         }
     }
 
-    sendToUser(wss, customer._id, {
+    sendToUser(customer._id, {
         event: 'participant_left',
         data: { call },
     });
 
-    sendToUser(wss, attendant._id, {
+    sendToUser(attendant._id, {
         event: 'participant_left',
         data: { call },
     });

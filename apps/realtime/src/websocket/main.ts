@@ -54,7 +54,7 @@ export function createWebSocketServer(server: Server): ISocketServer {
             });
     });
 
-    wss.on('connection', onConnection(wss) as unknown as (ws: WebSocket) => void);
+    wss.on('connection', onConnection() as unknown as (ws: WebSocket) => void);
 
     return wss as unknown as ISocketServer;
 }

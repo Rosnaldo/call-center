@@ -9,7 +9,7 @@ import { validateInput, ICancelInput } from 'src/validations/incoming_call/cance
 import { IOnlineUser, CallState } from '@repo/shared-types';
 import { realtimeApi } from '#apis/realtime';
 
-const INCOMING_CALL_KEY = 'incoming_calls';
+const INCOMING_CALL_PREFIX = 'incoming_call:';
 const CALLS_KEY = 'calls';
 const ONLINE_USERS_KEY = 'online_users';
 
@@ -34,7 +34,7 @@ export class Cancel {
             const { customerId, attendantId } = this.transform(props.mapped);
             const redis = getRedisClient();
 
-            await redis.hdel(INCOMING_CALL_KEY, attendantId);
+            await redis.del(`${INCOMING_CALL_PREFIX}${attendantId}`);
 
             const allCalls = await redis.hvals(CALLS_KEY);
             const call = allCalls

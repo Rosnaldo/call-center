@@ -10,10 +10,11 @@ import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
-import { MockSocketServer, createWsClient } from './helpers/mock-wss';
+import { createWsClient } from './helpers/mock-wss';
 import { DailyCoService } from './helpers/daily-service';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
+import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 
 import { createStores, Stores } from '../../web/src/states/stores';
 import { InitWs } from '../../web/src/services/init-ws';
@@ -71,14 +72,12 @@ describe('Incoming Call Flow', () => {
     let customerUser: IUser;
     let attendantUser: IUser;
 
-    let wss: MockSocketServer;
     let customerStores: Stores;
     let attendantStores: Stores;
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
-        wss = new MockSocketServer();
-        await startRealtimeServer(wss);
+        await startRealtimeServer();
         const users = await createMockUsers();
         customerUser = { ...users.customer, tokens: 10 };
         attendantUser = users.attendant;
@@ -92,7 +91,7 @@ describe('Incoming Call Flow', () => {
     beforeEach(async () => {
         await getRedisClient().del('online_users');
 
-        wss.clear();
+        clientRegistry.clear();
         pendingCalls.length = 0;
         jest.clearAllMocks();
         DailyCoService.reset();
@@ -119,8 +118,8 @@ describe('Incoming Call Flow', () => {
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         const { serverWs: attendantWs, webFactory: attendantWebFactory } = createBridgedClient(attendantUser, ATTENDANT_TOKEN);
 
-        wss.add(customerWs);
-        wss.add(attendantWs);
+        clientRegistry.add(customerWs);
+        clientRegistry.add(attendantWs);
 
         const customerInitWs = new InitWs();
         const attendantInitWs = new InitWs();
@@ -135,10 +134,10 @@ describe('Incoming Call Flow', () => {
         attendantInitWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
         // ── both users connect and become idle ──────────────────────────
-        onConnection(wss)(customerWs);
+        onConnection()(customerWs);
         await flushPendingCalls();
 
-        onConnection(wss)(attendantWs);
+        onConnection()(attendantWs);
         await flushPendingCalls();
 
         expect(customerStores.onlineUsers.getState().users).toHaveLength(2);

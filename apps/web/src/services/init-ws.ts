@@ -79,6 +79,9 @@ export class InitWs {
                 const { updateJoinedView, updateLeftView } = this.stores!.call.getState();
                 const { upsertUser, removeUser } = this.stores!.onlineUsers.getState();
                 const { incomingCallCancelled, incomingCallSent, incomingCallReceived, incomingCallAccepted } = this.stores!.incomingCall.getState();
+                const data = 'data' in msg ? msg.data : undefined;
+
+                console.log('ws: ', msg.event, data);
                 switch (msg.event) {
                     case 'online_users_updated':
                         upsertUser(msg.data);

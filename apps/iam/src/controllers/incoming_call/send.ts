@@ -13,7 +13,7 @@ import { realtimeApi } from '#apis/realtime';
 type IInput = IIncomingCallController['ISend']['IInput'];
 type IOutput = IIncomingCallController['ISend']['IOutput'];
 
-const INCOMING_CALL_KEY = 'incoming_calls';
+const INCOMING_CALL_PREFIX = 'incoming_call:';
 const ONLINE_USERS_KEY = 'online_users';
 
 interface Props {
@@ -37,7 +37,7 @@ export class Send {
             const params = this.transform(props.mapped);
             const redis = getRedisClient();
 
-            const existing = await redis.hget(INCOMING_CALL_KEY, params.attendantId);
+            const existing = await redis.get(`${INCOMING_CALL_PREFIX}${params.attendantId}`);
 
             if (existing) {
                 const attendantJson = await redis.hget(ONLINE_USERS_KEY, params.attendantId);
@@ -47,7 +47,7 @@ export class Send {
                 throw new BadRequestException(`Atendente ${attendantName} já está em ligação.`);
             }
 
-            await redis.hset(INCOMING_CALL_KEY, params.attendantId, JSON.stringify(params));
+            await redis.set(`${INCOMING_CALL_PREFIX}${params.attendantId}`, JSON.stringify(params), 'EX', 60);
 
             const customerJson = await redis.hget(ONLINE_USERS_KEY, params.customerId);
             if (customerJson) {
@@ -64,7 +64,7 @@ export class Send {
             realtimeApi.post('/webhooks/iam', {
                 event: 'incoming_call_sent',
                 payload: { customerId: params.customerId, attendantId: params.attendantId, calledBy: params.calledBy },
-            }).catch((err) => console.error('[Realtime] send_incoming_call failed:', err));
+            }).catch((err) => console.error('[Realtime] incoming_call_sent failed:', err));
 
             return successData(params);
         } catch (error: unknown) {

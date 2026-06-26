@@ -27,14 +27,14 @@ describe('Controller > IncomingCall > Cancel', () => {
     it('removes the incoming call from redis', async () => {
         const incoming = buildIncomingCall();
         const redis = getRedisClient();
-        await redis.hset('incoming_calls', incoming.attendantId, JSON.stringify(incoming));
+        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
 
         const controller = new IncomingCallController();
         const mapped = controller.cancel.mapper({ customerId: incoming.customerId, attendantId: incoming.attendantId });
         const either = await controller.cancel.exec({ mapped });
 
         expect(isSuccess(either)).toBe(true);
-        const stored = await redis.hget('incoming_calls', incoming.attendantId);
+        const stored = await redis.get(`incoming_call:${incoming.attendantId}`);
         expect(stored).toBeNull();
     });
 
@@ -42,7 +42,7 @@ describe('Controller > IncomingCall > Cancel', () => {
         const incoming = buildIncomingCall();
         const call = buildCallState({ customerId: incoming.customerId, attendantId: incoming.attendantId });
         const redis = getRedisClient();
-        await redis.hset('incoming_calls', incoming.attendantId, JSON.stringify(incoming));
+        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
         await redis.hset('calls', call.id, JSON.stringify(call));
 
         const controller = new IncomingCallController();
@@ -57,7 +57,7 @@ describe('Controller > IncomingCall > Cancel', () => {
         const incoming = buildIncomingCall();
         const unrelatedCall = buildCallState();
         const redis = getRedisClient();
-        await redis.hset('incoming_calls', incoming.attendantId, JSON.stringify(incoming));
+        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
         await redis.hset('calls', unrelatedCall.id, JSON.stringify(unrelatedCall));
 
         const controller = new IncomingCallController();
@@ -73,7 +73,7 @@ describe('Controller > IncomingCall > Cancel', () => {
         const attendant = buildOnlineUser({ role: 'attendant', status: 'occupied' });
         const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
         const redis = getRedisClient();
-        await redis.hset('incoming_calls', incoming.attendantId, JSON.stringify(incoming));
+        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
         await redis.hset('online_users', customer.id, JSON.stringify(customer));
         await redis.hset('online_users', attendant.id, JSON.stringify(attendant));
 
@@ -90,7 +90,7 @@ describe('Controller > IncomingCall > Cancel', () => {
         const attendant = buildOnlineUser({ role: 'attendant', status: 'occupied' });
         const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
         const redis = getRedisClient();
-        await redis.hset('incoming_calls', incoming.attendantId, JSON.stringify(incoming));
+        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
         await redis.hset('online_users', customer.id, JSON.stringify(customer));
         await redis.hset('online_users', attendant.id, JSON.stringify(attendant));
 
@@ -105,7 +105,7 @@ describe('Controller > IncomingCall > Cancel', () => {
     it('notifies the realtime service', async () => {
         const incoming = buildIncomingCall();
         const redis = getRedisClient();
-        await redis.hset('incoming_calls', incoming.attendantId, JSON.stringify(incoming));
+        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
 
         const controller = new IncomingCallController();
         const mapped = controller.cancel.mapper({ customerId: incoming.customerId, attendantId: incoming.attendantId });

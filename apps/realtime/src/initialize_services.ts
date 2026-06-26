@@ -2,7 +2,6 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import { Properties } from './properties';
-import { ISocketServer } from './websocket/socket';
 
 class InitializeServices {
     private static instance: InitializeServices;
@@ -10,8 +9,6 @@ class InitializeServices {
     app = express();
     server: http.Server | null = null;
     properties: Properties;
-    wss: ISocketServer | null = null;
-
     private constructor(properties: Properties) {
         this.properties = properties;
     }
@@ -41,12 +38,11 @@ class InitializeServices {
         this.app.use(express.urlencoded({ extended: false }));
     }
 
-    setupWebhooks(wss: ISocketServer): void {
-        this.wss = wss;
+    setupWebhooks(): void {
         const dailyWebhook = require('./webhooks/daily').default;
         const iamWebhook = require('./webhooks/iam').default;
-        dailyWebhook(this.app, wss);
-        iamWebhook(this.app, wss);
+        dailyWebhook(this.app);
+        iamWebhook(this.app);
     }
 
     async start(): Promise<void> {
@@ -70,8 +66,8 @@ class InitializeServices {
             if (this.properties.nodeEnv === 'test') return;
 
             const { createWebSocketServer } = await import('./websocket/main');
-            const wss = createWebSocketServer(this.server);
-            this.setupWebhooks(wss);
+            createWebSocketServer(this.server);
+            this.setupWebhooks();
             console.log('[WS] WebSocket server attached');
 
             const gracefulShutdown = async () => {
