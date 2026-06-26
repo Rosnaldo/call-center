@@ -89,10 +89,10 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
         customerStores = createStores();
         adminStores = createStores();
 
-        addToIamMock.mockImplementation((user: IOnlineUser, token: string) => {
+        addToIamMock.mockImplementation((user: IOnlineUser) => {
             const op = iamRequest
                 .post('/online-users/add')
-                .set('Authorization', token)
+                .set('Authorization', CUSTOMER_TOKEN)
                 .send(user);
             pendingCalls.push(op);
             return op;

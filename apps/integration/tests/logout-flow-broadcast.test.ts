@@ -92,19 +92,19 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         customerStores = createStores();
         adminStores = createStores();
 
-        addToIamMock.mockImplementation((user: IOnlineUser, token: string) => {
+        addToIamMock.mockImplementation((user: IOnlineUser) => {
             const op = iamRequest
                 .post('/online-users/add')
-                .set('Authorization', token)
+                .set('Authorization', CUSTOMER_TOKEN)
                 .send(user);
             pendingCalls.push(op);
             return op;
         });
 
-        removeFromIamMock.mockImplementation((userId: string, token: string) => {
+        removeFromIamMock.mockImplementation((userId: string) => {
             const op = iamRequest
                 .delete('/online-users/remove')
-                .set('Authorization', token)
+                .set('Authorization', CUSTOMER_TOKEN)
                 .send({ id: userId });
             pendingCalls.push(op);
             return op;

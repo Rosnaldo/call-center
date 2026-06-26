@@ -60,8 +60,7 @@ export async function defaultValidateToken(token: string): Promise<JwtPayload> {
 
 export const GetKeycloakUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const authSession = require('#auth/session').default;
-        const token = req.headers.authorization || authSession.token || '';
+        const token = req.headers.authorization || '';
         const result = await defaultValidateToken(token);
 
         req.userKc = {

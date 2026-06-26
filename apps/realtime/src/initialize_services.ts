@@ -2,6 +2,7 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import { Properties } from './properties';
+import { buildKcMain } from './keycloak/singleton';
 
 class InitializeServices {
     private static instance: InitializeServices;
@@ -49,6 +50,8 @@ class InitializeServices {
         let isShuttingDown = false;
 
         try {
+            await buildKcMain();
+
             this.setupMiddleware();
 
             const port = this.properties.nodeEnv === 'test' ? 0 : Number(this.properties.port);

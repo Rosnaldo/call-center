@@ -1,5 +1,5 @@
 import { IncomingCallState } from '@repo/shared-types';
-import { useIncomingCallStore, useCallViewStore, useOnlineUsersStore } from '../stores.ts';
+import { useIncomingCallStore, useCallViewStore, useOnlineUsersStore, useCurrentUserStore } from '../stores.ts';
 import { CallState } from './state.ts';
 import type { IDailyService } from '../../services/daily.ts';
 import { fetchOnlineUsers } from '@/src/services/online-users.ts';
@@ -45,10 +45,13 @@ export const createCallActions = (
         const attendant = updatedUsers.find(u => u.id === incomingCall.attendantId);
         if (!customer || !attendant) return;
 
+        const currentUser = useCurrentUserStore((s) => s.currentUser);
+        if (!currentUser) return;
+
         dailyService.join({
           room: `${customer.slug}--${attendant.slug}`,
-          userName: attendant.name,
-          userData: { id: attendant.id, role: attendant.role },
+          userName: currentUser.name,
+          userData: { id: currentUser.id, role: currentUser.role },
         });
       } catch (error) {
         handleRequestError(error);

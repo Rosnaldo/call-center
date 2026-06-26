@@ -11,12 +11,11 @@ import { handleMessageLogout } from '#websocket/handler/message/logout';
 import { clientRegistry } from '#websocket/client_registry';
 
 export const onConnection = () => (ws: AuthenticatedWebSocket): void => {
-    const token = ws.token;
     graceTimer.cancel(ws.user._id);
     clientRegistry.add(ws);
 
     const user: IOnlineUser = mapUserToOnlineUser(ws.user);
-    const startGracePeriod = createGracePeriod(user, token);
+    const startGracePeriod = createGracePeriod(user);
 
     const hb = createHeartbeat(ws, () => {
         ws.terminate();
@@ -40,7 +39,7 @@ export const onConnection = () => (ws: AuthenticatedWebSocket): void => {
         }
     });
 
-    handleOpen(user, token);
+    handleOpen(user);
 
     ws.on('close', () => {
         clientRegistry.remove(ws);

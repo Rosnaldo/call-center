@@ -1,6 +1,6 @@
 import properties from '#properties';
 import axios from 'axios';
-import { getServiceToken } from './service_token';
+import { getKcMain } from '../keycloak/singleton';
 
 export const iamApi = axios.create({
     baseURL: properties.iamUri,
@@ -8,7 +8,8 @@ export const iamApi = axios.create({
 
 iamApi.interceptors.request.use(async (config) => {
     if (!config.headers.Authorization) {
-        config.headers.Authorization = await getServiceToken();
+        const kc = await getKcMain().getKcClientCredentials();
+        config.headers.Authorization = `Bearer ${kc.accessToken}`;
     }
     return config;
 });

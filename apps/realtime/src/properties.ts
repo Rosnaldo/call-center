@@ -17,7 +17,7 @@ class Properties {
         this.keycloakUri = process.env.KEYCLOAK_URI || '';
         this.keycloakClientId = process.env.KEYCLOAK_CLIENT_ID || '';
         this.keycloakClientSecret = process.env.KEYCLOAK_CLIENT_SECRET || '';
-        this.iamUri = process.env.IAM_URI || 'http://localhost:5002';
+        this.iamUri = process.env.IAM_URI || '';
         this.corsOrigins = (process.env.CORS_ORIGINS || '').split(',').filter(Boolean);
     }
 

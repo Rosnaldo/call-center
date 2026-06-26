@@ -11,6 +11,8 @@ export default (app: Application) => {
     app.post('/webhooks/daily', (req: Request, res: Response) => {
         const body = req.body as DailyWebhookBody;
 
+        console.log('/webhooks/daily: ', body.event)
+
         switch (body.event) {
             case 'meeting.started':
                 onMeetingStarted(body.payload);

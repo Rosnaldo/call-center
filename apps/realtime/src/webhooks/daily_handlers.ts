@@ -17,6 +17,10 @@ export async function onMeetingStarted(payload: DailyMeetingPayload): Promise<vo
         ]);
         if (!customer || !attendant) return;
 
+        console.log('[Daily]  meeting.customer: ', customer)
+        console.log('[Daily]  meeting.attendant: ', attendant)
+        console.log('[Daily]  meeting.payload: ', payload)
+
         await createCall({
             id: `${customer._id}--${attendant._id}`,
             customerId: customer._id,
