@@ -36,13 +36,11 @@ export class Cancel {
 
             await redis.del(`${INCOMING_CALL_PREFIX}${attendantId}`);
 
-            const allCalls = await redis.hvals(CALLS_KEY);
-            const call = allCalls
-                .map((v) => JSON.parse(v) as CallState)
-                .find((c) => c.customerId === customerId && c.attendantId === attendantId);
+            const callKey = `${CALLS_KEY}:${customerId}--${attendantId}`;
+            const existingCall = await redis.get(callKey);
 
-            if (call) {
-                await redis.hdel(CALLS_KEY, call.id);
+            if (existingCall) {
+                await redis.del(callKey);
             }
 
             const customerJson = await redis.hget(ONLINE_USERS_KEY, customerId);

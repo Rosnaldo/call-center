@@ -47,8 +47,8 @@ export class Accept {
                 throw new BadRequestException('Customer não deve atender ligação');
             }
 
-            const callKey = `${incomingCall.customerId}--${incomingCall.attendantId}`;
-            const existingCall = await redis.hget(CALLS_KEY, callKey);
+            const callKey = `${CALLS_KEY}:${incomingCall.customerId}--${incomingCall.attendantId}`;
+            const existingCall = await redis.get(callKey);
 
             const customerJson = await redis.hget(ONLINE_USERS_KEY, incomingCall.customerId);
             const attendantJson = await redis.hget(ONLINE_USERS_KEY, incomingCall.attendantId);
@@ -59,10 +59,10 @@ export class Accept {
 
             if (existingCall) {
                 const call = JSON.parse(existingCall) as CallState;
-                await redis.hset(CALLS_KEY, callKey, JSON.stringify({ ...call, customerInCall: true, attendantInCall: true, wasAccepted: true }));
+                await redis.set(callKey, JSON.stringify({ ...call, customerInCall: true, attendantInCall: true, wasAccepted: true }));
             } else {
                 const newCall: CallState = {
-                    id: callKey,
+                    id: `${incomingCall.customerId}--${incomingCall.attendantId}`,
                     customerId: incomingCall.customerId,
                     customerName,
                     attendantId: incomingCall.attendantId,
@@ -73,7 +73,7 @@ export class Accept {
                     attendantInCall: true,
                     wasAccepted: true,
                 };
-                await redis.hset(CALLS_KEY, callKey, JSON.stringify(newCall));
+                await redis.set(callKey, JSON.stringify(newCall));
             }
 
             await redis.del(`${INCOMING_CALL_PREFIX}${attendantId}`);
