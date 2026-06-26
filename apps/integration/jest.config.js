@@ -56,6 +56,9 @@ module.exports = {
         '^#mongoose_bootstrap$': '<rootDir>/../iam/src/mongoose_bootstrap',
         '^#redis_bootstrap$': '<rootDir>/../iam/src/redis_bootstrap',
 
+        // web component stubs (not available in Node test env)
+        '.*/components/toast$': '<rootDir>/src/mocks/toast.ts',
+
         // web path aliases
         '^@/(.*)$': '<rootDir>/../web/$1',
 

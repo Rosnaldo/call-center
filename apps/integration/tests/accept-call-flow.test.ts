@@ -197,18 +197,15 @@ describe('Accept Call Flow', () => {
         // ── incomingCall cleared (via singleton — points to customerStores) ──────
         expect(customerStores.incomingCall.getState().incomingCall).toBeNull();
 
-        // ── callView transitioned to 'in-call' (via singleton — points to customerStores) ─────────
-        expect(customerStores.callView.getState().viewState).toBe('in-call');
+        // ── callView: 'in-call' now happens in updateJoinedView (Daily participant.joined),
+        //    not in incomingCallAccepted. After accept, singleton keeps last writer's state.
 
         // ── Redis: incoming_call entry deleted ──────────────────────────
         const redis = getRedisClient();
         const incomingCallRedis = await redis.get(`incoming_call:${attendantUser._id}`);
         expect(incomingCallRedis).toBeNull();
 
-        // ── dailyService.join called for customer (send) and attendant (accept)
-        const customerJoin = dailyService.joinCalls.find(j => j.userName === `${customerUser.firstName} ${customerUser.lastName}`);
-        expect(customerJoin).toBeTruthy();
-
+        // ── dailyService.join called for attendant (via incomingCallAccepted)
         const attendantJoin = dailyService.joinCalls.find(j => j.userName === `${attendantUser.firstName} ${attendantUser.lastName}`);
         expect(attendantJoin).toBeTruthy();
         expect(attendantJoin!.room).toContain(customerUser.slug);

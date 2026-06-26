@@ -7,7 +7,7 @@ import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { IIncomingCallController } from './params';
 import { IncomingCallState, CallState, IOnlineUser } from '@repo/shared-types';
-import { realtimeApi } from '#apis/realtime';
+import { notifyCallAccepted } from 'src/services/realtime';
 import { validateInput } from 'src/validations/incoming_call/accept';
 
 type IInput = IIncomingCallController['IAccept']['IInput'];
@@ -88,10 +88,7 @@ export class Accept {
                 await redis.hset(ONLINE_USERS_KEY, attendant.id, JSON.stringify({ ...attendant, status: 'in-call' }));
             }
 
-            realtimeApi.post('/webhooks/iam', {
-                event: 'call_accepted',
-                payload: { customerId: incomingCall.customerId, attendantId: incomingCall.attendantId, calledBy: incomingCall.calledBy, incomingCall },
-            }).catch((err) => console.error('[Realtime] accept failed:', err));
+            notifyCallAccepted(incomingCall.customerId, incomingCall.attendantId, incomingCall.calledBy, incomingCall).catch(() => {});
 
             return successData(incomingCall);
         } catch (error: unknown) {

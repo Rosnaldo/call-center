@@ -8,7 +8,7 @@ import { mapString } from '#utils/mapper/string';
 import { validateInput } from 'src/validations/incoming_call/send';
 import { IIncomingCallController } from './params';
 import { IOnlineUser } from '@repo/shared-types';
-import { realtimeApi } from '#apis/realtime';
+import { notifyIncomingCallSent } from 'src/services/realtime';
 
 type IInput = IIncomingCallController['ISend']['IInput'];
 type IOutput = IIncomingCallController['ISend']['IOutput'];
@@ -61,10 +61,7 @@ export class Send {
                 await redis.hset(ONLINE_USERS_KEY, attendant.id, JSON.stringify({ ...attendant, status: 'occupied' }));
             }
 
-            realtimeApi.post('/webhooks/iam', {
-                event: 'incoming_call_sent',
-                payload: { customerId: params.customerId, attendantId: params.attendantId, calledBy: params.calledBy },
-            }).catch((err) => console.error('[Realtime] incoming_call_sent failed:', err));
+            notifyIncomingCallSent(params.customerId, params.attendantId, params.calledBy).catch(() => {});
 
             return successData(params);
         } catch (error: unknown) {

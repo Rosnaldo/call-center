@@ -7,7 +7,7 @@ import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { validateInput, ICancelInput } from 'src/validations/incoming_call/cancel';
 import { IOnlineUser, CallState } from '@repo/shared-types';
-import { realtimeApi } from '#apis/realtime';
+import { notifyIncomingCallCancelled } from 'src/services/realtime';
 
 const INCOMING_CALL_PREFIX = 'incoming_call:';
 const CALLS_KEY = 'calls';
@@ -57,10 +57,7 @@ export class Cancel {
                 await redis.hset(ONLINE_USERS_KEY, attendant.id, JSON.stringify({ ...attendant, status: 'idle' }));
             }
 
-            realtimeApi.post('/webhooks/iam', {
-                event: 'incoming_call_cancelled',
-                payload: { customerId, attendantId },
-            }).catch((err) => console.error('[Realtime] cancel_incoming_call failed:', err));
+            notifyIncomingCallCancelled(customerId, attendantId).catch(() => {});
 
             return successData({});
         } catch (error: unknown) {

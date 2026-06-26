@@ -1,8 +1,7 @@
 import { IncomingCallState } from '@repo/shared-types';
 import { IncomingCallStore } from './state.ts';
 import { useOnlineUsersStore, useCallViewStore } from '../stores.ts';
-import type { IDailyService } from '@/src/services/daily.ts';
-import { apiBack } from '@/src/api/backend.ts';
+import { sendIncomingCall as sendIncomingCallService, cancelIncomingCall as cancelIncomingCallService } from '@/src/services/incoming-calls.ts';
 import { fetchOnlineUsers } from '@/src/services/online-users.ts';
 import {
   simulateSendIncomingCall,
@@ -10,6 +9,7 @@ import {
   simulateIncomingCall,
   simulateIncomingCallAsCustomer,
 } from './simulation.ts';
+import { handleRequestError } from '@/src/utils/utils.ts';
 import properties from '../../properties';
 
 const { isSimulation } = properties;
@@ -29,7 +29,6 @@ export interface IncomingCallActions {
 export const createIncomingCallActions = (
   set: (arg: Partial<IncomingCallStore> | ((state: IncomingCallStore) => Partial<IncomingCallStore>)) => void,
   get: () => IncomingCallStore,
-  dailyService: IDailyService,
 ): IncomingCallActions => ({
   cancel: () => set({ incomingCall: null }),
 
@@ -46,8 +45,8 @@ export const createIncomingCallActions = (
     useCallViewStore.getState().setViewState('none');
     useCallViewStore.getState().setSelectedAttendantId(null);
 
-    apiBack.post('/incoming-calls/cancel', { customerId: incomingCall.customerId, attendantId: incomingCall.attendantId })
-      .catch((err) => console.error('[IAM] cancel incoming call failed:', err));
+    cancelIncomingCallService(incomingCall.customerId, incomingCall.attendantId)
+      .catch((error) => handleRequestError(error));
   },
 
   sendIncomingCall: (customerId, attendantId) => {
@@ -66,14 +65,8 @@ export const createIncomingCallActions = (
     if ((customer.tokens ?? 0) <= 0) return;
     if (attendant.status !== 'idle') return;
 
-    apiBack.post('/incoming-calls/send', { customerId, attendantId, whoIsCalling: 'customer' })
-      .catch((err) => console.error('[IAM] send incoming call failed:', err));
-
-    dailyService.join({
-      room: `${customer.slug}--${attendant.slug}`,
-      userName: customer.name,
-      userData: { id: customer.id, role: customer.role },
-    });
+    sendIncomingCallService(customerId, attendantId)
+      .catch((error) => handleRequestError(error));
   },
 
   simulateIncomingCall: (attendantId) => {
@@ -90,20 +83,32 @@ export const createIncomingCallActions = (
   incomingCallSent: async (incomingCall: IncomingCallState) => {
     set({ incomingCall });
     useCallViewStore.getState().setViewState('awaiting-answer');
-    const users = await fetchOnlineUsers();
-    useOnlineUsersStore.setState({ users });
+    try {
+      const users = await fetchOnlineUsers();
+      useOnlineUsersStore.setState({ users });
+    } catch (error) {
+      handleRequestError(error);
+    }
   },
   incomingCallReceived: async (incomingCall: IncomingCallState) => {
     set({ incomingCall });
     useCallViewStore.getState().setViewState('awaiting-to-answer');
-    const users = await fetchOnlineUsers();
-    useOnlineUsersStore.setState({ users });
+    try {
+      const users = await fetchOnlineUsers();
+      useOnlineUsersStore.setState({ users });
+    } catch (error) {
+      handleRequestError(error);
+    }
   },
   incomingCallCancelled: async () => {
     set({ incomingCall: null });
     useCallViewStore.getState().setViewState('none');
     useCallViewStore.getState().setSelectedAttendantId(null);
-    const users = await fetchOnlineUsers();
-    useOnlineUsersStore.setState({ users });
+    try {
+      const users = await fetchOnlineUsers();
+      useOnlineUsersStore.setState({ users });
+    } catch (error) {
+      handleRequestError(error);
+    }
   },
 });

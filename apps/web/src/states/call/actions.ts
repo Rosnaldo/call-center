@@ -4,7 +4,8 @@ import { CallState } from './state.ts';
 import type { IDailyService } from '../../services/daily.ts';
 import { fetchOnlineUsers } from '@/src/services/online-users.ts';
 import { fetchCall } from '@/src/services/calls.ts';
-import { apiBack } from '@/src/api/backend.ts';
+import { acceptIncomingCall as acceptIncomingCallService } from '@/src/services/incoming-calls.ts';
+import { handleRequestError } from '@/src/utils/utils.ts';
 import {
   simulateAcceptIncomingCall,
   simulateCompleteCall,
@@ -32,13 +33,26 @@ export const createCallActions = (
   return {
     incomingCallAccepted: async (incomingCall: IncomingCallState) => {
       useIncomingCallStore.setState({ incomingCall: null });
-      useCallViewStore.getState().setViewState('in-call');
 
-      const call = await fetchCall(incomingCall.customerId, incomingCall.attendantId);
-      set(() => ({ call }));
+      try {
+        const call = await fetchCall(incomingCall.customerId, incomingCall.attendantId);
+        set(() => ({ call }));
 
-      const updatedUsers = await fetchOnlineUsers();
-      useOnlineUsersStore.setState({ users: updatedUsers });
+        const updatedUsers = await fetchOnlineUsers();
+        useOnlineUsersStore.setState({ users: updatedUsers });
+
+        const customer = updatedUsers.find(u => u.id === incomingCall.customerId);
+        const attendant = updatedUsers.find(u => u.id === incomingCall.attendantId);
+        if (!customer || !attendant) return;
+
+        dailyService.join({
+          room: `${customer.slug}--${attendant.slug}`,
+          userName: attendant.name,
+          userData: { id: attendant.id, role: attendant.role },
+        });
+      } catch (error) {
+        handleRequestError(error);
+      }
     },
 
     acceptIncomingCall: async () => {
@@ -56,22 +70,11 @@ export const createCallActions = (
       if (!customer || !attendant) return;
 
       try {
-        await apiBack.post('/incoming-calls/accept', {
-          attendantId: attendant.id,
-          userId: attendant.id,
-        });
-      } catch (err) {
-        console.error('[IAM] accept incoming call failed:', err);
+        await acceptIncomingCallService(attendant.id);
+      } catch (error) {
+        handleRequestError(error);
         return;
       }
-
-      dailyService.join({
-        room: `${customer.slug}--${attendant.slug}`,
-        userName: attendant.name,
-        userData: { id: attendant.id, role: attendant.role },
-      });
-
-      useCallViewStore.getState().setViewState('in-call');
     },
 
     completeCall: () => {
@@ -91,31 +94,28 @@ export const createCallActions = (
       }
     },
 
-    updateJoinedView: async (call: CallState) => {
+    updateJoinedView: async (newCall: CallState) => {
       try {
-        const callId = call.id;
-        const [users] = await Promise.all([
-          fetchOnlineUsers(),
-        ]);
-        set((state: any) => ({ call: state.call?.id === callId ? { ...state.call, ...call } : state.call }));
-        useOnlineUsersStore.setState({ users });
-
-      } catch (err) {
-        console.error('[Call] updateJoinedView failed:', err);
+        const call = await fetchCall(newCall.customerId, newCall.attendantId);
+        set(() => ({ call }));
+        const updatedUsers = await fetchOnlineUsers();
+        useOnlineUsersStore.setState({ users: updatedUsers });
+        useCallViewStore.getState().setViewState('in-call');
+      } catch (error) {
+        handleRequestError(error);
       }
     },
 
-    updateLeftView: async (call: CallState) => {
+    updateLeftView: async (newCall: CallState) => {
       try {
-        const callId = call.id;
-        const [users] = await Promise.all([
-          fetchOnlineUsers(),
-        ]);
-        set((state: any) => ({ call: state.call?.id === callId ? { ...state.call, ...call } : state.call }));
-        useOnlineUsersStore.setState({ users });
-
-      } catch (err) {
-        console.error('[Call] updateLeftView failed:', err);
+        const call = await fetchCall(newCall.customerId, newCall.attendantId);
+        set(() => ({ call }));
+        const updatedUsers = await fetchOnlineUsers();
+        useOnlineUsersStore.setState({ users: updatedUsers });
+        useCallViewStore.getState().setSelectedAttendantId(null);
+        useCallViewStore.getState().setViewState('none');
+      } catch (error) {
+        handleRequestError(error);
       }
     },
 

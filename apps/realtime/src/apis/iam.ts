@@ -12,3 +12,16 @@ iamApi.interceptors.request.use(async (config) => {
     }
     return config;
 });
+
+iamApi.interceptors.response.use(undefined, (error) => {
+    if (axios.isAxiosError(error)) {
+        console.error({
+            status: error.response?.status,
+            message: error.response?.data,
+            url: error.config?.url,
+        });
+    } else {
+        console.error(error);
+    }
+    return Promise.reject(error);
+});

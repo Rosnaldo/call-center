@@ -168,7 +168,6 @@ describe('Incoming Call Flow', () => {
         expect(customerIncoming!.customerId).toBe(customerUser._id);
         expect(customerIncoming!.attendantId).toBe(attendantUser._id);
         expect(customerIncoming!.calledBy).toBe('customer');
-
         // ── attendant store received incoming_call_received ──────────────
         const attendantIncoming = attendantStores.incomingCall.getState().incomingCall;
         expect(attendantIncoming).toBeTruthy();
@@ -176,9 +175,10 @@ describe('Incoming Call Flow', () => {
         expect(attendantIncoming!.attendantId).toBe(attendantUser._id);
         expect(attendantIncoming!.calledBy).toBe('customer');
 
-        // ── dailyService.join was called ─────────────────────────────────
-        expect(dailyService.joinCalls).toHaveLength(1);
-        expect(dailyService.joinCalls[0].room).toContain(customerUser.slug);
+        // singleton callView ends up as 'awaiting-to-answer' (last writer wins)
+        expect(customerStores.callView.getState().viewState).toBe('awaiting-to-answer');
+
+        // dailyService.join now happens in incomingCallAccepted (call actions), not sendIncomingCall
 
         // ── customer cancels the incoming call ──────────────────────────
         customerStores.incomingCall.getState().cancelIncomingCall();
