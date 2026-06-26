@@ -5,12 +5,15 @@ import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
 import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
-import { validateInput, IDeleteInput } from 'src/validations/call/delete';
-
 const REDIS_KEY = 'calls';
 
+interface DeleteInput {
+    customerId: string;
+    attendantId: string;
+}
+
 interface Props {
-    mapped: IDeleteInput;
+    mapped: DeleteInput;
 }
 
 export class Delete {
@@ -27,22 +30,20 @@ export class Delete {
 
     public readonly exec = async (props: Props): Promise<Either<{}>> => {
         try {
-            const { id } = this.transform(props.mapped);
+            const { customerId, attendantId } = props.mapped;
+            if (!customerId || !attendantId) throw new BadRequestException('customerId e attendantId são obrigatórios');
+
+            const key = `${customerId}--${attendantId}`;
             const redis = getRedisClient();
-            await redis.hdel(REDIS_KEY, id);
+            await redis.hdel(REDIS_KEY, key);
             return successData({});
         } catch (error: unknown) {
             return logError(error, '/calls/delete');
         }
     };
 
-    public readonly mapper = (body: Request['body']): IDeleteInput => ({
-        id: mapString(body.id),
+    public readonly mapper = (body: Request['body']): DeleteInput => ({
+        customerId: mapString(body.customerId),
+        attendantId: mapString(body.attendantId),
     });
-
-    private readonly transform = (mapped: IDeleteInput): IDeleteInput => {
-        const zodResult = validateInput(mapped);
-        if (zodResult.hasError) throw new BadRequestException(zodResult.message!);
-        return zodResult.data as IDeleteInput;
-    };
 }

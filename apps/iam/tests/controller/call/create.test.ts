@@ -32,7 +32,8 @@ describe('Controller > Call > Create', () => {
         expect(either.data.roomName).toBe(call.roomName);
 
         const redis = getRedisClient();
-        const stored = await redis.hget('calls', call.id);
+        const key = `${call.customerId}--${call.attendantId}`;
+        const stored = await redis.hget('calls', key);
         expect(stored).not.toBeNull();
         expect(JSON.parse(stored!).customerId).toBe(call.customerId);
     });
@@ -57,13 +58,14 @@ describe('Controller > Call > Create', () => {
 
         if (!isSuccess(either1) || !isSuccess(either2)) throw new Error('Both should succeed');
 
-        expect(either1.data.id).not.toBe(either2.data.id);
         expect(either1.data.customerName).toBe('Cliente A');
         expect(either2.data.customerName).toBe('Cliente B');
 
         const redis = getRedisClient();
-        const stored1 = await redis.hget('calls', call1.id);
-        const stored2 = await redis.hget('calls', call2.id);
+        const key1 = `${call1.customerId}--${call1.attendantId}`;
+        const key2 = `${call2.customerId}--${call2.attendantId}`;
+        const stored1 = await redis.hget('calls', key1);
+        const stored2 = await redis.hget('calls', key2);
         expect(stored1).not.toBeNull();
         expect(stored2).not.toBeNull();
     });

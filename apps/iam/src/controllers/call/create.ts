@@ -33,7 +33,8 @@ export class Create {
         try {
             const params = this.transform(props.mapped);
             const redis = getRedisClient();
-            await redis.hset(REDIS_KEY, params.id, JSON.stringify(params));
+            const key = `${params.customerId}--${params.attendantId}`;
+            await redis.hset(REDIS_KEY, key, JSON.stringify(params));
             return successData(params);
         } catch (error: unknown) {
             return logError(error, '/calls/create');

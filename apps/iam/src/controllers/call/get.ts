@@ -13,7 +13,8 @@ type IOutput = ICallController['IGet']['IOutput'];
 const REDIS_KEY = 'calls';
 
 interface Props {
-    id: string;
+    customerId: string;
+    attendantId: string;
 }
 
 export class Get {
@@ -30,11 +31,12 @@ export class Get {
 
     public readonly exec = async (props: Props): Promise<Either<IOutput>> => {
         try {
-            const { id } = props;
-            if (!id) throw new BadRequestException('id é obrigatório');
+            const { customerId, attendantId } = props;
+            if (!customerId || !attendantId) throw new BadRequestException('customerId e attendantId são obrigatórios');
 
+            const key = `${customerId}--${attendantId}`;
             const redis = getRedisClient();
-            const existing = await redis.hget(REDIS_KEY, id);
+            const existing = await redis.hget(REDIS_KEY, key);
             if (!existing) throw new BadRequestException('Call não encontrada');
 
             return successData(JSON.parse(existing) as CallState);
@@ -44,6 +46,7 @@ export class Get {
     };
 
     public readonly mapper = (query: Request['query']): Props => ({
-        id: mapString(query.id as string),
+        customerId: mapString(query.customerId as string),
+        attendantId: mapString(query.attendantId as string),
     });
 }

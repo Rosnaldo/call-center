@@ -2,8 +2,9 @@ import { useIncomingCallStore, useCallViewStore, useOnlineUsersStore } from '../
 import { CallState } from './state.ts';
 import type { IDailyService } from '../../services/daily.ts';
 import { fetchOnlineUsers } from '@/src/services/online-users.ts';
+import { apiBack } from '@/src/api/backend.ts';
 import {
-  simulateAcceptedIncomingCall,
+  simulateAcceptIncomingCall,
   simulateCompleteCall,
   simulateUpdateCall,
   simulateResetCall,
@@ -13,11 +14,12 @@ import properties from '../../properties';
 const { isSimulation } = properties;
 
 export interface CallActions {
-  acceptedIncomingCall: () => void;
+  acceptIncomingCall: () => Promise<void> | void;
   completeCall: () => void;
   updateCall: (callId: string, updates: Partial<CallState>) => void;
   updateJoinedView: (call: CallState) => void;
   updateLeftView: (call: CallState) => void;
+  incomingCallAccepted: () => void;
   resetSimulation: () => void;
 }
 
@@ -26,9 +28,16 @@ export const createCallActions = (
   dailyService: IDailyService,
 ): CallActions => {
   return {
-    acceptedIncomingCall: () => {
+    incomingCallAccepted: async () => {
+      useIncomingCallStore.getState().cancel();
+      useCallViewStore.getState().setViewState('in-call');
+      const users = await fetchOnlineUsers();
+      useOnlineUsersStore.setState({ users });
+    },
+
+    acceptIncomingCall: async () => {
       if (isSimulation) {
-        simulateAcceptedIncomingCall(set);
+        simulateAcceptIncomingCall(set);
         return;
       }
 
@@ -39,6 +48,16 @@ export const createCallActions = (
       const customer = users.find(u => u.id === incomingCall.customerId);
       const attendant = users.find(u => u.id === incomingCall.attendantId);
       if (!customer || !attendant) return;
+
+      try {
+        await apiBack.post('/incoming-calls/accept', {
+          attendantId: attendant.id,
+          userId: attendant.id,
+        });
+      } catch (err) {
+        console.error('[IAM] accept incoming call failed:', err);
+        return;
+      }
 
       dailyService.join({
         room: `${customer.slug}--${attendant.slug}`,

@@ -17,7 +17,7 @@ export async function onMeetingStarted(payload: DailyMeetingPayload): Promise<vo
     if (!customer || !attendant) return;
 
     await createCall({
-        id: payload.id,
+        id: `${customer._id}--${attendant._id}`,
         customerId: customer._id,
         customerName: `${customer.firstName} ${customer.lastName}`,
         attendantId: attendant._id,
@@ -50,7 +50,7 @@ export async function onParticipantJoined(payload: DailyParticipantPayload): Pro
     let call = await getCallByRoom(payload.room);
     if (!call) {
         call = await createCall({
-            id: payload.id,
+            id: `${customer._id}--${attendant._id}`,
             customerId: customer._id,
             customerName: `${customer.firstName} ${customer.lastName}`,
             attendantId: attendant._id,
@@ -65,7 +65,7 @@ export async function onParticipantJoined(payload: DailyParticipantPayload): Pro
 
     if (call) {
         const isCustomer = `${customer.firstName} ${customer.lastName}` === payload.user_name;
-        call = await updateCall(call.id, isCustomer ? { customerInCall: true } : { attendantInCall: true });
+        call = await updateCall(call.customerId, call.attendantId, isCustomer ? { customerInCall: true } : { attendantInCall: true });
     }
 
     sendToUser(customer._id, {
@@ -94,10 +94,10 @@ export async function onParticipantLeft(payload: DailyParticipantPayload): Promi
     let call = await getCallByRoom(payload.room);
     if (call) {
         const isCustomer = `${customer.firstName} ${customer.lastName}` === payload.user_name;
-        call = await updateCall(call.id, isCustomer ? { customerInCall: false } : { attendantInCall: false });
+        call = await updateCall(call.customerId, call.attendantId, isCustomer ? { customerInCall: false } : { attendantInCall: false });
 
         if (call && !call.customerInCall && !call.attendantInCall) {
-            await deleteCall(call.id);
+            await deleteCall(call.customerId, call.attendantId);
         }
     }
 

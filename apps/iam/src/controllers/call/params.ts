@@ -9,10 +9,10 @@ export interface ICallController {
         IOutput: CallState;
     };
     IUpdate: {
-        IInput: { id: string; updates: Partial<CallState> };
+        IInput: { customerId: string; attendantId: string; updates: Partial<CallState> };
         IOutput: CallState;
     };
     IDelete: {
-        IInput: { id: string };
+        IInput: { customerId: string; attendantId: string };
     };
 }

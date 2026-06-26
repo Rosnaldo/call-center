@@ -23,7 +23,7 @@ export interface IncomingCallActions {
   incomingCallSent: (incomingCall: IncomingCallState) => void;
   incomingCallReceived: (incomingCall: IncomingCallState) => void;
   incomingCallCancelled: () => void;
-  incomingCallAccepted: () => void;
+
 }
 
 export const createIncomingCallActions = (
@@ -87,12 +87,6 @@ export const createIncomingCallActions = (
       simulateIncomingCallAsCustomer(set, get, customerId, attendantId);
     }
   },
-  incomingCallAccepted: async () => {
-    set({ incomingCall: null });
-    useCallViewStore.getState().setViewState('in-call');
-    const users = await fetchOnlineUsers();
-    useOnlineUsersStore.setState({ users });
-  },
   incomingCallSent: async (incomingCall: IncomingCallState) => {
     set({ incomingCall });
     useCallViewStore.getState().setViewState('awaiting-answer');
@@ -108,6 +102,7 @@ export const createIncomingCallActions = (
   incomingCallCancelled: async () => {
     set({ incomingCall: null });
     useCallViewStore.getState().setViewState('none');
+    useCallViewStore.getState().setSelectedAttendantId(null);
     const users = await fetchOnlineUsers();
     useOnlineUsersStore.setState({ users });
   },

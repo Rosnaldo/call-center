@@ -35,8 +35,6 @@ async function flushPendingCalls(): Promise<void> {
     await Promise.all(snapshot);
 }
 
-// ─── bridge helpers ─────────────────────────────────────────────────────────
-
 function createBridgedClient(user: IUser, token: string) {
     const serverWs = createWsClient(user, token);
 
@@ -65,9 +63,7 @@ function createBridgedClient(user: IUser, token: string) {
     return { serverWs, webFactory };
 }
 
-// ─── suite ──────────────────────────────────────────────────────────────────
-
-describe('Incoming Call Flow', () => {
+describe('Accept Call Flow', () => {
     let iamRequest: IamAgent;
     let customerUser: IUser;
     let attendantUser: IUser;
@@ -114,7 +110,7 @@ describe('Incoming Call Flow', () => {
         });
     });
 
-    it('sendIncomingCall emits to customer and attendant stores', async () => {
+    it('attendant accepts incoming call and both stores reflect the accepted state', async () => {
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         const { serverWs: attendantWs, webFactory: attendantWebFactory } = createBridgedClient(attendantUser, ATTENDANT_TOKEN);
 
@@ -126,7 +122,6 @@ describe('Incoming Call Flow', () => {
 
         const dailyService = DailyCoService.getInstance();
 
-        // attendantStores first so module-level singletons end up on customerStores
         attendantStores = createStores(dailyService);
         customerStores = createStores(dailyService);
 
@@ -143,62 +138,48 @@ describe('Incoming Call Flow', () => {
         expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
         expect(attendantStores.onlineUsers.getState().users).toHaveLength(2);
 
-        const customerIdle = customerStores.onlineUsers.getState().users
-            .find(u => u.id === customerUser._id);
-        const attendantIdle = customerStores.onlineUsers.getState().users
-            .find(u => u.id === attendantUser._id);
-        expect(customerIdle?.status).toBe('idle');
-        expect(attendantIdle?.status).toBe('idle');
-
-        // ── customer selects attendant and calls sendIncomingCall ────────
+        // ── customer sends incoming call ────────────────────────────────
         customerStores.callView.getState().setSelectedAttendantId(attendantUser._id);
-        expect(customerStores.callView.getState().selectedAttendantId).toBe(attendantUser._id);
-
         customerStores.incomingCall.getState().sendIncomingCall(
             customerUser._id,
             attendantUser._id,
         );
 
-        // allow async store actions (fetchOnlineUsers) to settle
         await new Promise((r) => setTimeout(r, 50));
 
-        // ── customer store received incoming_call_sent ───────────────────
-        const customerIncoming = customerStores.incomingCall.getState().incomingCall;
-        expect(customerIncoming).toBeTruthy();
-        expect(customerIncoming!.customerId).toBe(customerUser._id);
-        expect(customerIncoming!.attendantId).toBe(attendantUser._id);
-        expect(customerIncoming!.calledBy).toBe('customer');
+        // ── verify both stores received the incoming call ───────────────
+        expect(customerStores.incomingCall.getState().incomingCall).toBeTruthy();
+        expect(attendantStores.incomingCall.getState().incomingCall).toBeTruthy();
 
-        // ── attendant store received incoming_call_received ──────────────
-        const attendantIncoming = attendantStores.incomingCall.getState().incomingCall;
-        expect(attendantIncoming).toBeTruthy();
-        expect(attendantIncoming!.customerId).toBe(customerUser._id);
-        expect(attendantIncoming!.attendantId).toBe(attendantUser._id);
-        expect(attendantIncoming!.calledBy).toBe('customer');
+        // ── attendant accepts the call ──────────────────────────────────
+        AuthSession.override({ token: ATTENDANT_TOKEN });
+        attendantStores.call.getState().acceptIncomingCall();
 
-        // ── dailyService.join was called ─────────────────────────────────
-        expect(dailyService.joinCalls).toHaveLength(1);
-        expect(dailyService.joinCalls[0].room).toContain(customerUser.slug);
+        await new Promise((r) => setTimeout(r, 200));
 
-        // ── customer cancels the incoming call ──────────────────────────
-        customerStores.incomingCall.getState().cancelIncomingCall();
+        // Module-level singletons (useIncomingCallStore, useCallViewStore, etc.)
+        // point to customerStores (the last createStores call). Both ws handlers
+        // invoke incomingCallAccepted which operates on those singletons, so we
+        // assert via customerStores — in production each browser has its own set.
 
-        await new Promise((r) => setTimeout(r, 50));
-
-        // ── both stores cleared incomingCall ─────────────────────────────
+        // ── store: incomingCall cleared ────────────────────────────────
         expect(customerStores.incomingCall.getState().incomingCall).toBeNull();
-        expect(attendantStores.incomingCall.getState().incomingCall).toBeNull();
 
-        // ── selectedAttendantId cleared on both sides ───────────────────
-        expect(customerStores.callView.getState().selectedAttendantId).toBeNull();
-        expect(attendantStores.callView.getState().selectedAttendantId).toBeNull();
+        // ── store: callView transitioned to 'in-call' ──────────────────
+        expect(customerStores.callView.getState().viewState).toBe('in-call');
 
-        // ── both users back to idle ─────────────────────────────────────
-        const customerAfterCancel = customerStores.onlineUsers.getState().users
-            .find(u => u.id === customerUser._id);
-        const attendantAfterCancel = customerStores.onlineUsers.getState().users
-            .find(u => u.id === attendantUser._id);
-        expect(customerAfterCancel?.status).toBe('idle');
-        expect(attendantAfterCancel?.status).toBe('idle');
+        // ── Redis: incoming_call entry deleted ──────────────────────────
+        const redis = getRedisClient();
+        const incomingCallRedis = await redis.get(`incoming_call:${attendantUser._id}`);
+        expect(incomingCallRedis).toBeNull();
+
+        // ── dailyService.join called for customer (send) and attendant (accept)
+        const customerJoin = dailyService.joinCalls.find(j => j.userName === `${customerUser.firstName} ${customerUser.lastName}`);
+        expect(customerJoin).toBeTruthy();
+
+        const attendantJoin = dailyService.joinCalls.find(j => j.userName === `${attendantUser.firstName} ${attendantUser.lastName}`);
+        expect(attendantJoin).toBeTruthy();
+        expect(attendantJoin!.room).toContain(customerUser.slug);
+        expect(attendantJoin!.room).toContain(attendantUser.slug);
     });
 });

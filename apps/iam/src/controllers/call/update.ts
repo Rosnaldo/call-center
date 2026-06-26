@@ -31,16 +31,17 @@ export class Update {
 
     public readonly exec = async (props: Props): Promise<Either<IOutput>> => {
         try {
-            const { id, updates } = props.mapped;
-            if (!id) throw new BadRequestException('id é obrigatório');
+            const { customerId, attendantId, updates } = props.mapped;
+            if (!customerId || !attendantId) throw new BadRequestException('customerId e attendantId são obrigatórios');
 
+            const key = `${customerId}--${attendantId}`;
             const redis = getRedisClient();
-            const existing = await redis.hget(REDIS_KEY, id);
+            const existing = await redis.hget(REDIS_KEY, key);
             if (!existing) throw new BadRequestException('Call não encontrada');
 
             const call = JSON.parse(existing) as CallState;
-            const updated = { ...call, ...updates, id };
-            await redis.hset(REDIS_KEY, id, JSON.stringify(updated));
+            const updated = { ...call, ...updates };
+            await redis.hset(REDIS_KEY, key, JSON.stringify(updated));
 
             return successData(updated);
         } catch (error: unknown) {
@@ -49,7 +50,8 @@ export class Update {
     };
 
     public readonly mapper = (body: Request['body']): IInput => ({
-        id: mapString(body.id),
+        customerId: mapString(body.customerId),
+        attendantId: mapString(body.attendantId),
         updates: body.updates ?? {},
     });
 }

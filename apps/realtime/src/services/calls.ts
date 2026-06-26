@@ -20,9 +20,9 @@ export const getCallByRoom = async (roomName: string): Promise<CallState | null>
     }
 };
 
-export const updateCall = async (id: string, updates: Partial<CallState>): Promise<CallState | null> => {
+export const updateCall = async (customerId: string, attendantId: string, updates: Partial<CallState>): Promise<CallState | null> => {
     try {
-        const { data } = await iamApi.put<CallState>('/calls/update', { id, updates });
+        const { data } = await iamApi.put<CallState>('/calls/update', { customerId, attendantId, updates });
         return data;
     } catch (err) {
         console.error('[IAM] update call failed:', err);
@@ -30,9 +30,9 @@ export const updateCall = async (id: string, updates: Partial<CallState>): Promi
     }
 };
 
-export const deleteCall = async (id: string): Promise<void> => {
+export const deleteCall = async (customerId: string, attendantId: string): Promise<void> => {
     try {
-        await iamApi.delete('/calls/delete', { data: { id } });
+        await iamApi.delete('/calls/delete', { data: { customerId, attendantId } });
     } catch (err) {
         console.error('[IAM] delete call failed:', err);
     }

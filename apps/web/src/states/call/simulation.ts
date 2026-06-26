@@ -1,7 +1,7 @@
 import { useOnlineUsersStore, useCurrentUserStore, useIncomingCallStore, useCallViewStore, useCallStore } from '../stores.ts';
 import { CallState, initialCallStore } from './state.ts';
 
-export const simulateAcceptedIncomingCall = (
+export const simulateAcceptIncomingCall = (
   set: (fn: (state: any) => any) => void,
 ) => {
   set((state: any) => {

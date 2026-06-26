@@ -76,9 +76,9 @@ export class InitWs {
         ws.onmessage = (event) => {
             try {
                 const msg = JSON.parse(event.data as string) as WsInboundMessage;
-                const { updateJoinedView, updateLeftView } = this.stores!.call.getState();
+                const { updateJoinedView, updateLeftView, incomingCallAccepted } = this.stores!.call.getState();
                 const { upsertUser, removeUser } = this.stores!.onlineUsers.getState();
-                const { incomingCallCancelled, incomingCallSent, incomingCallReceived, incomingCallAccepted } = this.stores!.incomingCall.getState();
+                const { incomingCallCancelled, incomingCallSent, incomingCallReceived } = this.stores!.incomingCall.getState();
                 const data = 'data' in msg ? msg.data : undefined;
 
                 console.log('ws: ', msg.event, data);

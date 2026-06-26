@@ -30,7 +30,7 @@ export const CallFooterActions: React.FC = () => {
   };
 
   const handleAcceptCall = () => {
-    useCallStore.getState().acceptedIncomingCall();
+    useCallStore.getState().acceptIncomingCall();
   };
 
   const handleCancelCall = () => {

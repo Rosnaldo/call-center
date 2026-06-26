@@ -5,7 +5,8 @@ import properties from '../../properties';
 
 export const StoreBoard: React.FC = () => {
   const users = useOnlineUsersStore((s) => s.users);
-  const call = useCallStore((s) => s.call);
+  const callState = useCallStore();
+  const call = callState.call;
   const timerStatus = useTimerStore((s) => s.status);
   const timerElapsed = useTimerStore((s) => s.elapsedSeconds);
   const incomingCall = useIncomingCallStore((s) => s.incomingCall);
@@ -13,15 +14,17 @@ export const StoreBoard: React.FC = () => {
 
   if (properties.isProduction) return null;
 
-  const [jsonTab, setJsonTab] = useState<'calls' | 'users' | 'timer' | 'incoming' | 'view-state' | 'full'>('calls');
+  const [jsonTab, setJsonTab] = useState<'call' | 'users' | 'timer' | 'incoming' | 'view-state' | 'full'>('call');
   const [copied, setCopied] = useState(false);
 
   const timerState = { status: timerStatus, elapsedSeconds: timerElapsed };
 
   const getJsonContent = () => {
     switch (jsonTab) {
-      case 'calls':
-        return call;
+      case 'call': {
+        const { ...data } = callState;
+        return data;
+      }
       case 'users':
         return users;
       case 'timer':
@@ -34,7 +37,7 @@ export const StoreBoard: React.FC = () => {
       }
       case 'full':
       default:
-        return { users, call, incomingCall, timer: timerState, viewState: callViewState };
+        return { users, call: callState, incomingCall, timer: timerState, viewState: callViewState };
     }
   };
 
@@ -74,14 +77,14 @@ export const StoreBoard: React.FC = () => {
       <div className="flex gap-1.5 mb-2 border-b border-slate-900 pb-2">
         <button
           type="button"
-          onClick={() => setJsonTab('calls')}
+          onClick={() => setJsonTab('call')}
           className={`text-[10px] px-2 py-1 rounded transition-colors cursor-pointer ${
-            jsonTab === 'calls'
+            jsonTab === 'call'
               ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
               : 'bg-slate-900/40 text-slate-400 hover:text-slate-200'
           }`}
         >
-          Ligações ({call ? 1 : 0})
+          Call {call ? '1' : '—'}
         </button>
         <button
           type="button"
