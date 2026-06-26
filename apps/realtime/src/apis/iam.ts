@@ -9,7 +9,7 @@ export const iamApi = axios.create({
 iamApi.interceptors.request.use(async (config) => {
     if (!config.headers.Authorization) {
         const kc = await getKcMain().getKcClientCredentials();
-        config.headers.Authorization = `Bearer ${kc.accessToken}`;
+        config.headers.Authorization = kc.accessToken;
     }
     return config;
 });
