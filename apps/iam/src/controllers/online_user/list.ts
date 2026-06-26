@@ -6,7 +6,7 @@ import { IOnlineUser } from '#schemas/online_user/types';
 
 type IOutput = IOnlineUserController['IList']['IOutput'];
 
-const REDIS_PREFIX = 'online_user:';
+const ONLINE_USERS_PREFIX = 'online_user:';
 
 export class List {
     public static readonly classId = Symbol.for('Controller > OnlineUser > List');
@@ -23,7 +23,7 @@ export class List {
     public readonly get = async (): Promise<Either<IOutput>> => {
         try {
             const redis = getRedisClient();
-            const keys = await redis.keys(`${REDIS_PREFIX}*`);
+            const keys = await redis.keys(`${ONLINE_USERS_PREFIX}*`);
             if (keys.length === 0) return successData({ users: [] });
             const values = await redis.mget(...keys);
             const users: IOnlineUser['IParams'][] = values

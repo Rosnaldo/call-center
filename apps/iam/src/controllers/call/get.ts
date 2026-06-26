@@ -10,7 +10,7 @@ import { ICallController } from './params';
 
 type IOutput = ICallController['IGet']['IOutput'];
 
-const REDIS_KEY = 'calls';
+const CALLS_KEY = 'calls';
 
 interface Props {
     customerId: string;
@@ -34,9 +34,9 @@ export class Get {
             const { customerId, attendantId } = props;
             if (!customerId || !attendantId) throw new BadRequestException('customerId e attendantId são obrigatórios');
 
-            const key = `${customerId}--${attendantId}`;
+            const key = `${CALLS_KEY}:${customerId}--${attendantId}`;
             const redis = getRedisClient();
-            const existing = await redis.hget(REDIS_KEY, key);
+            const existing = await redis.get(key);
             if (!existing) throw new BadRequestException('Call não encontrada');
 
             return successData(JSON.parse(existing) as CallState);

@@ -11,7 +11,7 @@ import { ICallController } from './params';
 type IInput = ICallController['ICreate']['IInput'];
 type IOutput = ICallController['ICreate']['IOutput'];
 
-const REDIS_KEY = 'calls';
+const CALLS_KEY = 'calls';
 
 interface Props {
     mapped: IInput;
@@ -33,8 +33,8 @@ export class Create {
         try {
             const params = this.transform(props.mapped);
             const redis = getRedisClient();
-            const key = `${params.customerId}--${params.attendantId}`;
-            await redis.hset(REDIS_KEY, key, JSON.stringify(params));
+            const key = `${CALLS_KEY}:${params.customerId}--${params.attendantId}`;
+            await redis.set(key, JSON.stringify(params));
             return successData(params);
         } catch (error: unknown) {
             return logError(error, '/calls/create');

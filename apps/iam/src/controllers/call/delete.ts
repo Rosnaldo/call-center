@@ -5,7 +5,7 @@ import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
 import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
-const REDIS_KEY = 'calls';
+const CALLS_KEY = 'calls';
 
 interface DeleteInput {
     customerId: string;
@@ -33,9 +33,9 @@ export class Delete {
             const { customerId, attendantId } = props.mapped;
             if (!customerId || !attendantId) throw new BadRequestException('customerId e attendantId são obrigatórios');
 
-            const key = `${customerId}--${attendantId}`;
+            const key = `${CALLS_KEY}:${customerId}--${attendantId}`;
             const redis = getRedisClient();
-            await redis.hdel(REDIS_KEY, key);
+            await redis.del(key);
             return successData({});
         } catch (error: unknown) {
             return logError(error, '/calls/delete');

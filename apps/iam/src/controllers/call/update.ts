@@ -11,7 +11,7 @@ import { ICallController } from './params';
 type IInput = ICallController['IUpdate']['IInput'];
 type IOutput = ICallController['IUpdate']['IOutput'];
 
-const REDIS_KEY = 'calls';
+const CALLS_KEY = 'calls';
 
 interface Props {
     mapped: IInput;
@@ -34,14 +34,14 @@ export class Update {
             const { customerId, attendantId, updates } = props.mapped;
             if (!customerId || !attendantId) throw new BadRequestException('customerId e attendantId são obrigatórios');
 
-            const key = `${customerId}--${attendantId}`;
+            const key = `${CALLS_KEY}:${customerId}--${attendantId}`;
             const redis = getRedisClient();
-            const existing = await redis.hget(REDIS_KEY, key);
+            const existing = await redis.get(key);
             if (!existing) throw new BadRequestException('Call não encontrada');
 
             const call = JSON.parse(existing) as CallState;
             const updated = { ...call, ...updates };
-            await redis.hset(REDIS_KEY, key, JSON.stringify(updated));
+            await redis.set(key, JSON.stringify(updated));
 
             return successData(updated);
         } catch (error: unknown) {

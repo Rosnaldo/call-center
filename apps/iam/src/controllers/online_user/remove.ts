@@ -7,7 +7,7 @@ import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { validateInput, IRemoveInput } from 'src/validations/online_user/remove';
 
-const REDIS_PREFIX = 'online_user:';
+const ONLINE_USERS_PREFIX = 'online_user:';
 
 interface Props {
     mapped: IRemoveInput;
@@ -29,7 +29,7 @@ export class Remove {
         try {
             const { id } = this.transform(props.mapped);
             const redis = getRedisClient();
-            await redis.del(`${REDIS_PREFIX}${id}`);
+            await redis.del(`${ONLINE_USERS_PREFIX}${id}`);
             return successData({});
         } catch (error: unknown) {
             return logError(error, '/online-users/remove');

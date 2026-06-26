@@ -10,7 +10,7 @@ import { ICallController } from './params';
 
 type IOutput = ICallController['IGet']['IOutput'];
 
-const REDIS_KEY = 'calls';
+const CALLS_KEY = 'calls';
 
 interface Props {
     roomName: string;
@@ -34,8 +34,11 @@ export class GetByRoom {
             if (!roomName) throw new BadRequestException('roomName é obrigatório');
 
             const redis = getRedisClient();
-            const all = await redis.hvals(REDIS_KEY);
-            const call = all
+            const keys = await redis.keys(`${CALLS_KEY}:*`);
+            if (keys.length === 0) throw new BadRequestException('Call não encontrada');
+            const values = await redis.mget(keys);
+            const call = values
+                .filter((v): v is string => v !== null)
                 .map((v) => JSON.parse(v) as CallState)
                 .find((c) => c.roomName === roomName);
 

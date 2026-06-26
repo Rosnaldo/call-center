@@ -12,7 +12,7 @@ import { IOnlineUserController } from './params';
 type IInput = IOnlineUserController['IAdd']['IInput'];
 type IOutput = IOnlineUserController['IAdd']['IOutput'];
 
-const REDIS_PREFIX = 'online_user:';
+const ONLINE_USERS_PREFIX = 'online_user:';
 const TTL_SECONDS = 90;
 
 interface Props {
@@ -35,7 +35,7 @@ export class Add {
         try {
             const params = this.transform(props.mapped);
             const redis = getRedisClient();
-            await redis.set(`${REDIS_PREFIX}${params.id}`, JSON.stringify(params), 'EX', TTL_SECONDS);
+            await redis.set(`${ONLINE_USERS_PREFIX}${params.id}`, JSON.stringify(params), 'EX', TTL_SECONDS);
             return successData(params);
         } catch (error: unknown) {
             return logError(error, '/online-users/add');
