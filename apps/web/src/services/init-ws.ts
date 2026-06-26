@@ -1,6 +1,6 @@
 import { CallState, IOnlineUser, IncomingCallState } from '@repo/shared-types';
 import { AuthenticatedWebSocket, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
-import type { OnlineUsersStoreInstance, IncomingCallStoreInstance, CallStoreInstance } from '../states/stores';
+import type { OnlineUsersStoreInstance, IncomingCallStoreInstance, CallStoreInstance, CallViewStoreInstance } from '../states/stores';
 import properties from '../properties';
 
 const WS_URL = properties.realtimeWsUrl || undefined;
@@ -12,6 +12,7 @@ interface InitWsStores {
     onlineUsers: OnlineUsersStoreInstance;
     incomingCall: IncomingCallStoreInstance;
     call: CallStoreInstance;
+    callView: CallViewStoreInstance;
 }
 
 type WsInboundMessage =
@@ -21,7 +22,7 @@ type WsInboundMessage =
     | { event: 'incoming_call_sent'; data: { incomingCall: IncomingCallState } }
     | { event: 'incoming_call_received'; data: { incomingCall: IncomingCallState } }
     | { event: 'incoming_call_cancelled'; data: { targetUserId: string } }
-    | { event: 'call_accepted' }
+    | { event: 'call_accepted'; data: { incomingCall: IncomingCallState } }
     | { event: 'participant_joined'; data: { call: CallState } }
     | { event: 'participant_left'; data: { call: CallState } }
 
@@ -102,7 +103,7 @@ export class InitWs {
                         incomingCallCancelled?.();
                         break;
                     case 'call_accepted':
-                        incomingCallAccepted?.();
+                        incomingCallAccepted?.(msg.data.incomingCall);
                         break;
                     case 'participant_joined':
                         updateJoinedView(msg.data.call);

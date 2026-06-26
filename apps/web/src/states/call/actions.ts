@@ -1,7 +1,9 @@
+import { IncomingCallState } from '@repo/shared-types';
 import { useIncomingCallStore, useCallViewStore, useOnlineUsersStore } from '../stores.ts';
 import { CallState } from './state.ts';
 import type { IDailyService } from '../../services/daily.ts';
 import { fetchOnlineUsers } from '@/src/services/online-users.ts';
+import { fetchCall } from '@/src/services/calls.ts';
 import { apiBack } from '@/src/api/backend.ts';
 import {
   simulateAcceptIncomingCall,
@@ -19,7 +21,7 @@ export interface CallActions {
   updateCall: (callId: string, updates: Partial<CallState>) => void;
   updateJoinedView: (call: CallState) => void;
   updateLeftView: (call: CallState) => void;
-  incomingCallAccepted: () => void;
+  incomingCallAccepted: (incomingCall: IncomingCallState) => void;
   resetSimulation: () => void;
 }
 
@@ -28,11 +30,15 @@ export const createCallActions = (
   dailyService: IDailyService,
 ): CallActions => {
   return {
-    incomingCallAccepted: async () => {
-      useIncomingCallStore.getState().cancel();
+    incomingCallAccepted: async (incomingCall: IncomingCallState) => {
+      useIncomingCallStore.setState({ incomingCall: null });
       useCallViewStore.getState().setViewState('in-call');
-      const users = await fetchOnlineUsers();
-      useOnlineUsersStore.setState({ users });
+
+      const call = await fetchCall(incomingCall.customerId, incomingCall.attendantId);
+      set(() => ({ call }));
+
+      const updatedUsers = await fetchOnlineUsers();
+      useOnlineUsersStore.setState({ users: updatedUsers });
     },
 
     acceptIncomingCall: async () => {

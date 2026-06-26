@@ -2,6 +2,9 @@ jest.mock('src/services/users');
 jest.mock('@/src/services/online-users', () => ({
     fetchOnlineUsers: jest.fn(),
 }));
+jest.mock('@/src/services/calls', () => ({
+    fetchCall: jest.fn(),
+}));
 
 import { EventEmitter } from 'node:events';
 import { IOnlineUser, IUser } from '@repo/shared-types';
@@ -23,9 +26,11 @@ import { AuthSession } from '../../web/src/auth/session';
 
 import * as usersService from 'src/services/users';
 import * as onlineUsersService from '@/src/services/online-users';
+import * as callsService from '@/src/services/calls';
 
 const addToIamMock = usersService.addToIam as jest.Mock;
 const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
+const fetchCallMock = callsService.fetchCall as jest.Mock;
 
 const pendingCalls: Array<Promise<unknown>> = [];
 
@@ -108,6 +113,14 @@ describe('Accept Call Flow', () => {
                 .set('Authorization', CUSTOMER_TOKEN);
             return res.body.users ?? [];
         });
+
+        fetchCallMock.mockImplementation(async (customerId: string, attendantId: string) => {
+            const res = await iamRequest
+                .get('/calls/get')
+                .set('Authorization', CUSTOMER_TOKEN)
+                .query({ customerId, attendantId });
+            return res.body;
+        });
     });
 
     it('attendant accepts incoming call and both stores reflect the accepted state', async () => {
@@ -157,15 +170,34 @@ describe('Accept Call Flow', () => {
 
         await new Promise((r) => setTimeout(r, 200));
 
-        // Module-level singletons (useIncomingCallStore, useCallViewStore, etc.)
-        // point to customerStores (the last createStores call). Both ws handlers
-        // invoke incomingCallAccepted which operates on those singletons, so we
-        // assert via customerStores — in production each browser has its own set.
+        // Zustand's `set` is closure-bound to each store instance, so
+        // call state is set correctly on both stores. Module-level singletons
+        // (useIncomingCallStore, useCallViewStore) point to customerStores
+        // (the last createStores call), so incomingCall/callView assertions
+        // go through customerStores only.
 
-        // ── store: incomingCall cleared ────────────────────────────────
+        // ── customer store: call populated ─────────────────────────────
+        const customerCall = customerStores.call.getState().call;
+        expect(customerCall).toBeTruthy();
+        expect(customerCall!.customerId).toBe(customerUser._id);
+        expect(customerCall!.attendantId).toBe(attendantUser._id);
+        expect(customerCall!.wasAccepted).toBe(true);
+        expect(customerCall!.customerInCall).toBe(true);
+        expect(customerCall!.attendantInCall).toBe(true);
+
+        // ── attendant store: call populated ────────────────────────────
+        const attendantCall = attendantStores.call.getState().call;
+        expect(attendantCall).toBeTruthy();
+        expect(attendantCall!.customerId).toBe(customerUser._id);
+        expect(attendantCall!.attendantId).toBe(attendantUser._id);
+        expect(attendantCall!.wasAccepted).toBe(true);
+        expect(attendantCall!.customerInCall).toBe(true);
+        expect(attendantCall!.attendantInCall).toBe(true);
+
+        // ── incomingCall cleared (via singleton — points to customerStores) ──────
         expect(customerStores.incomingCall.getState().incomingCall).toBeNull();
 
-        // ── store: callView transitioned to 'in-call' ──────────────────
+        // ── callView transitioned to 'in-call' (via singleton — points to customerStores) ─────────
         expect(customerStores.callView.getState().viewState).toBe('in-call');
 
         // ── Redis: incoming_call entry deleted ──────────────────────────

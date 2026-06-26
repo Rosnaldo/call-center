@@ -12,6 +12,8 @@ export interface CancelIncomingCallPayload {
 export interface AcceptCallPayload {
     customerId: string;
     attendantId: string;
+    calledBy: string;
+    incomingCall: { customerId: string; attendantId: string; calledBy: string };
 }
 
 export type IamWebhookBody =

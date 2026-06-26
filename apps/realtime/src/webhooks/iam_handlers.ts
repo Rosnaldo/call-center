@@ -39,11 +39,11 @@ export function onCallAccepted(payload: AcceptCallPayload): void {
 
     sendToUser(payload.customerId, {
         event: 'call_accepted',
-        data: { customerId: payload.customerId, attendantId: payload.attendantId },
+        data: { incomingCall: payload.incomingCall },
     });
 
     sendToUser(payload.attendantId, {
         event: 'call_accepted',
-        data: { customerId: payload.customerId, attendantId: payload.attendantId },
+        data: { incomingCall: payload.incomingCall },
     });
 }

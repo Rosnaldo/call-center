@@ -47,24 +47,42 @@ export class Accept {
                 throw new BadRequestException('Customer não deve atender ligação');
             }
 
-            const allCalls = await redis.hvals(CALLS_KEY);
-            const call = allCalls
-                .map((v) => JSON.parse(v) as CallState)
-                .find((c) => c.customerId === incomingCall.customerId && c.attendantId === incomingCall.attendantId);
+            const callKey = `${incomingCall.customerId}--${incomingCall.attendantId}`;
+            const existingCall = await redis.hget(CALLS_KEY, callKey);
 
-            if (call) {
-                await redis.hset(CALLS_KEY, call.id, JSON.stringify({ ...call, customerInCall: true, attendantInCall: true, wasAccepted: true }));
+            const customerJson = await redis.hget(ONLINE_USERS_KEY, incomingCall.customerId);
+            const attendantJson = await redis.hget(ONLINE_USERS_KEY, incomingCall.attendantId);
+            const customerName = customerJson ? (JSON.parse(customerJson) as IOnlineUser).name : '';
+            const attendantName = attendantJson ? (JSON.parse(attendantJson) as IOnlineUser).name : '';
+            const customerSlug = customerJson ? (JSON.parse(customerJson) as IOnlineUser).slug : '';
+            const attendantSlug = attendantJson ? (JSON.parse(attendantJson) as IOnlineUser).slug : '';
+
+            if (existingCall) {
+                const call = JSON.parse(existingCall) as CallState;
+                await redis.hset(CALLS_KEY, callKey, JSON.stringify({ ...call, customerInCall: true, attendantInCall: true, wasAccepted: true }));
+            } else {
+                const newCall: CallState = {
+                    id: callKey,
+                    customerId: incomingCall.customerId,
+                    customerName,
+                    attendantId: incomingCall.attendantId,
+                    attendantName,
+                    roomName: `${customerSlug}--${attendantSlug}`,
+                    meetingId: '',
+                    customerInCall: true,
+                    attendantInCall: true,
+                    wasAccepted: true,
+                };
+                await redis.hset(CALLS_KEY, callKey, JSON.stringify(newCall));
             }
 
             await redis.del(`${INCOMING_CALL_PREFIX}${attendantId}`);
 
-            const customerJson = await redis.hget(ONLINE_USERS_KEY, incomingCall.customerId);
             if (customerJson) {
                 const customer = JSON.parse(customerJson) as IOnlineUser;
                 await redis.hset(ONLINE_USERS_KEY, customer.id, JSON.stringify({ ...customer, status: 'in-call' }));
             }
 
-            const attendantJson = await redis.hget(ONLINE_USERS_KEY, incomingCall.attendantId);
             if (attendantJson) {
                 const attendant = JSON.parse(attendantJson) as IOnlineUser;
                 await redis.hset(ONLINE_USERS_KEY, attendant.id, JSON.stringify({ ...attendant, status: 'in-call' }));
@@ -72,7 +90,7 @@ export class Accept {
 
             realtimeApi.post('/webhooks/iam', {
                 event: 'call_accepted',
-                payload: { customerId: incomingCall.customerId, attendantId: incomingCall.attendantId },
+                payload: { customerId: incomingCall.customerId, attendantId: incomingCall.attendantId, calledBy: incomingCall.calledBy, incomingCall },
             }).catch((err) => console.error('[Realtime] accept failed:', err));
 
             return successData(incomingCall);
