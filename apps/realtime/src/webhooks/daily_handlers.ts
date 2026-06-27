@@ -33,7 +33,6 @@ export async function onMeetingStarted(payload: DailyMeetingPayload): Promise<vo
                 meetingId: payload.meeting_id,
                 customerInCall: false,
                 attendantInCall: false,
-                wasAccepted: true,
             });
         } else {
             call = await updateCall(
@@ -80,7 +79,6 @@ export async function onParticipantJoined(payload: DailyParticipantPayload): Pro
                 meetingId: '',
                 customerInCall: false,
                 attendantInCall: false,
-                wasAccepted: true,
             });
         }
 

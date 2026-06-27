@@ -59,7 +59,7 @@ export class Accept {
 
             if (existingCall) {
                 const call = JSON.parse(existingCall) as CallState;
-                await redis.set(callKey, JSON.stringify({ ...call, customerInCall: true, attendantInCall: true, wasAccepted: true }));
+                await redis.set(callKey, JSON.stringify({ ...call, customerInCall: true, attendantInCall: true }));
             } else {
                 const newCall: CallState = {
                     id: `${incomingCall.customerId}--${incomingCall.attendantId}`,
@@ -71,7 +71,6 @@ export class Accept {
                     meetingId: '',
                     customerInCall: true,
                     attendantInCall: true,
-                    wasAccepted: true,
                 };
                 await redis.set(callKey, JSON.stringify(newCall));
             }

@@ -31,5 +31,4 @@ export const buildCallState = (d?: Partial<CallState>): CallState => ({
     meetingId: d?.meetingId ?? nextId(),
     customerInCall: d?.customerInCall ?? false,
     attendantInCall: d?.attendantInCall ?? false,
-    wasAccepted: d?.wasAccepted ?? false,
 });

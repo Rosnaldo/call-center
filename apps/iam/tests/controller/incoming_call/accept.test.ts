@@ -66,7 +66,6 @@ describe('Controller > IncomingCall > Accept', () => {
         const stored = JSON.parse((await redis.hget('calls', call.id))!);
         expect(stored.customerInCall).toBe(true);
         expect(stored.attendantInCall).toBe(true);
-        expect(stored.wasAccepted).toBe(true);
     });
 
     it('sets customer status to in-call', async () => {

@@ -26,7 +26,6 @@ export const simulateAcceptIncomingCall = (
       meetingId: '',
       customerInCall: true,
       attendantInCall: true,
-      wasAccepted: true,
     };
 
     updateUser(incomingCall.customerId, { status: 'in-call' as const });

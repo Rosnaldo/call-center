@@ -181,7 +181,6 @@ describe('Accept Call Flow', () => {
         expect(customerCall).toBeTruthy();
         expect(customerCall!.customerId).toBe(customerUser._id);
         expect(customerCall!.attendantId).toBe(attendantUser._id);
-        expect(customerCall!.wasAccepted).toBe(true);
         expect(customerCall!.customerInCall).toBe(true);
         expect(customerCall!.attendantInCall).toBe(true);
 
@@ -190,7 +189,6 @@ describe('Accept Call Flow', () => {
         expect(attendantCall).toBeTruthy();
         expect(attendantCall!.customerId).toBe(customerUser._id);
         expect(attendantCall!.attendantId).toBe(attendantUser._id);
-        expect(attendantCall!.wasAccepted).toBe(true);
         expect(attendantCall!.customerInCall).toBe(true);
         expect(attendantCall!.attendantInCall).toBe(true);
 

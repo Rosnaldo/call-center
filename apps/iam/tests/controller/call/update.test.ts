@@ -39,11 +39,11 @@ describe('Controller > Call > Update', () => {
         await redis.hset('calls', key, JSON.stringify(call));
 
         const controller = new CallController();
-        const mapped = controller.update.mapper({ customerId: call.customerId, attendantId: call.attendantId, updates: { wasAccepted: true } });
+        const mapped = controller.update.mapper({ customerId: call.customerId, attendantId: call.attendantId, updates: { attendantInCall: true } });
         await controller.update.exec({ mapped });
 
         const stored = JSON.parse((await redis.hget('calls', key))!);
-        expect(stored.wasAccepted).toBe(true);
+        expect(stored.attendantInCall).toBe(true);
     });
 
     it('preserves fields not included in the update', async () => {
@@ -65,7 +65,7 @@ describe('Controller > Call > Update', () => {
 
     it('returns 400 when call does not exist', async () => {
         const controller = new CallController();
-        const mapped = controller.update.mapper({ customerId: 'nonexistent', attendantId: 'nonexistent', updates: { wasAccepted: true } });
+        const mapped = controller.update.mapper({ customerId: 'nonexistent', attendantId: 'nonexistent', updates: { attendantInCall: true } });
         const either = await controller.update.exec({ mapped });
 
         expect(either.isError).toBe(true);
@@ -74,7 +74,7 @@ describe('Controller > Call > Update', () => {
 
     it('returns 400 when customerId or attendantId is missing', async () => {
         const controller = new CallController();
-        const mapped = controller.update.mapper({ updates: { wasAccepted: true } });
+        const mapped = controller.update.mapper({ updates: { attendantInCall: true } });
         const either = await controller.update.exec({ mapped });
 
         expect(either.isError).toBe(true);
