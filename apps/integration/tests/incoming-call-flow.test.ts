@@ -2,9 +2,15 @@ jest.mock('src/services/users');
 jest.mock('@/src/services/online-users', () => ({
     fetchOnlineUsers: jest.fn(),
 }));
+const mockSendIncomingCall = jest.fn();
+jest.mock('@/src/services/incoming-calls', () => ({
+    sendIncomingCall: mockSendIncomingCall,
+    cancelIncomingCall: jest.fn(),
+    acceptIncomingCall: jest.fn(),
+}));
 
 import { EventEmitter } from 'node:events';
-import { IOnlineUser, IUser } from '@repo/shared-types';
+import { IOnlineUser, IUser, mapUserToOnlineUser } from '@repo/shared-types';
 
 import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
@@ -79,6 +85,13 @@ describe('Incoming Call Flow', () => {
                 .set('Authorization', CUSTOMER_TOKEN);
             return res.body.users ?? [];
         });
+
+        mockSendIncomingCall.mockImplementation(async (customerId: string, attendantId: string) => {
+            await iamRequest
+                .post('/incoming-calls/send')
+                .set('Authorization', CUSTOMER_TOKEN)
+                .send({ customerId, attendantId, whoIsCalling: 'customer' });
+        });
     });
 
     it('after sendIncomingCall both stores reflect the correct state', async () => {
@@ -102,46 +115,48 @@ describe('Incoming Call Flow', () => {
         onConnection()(attendantWs);
         await flushPendingCalls();
 
-        // ── customer sends incoming call ───────────────────────────────
-        await iamRequest
-            .post('/incoming-calls/send')
-            .set('Authorization', CUSTOMER_TOKEN)
-            .send({ customerId: customerUser._id, attendantId: attendantUser._id, whoIsCalling: 'customer' });
-
-        await new Promise((r) => setTimeout(r, 50));
-
-        const sentMsg = customerMessages.find((m) => m.event === 'incoming_call_sent');
-        const recvMsg = attendantMessages.find((m) => m.event === 'incoming_call_received');
-
         // ── customer stores (singletons → customer) ───────────────────
         const dailyService = DailyCoService.getInstance();
         const customerStores = createStores(dailyService);
+
+        const customerOnlineUser = mapUserToOnlineUser(customerUser);
+        const attendantOnlineUser = mapUserToOnlineUser(attendantUser);
+        customerStores.onlineUsers.setState({ users: [customerOnlineUser, attendantOnlineUser] });
+
+        // ── customer triggers sendIncomingCall via store action ────────
+        customerStores.incomingCall.getState().sendIncomingCall(
+            customerUser._id,
+            attendantUser._id,
+        );
+
+        await new Promise((r) => setTimeout(r, 50));
+
+        // ── process customer WS message ───────────────────────────────
+        const sentMsg = customerMessages.find((m) => m.event === 'incoming_call_sent');
+        expect(sentMsg).toBeTruthy();
         customerStores.incomingCall.getState().incomingCallSent(sentMsg.data.incomingCall);
         await new Promise((r) => setTimeout(r, 50));
 
-        const customerIncoming = customerStores.incomingCall.getState().incomingCall;
-        expect(customerIncoming).toBeTruthy();
-        expect(customerIncoming!.customerId).toBe(customerUser._id);
-        expect(customerIncoming!.attendantId).toBe(attendantUser._id);
+        expect(customerStores.incomingCall.getState().incomingCall).toBeTruthy();
+        expect(customerStores.incomingCall.getState().incomingCall!.customerId).toBe(customerUser._id);
+        expect(customerStores.incomingCall.getState().incomingCall!.attendantId).toBe(attendantUser._id);
         expect(customerStores.callView.getState().viewState).toBe('awaiting-answer');
         expect(customerStores.call.getState().call).toBeNull();
-        const customerOnline = customerStores.onlineUsers.getState().users
-            .find((u) => u.id === customerUser._id);
-        expect(customerOnline?.status).toBe('occupied');
+        expect(customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('occupied');
 
         // ── attendant stores (singletons → attendant) ─────────────────
         const attendantStores = createStores(dailyService);
+
+        const recvMsg = attendantMessages.find((m) => m.event === 'incoming_call_received');
+        expect(recvMsg).toBeTruthy();
         attendantStores.incomingCall.getState().incomingCallReceived(recvMsg.data.incomingCall);
         await new Promise((r) => setTimeout(r, 50));
 
-        const attendantIncoming = attendantStores.incomingCall.getState().incomingCall;
-        expect(attendantIncoming).toBeTruthy();
-        expect(attendantIncoming!.customerId).toBe(customerUser._id);
-        expect(attendantIncoming!.attendantId).toBe(attendantUser._id);
+        expect(attendantStores.incomingCall.getState().incomingCall).toBeTruthy();
+        expect(attendantStores.incomingCall.getState().incomingCall!.customerId).toBe(customerUser._id);
+        expect(attendantStores.incomingCall.getState().incomingCall!.attendantId).toBe(attendantUser._id);
         expect(attendantStores.callView.getState().viewState).toBe('awaiting-to-answer');
         expect(attendantStores.call.getState().call).toBeNull();
-        const attendantOnline = attendantStores.onlineUsers.getState().users
-            .find((u) => u.id === attendantUser._id);
-        expect(attendantOnline?.status).toBe('occupied');
+        expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('occupied');
     });
 });
