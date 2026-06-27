@@ -240,4 +240,80 @@ describe('Incoming Call Flow', () => {
         expect(attendantStores.callView.getState().selectedAttendantId).toBeNull();
         expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('idle');
     });
+
+    it('attendant cancels incoming call — both stores cleared and users back to idle', async () => {
+        const customerWs = createWsClient(customerUser, CUSTOMER_TOKEN);
+        const attendantWs = createWsClient(attendantUser, ATTENDANT_TOKEN);
+
+        const customerMessages: any[] = [];
+        const attendantMessages: any[] = [];
+
+        (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
+            customerMessages.push(JSON.parse(data));
+        });
+        (attendantWs as unknown as EventEmitter).on('sent', (data: string) => {
+            attendantMessages.push(JSON.parse(data));
+        });
+
+        onConnection()(customerWs);
+        await flushPendingCalls();
+        onConnection()(attendantWs);
+        await flushPendingCalls();
+
+        // ── send incoming call from customer ──────────────────────────
+        const dailyService = DailyCoService.getInstance();
+        const customerStores = createStores(dailyService);
+
+        const customerOnlineUser = mapUserToOnlineUser(customerUser);
+        const attendantOnlineUser = mapUserToOnlineUser(attendantUser);
+        customerStores.onlineUsers.setState({ users: [customerOnlineUser, attendantOnlineUser] });
+
+        customerStores.incomingCall.getState().sendIncomingCall(
+            customerUser._id,
+            attendantUser._id,
+        );
+        await new Promise((r) => setTimeout(r, 50));
+
+        const sentMsg = customerMessages.find((m) => m.event === 'incoming_call_sent');
+
+        // ── attendant receives and then cancels (singletons → attendant)
+        const attendantStores = createStores(dailyService);
+
+        const recvMsg = attendantMessages.find((m) => m.event === 'incoming_call_received');
+        attendantStores.incomingCall.getState().incomingCallReceived(recvMsg.data.incomingCall);
+        await new Promise((r) => setTimeout(r, 50));
+
+        expect(attendantStores.callView.getState().viewState).toBe('awaiting-to-answer');
+
+        customerMessages.length = 0;
+        attendantMessages.length = 0;
+
+        attendantStores.incomingCall.getState().cancelIncomingCall();
+        await new Promise((r) => setTimeout(r, 50));
+
+        // ── process cancel WS on attendant side ───────────────────────
+        const attendantCancelMsg = attendantMessages.find((m) => m.event === 'incoming_call_cancelled');
+        expect(attendantCancelMsg).toBeTruthy();
+        attendantStores.incomingCall.getState().incomingCallCancelled();
+        await new Promise((r) => setTimeout(r, 50));
+
+        expect(attendantStores.incomingCall.getState().incomingCall).toBeNull();
+        expect(attendantStores.callView.getState().viewState).toBe('none');
+        expect(attendantStores.callView.getState().selectedAttendantId).toBeNull();
+        expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('idle');
+
+        // ── process cancel WS on customer side (singletons → customer)
+        const customerCancelMsg = customerMessages.find((m) => m.event === 'incoming_call_cancelled');
+        expect(customerCancelMsg).toBeTruthy();
+
+        const customerStores2 = createStores(dailyService);
+        customerStores2.incomingCall.getState().incomingCallSent(sentMsg.data.incomingCall);
+        customerStores2.incomingCall.getState().incomingCallCancelled();
+        await new Promise((r) => setTimeout(r, 50));
+
+        expect(customerStores2.incomingCall.getState().incomingCall).toBeNull();
+        expect(customerStores2.callView.getState().viewState).toBe('none');
+        expect(customerStores2.callView.getState().selectedAttendantId).toBeNull();
+        expect(customerStores2.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('idle');
+    });
 });
