@@ -15,7 +15,7 @@ type IOutput = IIncomingCallController['IAccept']['IOutput'];
 
 const INCOMING_CALL_PREFIX = 'incoming_call:';
 const CALLS_KEY = 'calls';
-const ONLINE_USERS_KEY = 'online_users';
+const ONLINE_USERS_PREFIX = 'online_user:';
 
 interface Props {
     mapped: IInput;
@@ -50,8 +50,8 @@ export class Accept {
             const callKey = `${CALLS_KEY}:${incomingCall.customerId}--${incomingCall.attendantId}`;
             const existingCall = await redis.get(callKey);
 
-            const customerJson = await redis.hget(ONLINE_USERS_KEY, incomingCall.customerId);
-            const attendantJson = await redis.hget(ONLINE_USERS_KEY, incomingCall.attendantId);
+            const customerJson = await redis.get(`${ONLINE_USERS_PREFIX}${incomingCall.customerId}`);
+            const attendantJson = await redis.get(`${ONLINE_USERS_PREFIX}${incomingCall.attendantId}`);
             const customerName = customerJson ? (JSON.parse(customerJson) as IOnlineUser).name : '';
             const attendantName = attendantJson ? (JSON.parse(attendantJson) as IOnlineUser).name : '';
             const customerSlug = customerJson ? (JSON.parse(customerJson) as IOnlineUser).slug : '';
@@ -79,12 +79,12 @@ export class Accept {
 
             if (customerJson) {
                 const customer = JSON.parse(customerJson) as IOnlineUser;
-                await redis.hset(ONLINE_USERS_KEY, customer.id, JSON.stringify({ ...customer, status: 'in-call' }));
+                await redis.set(`${ONLINE_USERS_PREFIX}${customer.id}`, JSON.stringify({ ...customer, status: 'in-call' }), 'EX', 90);
             }
 
             if (attendantJson) {
                 const attendant = JSON.parse(attendantJson) as IOnlineUser;
-                await redis.hset(ONLINE_USERS_KEY, attendant.id, JSON.stringify({ ...attendant, status: 'in-call' }));
+                await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'in-call' }), 'EX', 90);
             }
 
             notifyCallAccepted(incomingCall.customerId, incomingCall.attendantId, incomingCall.calledBy, incomingCall).catch(() => {});

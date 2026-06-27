@@ -11,7 +11,7 @@ import { notifyIncomingCallCancelled } from 'src/services/realtime';
 
 const INCOMING_CALL_PREFIX = 'incoming_call:';
 const CALLS_KEY = 'calls';
-const ONLINE_USERS_KEY = 'online_users';
+const ONLINE_USERS_PREFIX = 'online_user:';
 
 interface Props {
     mapped: ICancelInput;
@@ -43,16 +43,16 @@ export class Cancel {
                 await redis.del(callKey);
             }
 
-            const customerJson = await redis.hget(ONLINE_USERS_KEY, customerId);
+            const customerJson = await redis.get(`${ONLINE_USERS_PREFIX}${customerId}`);
             if (customerJson) {
                 const customer = JSON.parse(customerJson) as IOnlineUser;
-                await redis.hset(ONLINE_USERS_KEY, customer.id, JSON.stringify({ ...customer, status: 'idle' }));
+                await redis.set(`${ONLINE_USERS_PREFIX}${customer.id}`, JSON.stringify({ ...customer, status: 'idle' }), 'EX', 90);
             }
 
-            const attendantJson = await redis.hget(ONLINE_USERS_KEY, attendantId);
+            const attendantJson = await redis.get(`${ONLINE_USERS_PREFIX}${attendantId}`);
             if (attendantJson) {
                 const attendant = JSON.parse(attendantJson) as IOnlineUser;
-                await redis.hset(ONLINE_USERS_KEY, attendant.id, JSON.stringify({ ...attendant, status: 'idle' }));
+                await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'idle' }), 'EX', 90);
             }
 
             notifyIncomingCallCancelled(customerId, attendantId).catch(() => {});

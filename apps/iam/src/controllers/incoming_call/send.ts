@@ -14,7 +14,7 @@ type IInput = IIncomingCallController['ISend']['IInput'];
 type IOutput = IIncomingCallController['ISend']['IOutput'];
 
 const INCOMING_CALL_PREFIX = 'incoming_call:';
-const ONLINE_USERS_KEY = 'online_users';
+const ONLINE_USERS_PREFIX = 'online_user:';
 
 interface Props {
     mapped: IInput;
@@ -40,7 +40,7 @@ export class Send {
             const existing = await redis.get(`${INCOMING_CALL_PREFIX}${params.attendantId}`);
 
             if (existing) {
-                const attendantJson = await redis.hget(ONLINE_USERS_KEY, params.attendantId);
+                const attendantJson = await redis.get(`${ONLINE_USERS_PREFIX}${params.attendantId}`);
                 const attendantName = attendantJson
                     ? (JSON.parse(attendantJson) as IOnlineUser).name
                     : params.attendantId;
@@ -49,16 +49,16 @@ export class Send {
 
             await redis.set(`${INCOMING_CALL_PREFIX}${params.attendantId}`, JSON.stringify(params), 'EX', 60);
 
-            const customerJson = await redis.hget(ONLINE_USERS_KEY, params.customerId);
+            const customerJson = await redis.get(`${ONLINE_USERS_PREFIX}${params.customerId}`);
             if (customerJson) {
                 const customer = JSON.parse(customerJson) as IOnlineUser;
-                await redis.hset(ONLINE_USERS_KEY, customer.id, JSON.stringify({ ...customer, status: 'occupied' }));
+                await redis.set(`${ONLINE_USERS_PREFIX}${customer.id}`, JSON.stringify({ ...customer, status: 'occupied' }), 'EX', 90);
             }
 
-            const attendantJson2 = await redis.hget(ONLINE_USERS_KEY, params.attendantId);
+            const attendantJson2 = await redis.get(`${ONLINE_USERS_PREFIX}${params.attendantId}`);
             if (attendantJson2) {
                 const attendant = JSON.parse(attendantJson2) as IOnlineUser;
-                await redis.hset(ONLINE_USERS_KEY, attendant.id, JSON.stringify({ ...attendant, status: 'occupied' }));
+                await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'occupied' }), 'EX', 90);
             }
 
             notifyIncomingCallSent(params.customerId, params.attendantId, params.calledBy).catch(() => {});
