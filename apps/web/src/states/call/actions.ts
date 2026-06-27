@@ -74,6 +74,7 @@ export const createCallActions = (
 
       try {
         await acceptIncomingCallService(attendant.id);
+        useCallViewStore.getState().setViewState('in-call');
       } catch (error) {
         handleRequestError(error);
         return;

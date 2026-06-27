@@ -21,18 +21,30 @@ export async function onMeetingStarted(payload: DailyMeetingPayload): Promise<vo
         console.log('[Daily]  meeting.attendant: ', attendant)
         console.log('[Daily]  meeting.payload: ', payload)
 
-        await createCall({
-            id: `${customer._id}--${attendant._id}`,
-            customerId: customer._id,
-            customerName: `${customer.firstName} ${customer.lastName}`,
-            attendantId: attendant._id,
-            attendantName: `${attendant.firstName} ${attendant.lastName}`,
-            roomName: payload.room,
-            meetingId: payload.id,
-            customerInCall: false,
-            attendantInCall: false,
-            wasAccepted: false,
-        });
+        let call = await getCallByRoom(payload.room);
+        if (!call) {
+            await createCall({
+                id: `${customer._id}--${attendant._id}`,
+                customerId: customer._id,
+                customerName: `${customer.firstName} ${customer.lastName}`,
+                attendantId: attendant._id,
+                attendantName: `${attendant.firstName} ${attendant.lastName}`,
+                roomName: payload.room,
+                meetingId: payload.meeting_id,
+                customerInCall: false,
+                attendantInCall: false,
+                wasAccepted: true,
+            });
+        } else {
+            call = await updateCall(
+                call.customerId, 
+                call.attendantId,
+                {
+                    roomName: payload.room,
+                    meetingId: payload.meeting_id,
+                });
+        }
+
     } catch (error) {
         console.error('[Daily] onMeetingStarted: ', error)
     }
@@ -65,10 +77,10 @@ export async function onParticipantJoined(payload: DailyParticipantPayload): Pro
                 attendantId: attendant._id,
                 attendantName: `${attendant.firstName} ${attendant.lastName}`,
                 roomName: payload.room,
-                meetingId: payload.id,
+                meetingId: '',
                 customerInCall: false,
                 attendantInCall: false,
-                wasAccepted: false,
+                wasAccepted: true,
             });
         }
 

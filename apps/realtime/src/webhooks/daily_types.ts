@@ -5,21 +5,22 @@ export type DailyWebhookEvent =
     | 'participant.left'
 
 export interface DailyMeetingPayload {
-    id: string;
+    meeting_id: string;
     room: string;
+    start_ts: number;
 }
 
 export interface DailyParticipantPayload {
-    id: string;
+    session_id: string;
     room: string;
     user_id: string;
     user_name: string;
-    join_time: string;
-    duration: number;
+    joined_at: number;
+    duration?: number;
 }
 
 export type DailyWebhookBody =
-    | { event: 'meeting.started'; payload: DailyMeetingPayload }
-    | { event: 'meeting.ended'; payload: DailyMeetingPayload }
-    | { event: 'participant.joined'; payload: DailyParticipantPayload }
-    | { event: 'participant.left'; payload: DailyParticipantPayload }
+    | { type: 'meeting.started'; payload: DailyMeetingPayload }
+    | { type: 'meeting.ended'; payload: DailyMeetingPayload }
+    | { type: 'participant.joined'; payload: DailyParticipantPayload }
+    | { type: 'participant.left'; payload: DailyParticipantPayload }

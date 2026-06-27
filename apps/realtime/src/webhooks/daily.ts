@@ -8,12 +8,16 @@ import {
 } from './daily_handlers';
 
 export default (app: Application) => {
+    app.get('/webhooks/daily', (_req: Request, res: Response) => {
+        res.sendStatus(200);
+    });
+
     app.post('/webhooks/daily', (req: Request, res: Response) => {
         const body = req.body as DailyWebhookBody;
 
-        console.log('/webhooks/daily: ', body.event)
+        console.log('/webhooks/daily: ', body.type)
 
-        switch (body.event) {
+        switch (body.type) {
             case 'meeting.started':
                 onMeetingStarted(body.payload);
                 break;

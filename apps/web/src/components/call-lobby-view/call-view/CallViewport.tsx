@@ -208,7 +208,7 @@ const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ p
   if (!id) return (
     <div className="flex flex-col items-center justify-center p-8 text-center font-sans animate-fade-in select-none">
       <PartnerAvatar partner={partner} />
-      <p className="text-xs text-slate-400 mt-2">Usuário remoto não detectado</p>
+      <p className="text-xs text-slate-400 mt-2">Esperando entrar na ligação...</p>
     </div>
   );
 

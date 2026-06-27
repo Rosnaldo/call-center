@@ -62,17 +62,17 @@ mkcert -install
 
 generate certificate:  
 ```
-mkcert free-porn-block.local
+mkcert free-porn-block.com
 ```
 
 config nginx:
 
 ```
-ssl_certificate     /etc/nginx/certs/free-porn-block.local.pem;
-ssl_certificate_key /etc/nginx/certs/free-porn-block.local-key.pem;
+ssl_certificate     /etc/nginx/certs/free-porn-block.com.pem;
+ssl_certificate_key /etc/nginx/certs/free-porn-block.com-key.pem;
 ```
 
 add to local host:  
 ```
-127.0.0.1 free-porn-block.local
+127.0.0.1 free-porn-block.com
 ```

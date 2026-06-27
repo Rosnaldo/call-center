@@ -837,18 +837,18 @@
       "clientId": "login",
       "name": "",
       "description": "",
-      "rootUrl": "https://free-porn-block.local",
-      "adminUrl": "https://free-porn-block.local",
-      "baseUrl": "https://free-porn-block.local",
+      "rootUrl": "https://free-porn-block.com",
+      "adminUrl": "https://free-porn-block.com",
+      "baseUrl": "https://free-porn-block.com",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "https://free-porn-block.local/*"
+        "https://free-porn-block.com/*"
       ],
       "webOrigins": [
-        "https://free-porn-block.local"
+        "https://free-porn-block.com"
       ],
       "notBefore": 0,
       "bearerOnly": false,
@@ -867,7 +867,7 @@
         "standard.token.exchange.enabled": "false",
         "login_theme": "callcenter",
         "frontchannel.logout.session.required": "true",
-        "post.logout.redirect.uris": "https://free-porn-block.local/*",
+        "post.logout.redirect.uris": "https://free-porn-block.com/*",
         "display.on.consent.screen": "false",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
@@ -897,20 +897,20 @@
       "clientId": "myadmin",
       "name": "",
       "description": "",
-      "rootUrl": "https://free-porn-block.local/myadmin",
-      "adminUrl": "https://free-porn-block.local",
-      "baseUrl": "https://free-porn-block.local/myadmin",
+      "rootUrl": "https://free-porn-block.com/myadmin",
+      "adminUrl": "https://free-porn-block.com",
+      "baseUrl": "https://free-porn-block.com/myadmin",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
         "http://localhost:5174/myadmin/*",
-        "https://free-porn-block.local/myadmin/*",
+        "https://free-porn-block.com/myadmin/*",
         "http://localhost:5174/myadmin"
       ],
       "webOrigins": [
-        "https://free-porn-block.local",
+        "https://free-porn-block.com",
         "http://localhost:5173",
         "http://localhost:5174"
       ],
@@ -927,7 +927,7 @@
       "attributes": {
         "request.object.signature.alg": "any",
         "frontchannel.logout.session.required": "true",
-        "post.logout.redirect.uris": "https://free-porn-block.local/myadmin/*##http://localhost:5174/myadmin/*##http://localhost:5174/myadmin",
+        "post.logout.redirect.uris": "https://free-porn-block.com/myadmin/*##http://localhost:5174/myadmin/*##http://localhost:5174/myadmin",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
         "use.refresh.tokens": "true",
