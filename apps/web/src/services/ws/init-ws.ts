@@ -18,9 +18,6 @@ interface InitWsStores {
 }
 
 export class InitWs {
-    private usersService: WsUsersService | null = null;
-    private callService: WsCallService | null = null;
-    private meetingService: WsMeetingService | null = null;
     private activeWs: AuthenticatedWebSocket | null = null;
     private running = false;
     private factory: TransportFactory = createWsTransport;
@@ -73,6 +70,7 @@ export class InitWs {
         if (!token) return;
         this.running = true;
         this.factory = factory;
+
         const usersService = new WsUsersService({ onlineUsers: stores.onlineUsers });
         const callService = new WsCallService({
             call: stores.call,
@@ -81,6 +79,7 @@ export class InitWs {
             onlineUsers: stores.onlineUsers,
         });
         const meetingService = new WsMeetingService({ call: stores.call });
+
         this.connect(this.createAuthWs(token), usersService, callService, meetingService);
     }
 
