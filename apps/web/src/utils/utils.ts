@@ -13,7 +13,6 @@ export function joinUrl(base: string, path?: string) {
 }
 
 export function handleRequestError(error: any) {
-    // Axios errors não são ApiError
     if (error.response) {
         const message = error.response.data?.message || "API error";
         mytoast.error(message);

@@ -4,9 +4,10 @@
  */
 
 import React from 'react';
-import { 
-  Video 
+import {
+  Video
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useCallViewStore } from '../../states/stores.ts';
 
 import { CallState } from '@/src/states/call/state.ts';
@@ -26,6 +27,7 @@ export const AttendantList: React.FC<AttendantListProps> = ({
   onCompleteCall: _onCompleteCall,
 }) => {
 
+  const { t } = useTranslation();
   const selectedAttendantId = useCallViewStore((s) => s.selectedAttendantId);
   const selectAttendant = useCallViewStore((s) => s.selectAttendant);
 
@@ -84,7 +86,7 @@ export const AttendantList: React.FC<AttendantListProps> = ({
         <div className="flex items-center justify-between border-b border-brand-border-dark pb-4">
           <div className="flex items-center gap-2">
             <div className="w-1 h-3.5 bg-brand-ochre rounded-full" />
-            <h4 className="text-[10px] font-bold font-mono tracking-wider text-brand-dark uppercase">Atendentes Disponíveis</h4>
+            <h3 className="font-bold font-mono text-brand-dark text-base">{t('attendantList.availableAttendants')}</h3>
           </div>
           <span className="text-xs bg-brand-card border border-brand-border font-semibold font-mono tracking-wide px-3 py-1 rounded-full text-brand-ochre">
             {sortedAttendants.length} Online
@@ -94,7 +96,7 @@ export const AttendantList: React.FC<AttendantListProps> = ({
         <div className="space-y-4">
           {sortedAttendants.length === 0 ? (
             <div className="text-center py-10 text-xs text-brand-muted border border-dashed border-brand-border rounded-2xl bg-brand-card">
-              No attendants registered in the system.
+              {t('attendantList.noAttendants')}
             </div>
           ) : (
             sortedAttendants.map((at) => {
@@ -135,13 +137,13 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                           />
                         </div>
                         {at.isOffline ? (
-                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-slate-400 rounded-full border-2 border-white" title="Offline" />
+                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-slate-400 rounded-full border-2 border-white" title={t('attendantList.offline')} />
                         ) : isDisconnecting ? (
-                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-amber-400 rounded-full border-2 border-white animate-pulse" title="Reconectando..." />
+                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-amber-400 rounded-full border-2 border-white animate-pulse" title={t('attendantList.reconnecting')} />
                         ) : activeCall ? (
-                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-amber-500 rounded-full border-2 border-white" title="In call" />
+                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-amber-500 rounded-full border-2 border-white" title={t('attendantList.inCall')} />
                         ) : (
-                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white animate-pulse" title="Ready" />
+                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white animate-pulse" title={t('attendantList.ready')} />
                         )}
                       </div>
 
@@ -150,17 +152,17 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                           <h4 className="font-bold font-sans text-brand-dark text-sm sm:text-base">{at.name}</h4>
                           {isSelf && (
                             <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 bg-brand-ochre text-white rounded">
-                              Você
+                              {t('attendantList.you')}
                             </span>
                           )}
                           {at.isOffline && (
                             <span className="text-[9px] font-semibold tracking-wide px-1.5 py-0.5 bg-brand-panel border border-brand-border text-brand-muted rounded">
-                              Offline
+                              {t('attendantList.offline')}
                             </span>
                           )}
                           {isDisconnecting && (
                             <span className="text-[9px] font-semibold tracking-wide px-1.5 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded animate-pulse">
-                              Reconectando...
+                              {t('attendantList.reconnecting')}
                             </span>
                           )}
                         </div>
@@ -168,19 +170,19 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                         <div className="flex flex-wrap items-center gap-2 mt-2">
                           {at.isOffline ? (
                             <span className="text-[10px] font-mono tracking-tight bg-slate-50 border border-slate-200 text-slate-500 px-2 py-0.5 rounded font-medium flex items-center gap-1.5">
-                              <strong>Offline</strong> · Indisponível
+                              <strong>{t('attendantList.statusOffline')}</strong> · {t('attendantList.statusOfflineDesc')}
                             </span>
                           ) : isDisconnecting ? (
                             <span className="text-[10px] font-mono tracking-tight bg-amber-50 border border-amber-200 text-amber-700 px-2 py-0.5 rounded font-medium flex items-center gap-1.5 animate-pulse">
-                              <strong>Reconectando</strong> · Aguardando conexão
+                              <strong>{t('attendantList.statusReconnecting')}</strong> · {t('attendantList.statusReconnectingDesc')}
                             </span>
                           ) : activeCall ? (
                             <span className="text-[10px] font-mono tracking-tight bg-amber-50 border border-amber-100/50 text-amber-700 px-2 py-0.5 rounded font-medium flex items-center gap-1.5">
-                              <strong>Ocupado</strong> · Em atendimento
+                              <strong>{t('attendantList.statusBusy')}</strong> · {t('attendantList.statusBusyDesc')}
                             </span>
                           ) : (
                             <span className="text-[10px] font-mono tracking-tight bg-emerald-50 border border-emerald-100/50 text-emerald-600 px-2 py-0.5 rounded font-medium flex items-center gap-1.5">
-                              <strong>Ativo</strong> · Disponível
+                              <strong>{t('attendantList.statusActive')}</strong> · {t('attendantList.statusActiveDesc')}
                             </span>
                           )}
                         </div>
@@ -192,25 +194,25 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                         <button
                           disabled
                           className="px-3 py-2 rounded-xl text-xs font-semibold bg-brand-panel text-brand-muted/55 border border-brand-border cursor-not-allowed flex items-center gap-1.5"
-                          title="This attendant is offline/unavailable"
+                          title={t('attendantList.offlineUnavailable')}
                         >
                           <Video className="w-3.5 h-3.5 text-brand-muted/40" />
-                          Offline
+                          {t('attendantList.offline')}
                         </button>
                       ) : isDisconnecting ? (
                         <button
                           disabled
                           className="px-3 py-2 rounded-xl text-xs font-semibold bg-amber-50 text-amber-400 border border-amber-200 cursor-not-allowed flex items-center gap-1.5"
-                          title="Atendente reconectando..."
+                          title={t('attendantList.reconnecting')}
                         >
                           <Video className="w-3.5 h-3.5" />
-                          Reconectando
+                          {t('attendantList.statusReconnecting')}
                         </button>
                       ) : currentUser?.role === 'customer' ? (
                         currentCustInActiveWithThisAtt ? (
                           <div className="text-xs font-bold text-amber-700 bg-amber-50 px-3 py-2 border border-amber-200 rounded-xl flex items-center gap-1.5 animate-pulse cursor-not-allowed">
                             <Video className="w-3.5 h-3.5" />
-                            Conectado
+                            {t('attendantList.connected')}
                           </div>
                         ) : (
                           (() => {
@@ -223,9 +225,9 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                                   id={`buy-shortcut-${at.id}`}
                                   disabled
                                   className="px-3 py-2 rounded-xl text-xs font-bold bg-brand-panel text-brand-muted/50 border border-brand-border transition-all flex items-center gap-1.5 cursor-not-allowed"
-                                  title="Você está sem tokens. Clique para comprar tokens agora!"
+                                  title={t('attendantList.noTokensHint')}
                                 >
-                                  Comprar Tokens
+                                  {t('attendantList.buyTokens')}
                                 </button>
                               );
                             }
@@ -237,11 +239,11 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                                 <button
                                   id={`call-deselect-${at.id}`}
                                   className="px-3 py-2 rounded-xl text-xs font-bold bg-brand-panel border border-brand-border text-brand-muted/50 transition-colors flex items-center gap-1.5 cursor-not-allowed"
-                                  title="Close lobby"
+                                  title={t('attendantList.closeLobby')}
                                   disabled
                                 >
                                   <Video className="w-3.5 h-3.5 text-brand-muted/40" />
-                                  Selecionado
+                                  {t('attendantList.selected')}
                                 </button>
                               );
                             }
@@ -258,21 +260,21 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                                 }`}
                                 title={
                                   isLocalCustomerBusyState
-                                    ? 'You are already connected'
+                                    ? t('attendantList.alreadyConnected')
                                     : busyCall
-                                    ? 'Attendant is currently busy in another call'
-                                    : 'Enter attendant lobby'
+                                    ? t('attendantList.attendantBusy')
+                                    : t('attendantList.enterLobby')
                                 }
                               >
                                 <Video className="w-3.5 h-3.5" />
-                                {busyCall ? 'Ocupado' : 'Chamar'}
+                                {busyCall ? t('attendantList.busy') : t('attendantList.callAction')}
                               </button>
                             );
                           })()
                         )
                       ) : isSelf ? (
                         activeCall ? null : (
-                          <span className="text-xs text-brand-muted font-medium">Aguardando...</span>
+                          <span className="text-xs text-brand-muted font-medium">{t('attendantList.waiting')}</span>
                         )
                       ) : null}
                     </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
 
 interface BillingCalculationModalProps {
@@ -10,6 +11,7 @@ export const BillingCalculationModal: React.FC<BillingCalculationModalProps> = (
   isOpen,
   isAttendant = false,
 }) => {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   return (
@@ -23,18 +25,18 @@ export const BillingCalculationModal: React.FC<BillingCalculationModalProps> = (
         </div>
 
         <h3 className="text-sm font-extrabold font-display text-brand-dark tracking-tight uppercase">
-          Finalizando Atendimento
+          {t('call.finalizingService')}
         </h3>
 
         <p className="text-xs text-brand-muted font-sans leading-relaxed">
           {isAttendant
-            ? 'Processando resumo e dados consolidados do atendimento...'
-            : 'Aguardando cálculo oficial de consumo de tokens...'}
+            ? t('call.processingServiceSummary')
+            : t('call.awaitingTokenCalculation')}
         </p>
 
         <div className="w-full bg-brand-panel/20 border border-brand-border/30 rounded-xl px-5 py-4 flex flex-col items-center justify-center gap-2 font-mono text-[10px] text-brand-muted">
           <span className="text-brand-ochre font-bold tracking-widest select-none animate-pulse">
-            {isAttendant ? '♦ PROCESSANDO ATENDIMENTO' : '♦ PROCESSANDO VALOR OFICIAL'}
+            {isAttendant ? '♦ ' + t('call.processingService') : '♦ ' + t('call.processingOfficialValue')}
           </span>
         </div>
       </div>

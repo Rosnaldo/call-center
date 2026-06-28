@@ -37,7 +37,7 @@ export const createAuthActions = (
         if (error) return;
 
         try {
-            if (!email) throw new Error('Email não encontrado no token.');
+            if (!email) throw new Error('Email not found in token.');
             const user = await fetchUser(email);
             const onlineUser = mapUserToOnlineUser(user);
             await addOnlineUser(onlineUser);

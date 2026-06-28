@@ -1,5 +1,6 @@
 import React from 'react';
 import { Camera, CameraOff } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const btnBase = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider border transition-colors cursor-pointer';
 const btnOn = `${btnBase} bg-[#1e2022] hover:bg-[#222528] border-[#2d3135] text-slate-300 hover:text-white`;
@@ -11,17 +12,18 @@ interface CameraToggleButtonProps {
 }
 
 export const CameraToggleButton: React.FC<CameraToggleButtonProps> = ({ enabled, onToggle }) => {
+  const { t } = useTranslation();
   if (enabled) {
     return (
       <button id="is-camera-enabled" type="button" onClick={onToggle} className={btnOn}>
-        <Camera className="w-3.5 h-3.5 shrink-0" />Desabilitar Câmera
+        <Camera className="w-3.5 h-3.5 shrink-0" />{t('mediaSettings.disableCamera')}
       </button>
     );
   }
 
   return (
     <button id="is-camera-enabled" type="button" onClick={onToggle} className={btnOff}>
-      <CameraOff className="w-3.5 h-3.5 shrink-0" />Habilitar Câmera
+      <CameraOff className="w-3.5 h-3.5 shrink-0" />{t('mediaSettings.enableCamera')}
     </button>
   );
 };

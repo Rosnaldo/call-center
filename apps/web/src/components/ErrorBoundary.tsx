@@ -1,4 +1,5 @@
 import React, { ErrorInfo, ReactNode } from 'react';
+import i18n from '../i18n.ts';
 
 interface Props {
   children?: ReactNode;
@@ -17,7 +18,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
   };
 
   public static getDerivedStateFromError(error: Error): State {
-    // Atualiza o estado para que a próxima renderização mostre a UI alternativa.
     return { hasError: true, error };
   }
 
@@ -38,20 +38,20 @@ export class ErrorBoundary extends React.Component<Props, State> {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-red-900 mb-2 font-sans">Ops! Algo deu errado</h2>
+          <h2 className="text-xl font-bold text-red-900 mb-2 font-sans">{i18n.t('error.somethingWentWrong')}</h2>
           <p className="text-red-700 text-sm mb-6 max-w-md font-sans">
-            Ocorreu um erro inesperado durante a renderização. Nossa equipe de simulação já foi notificada.
+            {i18n.t('error.unexpectedRenderError')}
           </p>
           <div className="bg-white border border-red-200 rounded-lg p-3 text-left w-full mb-6 max-h-40 overflow-auto">
             <code className="text-xs text-red-600 font-mono block break-words">
-              {this.state.error?.toString() || 'Erro desconhecido'}
+              {this.state.error?.toString() || i18n.t('error.unknownError')}
             </code>
           </div>
           <button
             onClick={() => window.location.reload()}
             className="px-5 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-medium rounded-xl text-sm transition-colors shadow-sm"
           >
-            Recarregar Página
+            {i18n.t('error.reloadPage')}
           </button>
         </div>
       );

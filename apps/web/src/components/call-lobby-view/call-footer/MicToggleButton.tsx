@@ -1,5 +1,6 @@
 import React from 'react';
 import { Mic, MicOff } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface MicToggleButtonProps {
   id?: string;
@@ -13,12 +14,13 @@ export const MicToggleButton: React.FC<MicToggleButtonProps> = ({
   isMuted,
   onClick,
 }) => {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
       id={id}
       onClick={onClick}
-      title={isMuted ? 'Ativar Microfone' : 'Silenciar Microfone'}
+      title={isMuted ? t('mediaSettings.unmuteMic') : t('mediaSettings.muteMic')}
       className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md border ${
         isMuted
           ? 'bg-red-600 hover:bg-red-700 text-white border-red-500/20 cursor-pointer active:scale-95'

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface ConfirmCloseCallModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ export const ConfirmCloseCallModal: React.FC<ConfirmCloseCallModalProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   return (
@@ -23,11 +25,11 @@ export const ConfirmCloseCallModal: React.FC<ConfirmCloseCallModalProps> = ({
         className="w-full max-w-md bg-white border-0 rounded-[24px] shadow-[0_20px_50px_rgba(163,101,0,0.11),_0_4px_16px_rgba(163,101,0,0.05)] overflow-hidden flex flex-col p-6 items-center text-center gap-4"
       >
         <h4 className="text-sm font-extrabold font-display text-brand-dark tracking-tight uppercase">
-          Encerrar Chamada?
+          {t('call.endCall')}
         </h4>
 
         <div className="text-xs text-brand-muted font-sans p-4 bg-brand-panel/20 leading-relaxed rounded-xl border border-brand-border/30 w-full text-center">
-          Esta ação não pode ser desfeita e os tokens consumidos serão cobrados.
+          {t('call.endCallWarning')}
         </div>
 
         <div className="flex items-center justify-between w-full mt-2 gap-4">
@@ -36,7 +38,7 @@ export const ConfirmCloseCallModal: React.FC<ConfirmCloseCallModalProps> = ({
             onClick={onCancel}
             className="px-4 py-2 bg-white hover:bg-brand-canvas border border-[#ebdcb9] text-brand-muted hover:text-brand-dark transition-all font-mono tracking-wide text-[10px] rounded-full uppercase cursor-pointer font-semibold"
           >
-            cancelar
+            {t('call.cancel')}
           </button>
 
           <button
@@ -44,7 +46,7 @@ export const ConfirmCloseCallModal: React.FC<ConfirmCloseCallModalProps> = ({
             onClick={onConfirm}
             className="px-4 py-2 bg-brand-ochre hover:bg-brand-ochre-hover text-white transition-all font-mono tracking-wide text-[10px] rounded-full uppercase flex items-center gap-1.5 cursor-pointer shadow-[0_2px_8px_rgba(163,101,0,0.12)] font-extrabold"
           >
-            Encerrar Chamada
+            {t('call.endCallConfirm')}
           </button>
         </div>
       </div>

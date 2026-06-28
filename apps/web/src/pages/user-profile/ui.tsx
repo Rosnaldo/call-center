@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/header/Header.tsx';
 import { Title } from '../../components/Title.tsx';
 import { Edit2, Check, UploadCloud, ShieldAlert } from 'lucide-react';
@@ -29,6 +30,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   navigate,
   processFile,
 }) => {
+  const { t } = useTranslation();
   const onLogout = useLogout();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -37,13 +39,13 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
       <div className="min-h-screen bg-brand-canvas flex flex-col items-center justify-center p-6">
         <div className="bg-white border border-brand-border rounded-2xl p-8 max-w-md w-full text-center">
           <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-brand-dark font-display mb-2">Desconectado</h2>
-          <p className="text-xs text-brand-muted mb-6">Por favor, conecte-se com um dos usuários de teste no simulador.</p>
+          <h2 className="text-xl font-bold text-brand-dark font-display mb-2">{t('profile.disconnected')}</h2>
+          <p className="text-xs text-brand-muted mb-6">{t('profile.pleaseConnect')}</p>
           <button
             onClick={() => navigate('login')}
             className="w-full bg-brand-ochre hover:bg-brand-ochre-hover text-white py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
           >
-            Ir para Login
+            {t('profile.goToLogin')}
           </button>
         </div>
       </div>
@@ -73,7 +75,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const loadingToast = mytoast('Alterando avatar...');
+      const loadingToast = mytoast(t('profile.changingAvatar'));
       try {
         await processFile(file);
       } catch (error) {
@@ -92,7 +94,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
-    const loadingToast = mytoast('Alterando avatar...');
+    const loadingToast = mytoast(t('profile.changingAvatar'));
     try {
       await processFile(file);
     } catch (error) {
@@ -117,11 +119,11 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
             className="flex items-center gap-1 text-xs font-medium text-brand-muted hover:text-brand-ochre transition-colors group cursor-pointer"
           >
             <span className="group-hover:-translate-x-0.5 transition-transform">←</span>
-            <span>Voltar para a área de {currentUser.role === 'customer' ? 'Cliente' : 'Agente'}</span>
+            <span>{t('profile.backToArea', { role: currentUser.role === 'customer' ? t('profile.roleCustomer') : t('profile.roleAttendant') })}</span>
           </button>
         </div>
 
-        <Title label="Profile" />
+        <Title label={t('profile.title')} />
 
         {/* 2-column layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
@@ -133,9 +135,9 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               <div className="flex justify-between items-start mb-5">
                 <div>
                   <div className="text-[10px] font-bold font-mono text-brand-ochre tracking-widest uppercase mb-1">
-                    — §01 Identity
+                    — §01 {t('profile.sectionIdentity')}
                   </div>
-                  <h3 className="text-xl font-bold font-display text-brand-dark">Your details</h3>
+                  <h3 className="text-xl font-bold font-display text-brand-dark">{t('profile.yourDetails')}</h3>
                 </div>
 
                 {!isEditing ? (
@@ -145,7 +147,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-panel hover:bg-brand-panel/80 border border-brand-border rounded-xl text-xs font-bold text-brand-dark cursor-pointer transition-all focus:outline-none"
                   >
                     <Edit2 className="w-3.5 h-3.5 text-brand-muted" />
-                    Edit
+                    {t('profile.edit')}
                   </button>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -156,14 +158,14 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                       className="flex items-center gap-1.5 px-3.5 py-1.5 bg-brand-ochre hover:bg-brand-ochre-hover text-white rounded-xl text-xs font-bold cursor-pointer transition-all focus:outline-none disabled:opacity-70"
                     >
                       <Check className="w-3.5 h-3.5" />
-                      {saveSuccess ? 'Salvo!' : 'Save'}
+                      {saveSuccess ? t('profile.saved') : t('profile.save')}
                     </button>
                     <button
                       id="cancel-profile-btn"
                       onClick={handleCancel}
                       className="px-3.5 py-1.5 bg-brand-panel hover:bg-brand-panel/80 border border-brand-border rounded-xl text-xs font-bold text-brand-muted cursor-pointer transition-all focus:outline-none"
                     >
-                      Cancel
+                      {t('profile.cancelEdit')}
                     </button>
                   </div>
                 )}
@@ -173,7 +175,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 {/* Full Name */}
                 <div className="border-b border-brand-border/40 pb-3">
                   <label className="block text-[10px] font-mono tracking-wider text-brand-muted uppercase mb-1.5">
-                    Full Name
+                    {t('profile.fullName')}
                   </label>
                   {isEditing ? (
                     <input
@@ -181,7 +183,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       maxLength={50}
-                      placeholder="Seu nome visível..."
+                      placeholder={t('profile.namePlaceholder')}
                       className="w-full bg-brand-panel/35 border border-brand-border rounded-xl px-3 py-2 text-sm text-brand-dark focus:outline-none focus:ring-1 focus:ring-brand-ochre"
                     />
                   ) : (
@@ -193,10 +195,10 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 <div className="border-b border-brand-border/40 pb-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <label className="text-[10px] font-mono tracking-wider text-brand-muted uppercase">
-                      Email
+                      {t('profile.email')}
                     </label>
                     <span className="px-1.5 py-0.5 bg-brand-panel text-[8px] font-mono text-brand-muted rounded uppercase font-bold tracking-widest border border-brand-border/40">
-                      read-only
+                      {t('profile.readOnly')}
                     </span>
                   </div>
                   <p className="text-sm text-brand-muted font-mono">{currentUser.email}</p>
@@ -252,11 +254,11 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-1.5 px-6 py-2.5 bg-brand-panel hover:bg-brand-panel/80 border border-brand-border rounded-xl text-xs font-bold text-brand-dark cursor-pointer transition-all focus:outline-none mb-3.5"
               >
-                Upload photo
+                {t('profile.uploadPhoto')}
               </button>
 
               <span className="text-[10px] tracking-wide text-brand-muted leading-relaxed max-w-[180px]">
-                Qualquer formato de imagem, máx 2 MB · arraste para enviar
+                {t('profile.imageFormatHint')}
               </span>
 
               {fileError && (
@@ -270,8 +272,8 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                   <div className="p-3 bg-white border border-brand-border rounded-2xl shrink-0 mb-3 shadow-md">
                     <UploadCloud className="w-8 h-8 text-brand-ochre animate-bounce" />
                   </div>
-                  <span className="text-xs font-bold text-brand-dark font-display">Solte sua imagem aqui</span>
-                  <span className="text-[9px] text-brand-muted mt-1">Solte para atualizar seu avatar</span>
+                  <span className="text-xs font-bold text-brand-dark font-display">{t('profile.dropImageHere')}</span>
+                  <span className="text-[9px] text-brand-muted mt-1">{t('profile.dropToUpdate')}</span>
                 </div>
               )}
             </div>

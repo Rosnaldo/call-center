@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Video, VideoOff } from 'lucide-react';
 
 interface CamToggleButtonProps {
@@ -13,12 +14,13 @@ export const CamToggleButton: React.FC<CamToggleButtonProps> = ({
   isVideoOff,
   onClick,
 }) => {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
       id={id}
       onClick={onClick}
-      title={isVideoOff ? 'Ativar Câmera' : 'Desativar Câmera'}
+      title={isVideoOff ? t('call.enableCamera') : t('call.disableCamera')}
       className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md border ${
         isVideoOff
           ? 'bg-red-600 hover:bg-red-700 text-white border-red-500/20 cursor-pointer active:scale-95'

@@ -4,6 +4,7 @@
  */
 
 import React, { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserProfileBadge } from './UserProfileBadge.tsx';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
@@ -18,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   users,
   onLogout,
 }) => {
+  const { t } = useTranslation();
   const reactNavigator = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
@@ -66,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
                   : 'text-brand-muted hover:text-brand-dark hover:bg-brand-card/60'
               }`}
             >
-              Área do Cliente
+              {t('header.customerArea')}
             </button>
             <button
               id="nav-route-attendant"
@@ -77,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
                   : 'text-brand-muted hover:text-brand-dark hover:bg-brand-card/60'
               }`}
             >
-              Atendimento (Agente)
+              {t('header.attendantArea')}
             </button>
           </nav>
         )}

@@ -47,7 +47,7 @@ export async function fetchTransactions(
 
     const res = await fetch(url);
     if (!res.ok) {
-      throw new Error("Erro de comunicação com o servidor.");
+      throw new Error("Server communication error.");
     }
     const data = await res.json();
     

@@ -4,6 +4,7 @@
  */
 
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "sonner";
 import { LoginPage } from './pages/LoginPage.tsx';
@@ -26,6 +27,7 @@ import properties from './properties';
 const queryClient = new QueryClient();
 
 export default function App() {
+  const { t } = useTranslation();
   const ready = useAuthStore((s) => s.ready);
   const error = useAuthStore((s) => s.error);
   const { isSimulation } = properties;
@@ -39,19 +41,19 @@ export default function App() {
   if (error) return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--bg-brand-canvas)]">
       <div className="text-center bg-white p-8 rounded-2xl border border-slate-200/50 max-w-sm shadow-sm">
-        <h3 className="text-base font-bold text-slate-800">Erro ao inicializar</h3>
+        <h3 className="text-base font-bold text-slate-800">{t('error.initError')}</h3>
         <p className="text-xs text-slate-500 mt-2">{error}</p>
         <button
           onClick={() => window.location.replace('/login')}
           className="mt-6 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-lg transition shadow-sm cursor-pointer"
         >
-          Tentar novamente
+          {t('error.tryAgain')}
         </button>
       </div>
     </div>
   );
 
-  if (!ready && !isSimulation) return <div>Loading session…</div>;
+  if (!ready && !isSimulation) return <div>{t('call.loadingSession')}</div>;
 
   return (
     <DailyProvider callObject={DailyService.getInstance().callObject}>

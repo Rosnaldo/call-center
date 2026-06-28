@@ -10,6 +10,7 @@ class Properties {
     dailyApiKey: string;
     isSimulation: boolean;
     isProduction: boolean;
+    lang: string;
 
     private constructor() {
         const env = (import.meta as any).env ?? {};
@@ -22,6 +23,7 @@ class Properties {
         this.dailyApiKey = env.VITE_DAILY_API_KEY ?? '';
         this.isSimulation = env.VITE_ENV === 'simulation';
         this.isProduction = env.VITE_ENV === 'production';
+        this.lang = env.VITE_LANG ?? 'en';
     }
 
     static getInstance(): Properties {

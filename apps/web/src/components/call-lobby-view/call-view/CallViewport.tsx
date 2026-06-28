@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Clock, User } from 'lucide-react';
 import { CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
@@ -9,6 +10,7 @@ import { PartnerAvatar } from '../PartnerAvatar.tsx';
 import { ScreenShareTile } from '../ScreenShareTile.tsx';
 import { useParticipantIds, useScreenShare } from '@daily-co/daily-react';
 import { useDevicesContext } from '../../../providers/devices.tsx';
+import i18n from '../../../i18n.ts';
 
 
 
@@ -27,7 +29,7 @@ const renderNoneViewport = () => (
       <User className="w-8 h-8 text-slate-400" />
     </div>
     <h3 className="text-sm font-semibold text-slate-200 tracking-wide uppercase">
-      Nenhum Atendimento Selecionado
+      {i18n.t('call.noServiceSelected')}
     </h3>
   </div>
 );
@@ -36,13 +38,13 @@ const renderAwaitingAttendant = (partner: IOnlineUser | undefined) => (
   <div id="viewport-awaiting-attendant" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
     <PartnerAvatar partner={partner} size="md" pulse />
     <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1">
-      Chamada Recebida
+      {i18n.t('call.incomingCall')}
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">
-      {partner?.name ?? ''} está ligando...
+      {i18n.t('call.callerIsCalling', { name: partner?.name ?? '' })}
     </p>
     <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
-      Clique no botão verde <strong className="text-emerald-400 font-semibold">"Atender Chamada"</strong> abaixo para iniciar a videoconferência.
+      {i18n.t('call.clickAcceptCall')}
     </p>
   </div>
 );
@@ -51,10 +53,10 @@ const renderAwaitingClient = (partner: IOnlineUser | undefined) => (
   <div id="viewport-awaiting-client" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
     <PartnerAvatar partner={partner} size="md" pulse />
     <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1">
-      Chamada Iniciada
+      {i18n.t('call.callStarted')}
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">
-      Aguardando que {partner?.name ?? ''} atenda a ligação...
+      {i18n.t('call.awaitingAnswer', { name: partner?.name ?? '' })}
     </p>
   </div>
 );
@@ -63,13 +65,13 @@ const renderInterruptedAttendant = (partner: IOnlineUser | undefined) => (
   <div id="viewport-interrupted-attendant" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
     <PartnerAvatar partner={partner} size="md" pulse />
     <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mb-1">
-      Conexão Interrompida
+      {i18n.t('call.connectionInterrupted')}
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">
-      Aguardando {partner?.name ?? ''} retornar à ligação...
+      {i18n.t('call.awaitingClientReturn', { name: partner?.name ?? '' })}
     </p>
     <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
-      Timer e cobrança pausados. Aguarde o retorno do cliente ou finalize a sessão se preferir.
+      {i18n.t('call.timerPausedClient')}
     </p>
   </div>
 );
@@ -78,13 +80,13 @@ const renderInterruptedClient = (partner: IOnlineUser | undefined) => (
   <div id="viewport-interrupted-client" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
     <PartnerAvatar partner={partner} size="md" pulse />
     <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mb-1">
-      Conexão Interrompida
+      {i18n.t('call.connectionInterrupted')}
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">
-      Aguardando o atendente {partner?.name ?? ''} retornar...
+      {i18n.t('call.awaitingAttendantReturn', { name: partner?.name ?? '' })}
     </p>
     <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
-      Timer e cobrança pausados. Aguarde o retorno do atendente ou finalize a sessão se preferir.
+      {i18n.t('call.timerPausedAttendant')}
     </p>
   </div>
 );
@@ -102,15 +104,16 @@ const renderAwaitingAnswer = (attendant: IOnlineUser | null) => (
   <div id="viewport-awaiting-answer" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
     <PartnerAvatar partner={attendant} size="md" pulse />
     <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1">
-      Chamada Iniciada
+      {i18n.t('call.callStarted')}
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">
-      Aguardando que {attendant?.name ?? ''} atenda a ligação...
+      {i18n.t('call.awaitingAnswer', { name: attendant?.name ?? '' })}
     </p>
   </div>
 );
 
 const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ partner }) => {
+  const { t } = useTranslation();
   const cameraPermission = useDevicesStore(s => s.cameraPermission);
   const micPermission = useDevicesStore(s => s.micPermission);
   const { requestCamera, requestMicrophone } = useDevicesContext();
@@ -129,7 +132,7 @@ const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ p
   if (!id && !activeScreen) return (
     <div className="flex flex-col items-center justify-center p-8 text-center font-sans select-none">
       <PartnerAvatar partner={partner} size="md" />
-      <p className="text-xs text-slate-400 mt-2">Esperando entrar na ligação...</p>
+      <p className="text-xs text-slate-400 mt-2">{t('call.waitingToJoin')}</p>
     </div>
   );
 

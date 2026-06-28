@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { CallState } from '../../../states/call/state.ts';
 import { useBillingStore } from '../../../states/stores.ts';
 
@@ -23,6 +24,7 @@ export const InfoCard: React.FC<InfoCardProps> = ({
   billingCountdown,
   isInCall,
 }) => {
+  const { t } = useTranslation();
   const initialTokens = useBillingStore((s) => s.initialTokens);
 
   if (!currentCall) return null;
@@ -38,16 +40,16 @@ export const InfoCard: React.FC<InfoCardProps> = ({
         className="bg-[#f2efe7] rounded-xl px-6 py-4 w-full sm:w-[260px] text-left shadow-none flex flex-col justify-center border-0"
       >
         <div className="text-[12px] font-mono tracking-widest text-[#a36500] uppercase font-bold mb-1">
-          SESSÃO
+          {t('infoCard.session')}
         </div>
         <div className="text-[10px] font-mono font-bold text-brand-dark flex items-center gap-1 mt-1">
-          <span>SEU SALDO:</span>
+          <span>{t('infoCard.yourBalance')}</span>
           <span className="bg-[#ebdcb9]/30 text-[#a36500] font-mono font-bold text-[9px] px-2 py-0.5 rounded-md border border-[#ebdcb9]/60">{currentTokens} {currentTokens === 1 ? 'Tk' : 'Tks'}</span>
         </div>
 
         <div className="mt-3 pt-2.5 border-t border-[#ebdcb9]/40 flex items-center justify-between">
           <div className="flex items-center gap-1 bg-[#ebdcb9]/20 border border-[#ebdcb9]/50 px-2 py-0.5 rounded text-[8px] text-brand-muted font-mono uppercase font-semibold">
-            TAXA CONTRATADA
+            {t('infoCard.contractedRate')}
           </div>
           <span className="font-mono text-[10px] font-bold text-[#a36500]">
             {blockDurationSeconds === 10 ? '1 tk / 10s' : '1 tk / 10m'}
@@ -59,7 +61,7 @@ export const InfoCard: React.FC<InfoCardProps> = ({
         <div className="bg-[#f2efe7] rounded-xl px-6 py-4 flex-1 sm:flex-initial sm:min-w-[320px] flex flex-col justify-center shadow-none border-0">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#ebdcb9]/40 font-mono">
             <span className="text-[10px] font-mono tracking-wider text-brand-dark uppercase font-bold flex items-center gap-1.5">
-              CONSUMO ATUAL
+              {t('infoCard.currentUsage')}
             </span>
             <span className="bg-[#ebdcb9]/30 text-[#a36500] font-mono font-bold text-[9px] px-2 py-0.5 rounded-md border border-[#ebdcb9]/60">
               {initialTokens} Tk
@@ -68,7 +70,7 @@ export const InfoCard: React.FC<InfoCardProps> = ({
 
           <div className="flex justify-between items-baseline mb-2 font-mono">
             <span className="text-[9px] font-mono tracking-wider text-brand-muted uppercase">
-              PRÓXIMO CONSUMO
+              {t('infoCard.nextCharge')}
             </span>
             <span className="font-mono text-[10px] font-bold text-[#a36500]">
               {formatTime(billingCountdown)} / {formatTime(blockDurationSeconds)}

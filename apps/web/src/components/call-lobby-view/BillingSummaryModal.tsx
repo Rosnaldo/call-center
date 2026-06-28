@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { Check } from 'lucide-react';
 import { CallState } from '../../states/call/state.ts';
 import { OnlineUserState } from '../../states/online-users/state';
@@ -19,6 +20,7 @@ export const BillingSummaryModal: React.FC<BillingSummaryModalProps> = ({
   callDurationSeconds = 0,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const initialTokens = useBillingStore((s) => s.initialTokens);
   const mins = Math.floor(callDurationSeconds / 60);
   const secs = callDurationSeconds % 60;
@@ -41,23 +43,23 @@ export const BillingSummaryModal: React.FC<BillingSummaryModalProps> = ({
         </div>
 
         <h3 className="text-sm font-extrabold font-sans text-brand-dark tracking-tight uppercase">
-          Atendimento Finalizado
+          {t('call.serviceCompleted')}
         </h3>
 
         <p className="text-xs text-brand-muted font-sans leading-relaxed">
           {currentUser?.role === 'attendant'
-            ? <>Seu atendimento com <span className="text-brand-dark font-extrabold">{partnerName}</span> foi encerrado com sucesso.</>
-            : <>Sua chamada com <span className="text-brand-dark font-extrabold">{partnerName}</span> foi encerrada com sucesso.</>
+            ? <Trans i18nKey="call.attendantServiceEnded" values={{ name: partnerName }} components={{ 1: <span className="text-brand-dark font-extrabold" /> }} />
+            : <Trans i18nKey="call.customerCallEnded" values={{ name: partnerName }} components={{ 1: <span className="text-brand-dark font-extrabold" /> }} />
           }
         </p>
 
         <div className="bg-[#f2efe7] rounded-xl px-5 py-4 w-full flex flex-col gap-3 font-sans border border-brand-border/30">
           <div className="flex justify-between items-center text-[10px]">
             <span className="text-brand-muted uppercase font-bold tracking-wider">
-              {currentUser?.role === 'attendant' ? 'Tokens faturados' : 'Custo Total'}
+              {currentUser?.role === 'attendant' ? t('call.tokensBilled') : t('call.totalCost')}
             </span>
             <span className="font-extrabold text-[#a36500] font-mono uppercase bg-[#ebdcb9]/40 border border-[#ebdcb9]/60 px-2.5 py-1 rounded-lg text-[9px] leading-none">
-              {currentUser?.role === 'attendant' ? 'Recebido' : 'Faturado'}
+              {currentUser?.role === 'attendant' ? t('call.received') : t('call.billed')}
             </span>
           </div>
 
@@ -66,12 +68,12 @@ export const BillingSummaryModal: React.FC<BillingSummaryModalProps> = ({
               {initialTokens}
             </span>
             <span className="text-xs font-bold text-brand-muted">
-              {initialTokens === 1 ? 'Token' : 'Tokens'}
+              {initialTokens === 1 ? t('call.token') : t('call.tokens')}
             </span>
           </div>
 
           <div className="border-t border-[#ebdcb9]/40 pt-2.5 flex justify-between items-center text-[10px] text-brand-muted">
-            <span>TEMPO DE LIGAÇÃO:</span>
+            <span>{t('call.callDuration')}</span>
             <span className="font-mono text-brand-dark font-bold">
               {durationText}
             </span>
@@ -83,7 +85,7 @@ export const BillingSummaryModal: React.FC<BillingSummaryModalProps> = ({
           onClick={onClose}
           className="w-full justify-center px-4 py-2.5 bg-brand-ochre hover:bg-brand-ochre-hover text-white transition-all font-mono tracking-wide text-[10px] rounded-full uppercase flex items-center gap-1.5 cursor-pointer shadow-[0_2px_8px_rgba(163,101,0,0.12)] font-extrabold"
         >
-          OK, Entendido
+          {t('call.okUnderstood')}
         </button>
       </div>
     </div>

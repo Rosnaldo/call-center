@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useOnlineUsersStore, useCurrentUserStore } from '../../states/stores.ts';
 import { UserProfilePage } from './ui.tsx';
@@ -12,6 +13,7 @@ import { fetchUserUpload } from '@/src/services/api/user.ts';
 import properties from '../../properties';
 
 export const UserProfileContainer: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const currentUser = useCurrentUserStore((s) => s.currentUser);
   const setCurrentUser = useCurrentUserStore((s) => s.setCurrentUser);
@@ -21,12 +23,12 @@ export const UserProfileContainer: React.FC = () => {
   
   const processFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      mytoast.error("Por favor, selecione uma imagem.")
+      mytoast.error(t('profile.selectImage'))
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      mytoast.error("A imagem deve ter no maximo 2MB.")
+      mytoast.error(t('profile.imageTooLarge'))
       return;
     }
 
@@ -44,7 +46,7 @@ export const UserProfileContainer: React.FC = () => {
           setCurrentUser(currentUser);
         }
       };
-      reader.onerror = () => setFileError('Erro ao ler a imagem. Tente novamente.');
+      reader.onerror = () => setFileError(t('profile.imageReadError'));
       reader.readAsDataURL(file);
       return;
     }
@@ -55,7 +57,7 @@ export const UserProfileContainer: React.FC = () => {
       currentUser!.avatarUrl = url;
       setCurrentUser(currentUser);
     } catch (error) {
-      setFileError('Erro ao ler a imagem. Tente novamente.');
+      setFileError(t('profile.imageReadError'));
       throw error;
     }
   };

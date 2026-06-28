@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { PaginatedTransactionsResponse } from '../queries/transaction/query.ts';
 import {
   TrendingUp,
@@ -27,7 +28,7 @@ interface TransactionsTableProps {
 }
 
 const formatDate = (timestamp: number) =>
-  new Date(timestamp).toLocaleDateString('pt-BR', {
+  new Date(timestamp).toLocaleDateString('en-US', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -46,6 +47,7 @@ export const TransactionsTableContent: React.FC<TransactionsTableProps> = ({
   handleTypeFilterChange,
   setCurrentPage,
 }) => {
+  const { t } = useTranslation();
   const { transactions: paginatedTransactions, total, totalPages, totalCredited, totalDebited } = paginatedData;
 
   return (
@@ -58,7 +60,7 @@ export const TransactionsTableContent: React.FC<TransactionsTableProps> = ({
             <TrendingUp className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1.5">Total de Recargas</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1.5">{t('transactions.totalTopUps')}</p>
             <p className="text-xl font-black text-slate-800 font-mono">+{totalCredited} tokens</p>
           </div>
         </div>
@@ -69,7 +71,7 @@ export const TransactionsTableContent: React.FC<TransactionsTableProps> = ({
             <TrendingDown className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1.5">Consumo Total</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1.5">{t('transactions.totalUsage')}</p>
             <p className="text-xl font-black text-slate-800 font-mono text-red-600">-{totalDebited} tokens</p>
           </div>
         </div>
@@ -85,7 +87,7 @@ export const TransactionsTableContent: React.FC<TransactionsTableProps> = ({
               type="text"
               value={searchTerm}
               onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Buscar por descrição ou atendente..."
+              placeholder={t('transactions.searchPlaceholder')}
               className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:border-indigo-500 font-medium text-slate-700 shadow-3xs bg-white"
             />
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -102,7 +104,7 @@ export const TransactionsTableContent: React.FC<TransactionsTableProps> = ({
                   : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
-              Todos
+              {t('transactions.all')}
             </button>
             <button
               type="button"
@@ -114,7 +116,7 @@ export const TransactionsTableContent: React.FC<TransactionsTableProps> = ({
               }`}
             >
               <ArrowUpRight className="w-3.5 h-3.5" />
-              Recargas
+              {t('transactions.topUps')}
             </button>
             <button
               type="button"
@@ -126,7 +128,7 @@ export const TransactionsTableContent: React.FC<TransactionsTableProps> = ({
               }`}
             >
               <ArrowDownLeft className="w-3.5 h-3.5" />
-              Consumos
+              {t('transactions.usage')}
             </button>
           </div>
         </div>
@@ -138,11 +140,11 @@ export const TransactionsTableContent: React.FC<TransactionsTableProps> = ({
             <div className="size-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-4">
               <SlidersHorizontal className="w-6 h-6 stroke-[1.5]" />
             </div>
-            <h3 className="text-sm font-bold text-slate-800">Nenhum lançamento encontrado</h3>
+            <h3 className="text-sm font-bold text-slate-800">{t('transactions.noEntriesFound')}</h3>
             <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
               {searchTerm || typeFilter !== 'all'
-                ? 'Tente remover o filtro de busca ou alternar a categoria de exibição.'
-                : 'Seu histórico está vazio. Faça uma recarga via Pix para ver os detalhes aqui.'}
+                ? t('transactions.removeFilterHint')
+                : t('transactions.emptyHistory')}
             </p>
             {!searchTerm && typeFilter === 'all' && (
               <button
@@ -151,7 +153,7 @@ export const TransactionsTableContent: React.FC<TransactionsTableProps> = ({
                 className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition cursor-pointer"
               >
                 <PlusCircle className="w-4 h-4" />
-                Efetuar Primeira Recarga
+                {t('transactions.firstTopUp')}
               </button>
             )}
           </div>
@@ -220,7 +222,7 @@ export const TransactionsTableContent: React.FC<TransactionsTableProps> = ({
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 className="relative inline-flex items-center px-4 py-2 border border-slate-200 text-xs font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                Anterior
+                {t('transactions.previous')}
               </button>
               <button
                 type="button"
@@ -228,18 +230,18 @@ export const TransactionsTableContent: React.FC<TransactionsTableProps> = ({
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 className="relative inline-flex items-center px-4 py-2 border border-slate-200 text-xs font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                Próxima
+                {t('transactions.next')}
               </button>
             </div>
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between w-full">
               <div>
                 <p className="text-xs text-slate-500">
-                  Mostrando{' '}
+                  {t('transactions.showing')}{' '}
                   <span className="font-semibold text-slate-700">{Math.min((currentPage - 1) * itemsPerPage + 1, total)}</span>
-                  {' '}até{' '}
+                  {' '}{t('transactions.to')}{' '}
                   <span className="font-semibold text-slate-700">{Math.min(currentPage * itemsPerPage, total)}</span>
-                  {' '}de{' '}
-                  <span className="font-semibold text-slate-700">{total}</span> lançamentos
+                  {' '}{t('transactions.of')}{' '}
+                  <span className="font-semibold text-slate-700">{total}</span> {t('transactions.entries')}
                 </p>
               </div>
               <div>
@@ -283,7 +285,7 @@ export const TransactionsTableContent: React.FC<TransactionsTableProps> = ({
         {/* Footer Guidelines Infobar */}
         <div className="bg-slate-50 p-4 border-t border-slate-100 flex items-start gap-2 text-[10px] text-slate-400 font-medium font-sans">
           <Info className="w-4 h-4 text-indigo-400 shrink-0" />
-          <span>As transações mostradas acima são carregadas via React-Query direto de nossa entidade Transação persistida, com sincronização em tempo de execução no navegador.</span>
+          <span>{t('transactions.infoFooter')}</span>
         </div>
       </div>
     </>

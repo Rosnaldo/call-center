@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Radio } from 'lucide-react';
 import { Header } from '../header/Header.tsx';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
@@ -23,25 +24,26 @@ export const RoleMismatchView: React.FC<RoleMismatchViewProps> = ({
   navigate,
   requiredRole,
 }) => {
+  const { t } = useTranslation();
   const isTargetCustomer = requiredRole === 'customer';
 
   const title = isTargetCustomer
-    ? 'Área de Clientes Exclusiva'
-    : 'Painel de Atendentes Restrito';
+    ? t('roleMismatch.customerAreaExclusive')
+    : t('roleMismatch.attendantPanelRestricted');
 
   const description = isTargetCustomer
-    ? `O seu perfil conectado no momento é de Atendente (${currentUser.name}). Por favor, troque de perfil ou vá para o painel de atendente.`
-    : `O seu perfil conectado no momento é de Cliente (${currentUser.name}). Para administrar o atendimento, altere sua conta ou vá para o espaço de clientes.`;
+    ? t('roleMismatch.attendantLoggedIn', { name: currentUser.name })
+    : t('roleMismatch.customerLoggedIn', { name: currentUser.name });
 
   const primaryButtonLabel = isTargetCustomer
-    ? 'Acessar Painel do Atendente'
-    : 'Ir para Meu Espaço do Cliente';
+    ? t('roleMismatch.goToAttendantPanel')
+    : t('roleMismatch.goToCustomerArea');
 
   const primaryButtonTarget = isTargetCustomer ? 'attendant' : 'customer';
 
   const secondaryButtonLabel = isTargetCustomer
-    ? 'Trocar Conta'
-    : 'Trocar Perfil';
+    ? t('roleMismatch.switchAccount')
+    : t('roleMismatch.switchProfile');
 
   return (
     <div className="flex flex-col min-h-screen font-sans">

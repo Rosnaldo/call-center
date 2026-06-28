@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LogOut, Radio, ChevronDown, Settings, Coins, LayoutDashboard, History } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCurrentUserStore } from '@/src/states/stores.ts';
@@ -18,6 +19,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
   users,
   onLogout,
 }) => {
+  const { t } = useTranslation();
   const currentUser = useCurrentUserStore((s) => s.currentUser);
   const navigate = useNavigate();
   const { pathname: currentPath } = useLocation();
@@ -40,7 +42,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
     return (
       <div id="header-inactive-status-area" className="flex items-center gap-1.5 text-[11px] text-brand-muted">
         <Radio className="w-3 h-3 text-brand-muted animate-pulse" />
-        <span className="hidden sm:inline">Modo Simulador Desconectado</span>
+        <span className="hidden sm:inline">{t('header.simulatorDisconnected')}</span>
       </div>
     );
   }
@@ -53,7 +55,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
       {currentUser.role === 'customer' && (
         <span
           className="text-[10px] font-mono font-medium text-brand-muted select-none flex items-center gap-1 cursor-default bg-brand-panel px-2.5 py-1 rounded-lg border border-brand-border"
-          title="Saldo de tokens disponíveis para chamadas"
+          title={t('header.tokenBalance')}
         >
           tokens: <span className="font-bold text-brand-ochre">{tokensCount}</span>
         </span>
@@ -83,7 +85,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
             {currentUser.name}
           </div>
           <div className="text-[8px] uppercase font-bold tracking-wide text-brand-ochre">
-            {currentUser.role === 'customer' ? 'Customer' : 'Attendant'}
+            {currentUser.role === 'customer' ? t('header.roleCustomer') : t('header.roleAttendant')}
           </div>
         </div>
 
@@ -118,7 +120,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs text-brand-dark hover:text-[#a36500] hover:bg-brand-panel/40 transition-all rounded-xl font-semibold cursor-pointer border-0 bg-transparent"
               >
                 <LayoutDashboard className="w-4 h-4 text-brand-muted shrink-0" />
-                Painel do {currentUser.role === 'customer' ? 'Cliente' : 'Atendente'}
+                {t('header.dashboard', { role: currentUser.role === 'customer' ? t('header.roleCustomer') : t('header.roleAttendant') })}
               </button>
             )}
 
@@ -132,7 +134,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs text-brand-dark hover:text-[#a36500] hover:bg-brand-panel/40 transition-all rounded-xl font-semibold cursor-pointer border-0 bg-transparent"
               >
                 <Settings className="w-4 h-4 text-brand-muted shrink-0" />
-                Configurações de Perfil
+                {t('header.profileSettings')}
               </button>
             )}
 
@@ -147,7 +149,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
                   className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs text-brand-dark hover:text-[#a36500] hover:bg-brand-panel/40 transition-all rounded-xl font-semibold cursor-pointer border-0 bg-transparent"
                 >
                   <Coins className="w-4 h-4 text-brand-muted shrink-0" />
-                  Comprar Tokens
+                  {t('header.buyTokens')}
                 </button>
 
                 <button
@@ -159,7 +161,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
                   className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs text-brand-dark hover:text-[#a36500] hover:bg-brand-panel/40 transition-all rounded-xl font-semibold cursor-pointer border-0 bg-transparent"
                 >
                   <History className="w-4 h-4 text-brand-muted shrink-0" />
-                  Extrato de Consumo
+                  {t('header.usageHistory')}
                 </button>
               </>
             )}
@@ -173,7 +175,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
               className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs text-brand-dark hover:text-[#a36500] hover:bg-brand-panel/40 transition-all rounded-xl font-semibold cursor-pointer border-0 bg-transparent"
             >
               <LogOut className="w-4 h-4 text-brand-muted shrink-0" />
-              Sair / Desconectar
+              {t('header.logout')}
             </button>
           </div>
         </div>

@@ -213,7 +213,7 @@ export const CallLobbyView: React.FC = () => {
       <div className="flex items-center justify-between border-b border-brand-border-dark pb-4">
         <div className="flex items-center gap-2">
           <div className="w-1 h-3.5 bg-brand-ochre rounded-full" />
-          <h4 className="text-[10px] font-bold font-mono tracking-wider text-brand-dark uppercase">YOUR SANDBOX</h4>
+          <h4 className="text-[10px] font-bold font-mono tracking-wider text-brand-dark uppercase">SANDBOX</h4>
         </div>
       </div>
       <div className="relative z-10 flex flex-col gap-5 mt-6">

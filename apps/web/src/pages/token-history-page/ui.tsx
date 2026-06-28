@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/header/Header.tsx';
 import { ArrowLeft } from 'lucide-react';
 import { TransactionsTable } from '../../components/TransactionsTable.tsx';
@@ -38,6 +39,7 @@ export const TokenHistoryPageUI: React.FC<TokenHistoryPageUIProps> = ({
   handleTypeFilterChange,
   setCurrentPage,
 }) => {
+  const { t } = useTranslation();
   const handleLogout = useLogout();
 
   return (
@@ -51,14 +53,14 @@ export const TokenHistoryPageUI: React.FC<TokenHistoryPageUIProps> = ({
           className="group flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors mb-6 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-          Voltar para o Painel de Atendimento
+          {t('tokenHistory.backToPanel')}
         </button>
 
         {/* Header Section */}
         <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">Extrato de Adições e Consumos</h1>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">{t('tokenHistory.title')}</h1>
           <p className="text-xs text-slate-500 mt-1 leading-relaxed max-w-2xl">
-            Acompanhe o fluxo detalhado de compra de créditos via PIX e o uso de tokens cobrados proporcionalmente durante suas chamadas de vídeo.
+            {t('tokenHistory.subtitle')}
           </p>
         </div>
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Mic, MicOff } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const btnBase = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider border transition-colors cursor-pointer';
 const btnOn = `${btnBase} bg-[#1e2022] hover:bg-[#222528] border-[#2d3135] text-slate-300 hover:text-white`;
@@ -11,17 +12,18 @@ interface MicrophoneToggleButtonProps {
 }
 
 export const MicrophoneToggleButton: React.FC<MicrophoneToggleButtonProps> = ({ enabled, onToggle }) => {
+  const { t } = useTranslation();
   if (enabled) {
     return (
       <button id="is-microphone-enabled" type="button" onClick={onToggle} className={btnOn}>
-        <Mic className="w-3.5 h-3.5 shrink-0" />Desabilitar Microfone
+        <Mic className="w-3.5 h-3.5 shrink-0" />{t('mediaSettings.disableMic')}
       </button>
     );
   }
 
   return (
     <button id="is-microphone-enabled" type="button" onClick={onToggle} className={btnOff}>
-      <MicOff className="w-3.5 h-3.5 shrink-0" />Habilitar Microfone
+      <MicOff className="w-3.5 h-3.5 shrink-0" />{t('mediaSettings.enableMic')}
     </button>
   );
 };
