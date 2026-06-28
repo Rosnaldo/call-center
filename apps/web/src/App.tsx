@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "sonner";
 import { LoginPage } from './pages/LoginPage.tsx';
@@ -28,6 +29,12 @@ export default function App() {
   const ready = useAuthStore((s) => s.ready);
   const error = useAuthStore((s) => s.error);
   const { isSimulation } = properties;
+
+  useEffect(() => {
+    return () => {
+      DailyService.getInstance().destroy();
+    };
+  }, []);
 
   if (error) return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--bg-brand-canvas)]">

@@ -69,8 +69,8 @@ export class Accept {
                     attendantName,
                     roomName: `${customerSlug}--${attendantSlug}`,
                     meetingId: '',
-                    customerInCall: true,
-                    attendantInCall: true,
+                    customerInCall: false,
+                    attendantInCall: false,
                 };
                 await redis.set(callKey, JSON.stringify(newCall));
             }

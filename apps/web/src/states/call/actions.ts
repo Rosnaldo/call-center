@@ -20,6 +20,7 @@ export interface CallActions {
   acceptIncomingCall: () => Promise<void> | void;
   completeCall: () => void;
   updateCall: (callId: string, updates: Partial<CallState>) => void;
+  meetingStarted: (call: CallState) => void;
   updateJoinedView: (call: CallState) => void;
   updateLeftView: (call: CallState) => void;
   incomingCallAccepted: (incomingCall: IncomingCallState) => void;
@@ -53,6 +54,8 @@ export const createCallActions = (
           userName: currentUser.name,
           userData: { id: currentUser.id, role: currentUser.role },
         });
+
+        useCallViewStore.getState().setViewState('in-call');
       } catch (error) {
         handleRequestError(error);
       }
@@ -98,30 +101,9 @@ export const createCallActions = (
       }
     },
 
-    updateJoinedView: async (newCall: CallState) => {
-      try {
-        const call = await fetchCall(newCall.customerId, newCall.attendantId);
-        set(() => ({ call }));
-        const updatedUsers = await fetchOnlineUsers();
-        useOnlineUsersStore.setState({ users: updatedUsers });
-        useCallViewStore.getState().setViewState('in-call');
-      } catch (error) {
-        handleRequestError(error);
-      }
-    },
-
-    updateLeftView: async (newCall: CallState) => {
-      try {
-        const call = await fetchCall(newCall.customerId, newCall.attendantId);
-        set(() => ({ call }));
-        const updatedUsers = await fetchOnlineUsers();
-        useOnlineUsersStore.setState({ users: updatedUsers });
-        useCallViewStore.getState().setSelectedAttendantId(null);
-        useCallViewStore.getState().setViewState('none');
-      } catch (error) {
-        handleRequestError(error);
-      }
-    },
+    meetingStarted: async (_newCall: CallState) => {},
+    updateJoinedView: async (_newCall: CallState) => {},
+    updateLeftView: async (_newCall: CallState) => {},
 
     resetSimulation: () => {
       if (isSimulation) {

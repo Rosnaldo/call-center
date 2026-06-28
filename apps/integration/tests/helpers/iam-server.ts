@@ -29,7 +29,3 @@ export async function stopIamServer(): Promise<void> {
 export function getIamAgent(): IamAgent {
     return iamAgent;
 }
-
-export function getIamPort(): number | string {
-    return iamServices.properties.port;
-}

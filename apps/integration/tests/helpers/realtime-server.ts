@@ -21,12 +21,6 @@ export async function startRealtimeServer(): Promise<WebhookServer> {
     return webhookServer;
 }
 
-export function linkRealtimeToIam(iamPort: number | string, authToken: string): void {
-    const { setBaseURL, setAuthToken } = require('src/services/calls');
-    setBaseURL(`http://localhost:${iamPort}`);
-    setAuthToken(authToken);
-}
-
 export async function stopRealtimeServer(): Promise<void> {
     await webhookServer.stop();
     WebhookServer.reset();

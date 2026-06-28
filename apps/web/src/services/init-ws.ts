@@ -23,6 +23,7 @@ type WsInboundMessage =
     | { event: 'incoming_call_received'; data: { incomingCall: IncomingCallState } }
     | { event: 'incoming_call_cancelled'; data: { targetUserId: string } }
     | { event: 'call_accepted'; data: { incomingCall: IncomingCallState } }
+    | { event: 'meeting_started'; data: { call: CallState } }
     | { event: 'participant_joined'; data: { call: CallState } }
     | { event: 'participant_left'; data: { call: CallState } }
 
@@ -77,7 +78,7 @@ export class InitWs {
         ws.onmessage = (event) => {
             try {
                 const msg = JSON.parse(event.data as string) as WsInboundMessage;
-                const { updateJoinedView, updateLeftView, incomingCallAccepted } = this.stores!.call.getState();
+                const { meetingStarted, updateJoinedView, updateLeftView, incomingCallAccepted } = this.stores!.call.getState();
                 const { upsertUser, removeUser } = this.stores!.onlineUsers.getState();
                 const { incomingCallCancelled, incomingCallSent, incomingCallReceived } = this.stores!.incomingCall.getState();
                 const data = 'data' in msg ? msg.data : undefined;
@@ -104,6 +105,9 @@ export class InitWs {
                         break;
                     case 'call_accepted':
                         incomingCallAccepted?.(msg.data.incomingCall);
+                        break;
+                    case 'meeting_started':
+                        meetingStarted(msg.data.call);
                         break;
                     case 'participant_joined':
                         updateJoinedView(msg.data.call);

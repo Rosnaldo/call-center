@@ -1,4 +1,3 @@
-import { sendToUser } from '#websocket/broadcast';
 import { findUserBySlug } from 'src/services/users';
 import { createCall, deleteCall, getCallByRoom, updateCall, trackRoom } from 'src/services/calls';
 import { parseRoomName } from 'src/helpers/parse_room_name';
@@ -17,10 +16,6 @@ export async function onMeetingStarted(payload: DailyMeetingPayload): Promise<vo
             findUserBySlug(parsed.attendantSlug),
         ]);
         if (!customer || !attendant) return;
-
-        console.log('[Daily]  meeting.customer: ', customer)
-        console.log('[Daily]  meeting.attendant: ', attendant)
-        console.log('[Daily]  meeting.payload: ', payload)
 
         let call = await getCallByRoom(payload.room);
         if (!call) {
@@ -86,17 +81,17 @@ export async function onParticipantJoined(payload: DailyParticipantPayload): Pro
         const isCustomer = `${customer.firstName} ${customer.lastName}` === payload.user_name;
         call = await updateCall(call.customerId, call.attendantId, isCustomer ? { customerInCall: true } : { attendantInCall: true });
 
-        if (isCustomer) {
-            sendToUser(customer._id, {
-                event: 'participant_joined',
-                data: { call },
-            });
-        } else {
-            sendToUser(attendant._id, {
-                event: 'participant_joined',
-                data: { call },
-            });
-        }
+        // if (isCustomer) {
+        //     sendToUser(customer._id, {
+        //         event: 'participant_joined',
+        //         data: { call },
+        //     });
+        // } else {
+        //     sendToUser(attendant._id, {
+        //         event: 'participant_joined',
+        //         data: { call },
+        //     });
+        // }
 
     } catch (error) {
         console.error('[Daily] onParticipantJoined: ', error)
@@ -126,15 +121,15 @@ export async function onParticipantLeft(payload: DailyParticipantPayload): Promi
             }
         }
 
-        sendToUser(customer._id, {
-            event: 'participant_left',
-            data: { call },
-        });
+        // sendToUser(customer._id, {
+        //     event: 'participant_left',
+        //     data: { call },
+        // });
 
-        sendToUser(attendant._id, {
-            event: 'participant_left',
-            data: { call },
-        });
+        // sendToUser(attendant._id, {
+        //     event: 'participant_left',
+        //     data: { call },
+        // });
     } catch (error) {
         console.error('[Daily] onParticipantLeft: ', error)
     }
