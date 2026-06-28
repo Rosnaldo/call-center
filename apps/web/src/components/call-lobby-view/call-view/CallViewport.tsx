@@ -42,11 +42,11 @@ const renderPartnerAvatar = (
     <img
       src={avatarUrl}
       alt={partnerName}
-      className={`w-20 h-20 rounded-full object-cover border-2 border-brand-border-dark mb-3 shadow-none bg-slate-800 ${extraClass}`}
+      className={`w-20 h-20 rounded-full object-cover border border-slate-500/20 mb-3 shadow-none bg-slate-800 ${extraClass}`}
       referrerPolicy="no-referrer"
     />
   ) : (
-    <div className={`w-20 h-20 rounded-full bg-brand-ochre/15 border-2 border-brand-border-dark flex items-center justify-center text-brand-ochre font-bold text-2xl mb-3 shadow-none select-none ${extraClass}`}>
+    <div className={`w-20 h-20 rounded-full bg-brand-ochre/15 border border-slate-500/20 flex items-center justify-center text-brand-ochre font-bold text-2xl mb-3 shadow-none select-none ${extraClass}`}>
       {partnerInitials}
     </div>
   );
@@ -57,15 +57,12 @@ const renderAwaitingAttendant = (
   avatarUrl?: string
 ) => (
   <div id="viewport-awaiting-attendant" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans animate-fade-in select-none">
-    <div className="relative">
-      {renderPartnerAvatar(partnerName, partnerInitials, avatarUrl, 'animate-pulse')}
-      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 border-2 border-[#0e1012] rounded-full animate-pulse" />
-    </div>
+    {renderPartnerAvatar(partnerName, partnerInitials, avatarUrl, 'animate-pulse')}
     <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1">
       Chamada Recebida
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">
-      {partnerName} está tentando ligar...
+      {partnerName} está ligando...
     </p>
     <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
       Clique no botão verde <strong className="text-emerald-400 font-semibold">"Atender Chamada"</strong> abaixo para iniciar a videoconferência.
@@ -136,7 +133,7 @@ const renderLobbyViewport = (
   const nameToDisplay = attendant.name;
 
   let lobbyVisual: React.ReactNode = (
-    <div className="w-16 h-16 rounded-full bg-brand-ochre/15 border-2 border-brand-border-dark flex items-center justify-center text-brand-ochre font-bold text-lg mb-3 shadow-none select-none">
+    <div className="w-16 h-16 rounded-full bg-brand-ochre/15 border border-slate-500/20 flex items-center justify-center text-brand-ochre font-bold text-lg mb-3 shadow-none select-none">
       {getInitials(attendant.name)}
     </div>
   );
@@ -146,7 +143,7 @@ const renderLobbyViewport = (
       <img
         src={attendant.avatarUrl}
         alt={nameToDisplay}
-        className="w-16 h-16 rounded-full object-cover border-2 border-brand-border-dark mb-3 shadow-none"
+        className="w-16 h-16 rounded-full object-cover border border-slate-500/20 mb-3 shadow-none"
         referrerPolicy="no-referrer"
       />
     );
@@ -168,11 +165,11 @@ const renderAwaitingAnswer = (attendant: IOnlineUser | null) => (
       <img
         src={attendant.avatarUrl}
         alt={attendant.name}
-        className="w-20 h-20 rounded-full object-cover border-2 border-brand-border-dark mb-3 shadow-none bg-slate-800 animate-pulse"
+        className="w-20 h-20 rounded-full object-cover border border-slate-500/20 mb-3 shadow-none bg-slate-800 animate-pulse"
         referrerPolicy="no-referrer"
       />
     ) : (
-      <div className="w-20 h-20 rounded-full bg-brand-ochre/15 border-2 border-brand-border-dark flex items-center justify-center text-brand-ochre font-bold text-2xl mb-3 animate-pulse">
+      <div className="w-20 h-20 rounded-full bg-brand-ochre/15 border border-slate-500/20 flex items-center justify-center text-brand-ochre font-bold text-2xl mb-3 animate-pulse">
         {attendant ? getInitials(attendant.name) : 'VC'}
       </div>
     )}

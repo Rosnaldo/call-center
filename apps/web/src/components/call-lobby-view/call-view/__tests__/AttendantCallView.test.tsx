@@ -124,7 +124,7 @@ describe('Attendant - CallView state machine', () => {
     it('viewport exibe nome do cliente e mensagem tentando ligar', () => {
       const { container } = render(<CallView {...makeProps(CallViewState.AwaitingToAnswer)} />);
       expect(container.querySelector('#viewport-awaiting-attendant')).not.toBeNull();
-      expect(screen.getByText(new RegExp(`${customer.name}.*tentando ligar`, 'i'))).toBeDefined();
+      expect(screen.getByText(new RegExp(`${customer.name}.*está ligando`, 'i'))).toBeDefined();
     });
 
     it('viewport exibe instrução para clicar em atender chamada', () => {
