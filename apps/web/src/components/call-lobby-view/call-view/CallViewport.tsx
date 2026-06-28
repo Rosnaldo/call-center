@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ScreenShare, Clock, User } from 'lucide-react';
 import { CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
-import { useIncomingCallStore, useCurrentUserStore, useOnlineUsersStore, useCallViewStore } from '../../../states/stores.ts';
+import { useIncomingCallStore, useCurrentUserStore, useOnlineUsersStore, useCallViewStore, useDevicesStore } from '../../../states/stores.ts';
 import { IOnlineUser } from '@repo/shared-types';
 import { VideoTile } from '../VideoTile.tsx';
 import { PartnerAvatar } from '../PartnerAvatar.tsx';
 import { useParticipantIds } from '@daily-co/daily-react';
+import { useDevicesContext } from '../../../providers/devices.tsx';
 
 import { getInitials } from '@/src/utils/helpers.ts';
 
@@ -41,11 +42,11 @@ const renderPartnerAvatar = (
     <img
       src={avatarUrl}
       alt={partnerName}
-      className={`w-20 h-20 rounded-full object-cover border-2 border-brand-ochre/50 mb-3 shadow-none bg-slate-800 ${extraClass}`}
+      className={`w-20 h-20 rounded-full object-cover border-2 border-brand-border-dark mb-3 shadow-none bg-slate-800 ${extraClass}`}
       referrerPolicy="no-referrer"
     />
   ) : (
-    <div className={`w-20 h-20 rounded-full bg-brand-ochre/15 border-2 border-brand-ochre/35 flex items-center justify-center text-brand-ochre font-bold text-2xl mb-3 shadow-none select-none ${extraClass}`}>
+    <div className={`w-20 h-20 rounded-full bg-brand-ochre/15 border-2 border-brand-border-dark flex items-center justify-center text-brand-ochre font-bold text-2xl mb-3 shadow-none select-none ${extraClass}`}>
       {partnerInitials}
     </div>
   );
@@ -135,7 +136,7 @@ const renderLobbyViewport = (
   const nameToDisplay = attendant.name;
 
   let lobbyVisual: React.ReactNode = (
-    <div className="w-16 h-16 rounded-full bg-brand-ochre/15 border-2 border-brand-ochre/35 flex items-center justify-center text-brand-ochre font-bold text-lg mb-3 shadow-none select-none">
+    <div className="w-16 h-16 rounded-full bg-brand-ochre/15 border-2 border-brand-border-dark flex items-center justify-center text-brand-ochre font-bold text-lg mb-3 shadow-none select-none">
       {getInitials(attendant.name)}
     </div>
   );
@@ -145,7 +146,7 @@ const renderLobbyViewport = (
       <img
         src={attendant.avatarUrl}
         alt={nameToDisplay}
-        className="w-16 h-16 rounded-full object-cover border-2 border-brand-ochre/30 mb-3 shadow-none"
+        className="w-16 h-16 rounded-full object-cover border-2 border-brand-border-dark mb-3 shadow-none"
         referrerPolicy="no-referrer"
       />
     );
@@ -167,11 +168,11 @@ const renderAwaitingAnswer = (attendant: IOnlineUser | null) => (
       <img
         src={attendant.avatarUrl}
         alt={attendant.name}
-        className="w-20 h-20 rounded-full object-cover border-2 border-brand-ochre/50 mb-3 shadow-none bg-slate-800 animate-pulse"
+        className="w-20 h-20 rounded-full object-cover border-2 border-brand-border-dark mb-3 shadow-none bg-slate-800 animate-pulse"
         referrerPolicy="no-referrer"
       />
     ) : (
-      <div className="w-20 h-20 rounded-full bg-brand-ochre/15 border-2 border-brand-ochre/35 flex items-center justify-center text-brand-ochre font-bold text-2xl mb-3 animate-pulse">
+      <div className="w-20 h-20 rounded-full bg-brand-ochre/15 border-2 border-brand-border-dark flex items-center justify-center text-brand-ochre font-bold text-2xl mb-3 animate-pulse">
         {attendant ? getInitials(attendant.name) : 'VC'}
       </div>
     )}
@@ -202,6 +203,15 @@ const renderScreenSharingViewport = () => (
 );
 
 const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ partner }) => {
+  const cameraPermission = useDevicesStore(s => s.cameraPermission);
+  const micPermission = useDevicesStore(s => s.micPermission);
+  const { requestCamera, requestMicrophone } = useDevicesContext();
+
+  useEffect(() => {
+    if (cameraPermission === 'prompt') requestCamera();
+    if (micPermission === 'prompt') requestMicrophone();
+  }, []);
+
   const remoteParticipantIds = useParticipantIds({ filter: "remote" });
   const id = remoteParticipantIds[0];
 
@@ -250,14 +260,14 @@ export const CallViewport: React.FC<CallViewportProps> = ({
     content = renderNoneViewport();
   } else if (state === CallViewState.AwaitingAnswer) {
     content = renderAwaitingAnswer(attendant);
+  } else if (state === CallViewState.AwaitingToAnswer && isReceiving) {
+    content = renderAwaitingAttendant(partnerName, partnerInitials, partinerAvatarUrl);
+  } else if (state === CallViewState.AwaitingToAnswer && !isReceiving) {
+    content = renderAwaitingClient(partnerName, partnerInitials, partinerAvatarUrl);
   } else if (state === CallViewState.CallInterrupted && isReceiving) {
     content = renderInterruptedAttendant(partnerName, partnerInitials, partinerAvatarUrl);
   } else if (state === CallViewState.CallInterrupted && !isReceiving) {
     content = renderInterruptedClient(partnerName, partnerInitials, partinerAvatarUrl);
-  } else if (hasIncomingCall && isReceiving) {
-    content = renderAwaitingAttendant(partnerName, partnerInitials, partinerAvatarUrl);
-  } else if (hasIncomingCall && !isReceiving) {
-    content = renderAwaitingClient(partnerName, partnerInitials, partinerAvatarUrl);
   } else if (state === CallViewState.Lobby) {
     content = attendant ? renderLobbyViewport(attendant) : renderNoneViewport();
   } else if (state === CallViewState.InCall && isScreenSharing) {

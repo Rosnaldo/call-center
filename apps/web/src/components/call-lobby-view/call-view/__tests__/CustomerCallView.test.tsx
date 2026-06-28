@@ -100,6 +100,14 @@ describe('Customer - CallView state machine', () => {
       useCallViewStore.setState({ viewState: 'lobby', selectedAttendantId: ATTENDANT_ID });
     });
 
+    it('selectAttendant muda viewState para lobby', () => {
+      useCallViewStore.setState({ viewState: 'none', selectedAttendantId: null });
+      useCallViewStore.getState().selectAttendant(ATTENDANT_ID);
+
+      expect(useCallViewStore.getState().viewState).toBe('lobby');
+      expect(useCallViewStore.getState().selectedAttendantId).toBe(ATTENDANT_ID);
+    });
+
     it('viewport exibe avatar e nome do atendente selecionado', () => {
       const { container } = render(<CallView {...makeProps(CallViewState.Lobby)} />);
       expect(container.querySelector('#viewport-lobby')).not.toBeNull();

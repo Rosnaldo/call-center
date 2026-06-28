@@ -117,24 +117,24 @@ describe('Attendant - CallView state machine', () => {
 
   describe('awaiting-answer — recebendo chamada de cliente', () => {
     beforeEach(() => {
-      useCallViewStore.setState({ viewState: 'lobby', selectedAttendantId: null });
+      useCallViewStore.setState({ viewState: 'awaiting-to-answer', selectedAttendantId: null });
       useIncomingCallStore.setState({ incomingCall: { customerId: CUSTOMER_ID, attendantId: ATTENDANT_ID, calledBy: 'customer' } });
     });
 
     it('viewport exibe nome do cliente e mensagem tentando ligar', () => {
-      const { container } = render(<CallView {...makeProps(CallViewState.Lobby)} />);
+      const { container } = render(<CallView {...makeProps(CallViewState.AwaitingToAnswer)} />);
       expect(container.querySelector('#viewport-awaiting-attendant')).not.toBeNull();
       expect(screen.getByText(new RegExp(`${customer.name}.*tentando ligar`, 'i'))).toBeDefined();
     });
 
     it('viewport exibe instrução para clicar em atender chamada', () => {
-      const { container } = render(<CallView {...makeProps(CallViewState.Lobby)} />);
+      const { container } = render(<CallView {...makeProps(CallViewState.AwaitingToAnswer)} />);
       const viewport = container.querySelector('#viewport-awaiting-attendant');
       expect(viewport?.textContent).toMatch(/Atender Chamada/i);
     });
 
     it('footer exibe botão atender chamada', () => {
-      const { container } = render(<CallView {...makeProps(CallViewState.Lobby)} />);
+      const { container } = render(<CallView {...makeProps(CallViewState.AwaitingToAnswer)} />);
       expect(container.querySelector('#lobby-accept-call')).not.toBeNull();
     });
 

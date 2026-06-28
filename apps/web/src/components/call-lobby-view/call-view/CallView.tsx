@@ -7,6 +7,7 @@ export enum CallViewState {
   None = 'none',
   Lobby = 'lobby',
   AwaitingAnswer = 'awaiting-answer',
+  AwaitingToAnswer = 'awaiting-to-answer',
   InCall = 'in-call',
   CallInterrupted = 'call-interrupted',
 }

@@ -186,10 +186,15 @@ export const CallLobbyView: React.FC = () => {
   const currentTokens = customerUser?.tokens ?? 0;
 
   const getCallViewState = (): CallViewState => {
-    if (persistedViewState === 'call-interrupted') return CallViewState.CallInterrupted;
-    if (persistedViewState === 'awaiting-answer') return CallViewState.AwaitingAnswer;
-    if (!currentCall && !incomingCall) return CallViewState.None;
-    return isCallActive ? CallViewState.InCall : CallViewState.Lobby;
+    switch (persistedViewState) {
+      case 'lobby': return CallViewState.Lobby;
+      case 'awaiting-answer': return CallViewState.AwaitingAnswer;
+      case 'awaiting-to-answer': return CallViewState.AwaitingToAnswer;
+      case 'in-call': return CallViewState.InCall;
+      case 'call-interrupted': return CallViewState.CallInterrupted;
+      case 'none':
+      default: return CallViewState.None;
+    }
   };
   const viewState = getCallViewState();
 

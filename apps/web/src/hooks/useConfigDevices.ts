@@ -140,7 +140,7 @@ export function useConfigDevices() {
       }
     }
 
-    onPermissionChange();
+    syncPermissions();
     watchPermission("camera");
     watchPermission("microphone");
 

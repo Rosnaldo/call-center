@@ -76,7 +76,7 @@ export const CallFooterActions: React.FC = () => {
     );
   }
 
-  if (incomingCall && !isReceiving) {
+  if (viewState === 'awaiting-to-answer' && !isReceiving) {
     return (
       <div className="flex gap-2.5 items-center">
         <CancelCallButton onClick={handleCancelCall} />
@@ -84,7 +84,7 @@ export const CallFooterActions: React.FC = () => {
     );
   }
 
-  if (incomingCall && isReceiving) {
+  if (viewState === 'awaiting-to-answer' && isReceiving) {
     return (
       <div className="flex gap-2.5 items-center">
         <AcceptCallButton onClick={handleAcceptCall} />
