@@ -23,11 +23,10 @@ import { DailyCoService } from './helpers/daily-service';
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 
-import { createStores } from '../../web/src/states/stores';
+import { createStores, Stores } from '../../web/src/states/stores';
 import { AuthSession } from '../../web/src/auth/session';
-import { InitWs } from '../../web/src/services/ws/init-ws';
+import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
-import { WsCallService } from '../../web/src/services/ws/call';
 
 import * as usersService from 'src/services/users';
 import * as onlineUsersService from '@/src/services/api/online-users';
@@ -79,6 +78,8 @@ describe('Incoming Call Flow', () => {
     let iamRequest: IamAgent;
     let customerUser: IUser;
     let attendantUser: IUser;
+    let customerStores: Stores;
+    let attendantStores: Stores;
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
@@ -103,6 +104,10 @@ describe('Incoming Call Flow', () => {
         jest.clearAllMocks();
         DailyCoService.reset();
         AuthSession.override({ token: CUSTOMER_TOKEN });
+
+        const dailyService = DailyCoService.getInstance();
+        customerStores = createStores(dailyService);
+        attendantStores = createStores(dailyService);
 
         addToIamMock.mockImplementation((user: IOnlineUser) => {
             const op = iamRequest
@@ -139,7 +144,11 @@ describe('Incoming Call Flow', () => {
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         const { serverWs: attendantWs, webFactory: attendantWebFactory } = createBridgedClient(attendantUser, ATTENDANT_TOKEN);
 
+        const customerMessages: any[] = [];
         const attendantMessages: any[] = [];
+        (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
+            customerMessages.push(JSON.parse(data));
+        });
         (attendantWs as unknown as EventEmitter).on('sent', (data: string) => {
             attendantMessages.push(JSON.parse(data));
         });
@@ -147,15 +156,15 @@ describe('Incoming Call Flow', () => {
         clientRegistry.add(customerWs);
         clientRegistry.add(attendantWs);
 
-        // ── customer stores (singletons → customer) ───────────────────
-        const dailyService = DailyCoService.getInstance();
-        const customerStores = createStores(dailyService);
         customerStores.onlineUsers.setState({
             users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
         });
+        attendantStores.onlineUsers.setState({
+            users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
+        });
 
-        const initWs = new InitWs();
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
         onConnection()(customerWs);
         await flushPendingCalls();
@@ -169,7 +178,13 @@ describe('Incoming Call Flow', () => {
         );
         await new Promise((r) => setTimeout(r, 50));
 
-        // incoming_call_sent auto-processed by initWs → customerStores
+        // ── both receive events ──────────────────────────────────────
+        const sentMsg = customerMessages.find((m) => m.event === 'incoming_call_sent');
+        const recvMsg = attendantMessages.find((m) => m.event === 'incoming_call_received');
+        expect(sentMsg).toBeTruthy();
+        expect(recvMsg).toBeTruthy();
+
+        // ── customer state (auto-processed via incoming_call_sent) ────
         expect(customerStores.incomingCall.getState().incomingCall).toBeTruthy();
         expect(customerStores.incomingCall.getState().incomingCall!.customerId).toBe(customerUser._id);
         expect(customerStores.incomingCall.getState().incomingCall!.attendantId).toBe(attendantUser._id);
@@ -177,20 +192,7 @@ describe('Incoming Call Flow', () => {
         expect(customerStores.call.getState().call).toBeNull();
         expect(customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('occupied');
 
-        // ── attendant stores (singletons → attendant) ─────────────────
-        const attendantStores = createStores(dailyService);
-        const attendantCallService = new WsCallService({
-            call: attendantStores.call,
-            callView: attendantStores.callView,
-            incomingCall: attendantStores.incomingCall,
-            onlineUsers: attendantStores.onlineUsers,
-        });
-
-        const recvMsg = attendantMessages.find((m) => m.event === 'incoming_call_received');
-        expect(recvMsg).toBeTruthy();
-        attendantCallService.handle(recvMsg);
-        await new Promise((r) => setTimeout(r, 50));
-
+        // ── attendant state (auto-processed via incoming_call_received)
         expect(attendantStores.incomingCall.getState().incomingCall).toBeTruthy();
         expect(attendantStores.incomingCall.getState().incomingCall!.customerId).toBe(customerUser._id);
         expect(attendantStores.incomingCall.getState().incomingCall!.attendantId).toBe(attendantUser._id);
@@ -215,29 +217,28 @@ describe('Incoming Call Flow', () => {
         clientRegistry.add(customerWs);
         clientRegistry.add(attendantWs);
 
-        // ── customer stores ───────────────────────────────────────────
-        const dailyService = DailyCoService.getInstance();
-        const customerStores = createStores(dailyService);
         customerStores.onlineUsers.setState({
             users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
         });
+        attendantStores.onlineUsers.setState({
+            users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
+        });
 
-        const initWs = new InitWs();
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
         onConnection()(customerWs);
         await flushPendingCalls();
         onConnection()(attendantWs);
         await flushPendingCalls();
 
-        // ── send incoming call (auto-processed → customerStores) ──────
+        // ── send incoming call ────────────────────────────────────────
         customerStores.incomingCall.getState().sendIncomingCall(
             customerUser._id,
             attendantUser._id,
         );
         await new Promise((r) => setTimeout(r, 50));
 
-        const sentMsg = customerMessages.find((m) => m.event === 'incoming_call_sent');
         expect(customerStores.callView.getState().viewState).toBe('awaiting-answer');
 
         // ── customer cancels ──────────────────────────────────────────
@@ -247,28 +248,18 @@ describe('Incoming Call Flow', () => {
         customerStores.incomingCall.getState().cancelIncomingCall();
         await new Promise((r) => setTimeout(r, 50));
 
-        // incoming_call_cancelled auto-processed → customerStores cleared
+        const customerCancelMsg = customerMessages.find((m) => m.event === 'incoming_call_cancelled');
+        const attendantCancelMsg = attendantMessages.find((m) => m.event === 'incoming_call_cancelled');
+        expect(customerCancelMsg).toBeTruthy();
+        expect(attendantCancelMsg).toBeTruthy();
+
+        // ── customer state cleared (auto-processed) ───────────────────
         expect(customerStores.incomingCall.getState().incomingCall).toBeNull();
         expect(customerStores.callView.getState().viewState).toBe('none');
         expect(customerStores.callView.getState().selectedAttendantId).toBeNull();
         expect(customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('idle');
 
-        // ── attendant side ────────────────────────────────────────────
-        const attendantCancelMsg = attendantMessages.find((m) => m.event === 'incoming_call_cancelled');
-        expect(attendantCancelMsg).toBeTruthy();
-
-        const attendantStores = createStores(dailyService);
-        const attendantCallService = new WsCallService({
-            call: attendantStores.call,
-            callView: attendantStores.callView,
-            incomingCall: attendantStores.incomingCall,
-            onlineUsers: attendantStores.onlineUsers,
-        });
-
-        attendantCallService.handle({ event: 'incoming_call_received', data: sentMsg.data });
-        attendantCallService.handle(attendantCancelMsg);
-        await new Promise((r) => setTimeout(r, 50));
-
+        // ── attendant state cleared (auto-processed) ──────────────────
         expect(attendantStores.incomingCall.getState().incomingCall).toBeNull();
         expect(attendantStores.callView.getState().viewState).toBe('none');
         expect(attendantStores.callView.getState().selectedAttendantId).toBeNull();
@@ -291,80 +282,52 @@ describe('Incoming Call Flow', () => {
         clientRegistry.add(customerWs);
         clientRegistry.add(attendantWs);
 
-        // ── send incoming call from customer ──────────────────────────
-        const dailyService = DailyCoService.getInstance();
-        const customerStores = createStores(dailyService);
         customerStores.onlineUsers.setState({
             users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
         });
+        attendantStores.onlineUsers.setState({
+            users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
+        });
 
-        const initWs = new InitWs();
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
         onConnection()(customerWs);
         await flushPendingCalls();
         onConnection()(attendantWs);
         await flushPendingCalls();
 
+        // ── send incoming call ────────────────────────────────────────
         customerStores.incomingCall.getState().sendIncomingCall(
             customerUser._id,
             attendantUser._id,
         );
         await new Promise((r) => setTimeout(r, 50));
 
-        const sentMsg = customerMessages.find((m) => m.event === 'incoming_call_sent');
-
-        // ── attendant receives and then cancels (singletons → attendant)
-        const attendantStores = createStores(dailyService);
-        const attendantCallService = new WsCallService({
-            call: attendantStores.call,
-            callView: attendantStores.callView,
-            incomingCall: attendantStores.incomingCall,
-            onlineUsers: attendantStores.onlineUsers,
-        });
-
-        const recvMsg = attendantMessages.find((m) => m.event === 'incoming_call_received');
-        attendantCallService.handle(recvMsg);
-        await new Promise((r) => setTimeout(r, 50));
-
         expect(attendantStores.callView.getState().viewState).toBe('awaiting-to-answer');
 
+        // ── attendant cancels ─────────────────────────────────────────
         customerMessages.length = 0;
         attendantMessages.length = 0;
 
         attendantStores.incomingCall.getState().cancelIncomingCall();
         await new Promise((r) => setTimeout(r, 50));
 
-        // ── attendant cancel processed ────────────────────────────────
         const attendantCancelMsg = attendantMessages.find((m) => m.event === 'incoming_call_cancelled');
+        const customerCancelMsg = customerMessages.find((m) => m.event === 'incoming_call_cancelled');
         expect(attendantCancelMsg).toBeTruthy();
-        attendantCallService.handle(attendantCancelMsg);
-        await new Promise((r) => setTimeout(r, 50));
+        expect(customerCancelMsg).toBeTruthy();
 
+        // ── attendant state cleared (auto-processed) ──────────────────
         expect(attendantStores.incomingCall.getState().incomingCall).toBeNull();
         expect(attendantStores.callView.getState().viewState).toBe('none');
         expect(attendantStores.callView.getState().selectedAttendantId).toBeNull();
         expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('idle');
 
-        // ── customer cancel processed ─────────────────────────────────
-        const customerCancelMsg = customerMessages.find((m) => m.event === 'incoming_call_cancelled');
-        expect(customerCancelMsg).toBeTruthy();
-
-        const customerStores2 = createStores(dailyService);
-        const customerCallService = new WsCallService({
-            call: customerStores2.call,
-            callView: customerStores2.callView,
-            incomingCall: customerStores2.incomingCall,
-            onlineUsers: customerStores2.onlineUsers,
-        });
-
-        customerCallService.handle({ event: 'incoming_call_sent', data: sentMsg.data });
-        customerCallService.handle(customerCancelMsg);
-        await new Promise((r) => setTimeout(r, 50));
-
-        expect(customerStores2.incomingCall.getState().incomingCall).toBeNull();
-        expect(customerStores2.callView.getState().viewState).toBe('none');
-        expect(customerStores2.callView.getState().selectedAttendantId).toBeNull();
-        expect(customerStores2.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('idle');
+        // ── customer state cleared (auto-processed) ───────────────────
+        expect(customerStores.incomingCall.getState().incomingCall).toBeNull();
+        expect(customerStores.callView.getState().viewState).toBe('none');
+        expect(customerStores.callView.getState().selectedAttendantId).toBeNull();
+        expect(customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('idle');
     });
 });

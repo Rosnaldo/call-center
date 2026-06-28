@@ -27,11 +27,10 @@ import { DailyCoService } from './helpers/daily-service';
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 
-import { createStores } from '../../web/src/states/stores';
+import { createStores, Stores } from '../../web/src/states/stores';
 import { AuthSession } from '../../web/src/auth/session';
-import { InitWs } from '../../web/src/services/ws/init-ws';
+import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
-import { WsCallService } from '../../web/src/services/ws/call';
 
 import * as usersService from 'src/services/users';
 import * as onlineUsersService from '@/src/services/api/online-users';
@@ -83,6 +82,8 @@ describe('Accept Call Flow', () => {
     let iamRequest: IamAgent;
     let customerUser: IUser;
     let attendantUser: IUser;
+    let customerStores: Stores;
+    let attendantStores: Stores;
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
@@ -110,6 +111,10 @@ describe('Accept Call Flow', () => {
         jest.clearAllMocks();
         DailyCoService.reset();
         AuthSession.override({ token: CUSTOMER_TOKEN });
+
+        const dailyService = DailyCoService.getInstance();
+        customerStores = createStores(dailyService);
+        attendantStores = createStores(dailyService);
 
         addToIamMock.mockImplementation((user: IOnlineUser) => {
             const op = iamRequest.post('/online-users/add').set('Authorization', CUSTOMER_TOKEN).send(user);
@@ -160,22 +165,25 @@ describe('Accept Call Flow', () => {
         clientRegistry.add(customerWs);
         clientRegistry.add(attendantWs);
 
-        // ── send incoming call ────────────────────────────────────────
-        const dailyService = DailyCoService.getInstance();
-        const sendStores = createStores(dailyService);
-        sendStores.onlineUsers.setState({
+        customerStores.currentUser.setState({ currentUser: mapUserToOnlineUser(customerUser) });
+        customerStores.onlineUsers.setState({
+            users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
+        });
+        attendantStores.currentUser.setState({ currentUser: mapUserToOnlineUser(attendantUser) });
+        attendantStores.onlineUsers.setState({
             users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
         });
 
-        const initWs = new InitWs();
-        initWs.init(CUSTOMER_TOKEN, sendStores, customerWebFactory);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
         onConnection()(customerWs);
         await flushPendingCalls();
         onConnection()(attendantWs);
         await flushPendingCalls();
 
-        sendStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
+        // ── send incoming call ────────────────────────────────────────
+        customerStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
         await new Promise((r) => setTimeout(r, 100));
 
         // ── accept call ───────────────────────────────────────────────
@@ -192,41 +200,15 @@ describe('Accept Call Flow', () => {
         expect(customerAccepted).toBeTruthy();
         expect(attendantAccepted).toBeTruthy();
 
-        // ── attendant processes call_accepted via WsCallService ───────
-        const attendantStores = createStores(dailyService);
-        attendantStores.currentUser.setState({ currentUser: mapUserToOnlineUser(attendantUser) });
-
-        const attendantCallService = new WsCallService({
-            call: attendantStores.call,
-            callView: attendantStores.callView,
-            incomingCall: attendantStores.incomingCall,
-            onlineUsers: attendantStores.onlineUsers,
-        });
-
-        attendantCallService.handle(attendantAccepted);
-        await new Promise((r) => setTimeout(r, 100));
-
-        expect(attendantStores.callView.getState().viewState).toBe('in-call');
-        expect(attendantStores.call.getState().call).toBeTruthy();
-        expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('in-call');
-
-        // ── customer processes call_accepted via WsCallService ────────
-        const customerStores = createStores(dailyService);
-        customerStores.currentUser.setState({ currentUser: mapUserToOnlineUser(customerUser) });
-
-        const customerCallService = new WsCallService({
-            call: customerStores.call,
-            callView: customerStores.callView,
-            incomingCall: customerStores.incomingCall,
-            onlineUsers: customerStores.onlineUsers,
-        });
-
-        customerCallService.handle(customerAccepted);
-        await new Promise((r) => setTimeout(r, 100));
-
+        // ── customer state (auto-processed via call_accepted event) ───
         expect(customerStores.callView.getState().viewState).toBe('in-call');
         expect(customerStores.call.getState().call).toBeTruthy();
         expect(customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('in-call');
+
+        // ── attendant state (auto-processed via call_accepted event) ──
+        expect(attendantStores.callView.getState().viewState).toBe('in-call');
+        expect(attendantStores.call.getState().call).toBeTruthy();
+        expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('in-call');
     });
 
     it('after completeCall both users are back to idle', async () => {
@@ -245,45 +227,34 @@ describe('Accept Call Flow', () => {
         clientRegistry.add(customerWs);
         clientRegistry.add(attendantWs);
 
-        // ── send + accept ─────────────────────────────────────────────
-        const dailyService = DailyCoService.getInstance();
-        const sendStores = createStores(dailyService);
-        sendStores.onlineUsers.setState({
+        customerStores.currentUser.setState({ currentUser: mapUserToOnlineUser(customerUser) });
+        customerStores.onlineUsers.setState({
+            users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
+        });
+        attendantStores.currentUser.setState({ currentUser: mapUserToOnlineUser(attendantUser) });
+        attendantStores.onlineUsers.setState({
             users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
         });
 
-        const initWs = new InitWs();
-        initWs.init(CUSTOMER_TOKEN, sendStores, customerWebFactory);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
         onConnection()(customerWs);
         await flushPendingCalls();
         onConnection()(attendantWs);
         await flushPendingCalls();
 
-        sendStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
+        // ── send + accept ─────────────────────────────────────────────
+        customerStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
         await new Promise((r) => setTimeout(r, 100));
 
         await iamRequest.post('/incoming-calls/accept').set('Authorization', ATTENDANT_TOKEN)
             .send({ attendantId: attendantUser._id, userId: attendantUser._id });
         await new Promise((r) => setTimeout(r, 100));
 
-        const attendantAccepted = attendantMessages.find((m) => m.event === 'call_accepted');
-
-        // ── put attendant in-call via WsCallService ───────────────────
-        const attendantStores = createStores(dailyService);
-        attendantStores.currentUser.setState({ currentUser: mapUserToOnlineUser(attendantUser) });
-
-        const attendantCallService = new WsCallService({
-            call: attendantStores.call,
-            callView: attendantStores.callView,
-            incomingCall: attendantStores.incomingCall,
-            onlineUsers: attendantStores.onlineUsers,
-        });
-
-        attendantCallService.handle(attendantAccepted);
-        await new Promise((r) => setTimeout(r, 100));
-
+        // ── both in-call (auto-processed via call_accepted) ───────────
         expect(attendantStores.callView.getState().viewState).toBe('in-call');
+        expect(customerStores.callView.getState().viewState).toBe('in-call');
 
         // ── attendant completes call ──────────────────────────────────
         customerMessages.length = 0;
@@ -303,13 +274,11 @@ describe('Accept Call Flow', () => {
         expect(attendantStores.callView.getState().viewState).toBe('none');
 
         // ── customer state cleared ────────────────────────────────────
-        const customerStores = createStores(dailyService);
         expect(customerStores.call.getState().call).toBeNull();
         expect(customerStores.callView.getState().viewState).toBe('none');
 
         // ── both users idle ──────────────────────────────────────────
-        const users = attendantStores.onlineUsers.getState().users;
-        expect(users.find((u) => u.id === attendantUser._id)?.status).toBe('idle');
-        expect(users.find((u) => u.id === customerUser._id)?.status).toBe('idle');
+        expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('idle');
+        expect(customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('idle');
     });
 });

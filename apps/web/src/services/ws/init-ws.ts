@@ -31,12 +31,17 @@ export class InitWs {
         return Object.assign(transport, { token });
     }
 
-    private connect(ws: AuthenticatedWebSocket): void {
+    private connect(
+        ws: AuthenticatedWebSocket,
+        usersService: WsUsersService,
+        callService: WsCallService,
+        meetingService: WsMeetingService,
+    ): void {
         if (!this.running || !WS_URL) return;
         this.activeWs = ws;
 
         ws.onopen = () => {
-            this.usersService!.startHeartbeat(
+            usersService.startHeartbeat(
                 () => { if (ws.readyState === TRANSPORT_OPEN) ws.send(JSON.stringify({ event: 'heartbeat' })); },
                 () => ws.close(),
                 HEARTBEAT_INTERVAL_MS,
@@ -49,7 +54,7 @@ export class InitWs {
                 const msg = JSON.parse(event.data as string);
                 const data = 'data' in msg ? msg.data : undefined;
                 console.log('ws: ', msg.event, data);
-                this.usersService!.handle(msg) || this.callService!.handle(msg) || this.meetingService!.handle(msg);
+                usersService.handle(msg) || callService.handle(msg) || meetingService.handle(msg);
             } catch {
                 // malformed frame — ignore
             }
@@ -58,9 +63,9 @@ export class InitWs {
         ws.onerror = (err) => console.error('[WS] error', err);
 
         ws.onclose = () => {
-            this.usersService!.stopHeartbeat();
+            usersService.stopHeartbeat();
             if (!this.running) return;
-            setTimeout(() => this.connect(this.createAuthWs(ws.token)), RECONNECT_DELAY_MS);
+            setTimeout(() => this.connect(this.createAuthWs(ws.token), usersService, callService, meetingService), RECONNECT_DELAY_MS);
         };
     }
 
@@ -68,15 +73,15 @@ export class InitWs {
         if (!token) return;
         this.running = true;
         this.factory = factory;
-        this.usersService = new WsUsersService({ onlineUsers: stores.onlineUsers });
-        this.callService = new WsCallService({
+        const usersService = new WsUsersService({ onlineUsers: stores.onlineUsers });
+        const callService = new WsCallService({
             call: stores.call,
             callView: stores.callView,
             incomingCall: stores.incomingCall,
             onlineUsers: stores.onlineUsers,
         });
-        this.meetingService = new WsMeetingService({ call: stores.call });
-        this.connect(this.createAuthWs(token));
+        const meetingService = new WsMeetingService({ call: stores.call });
+        this.connect(this.createAuthWs(token), usersService, callService, meetingService);
     }
 
     notifyLogout(): void {

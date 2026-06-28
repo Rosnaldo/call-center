@@ -19,6 +19,13 @@ export type IncomingCallStoreInstance = ReturnType<typeof createIncomingCallStor
 export type OnlineUsersStoreInstance = ReturnType<typeof createOnlineUsersStore>;
 export type TimerStoreInstance = ReturnType<typeof createTimerStore>;
 
+export interface StoresRef {
+    callView: CallViewStoreInstance;
+    onlineUsers: OnlineUsersStoreInstance;
+    incomingCall: IncomingCallStoreInstance;
+    currentUser: CurrentUserStoreInstance;
+}
+
 export interface Stores {
     auth: AuthStoreInstance;
     billing: BillingStoreInstance;
@@ -49,17 +56,24 @@ const noopDailyService: IDailyService = {
 };
 
 export function createStores(dailyService: IDailyService = noopDailyService): Stores {
+    const ref = {} as StoresRef;
+
     const s: Stores = {
         auth: createAuthStore(),
         billing: createBillingStore(),
-        call: createCallStore(dailyService),
+        call: createCallStore(dailyService, ref),
         callView: createCallViewStore(),
         currentUser: createCurrentUserStore(),
         devices: createDevicesStore(),
-        incomingCall: createIncomingCallStore(),
+        incomingCall: createIncomingCallStore(ref),
         onlineUsers: createOnlineUsersStore(),
         timer: createTimerStore(),
     };
+
+    ref.callView = s.callView;
+    ref.onlineUsers = s.onlineUsers;
+    ref.incomingCall = s.incomingCall;
+    ref.currentUser = s.currentUser;
 
     useAuthStore = s.auth;
     useBillingStore = s.billing;
@@ -73,4 +87,3 @@ export function createStores(dailyService: IDailyService = noopDailyService): St
 
     return s;
 }
-

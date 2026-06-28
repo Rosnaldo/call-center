@@ -1,5 +1,5 @@
 import { IncomingCallState } from '@repo/shared-types';
-import { useIncomingCallStore, useCallViewStore, useOnlineUsersStore, useCurrentUserStore } from '../stores.ts';
+import type { StoresRef } from '../stores.ts';
 import { CallState, CallStore } from './state.ts';
 import type { IDailyService } from '../../services/daily.ts';
 import { fetchOnlineUsers } from '@/src/services/api/online-users.ts';
@@ -31,23 +31,24 @@ export const createCallActions = (
   set: (fn: (state: any) => any) => void,
   get: () => CallStore,
   dailyService: IDailyService,
+  ref: StoresRef,
 ): CallActions => {
   return {
     incomingCallAccepted: async (incomingCall: IncomingCallState) => {
-      useIncomingCallStore.setState({ incomingCall: null });
+      ref.incomingCall.setState({ incomingCall: null });
 
       try {
         const call = await fetchCall(incomingCall.customerId, incomingCall.attendantId);
         set(() => ({ call }));
 
         const updatedUsers = await fetchOnlineUsers();
-        useOnlineUsersStore.setState({ users: updatedUsers });
+        ref.onlineUsers.setState({ users: updatedUsers });
 
         const customer = updatedUsers.find(u => u.id === incomingCall.customerId);
         const attendant = updatedUsers.find(u => u.id === incomingCall.attendantId);
         if (!customer || !attendant) return;
 
-        const currentUser = useCurrentUserStore.getState().currentUser;
+        const currentUser = ref.currentUser.getState().currentUser;
         if (!currentUser) return;
 
         dailyService.join({
@@ -56,7 +57,7 @@ export const createCallActions = (
           userData: { id: currentUser.id, role: currentUser.role },
         });
 
-        useCallViewStore.getState().setViewState('in-call');
+        ref.callView.getState().setViewState('in-call');
       } catch (error) {
         handleRequestError(error);
       }
@@ -68,17 +69,17 @@ export const createCallActions = (
         return;
       }
 
-      const incomingCall = useIncomingCallStore.getState().incomingCall;
+      const incomingCall = ref.incomingCall.getState().incomingCall;
       if (!incomingCall) return;
 
-      const { users } = useOnlineUsersStore.getState();
+      const { users } = ref.onlineUsers.getState();
       const customer = users.find(u => u.id === incomingCall.customerId);
       const attendant = users.find(u => u.id === incomingCall.attendantId);
       if (!customer || !attendant) return;
 
       try {
         await acceptIncomingCallService(attendant.id);
-        useCallViewStore.getState().setViewState('in-call');
+        ref.callView.getState().setViewState('in-call');
       } catch (error) {
         handleRequestError(error);
         return;
@@ -93,8 +94,8 @@ export const createCallActions = (
 
       const activeCall = get().call;
 
-      useCallViewStore.getState().setViewState('none');
-      useCallViewStore.getState().setSelectedAttendantId(null);
+      ref.callView.getState().setViewState('none');
+      ref.callView.getState().setSelectedAttendantId(null);
       set(() => ({ call: null }));
       dailyService.leave().catch(() => {});
 
@@ -103,7 +104,7 @@ export const createCallActions = (
           await completeCallService(activeCall.customerId, activeCall.attendantId);
         }
         const users = await fetchOnlineUsers();
-        useOnlineUsersStore.setState({ users });
+        ref.onlineUsers.setState({ users });
       } catch (error) {
         handleRequestError(error);
       }

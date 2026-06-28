@@ -1,6 +1,6 @@
 import { IncomingCallState } from '@repo/shared-types';
 import { IncomingCallStore } from './state.ts';
-import { useOnlineUsersStore, useCallViewStore } from '../stores.ts';
+import type { StoresRef } from '../stores.ts';
 import { sendIncomingCall as sendIncomingCallService, cancelIncomingCall as cancelIncomingCallService } from '@/src/services/api/incoming-calls.ts';
 import { fetchOnlineUsers } from '@/src/services/api/online-users.ts';
 import {
@@ -23,12 +23,12 @@ export interface IncomingCallActions {
   incomingCallSent: (incomingCall: IncomingCallState) => void;
   incomingCallReceived: (incomingCall: IncomingCallState) => void;
   incomingCallCancelled: () => void;
-
 }
 
 export const createIncomingCallActions = (
   set: (arg: Partial<IncomingCallStore> | ((state: IncomingCallStore) => Partial<IncomingCallStore>)) => void,
   get: () => IncomingCallStore,
+  ref: StoresRef,
 ): IncomingCallActions => ({
   cancel: () => set({ incomingCall: null }),
 
@@ -42,8 +42,8 @@ export const createIncomingCallActions = (
     if (!incomingCall) return;
 
     set({ incomingCall: null });
-    useCallViewStore.getState().setViewState('none');
-    useCallViewStore.getState().setSelectedAttendantId(null);
+    ref.callView.getState().setViewState('none');
+    ref.callView.getState().setSelectedAttendantId(null);
 
     cancelIncomingCallService(incomingCall.customerId, incomingCall.attendantId)
       .catch((error) => handleRequestError(error));
@@ -55,7 +55,7 @@ export const createIncomingCallActions = (
       return;
     }
 
-    const { users } = useOnlineUsersStore.getState();
+    const { users } = ref.onlineUsers.getState();
     if (!customerId || !attendantId) return;
 
     const customer = users.find(u => u.id === customerId);
@@ -82,31 +82,31 @@ export const createIncomingCallActions = (
   },
   incomingCallSent: async (incomingCall: IncomingCallState) => {
     set({ incomingCall });
-    useCallViewStore.getState().setViewState('awaiting-answer');
+    ref.callView.getState().setViewState('awaiting-answer');
     try {
       const users = await fetchOnlineUsers();
-      useOnlineUsersStore.setState({ users });
+      ref.onlineUsers.setState({ users });
     } catch (error) {
       handleRequestError(error);
     }
   },
   incomingCallReceived: async (incomingCall: IncomingCallState) => {
     set({ incomingCall });
-    useCallViewStore.getState().setViewState('awaiting-to-answer');
+    ref.callView.getState().setViewState('awaiting-to-answer');
     try {
       const users = await fetchOnlineUsers();
-      useOnlineUsersStore.setState({ users });
+      ref.onlineUsers.setState({ users });
     } catch (error) {
       handleRequestError(error);
     }
   },
   incomingCallCancelled: async () => {
     set({ incomingCall: null });
-    useCallViewStore.getState().setViewState('none');
-    useCallViewStore.getState().setSelectedAttendantId(null);
+    ref.callView.getState().setViewState('none');
+    ref.callView.getState().setSelectedAttendantId(null);
     try {
       const users = await fetchOnlineUsers();
-      useOnlineUsersStore.setState({ users });
+      ref.onlineUsers.setState({ users });
     } catch (error) {
       handleRequestError(error);
     }
