@@ -72,4 +72,31 @@ export default (app: Application) => {
             return res.status(200).send();
         }
     );
+
+    app.post(
+        '/calls/track-room',
+        GetKeycloakUser,
+        async (req, res) => {
+            const controller = new CallController();
+            const mapped = controller.trackRoom.mapper(req.body);
+            const either = await controller.trackRoom.exec({ mapped });
+            if (either.isError) {
+                return res.status(either.status).send(either);
+            }
+            return res.status(200).send(either.data);
+        }
+    );
+
+    app.delete(
+        '/calls/rooms',
+        GetKeycloakUser,
+        async (_req, res) => {
+            const controller = new CallController();
+            const either = await controller.deleteRooms.exec();
+            if (either.isError) {
+                return res.status(either.status).send(either);
+            }
+            return res.status(200).send(either.data);
+        }
+    );
 };

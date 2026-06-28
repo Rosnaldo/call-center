@@ -29,3 +29,12 @@ export const updateCall = async (customerId: string, attendantId: string, update
 export const deleteCall = async (customerId: string, attendantId: string): Promise<void> => {
     await api.delete('/calls/delete', { data: { customerId, attendantId } });
 };
+
+export const trackRoom = async (roomName: string): Promise<void> => {
+    await api.post('/calls/track-room', { roomName });
+};
+
+export const getAndDeleteRooms = async (): Promise<string[]> => {
+    const { data } = await api.delete<{ rooms: string[] }>('/calls/rooms');
+    return data.rooms;
+};

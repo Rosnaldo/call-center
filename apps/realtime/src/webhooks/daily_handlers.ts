@@ -1,6 +1,6 @@
 import { sendToUser } from '#websocket/broadcast';
 import { findUserBySlug } from 'src/services/users';
-import { createCall, deleteCall, getCallByRoom, updateCall } from 'src/services/calls';
+import { createCall, deleteCall, getCallByRoom, updateCall, trackRoom } from 'src/services/calls';
 import { parseRoomName } from 'src/helpers/parse_room_name';
 import { DailyMeetingPayload, DailyParticipantPayload } from './daily_types';
 
@@ -8,6 +8,7 @@ export async function onMeetingStarted(payload: DailyMeetingPayload): Promise<vo
     console.log(`[Daily] meeting.started room=${payload.room}`);
 
     try {
+        trackRoom(payload.room).catch(() => {});
         const parsed = parseRoomName(payload.room);
         if (!parsed) return;
 
