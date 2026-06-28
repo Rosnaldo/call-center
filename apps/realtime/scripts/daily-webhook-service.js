@@ -7,17 +7,18 @@ const DAILY_API_KEY = process.env.DAILY_API_KEY;
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const IAM_URI = process.env.IAM_URI;
 const WEBHOOK_PATH = '/realtime/webhooks/daily';
+const ENV = process.env.NODE_ENV || 'local';
 
 if (!DAILY_API_KEY) { console.error('DAILY_API_KEY não definida'); process.exit(1); }
 if (!WEBHOOK_URL) { console.error('WEBHOOK_URL não definida'); process.exit(1); }
 if (!IAM_URI) { console.error('IAM_URI não definida'); process.exit(1); }
 
-const target = WEBHOOK_URL.replace(/\/realtime\/webhooks\/daily$/, '').replace(/\/$/, '');
+const baseUrl = WEBHOOK_URL.replace(/\/$/, '');
 
 let ngrokProcess = null;
 
 async function startNgrok() {
-    const proc = spawn('ngrok', ['http', target || 'https://localhost:443'], {
+    const proc = spawn('ngrok', ['http', baseUrl], {
         stdio: 'ignore',
         detached: true,
     });
@@ -87,12 +88,15 @@ async function deleteTrackedRooms() {
 }
 
 async function main() {
-    console.log(`[ngrok] abrindo tunnel para ${target}...`);
+    console.log(`[env] ${ENV}`);
+
+    console.log(`[ngrok] abrindo tunnel para ${baseUrl}...`);
     const ngrokUrl = await startNgrok();
     console.log(`[ngrok] tunnel: ${ngrokUrl}`);
+    const webhookUrl = `${ngrokUrl}${WEBHOOK_PATH}`;
 
     await deleteAllWebhooks();
-    await createWebhook(`${ngrokUrl}${WEBHOOK_PATH}`);
+    await createWebhook(webhookUrl);
 
     console.log('\nServiço ativo. Ctrl+C para encerrar.\n');
 
@@ -100,7 +104,7 @@ async function main() {
         console.log('\n[*] Encerrando...');
         await deleteAllWebhooks().catch(() => {});
         await deleteTrackedRooms().catch(() => {});
-        ngrokProcess?.kill();
+        if (ngrokProcess) ngrokProcess.kill();
         process.exit(0);
     };
 

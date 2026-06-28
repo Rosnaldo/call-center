@@ -15,6 +15,8 @@ export default (app: Application) => {
     app.post('/webhooks/daily', (req: Request, res: Response) => {
         const body = req.body as DailyWebhookBody;
 
+        if (!body?.type) return res.sendStatus(200);
+
         console.log('/webhooks/daily: ', body.type)
 
         switch (body.type) {
