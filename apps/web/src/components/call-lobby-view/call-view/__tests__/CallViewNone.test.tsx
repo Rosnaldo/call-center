@@ -29,7 +29,7 @@ const makeProps = (extra = {}) => ({
   partnerInitials: '',
   setIsMuted: vi.fn(),
   setIsVideoOff: vi.fn(),
-  setIsScreenSharing: vi.fn(),
+  onToggleScreenShare: vi.fn(),
   setIsSettingsOpen: vi.fn(),
   isFullscreen: false,
   toggleFullscreen: vi.fn(),

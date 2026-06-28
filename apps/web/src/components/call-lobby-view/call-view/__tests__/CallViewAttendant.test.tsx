@@ -22,6 +22,7 @@ vi.mock('../../../../hooks/useMediaTest.ts', () => ({
 }));
 vi.mock('../../../../hooks/useSyncEnabledDevices.ts', () => ({ useSyncEnabledDevices: vi.fn() }));
 vi.mock('@daily-co/daily-react', () => ({
+  useScreenShare: () => ({ isSharingScreen: false, screens: [], startScreenShare: vi.fn(), stopScreenShare: vi.fn() }),
   useParticipantIds: () => ['remote-1'],
   useVideoTrack: () => ({ track: null, isOff: true }),
   useAudioTrack: () => ({ track: null, isOff: true }),
@@ -57,7 +58,7 @@ const makeProps = (call: CallState, stateOverride?: CallViewState, extra = {}) =
   partnerInitials: 'MC',
   setIsMuted: vi.fn(),
   setIsVideoOff: vi.fn(),
-  setIsScreenSharing: vi.fn(),
+  onToggleScreenShare: vi.fn(),
   setIsSettingsOpen: vi.fn(),
   isFullscreen: false,
   toggleFullscreen: vi.fn(),

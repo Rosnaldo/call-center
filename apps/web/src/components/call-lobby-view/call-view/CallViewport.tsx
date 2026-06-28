@@ -1,19 +1,19 @@
 import React, { useEffect } from 'react';
-import { ScreenShare, Clock, User } from 'lucide-react';
+import { Clock, User } from 'lucide-react';
 import { CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
 import { useIncomingCallStore, useCurrentUserStore, useOnlineUsersStore, useCallViewStore, useDevicesStore } from '../../../states/stores.ts';
 import { IOnlineUser } from '@repo/shared-types';
 import { VideoTile } from '../VideoTile.tsx';
 import { PartnerAvatar } from '../PartnerAvatar.tsx';
-import { useParticipantIds } from '@daily-co/daily-react';
+import { ScreenShareTile } from '../ScreenShareTile.tsx';
+import { useParticipantIds, useScreenShare } from '@daily-co/daily-react';
 import { useDevicesContext } from '../../../providers/devices.tsx';
 
 import { getInitials } from '@/src/utils/helpers.ts';
 
 interface CallViewportProps {
   state: CallViewState;
-  isScreenSharing: boolean;
   timerText?: string;
   attendantName?: string;
   queueCount?: number;
@@ -182,27 +182,11 @@ const renderAwaitingAnswer = (attendant: IOnlineUser | null) => (
   </div>
 );
 
-const renderScreenSharingViewport = () => (
-  <div id="viewport-sharing" className="flex flex-col items-center justify-center p-6 text-center max-w-sm">
-    <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-4 animate-pulse">
-      <ScreenShare className="w-10 h-10" />
-    </div>
-    <h3 className="text-sm font-semibold text-slate-200 tracking-wide">
-      Sua Tela está Sendo Compartilhada
-    </h3>
-    <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
-      Os outros participantes da chamada conseguem visualizar seu desktop em tempo real. Pressione o botão de compartilhamento novamente para interromper.
-    </p>
-    <div className="mt-4 px-3 py-1 bg-emerald-400/10 border border-emerald-400/20 text-emerald-300 text-[10px] uppercase font-bold tracking-widest rounded-full animate-pulse">
-      Compartilhando ao vivo
-    </div>
-  </div>
-);
-
 const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ partner }) => {
   const cameraPermission = useDevicesStore(s => s.cameraPermission);
   const micPermission = useDevicesStore(s => s.micPermission);
   const { requestCamera, requestMicrophone } = useDevicesContext();
+  const { screens } = useScreenShare();
 
   useEffect(() => {
     if (cameraPermission === 'prompt') requestCamera();
@@ -212,12 +196,22 @@ const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ p
   const remoteParticipantIds = useParticipantIds({ filter: "remote" });
   const id = remoteParticipantIds[0];
 
-  if (!id) return (
+  const activeScreen = screens[0];
+
+  if (!id && !activeScreen) return (
     <div className="flex flex-col items-center justify-center p-8 text-center font-sans animate-fade-in select-none">
       <PartnerAvatar partner={partner} />
       <p className="text-xs text-slate-400 mt-2">Esperando entrar na ligação...</p>
     </div>
   );
+
+  if (activeScreen) {
+    return (
+      <div id="viewport-active-video" className="flex flex-col items-center w-full h-full">
+        <ScreenShareTile screenVideo={activeScreen.screenVideo} />
+      </div>
+    );
+  }
 
   return (
     <div id="viewport-active-video" className="flex flex-col items-center w-full h-full">
@@ -228,7 +222,6 @@ const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ p
 
 export const CallViewport: React.FC<CallViewportProps> = ({
   state,
-  isScreenSharing,
   timerText,
   currentCall,
 }) => {
@@ -267,8 +260,6 @@ export const CallViewport: React.FC<CallViewportProps> = ({
     content = renderInterruptedClient(partnerName, partnerInitials, partinerAvatarUrl);
   } else if (state === CallViewState.Lobby) {
     content = attendant ? renderLobbyViewport(attendant) : renderNoneViewport();
-  } else if (state === CallViewState.InCall && isScreenSharing) {
-    content = renderScreenSharingViewport();
   } else if (state === CallViewState.InCall) {
     content = <ActiveVideoViewport partner={partner} />;
   } else {
@@ -283,10 +274,9 @@ export const CallViewport: React.FC<CallViewportProps> = ({
       </div>
     );
   } else if (state === CallViewState.InCall) {
-    const statusText = isScreenSharing ? ' (Tela Compartilhada)' : '';
     topLeftBadge = (
       <div className="absolute top-4 left-4 bg-black/75 backdrop-blur-md text-slate-300 text-xs font-medium px-3.5 py-1.5 rounded-full border border-white/5 select-none font-sans shadow-md">
-        {partnerName}{statusText}
+        {partnerName}
       </div>
     );
   }

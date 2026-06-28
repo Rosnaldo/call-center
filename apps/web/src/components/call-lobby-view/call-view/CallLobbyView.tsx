@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useCallViewStore, useCallStore, useCurrentUserStore, useOnlineUsersStore, useIncomingCallStore, useBillingStore } from '../../../states/stores.ts';
+import { useCallViewStore, useCallStore, useCurrentUserStore, useOnlineUsersStore, useBillingStore } from '../../../states/stores.ts';
 import { InfoCard } from '../info-card/InfoCard.tsx';
 import { MediaSettingsModal } from '../media-settings-modal/MediaSettingsModal.tsx';
 import { BillingCalculationModal } from '../BillingCalculationModal.tsx';
@@ -7,14 +7,13 @@ import { BillingSummaryModal } from '../BillingSummaryModal.tsx';
 import { CallView, CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
 import { useRebuildOnLeave } from '@/src/hooks/useRebuildOnLeave.ts';
+import { useScreenShare } from '@daily-co/daily-react';
 
 
 export const CallLobbyView: React.FC = () => {
   const call = useCallStore((s) => s.call);
-  const incomingCall = useIncomingCallStore((s) => s.incomingCall);
   const currentUser = useCurrentUserStore((s) => s.currentUser);
   const users = useOnlineUsersStore((s) => s.users);
-  const selectedAttendantId = useCallViewStore((s) => s.selectedAttendantId);
   const persistedViewState = useCallViewStore((s) => s.viewState);
   const initialTokens = useBillingStore((s) => s.initialTokens);
 
@@ -23,7 +22,7 @@ export const CallLobbyView: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const currentCall = call;
 
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const { isSharingScreen, startScreenShare, stopScreenShare } = useScreenShare();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [billingCountdown, setBillingCountdown] = useState(10);
@@ -230,8 +229,8 @@ export const CallLobbyView: React.FC = () => {
         <div ref={containerRef} className={isFullscreen ? 'fixed inset-0 z-[100] w-screen h-screen bg-[#0c0d0e]' : 'relative'}>
           <CallView
             state={viewState}
-            isScreenSharing={isScreenSharing}
-            setIsScreenSharing={setIsScreenSharing}
+            isScreenSharing={isSharingScreen}
+            onToggleScreenShare={() => isSharingScreen ? stopScreenShare() : startScreenShare()}
             setIsSettingsOpen={setIsSettingsOpen}
             isFullscreen={isFullscreen}
             toggleFullscreen={toggleFullscreen}

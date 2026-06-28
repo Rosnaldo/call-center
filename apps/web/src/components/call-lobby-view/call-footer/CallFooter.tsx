@@ -11,7 +11,7 @@ import { CallFooterActions } from './CallFooterActions/CallFooterActions.tsx';
 interface CallFooterProps {
   state: CallViewState;
   isScreenSharing: boolean;
-  setIsScreenSharing: React.Dispatch<React.SetStateAction<boolean>>;
+  onToggleScreenShare: () => void;
   setIsSettingsOpen: (value: boolean) => void;
   isFullscreen: boolean;
   toggleFullscreen: () => void;
@@ -20,7 +20,7 @@ interface CallFooterProps {
 export const CallFooter: React.FC<CallFooterProps> = ({
   state,
   isScreenSharing,
-  setIsScreenSharing,
+  onToggleScreenShare,
   setIsSettingsOpen,
   isFullscreen,
   toggleFullscreen,
@@ -44,7 +44,7 @@ export const CallFooter: React.FC<CallFooterProps> = ({
         <ScreenShareToggleButton
           isCallActive
           isScreenSharing={isScreenSharing}
-          onClick={() => setIsScreenSharing(prev => !prev)}
+          onClick={onToggleScreenShare}
         />
       )}
 

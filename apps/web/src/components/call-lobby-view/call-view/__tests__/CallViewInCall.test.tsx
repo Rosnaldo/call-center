@@ -20,6 +20,13 @@ vi.mock('../../../../hooks/useMediaTest.ts', () => ({
   useMediaTest: () => ({ videoRef: { current: null }, micLevel: 0, startTest: vi.fn(), stopTest: vi.fn() }),
 }));
 vi.mock('../../../../hooks/useSyncEnabledDevices.ts', () => ({ useSyncEnabledDevices: vi.fn() }));
+vi.mock('@daily-co/daily-react', () => ({
+  useScreenShare: () => ({ isSharingScreen: false, screens: [], startScreenShare: vi.fn(), stopScreenShare: vi.fn() }),
+  useParticipantIds: () => ['remote-1'],
+  useVideoTrack: () => ({ track: null, isOff: true }),
+  useAudioTrack: () => ({ track: null, isOff: true }),
+  useMediaTrack: () => ({ track: null, isOff: true, persistentTrack: null }),
+}));
 
 const defaultProps = (overrides = {}) => ({
   state: CallViewState.InCall,
@@ -30,7 +37,7 @@ const defaultProps = (overrides = {}) => ({
   partnerInitials: 'JD',
   setIsMuted: vi.fn(),
   setIsVideoOff: vi.fn(),
-  setIsScreenSharing: vi.fn(),
+  onToggleScreenShare: vi.fn(),
   setIsSettingsOpen: vi.fn(),
   isFullscreen: false,
   toggleFullscreen: vi.fn(),
@@ -50,24 +57,22 @@ describe('CallView Component - in-call Unit Tests', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders clean visual state on screen sharing mode', () => {
-    render(<CallView {...defaultProps({ isScreenSharing: true })} />);
-
-    const shareAlert = screen.getByText(/Sua Tela está Sendo Compartilhada/i);
-    expect(shareAlert).toBeDefined();
+  it('renders active video viewport in-call', () => {
+    const { container } = render(<CallView {...defaultProps()} />);
+    expect(container.querySelector('#viewport-active-video')).not.toBeNull();
   });
 
-  it('calls setIsScreenSharing when screen share button is clicked', () => {
-    const setIsScreenSharing = vi.fn();
+  it('calls onToggleScreenShare when screen share button is clicked', () => {
+    const onToggleScreenShare = vi.fn();
     const { container } = render(
-      <CallView {...defaultProps({ setIsScreenSharing })} />
+      <CallView {...defaultProps({ onToggleScreenShare })} />
     );
 
     const screenToggle = container.querySelector('#lobby-screenshare-toggle');
     expect(screenToggle).not.toBeNull();
     if (screenToggle) {
       fireEvent.click(screenToggle);
-      expect(setIsScreenSharing).toHaveBeenCalled();
+      expect(onToggleScreenShare).toHaveBeenCalled();
     }
   });
 
