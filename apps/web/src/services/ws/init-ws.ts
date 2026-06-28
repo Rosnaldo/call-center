@@ -76,7 +76,6 @@ export class InitWs {
             call: stores.call,
             callView: stores.callView,
             incomingCall: stores.incomingCall,
-            onlineUsers: stores.onlineUsers,
         });
         const meetingService = new WsMeetingService({ call: stores.call });
 

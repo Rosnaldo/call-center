@@ -190,8 +190,10 @@ describe('Accept Call Flow', () => {
         const acceptMsg = attendantMessages.find((m) => m.event === 'incoming_call_received');
         expect(acceptMsg).toBeTruthy();
 
-        await iamRequest.post('/incoming-calls/accept').set('Authorization', ATTENDANT_TOKEN)
-            .send({ attendantId: attendantUser._id, userId: attendantUser._id });
+        customerMessages.length = 0;
+        attendantMessages.length = 0;
+
+        await attendantStores.call.getState().acceptIncomingCall();
         await new Promise((r) => setTimeout(r, 100));
 
         // ── both users receive call_accepted ──────────────────────────
@@ -199,6 +201,12 @@ describe('Accept Call Flow', () => {
         const attendantAccepted = attendantMessages.find((m) => m.event === 'call_accepted');
         expect(customerAccepted).toBeTruthy();
         expect(attendantAccepted).toBeTruthy();
+
+        // ── both receive online_users_broadcast after accept ─────────
+        const customerBroadcast = customerMessages.find((m) => m.event === 'online_users_broadcast');
+        const attendantBroadcast = attendantMessages.find((m) => m.event === 'online_users_broadcast');
+        expect(customerBroadcast).toBeTruthy();
+        expect(attendantBroadcast).toBeTruthy();
 
         // ── customer state (auto-processed via call_accepted event) ───
         expect(customerStores.callView.getState().viewState).toBe('in-call');
@@ -248,13 +256,18 @@ describe('Accept Call Flow', () => {
         customerStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
         await new Promise((r) => setTimeout(r, 100));
 
-        await iamRequest.post('/incoming-calls/accept').set('Authorization', ATTENDANT_TOKEN)
-            .send({ attendantId: attendantUser._id, userId: attendantUser._id });
+        await attendantStores.call.getState().acceptIncomingCall();
         await new Promise((r) => setTimeout(r, 100));
 
         // ── both in-call (auto-processed via call_accepted) ───────────
         expect(attendantStores.callView.getState().viewState).toBe('in-call');
         expect(customerStores.callView.getState().viewState).toBe('in-call');
+
+        // ── both receive online_users_broadcast after accept ─────────
+        const customerAcceptBroadcast = customerMessages.find((m) => m.event === 'online_users_broadcast');
+        const attendantAcceptBroadcast = attendantMessages.find((m) => m.event === 'online_users_broadcast');
+        expect(customerAcceptBroadcast).toBeTruthy();
+        expect(attendantAcceptBroadcast).toBeTruthy();
 
         // ── attendant completes call ──────────────────────────────────
         customerMessages.length = 0;
@@ -268,6 +281,12 @@ describe('Accept Call Flow', () => {
         const customerCompleted = customerMessages.find((m) => m.event === 'call_completed');
         expect(attendantCompleted).toBeTruthy();
         expect(customerCompleted).toBeTruthy();
+
+        // ── both receive online_users_broadcast after complete ───────
+        const customerCompleteBroadcast = customerMessages.find((m) => m.event === 'online_users_broadcast');
+        const attendantCompleteBroadcast = attendantMessages.find((m) => m.event === 'online_users_broadcast');
+        expect(customerCompleteBroadcast).toBeTruthy();
+        expect(attendantCompleteBroadcast).toBeTruthy();
 
         // ── attendant state cleared ───────────────────────────────────
         expect(attendantStores.call.getState().call).toBeNull();

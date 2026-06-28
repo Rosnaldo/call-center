@@ -18,6 +18,11 @@ export function onSendIncomingCall(payload: SendIncomingCallPayload): void {
         event: 'incoming_call_received',
         data: { incomingCall },
     });
+
+    broadcastMessage({
+        event: 'online_users_broadcast',
+        data: {},
+    });
 }
 
 export function onCancelIncomingCall(payload: CancelIncomingCallPayload): void {
@@ -30,6 +35,11 @@ export function onCancelIncomingCall(payload: CancelIncomingCallPayload): void {
 
     sendToUser(payload.attendantId, {
         event: 'incoming_call_cancelled',
+        data: {},
+    });
+
+    broadcastMessage({
+        event: 'online_users_broadcast',
         data: {},
     });
 }
@@ -48,7 +58,7 @@ export function onCallAccepted(payload: AcceptCallPayload): void {
     });
 
     broadcastMessage({
-        event: 'call_accepted_broadcast',
+        event: 'online_users_broadcast',
         data: {},
     });
 }
@@ -67,7 +77,7 @@ export function onCallCompleted(payload: CallCompletedPayload): void {
     });
 
     broadcastMessage({
-        event: 'call_completed_broadcast',
+        event: 'online_users_broadcast',
         data: {},
     });
 }

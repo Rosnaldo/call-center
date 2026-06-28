@@ -10,7 +10,7 @@ export const createGracePeriod = (
         user.id,
         () => {
             const transitionUser: IOnlineUser = { ...user, status: status };
-            broadcastMessage({ event: 'online_users_updated', data: transitionUser });
+            broadcastMessage({ event: 'add_to_online_users', data: transitionUser });
             addToIam(transitionUser).catch(() => {});
         },
         () => {

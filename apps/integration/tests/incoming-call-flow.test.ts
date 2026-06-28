@@ -184,6 +184,12 @@ describe('Incoming Call Flow', () => {
         expect(sentMsg).toBeTruthy();
         expect(recvMsg).toBeTruthy();
 
+        // ── both receive online_users_broadcast ─────────────────────
+        const customerBroadcast = customerMessages.find((m) => m.event === 'online_users_broadcast');
+        const attendantBroadcast = attendantMessages.find((m) => m.event === 'online_users_broadcast');
+        expect(customerBroadcast).toBeTruthy();
+        expect(attendantBroadcast).toBeTruthy();
+
         // ── customer state (auto-processed via incoming_call_sent) ────
         expect(customerStores.incomingCall.getState().incomingCall).toBeTruthy();
         expect(customerStores.incomingCall.getState().incomingCall!.customerId).toBe(customerUser._id);
@@ -253,6 +259,12 @@ describe('Incoming Call Flow', () => {
         expect(customerCancelMsg).toBeTruthy();
         expect(attendantCancelMsg).toBeTruthy();
 
+        // ── both receive online_users_broadcast after cancel ─────────
+        const customerBroadcast = customerMessages.find((m) => m.event === 'online_users_broadcast');
+        const attendantBroadcast = attendantMessages.find((m) => m.event === 'online_users_broadcast');
+        expect(customerBroadcast).toBeTruthy();
+        expect(attendantBroadcast).toBeTruthy();
+
         // ── customer state cleared (auto-processed) ───────────────────
         expect(customerStores.incomingCall.getState().incomingCall).toBeNull();
         expect(customerStores.callView.getState().viewState).toBe('none');
@@ -317,6 +329,12 @@ describe('Incoming Call Flow', () => {
         const customerCancelMsg = customerMessages.find((m) => m.event === 'incoming_call_cancelled');
         expect(attendantCancelMsg).toBeTruthy();
         expect(customerCancelMsg).toBeTruthy();
+
+        // ── both receive online_users_broadcast after cancel ─────────
+        const customerBroadcast = customerMessages.find((m) => m.event === 'online_users_broadcast');
+        const attendantBroadcast = attendantMessages.find((m) => m.event === 'online_users_broadcast');
+        expect(customerBroadcast).toBeTruthy();
+        expect(attendantBroadcast).toBeTruthy();
 
         // ── attendant state cleared (auto-processed) ──────────────────
         expect(attendantStores.incomingCall.getState().incomingCall).toBeNull();

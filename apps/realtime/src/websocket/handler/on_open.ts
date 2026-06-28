@@ -3,6 +3,6 @@ import { broadcastMessage } from '#websocket/broadcast';
 import { addToIam } from 'src/services/users';
 
 export const handleOpen = (user: IOnlineUser): void => {
-    broadcastMessage({ event: 'online_users_updated', data: user });
+    broadcastMessage({ event: 'add_to_online_users', data: user });
     addToIam(user).catch(() => {});
 };

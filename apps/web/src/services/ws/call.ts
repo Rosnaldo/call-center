@@ -1,20 +1,17 @@
 import { IncomingCallState } from '@repo/shared-types';
-import type { CallStoreInstance, CallViewStoreInstance, IncomingCallStoreInstance, OnlineUsersStoreInstance } from '../../states/stores';
+import type { CallStoreInstance, CallViewStoreInstance, IncomingCallStoreInstance } from '../../states/stores';
 
 export type WsCallMessage =
     | { event: 'incoming_call_sent'; data: { incomingCall: IncomingCallState } }
     | { event: 'incoming_call_received'; data: { incomingCall: IncomingCallState } }
     | { event: 'incoming_call_cancelled'; data: { targetUserId: string } }
     | { event: 'call_accepted'; data: { incomingCall: IncomingCallState } }
-    | { event: 'call_accepted_broadcast' }
-    | { event: 'call_completed' }
-    | { event: 'call_completed_broadcast' };
+    | { event: 'call_completed' };
 
 export interface WsCallStores {
     call: CallStoreInstance;
     callView: CallViewStoreInstance;
     incomingCall: IncomingCallStoreInstance;
-    onlineUsers: OnlineUsersStoreInstance;
 }
 
 export class WsCallService {
@@ -26,7 +23,6 @@ export class WsCallService {
 
     handle(msg: { event: string; data?: any }): boolean {
         const { incomingCallAccepted, completeCall } = this.stores.call.getState();
-        const { refreshUsers } = this.stores.onlineUsers.getState();
         const { incomingCallCancelled, incomingCallSent, incomingCallReceived } = this.stores.incomingCall.getState();
 
         switch (msg.event) {
@@ -42,13 +38,8 @@ export class WsCallService {
             case 'call_accepted':
                 incomingCallAccepted?.(msg.data.incomingCall);
                 break;
-            case 'call_accepted_broadcast':
-                refreshUsers();
-                break;
             case 'call_completed':
                 completeCall();
-            case 'call_completed_broadcast':
-                refreshUsers();
                 break;
             default:
                 return false;

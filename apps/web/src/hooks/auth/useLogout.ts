@@ -14,14 +14,14 @@ export function useLogout() {
   const navigate = useNavigate();
   const { logout } = useAuthentication();
   const currentUser = useCurrentUserStore((s) => s.currentUser);
-  const removeUser = useOnlineUsersStore((s) => s.removeUser);
+  const removeFromOnlineUsers = useOnlineUsersStore((s) => s.removeFromOnlineUsers);
 
   return () => {
     DailyService.getInstance().destroy();
     initWs.notifyLogout();
 
     if (!properties.isSimulation) {
-      removeUser(currentUser?.id || '');
+      removeFromOnlineUsers(currentUser?.id || '');
     }
     logout();
     navigate('/login');

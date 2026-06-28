@@ -121,6 +121,15 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
+        const adminMessages: any[] = [];
+        const customerMessages: any[] = [];
+        (adminWs as unknown as EventEmitter).on('sent', (data: string) => {
+            adminMessages.push(JSON.parse(data));
+        });
+        (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
+            customerMessages.push(JSON.parse(data));
+        });
+
         clientRegistry.add(adminWs);
         clientRegistry.add(customerWs);
 
@@ -145,8 +154,17 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         expect(loginRes.body.users.every((u: IOnlineUser) => u.status === 'idle')).toBe(true);
 
         // ── admin logs out ───────────────────────────────────────────────
+        adminMessages.length = 0;
+        customerMessages.length = 0;
+
         simulateMessage(adminWs, { event: 'user_logout' });
         await flushPendingCalls();
+
+        // ── both receive add_to_online_users after logout ──────────────
+        const adminBroadcast = adminMessages.find((m) => m.event === 'add_to_online_users');
+        const customerBroadcast = customerMessages.find((m) => m.event === 'add_to_online_users');
+        expect(adminBroadcast).toBeTruthy();
+        expect(customerBroadcast).toBeTruthy();
 
         // customer's web store shows admin as offline (broadcast)
         const adminInCustomerStore = customerStores.onlineUsers.getState().users
