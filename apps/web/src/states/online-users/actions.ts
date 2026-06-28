@@ -5,7 +5,7 @@
 
 import { MOCK_USERS } from './mock.ts';
 import { OnlineUserState } from './state.ts';
-import { fetchOnlineUsers } from '@/src/services/online-users.ts';
+import { fetchOnlineUsers } from '@/src/services/api/online-users.ts';
 
 export interface OnlineUsersActions {
   upsertUser: (user: OnlineUserState) => void;

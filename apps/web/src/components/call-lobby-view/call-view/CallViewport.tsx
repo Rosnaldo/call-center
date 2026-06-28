@@ -214,7 +214,7 @@ const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ p
 
   return (
     <div id="viewport-active-video" className="flex flex-col items-center w-full h-full">
-      <VideoTile sessionId={id} partnerName={partner?.name} />
+      <VideoTile sessionId={id} partner={partner} />
     </div>
   );
 };

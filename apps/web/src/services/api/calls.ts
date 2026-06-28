@@ -1,6 +1,6 @@
-import { apiBack } from '../api/backend';
+import { apiBack } from '../../api/backend';
 import { CallState } from '@repo/shared-types';
-import { ApiError } from '../error/api';
+import { ApiError } from '../../error/api';
 
 export async function fetchCall(customerId: string, attendantId: string): Promise<CallState> {
     const res = await apiBack.get('/calls/get', { params: { customerId, attendantId } });

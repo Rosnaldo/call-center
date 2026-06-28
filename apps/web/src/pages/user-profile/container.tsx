@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useOnlineUsersStore, useCurrentUserStore } from '../../states/stores.ts';
 import { UserProfilePage } from './ui.tsx';
 import { mytoast } from '@/src/components/toast.tsx';
-import { fetchUserUpload } from '@/src/services/user.ts';
+import { fetchUserUpload } from '@/src/services/api/user.ts';
 import properties from '../../properties';
 
 export const UserProfileContainer: React.FC = () => {

@@ -1,13 +1,14 @@
 import { useVideoTrack, useAudioTrack } from "@daily-co/daily-react";
 import { useEffect, useRef } from "react";
 import { PartnerAvatar } from "./PartnerAvatar.tsx";
+import { IOnlineUser } from "@repo/shared-types";
 
 interface VideoTileProps {
   sessionId: string;
-  partnerName?: string;
+  partner?: IOnlineUser;
 }
 
-export function VideoTile({ sessionId, partnerName }: VideoTileProps) {
+export function VideoTile({ sessionId, partner }: VideoTileProps) {
   const videoTrack = useVideoTrack(sessionId);
   const audioTrack = useAudioTrack(sessionId);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -53,7 +54,7 @@ export function VideoTile({ sessionId, partnerName }: VideoTileProps) {
   return (
     <div className="video-tile">
       {remoteCameraOff ? (
-        <PartnerAvatar partner={partnerName ? { name: partnerName } as any : undefined} />
+        <PartnerAvatar partner={partner} />
       ) : (
         <video ref={videoRef} autoPlay playsInline muted />
       )}

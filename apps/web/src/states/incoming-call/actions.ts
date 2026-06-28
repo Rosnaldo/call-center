@@ -1,8 +1,8 @@
 import { IncomingCallState } from '@repo/shared-types';
 import { IncomingCallStore } from './state.ts';
 import { useOnlineUsersStore, useCallViewStore } from '../stores.ts';
-import { sendIncomingCall as sendIncomingCallService, cancelIncomingCall as cancelIncomingCallService } from '@/src/services/incoming-calls.ts';
-import { fetchOnlineUsers } from '@/src/services/online-users.ts';
+import { sendIncomingCall as sendIncomingCallService, cancelIncomingCall as cancelIncomingCallService } from '@/src/services/api/incoming-calls.ts';
+import { fetchOnlineUsers } from '@/src/services/api/online-users.ts';
 import {
   simulateSendIncomingCall,
   simulateCancelIncomingCall,

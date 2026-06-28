@@ -2,9 +2,9 @@ import { IncomingCallState } from '@repo/shared-types';
 import { useIncomingCallStore, useCallViewStore, useOnlineUsersStore, useCurrentUserStore } from '../stores.ts';
 import { CallState, CallStore } from './state.ts';
 import type { IDailyService } from '../../services/daily.ts';
-import { fetchOnlineUsers } from '@/src/services/online-users.ts';
-import { fetchCall, completeCall as completeCallService } from '@/src/services/calls.ts';
-import { acceptIncomingCall as acceptIncomingCallService } from '@/src/services/incoming-calls.ts';
+import { fetchOnlineUsers } from '@/src/services/api/online-users.ts';
+import { fetchCall, completeCall as completeCallService } from '@/src/services/api/calls.ts';
+import { acceptIncomingCall as acceptIncomingCallService } from '@/src/services/api/incoming-calls.ts';
 import { handleRequestError } from '@/src/utils/utils.ts';
 import {
   simulateAcceptIncomingCall,

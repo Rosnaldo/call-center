@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { fetchOnlineUsers } from '../../services/online-users';
+import { fetchOnlineUsers } from '../../services/api/online-users';
 import { OnlineUserState } from '../../states/online-users/state';
 
 export const ONLINE_USERS_QUERY_KEY = ['online-users'] as const;

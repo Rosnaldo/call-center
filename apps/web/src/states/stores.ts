@@ -56,7 +56,7 @@ export function createStores(dailyService: IDailyService = noopDailyService): St
         callView: createCallViewStore(),
         currentUser: createCurrentUserStore(),
         devices: createDevicesStore(),
-        incomingCall: createIncomingCallStore(dailyService),
+        incomingCall: createIncomingCallStore(),
         onlineUsers: createOnlineUsersStore(),
         timer: createTimerStore(),
     };

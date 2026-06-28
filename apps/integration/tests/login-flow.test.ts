@@ -12,8 +12,8 @@ import { onConnection } from '../../realtime/src/websocket/connection';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 
 import { createStores, Stores } from '../../web/src/states/stores';
-import { initWs } from '../../web/src/services/init-ws';
-import { ITransport, TransportFactory } from '../../web/src/services/transport';
+import { initWs } from '../../web/src/services/ws/init-ws';
+import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 import * as usersService from 'src/services/users';
 

@@ -1,5 +1,5 @@
-import { apiBack } from '../api/backend';
-import { ApiError } from '../error/api';
+import { apiBack } from '../../api/backend';
+import { ApiError } from '../../error/api';
 
 export async function sendIncomingCall(customerId: string, attendantId: string): Promise<void> {
     const res = await apiBack.post('/incoming-calls/send', { customerId, attendantId, whoIsCalling: 'customer' });

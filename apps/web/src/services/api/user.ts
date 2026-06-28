@@ -1,6 +1,6 @@
-import { apiBack } from "../api/backend";
-import { User } from "../entities/user";
-import { ApiError } from "../error/api";
+import { apiBack } from "../../api/backend";
+import { User } from "../../entities/user";
+import { ApiError } from "../../error/api";
 
 export async function fetchUser(email: string): Promise<User>  {
     const res = await apiBack.get(

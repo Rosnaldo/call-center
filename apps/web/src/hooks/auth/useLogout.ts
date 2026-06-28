@@ -6,7 +6,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthentication } from './useAuthentication.ts';
 import { useCurrentUserStore, useOnlineUsersStore } from '../../states/stores.ts';
-import { initWs } from '../../services/init-ws.ts';
+import { initWs } from '../../services/ws/init-ws.ts';
 import { DailyService } from '../../services/daily.ts';
 import properties from '../../properties';
 

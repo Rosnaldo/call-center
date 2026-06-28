@@ -1,6 +1,6 @@
-import { apiBack } from '../api/backend';
-import { OnlineUserState } from '../states/online-users/state';
-import { ApiError } from '../error/api';
+import { apiBack } from '../../api/backend';
+import { OnlineUserState } from '../../states/online-users/state';
+import { ApiError } from '../../error/api';
 
 export async function fetchOnlineUsers(): Promise<OnlineUserState[]> {
     const res = await apiBack.get('/online-users/list');
