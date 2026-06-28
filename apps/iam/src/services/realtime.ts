@@ -21,3 +21,10 @@ export async function notifyCallAccepted(customerId: string, attendantId: string
         payload: { customerId, attendantId, calledBy, incomingCall },
     });
 }
+
+export async function notifyCallCompleted(customerId: string, attendantId: string): Promise<void> {
+    await realtimeApi.post('/webhooks/iam', {
+        event: 'call_completed',
+        payload: { customerId, attendantId },
+    });
+}

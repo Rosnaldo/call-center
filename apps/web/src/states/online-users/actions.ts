@@ -5,6 +5,7 @@
 
 import { MOCK_USERS } from './mock.ts';
 import { OnlineUserState } from './state.ts';
+import { fetchOnlineUsers } from '@/src/services/online-users.ts';
 
 export interface OnlineUsersActions {
   upsertUser: (user: OnlineUserState) => void;
@@ -12,6 +13,7 @@ export interface OnlineUsersActions {
   updateUser: (userId: string, updates: Partial<OnlineUserState>) => void;
   addTokensSimulation: (userId: string, tokens: number) => void;
   setUsers: (users: OnlineUserState[]) => void;
+  refreshUsers: () => void;
   resetSimulation: () => void;
 }
 
@@ -64,6 +66,13 @@ export const createOnlineUsersActions = (
         isLoading: false,
         error: null,
       }));
+    },
+
+    refreshUsers: async () => {
+      try {
+        const users = await fetchOnlineUsers();
+        set(() => ({ users }));
+      } catch {}
     },
 
     resetSimulation: () => {

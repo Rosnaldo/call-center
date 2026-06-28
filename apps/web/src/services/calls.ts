@@ -9,3 +9,10 @@ export async function fetchCall(customerId: string, attendantId: string): Promis
     }
     return res.data as CallState;
 }
+
+export async function completeCall(customerId: string, attendantId: string): Promise<void> {
+    const res = await apiBack.post('/calls/complete', { customerId, attendantId });
+    if (res.data?.isError) {
+        throw new ApiError(res.data.message);
+    }
+}

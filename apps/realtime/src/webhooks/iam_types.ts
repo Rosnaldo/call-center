@@ -16,7 +16,13 @@ export interface AcceptCallPayload {
     incomingCall: { customerId: string; attendantId: string; calledBy: string };
 }
 
+export interface CallCompletedPayload {
+    customerId: string;
+    attendantId: string;
+}
+
 export type IamWebhookBody =
     | { event: 'incoming_call_sent'; payload: SendIncomingCallPayload }
     | { event: 'incoming_call_cancelled'; payload: CancelIncomingCallPayload }
-    | { event: 'call_accepted'; payload: AcceptCallPayload };
+    | { event: 'call_accepted'; payload: AcceptCallPayload }
+    | { event: 'call_completed'; payload: CallCompletedPayload };

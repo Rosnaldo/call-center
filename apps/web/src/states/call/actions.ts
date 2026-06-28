@@ -1,9 +1,9 @@
 import { IncomingCallState } from '@repo/shared-types';
 import { useIncomingCallStore, useCallViewStore, useOnlineUsersStore, useCurrentUserStore } from '../stores.ts';
-import { CallState } from './state.ts';
+import { CallState, CallStore } from './state.ts';
 import type { IDailyService } from '../../services/daily.ts';
 import { fetchOnlineUsers } from '@/src/services/online-users.ts';
-import { fetchCall } from '@/src/services/calls.ts';
+import { fetchCall, completeCall as completeCallService } from '@/src/services/calls.ts';
 import { acceptIncomingCall as acceptIncomingCallService } from '@/src/services/incoming-calls.ts';
 import { handleRequestError } from '@/src/utils/utils.ts';
 import {
@@ -29,6 +29,7 @@ export interface CallActions {
 
 export const createCallActions = (
   set: (fn: (state: any) => any) => void,
+  get: () => CallStore,
   dailyService: IDailyService,
 ): CallActions => {
   return {
@@ -84,14 +85,28 @@ export const createCallActions = (
       }
     },
 
-    completeCall: () => {
+    completeCall: async () => {
       if (isSimulation) {
         simulateCompleteCall(set);
         return;
       }
 
+      const activeCall = get().call;
+
       useCallViewStore.getState().setViewState('none');
       useCallViewStore.getState().setSelectedAttendantId(null);
+      set(() => ({ call: null }));
+      dailyService.leave().catch(() => {});
+
+      try {
+        if (activeCall) {
+          await completeCallService(activeCall.customerId, activeCall.attendantId);
+        }
+        const users = await fetchOnlineUsers();
+        useOnlineUsersStore.setState({ users });
+      } catch (error) {
+        handleRequestError(error);
+      }
     },
 
     updateCall: (callId, updates) => {

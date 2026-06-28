@@ -8,7 +8,11 @@ jest.mock('@/src/services/incoming-calls', () => ({
     acceptIncomingCall: mockAcceptIncomingCall,
 }));
 const mockFetchCall = jest.fn();
-jest.mock('@/src/services/calls', () => ({ fetchCall: mockFetchCall }));
+const mockCompleteCall = jest.fn();
+jest.mock('@/src/services/calls', () => ({
+    fetchCall: mockFetchCall,
+    completeCall: mockCompleteCall,
+}));
 
 import { EventEmitter } from 'node:events';
 import { IOnlineUser, IUser, mapUserToOnlineUser } from '@repo/shared-types';
@@ -100,6 +104,11 @@ describe('Accept Call Flow', () => {
                 .query({ customerId, attendantId }).set('Authorization', CUSTOMER_TOKEN);
             return res.body;
         });
+
+        mockCompleteCall.mockImplementation(async (customerId: string, attendantId: string) => {
+            await iamRequest.post('/calls/complete').set('Authorization', CUSTOMER_TOKEN)
+                .send({ customerId, attendantId });
+        });
     });
 
     it('after accept both users are in-call', async () => {
@@ -166,5 +175,74 @@ describe('Accept Call Flow', () => {
         expect(customerStores.callView.getState().viewState).toBe('in-call');
         expect(customerStores.call.getState().call).toBeTruthy();
         expect(customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('in-call');
+    });
+
+    it('after completeCall both users are back to idle', async () => {
+        const customerWs = createWsClient(customerUser, CUSTOMER_TOKEN);
+        const attendantWs = createWsClient(attendantUser, ATTENDANT_TOKEN);
+
+        const customerMessages: any[] = [];
+        const attendantMessages: any[] = [];
+
+        (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
+            customerMessages.push(JSON.parse(data));
+        });
+        (attendantWs as unknown as EventEmitter).on('sent', (data: string) => {
+            attendantMessages.push(JSON.parse(data));
+        });
+
+        onConnection()(customerWs);
+        await flushPendingCalls();
+        onConnection()(attendantWs);
+        await flushPendingCalls();
+
+        // ── send + accept ─────────────────────────────────────────────
+        const dailyService = DailyCoService.getInstance();
+        const sendStores = createStores(dailyService);
+        sendStores.onlineUsers.setState({
+            users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
+        });
+
+        sendStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
+        await new Promise((r) => setTimeout(r, 100));
+
+        await iamRequest.post('/incoming-calls/accept').set('Authorization', ATTENDANT_TOKEN)
+            .send({ attendantId: attendantUser._id, userId: attendantUser._id });
+        await new Promise((r) => setTimeout(r, 100));
+
+        const attendantAccepted = attendantMessages.find((m) => m.event === 'call_accepted');
+
+        // ── put attendant in-call (singletons → attendant) ────────────
+        const attendantStores = createStores(dailyService);
+        attendantStores.currentUser.setState({ currentUser: mapUserToOnlineUser(attendantUser) });
+        attendantStores.call.getState().incomingCallAccepted(attendantAccepted.data.incomingCall);
+        await new Promise((r) => setTimeout(r, 100));
+
+        expect(attendantStores.callView.getState().viewState).toBe('in-call');
+
+        // ── attendant completes call ──────────────────────────────────
+        customerMessages.length = 0;
+        attendantMessages.length = 0;
+
+        attendantStores.call.getState().completeCall();
+        await new Promise((r) => setTimeout(r, 100));
+
+        // ── attendant store cleared ───────────────────────────────────
+        expect(attendantStores.call.getState().call).toBeNull();
+        expect(attendantStores.callView.getState().viewState).toBe('none');
+        expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('idle');
+
+        // ── customer receives call_completed ──────────────────────────
+        const customerCompleted = customerMessages.find((m) => m.event === 'call_completed');
+        expect(customerCompleted).toBeTruthy();
+
+        // ── customer processes call_completed (singletons → customer) ─
+        const customerStores = createStores(dailyService);
+        customerStores.call.getState().completeCall();
+        await new Promise((r) => setTimeout(r, 100));
+
+        expect(customerStores.call.getState().call).toBeNull();
+        expect(customerStores.callView.getState().viewState).toBe('none');
+        expect(customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('idle');
     });
 });

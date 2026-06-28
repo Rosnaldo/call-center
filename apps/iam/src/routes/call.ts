@@ -74,6 +74,20 @@ export default (app: Application) => {
     );
 
     app.post(
+        '/calls/complete',
+        GetKeycloakUser,
+        async (req, res) => {
+            const controller = new CallController();
+            const mapped = controller.complete.mapper(req.body);
+            const either = await controller.complete.exec({ mapped });
+            if (either.isError) {
+                return res.status(either.status).send(either);
+            }
+            return res.status(200).send();
+        }
+    );
+
+    app.post(
         '/calls/track-room',
         GetKeycloakUser,
         async (req, res) => {

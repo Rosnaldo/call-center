@@ -1,5 +1,5 @@
-import { sendToUser } from '#websocket/broadcast';
-import { SendIncomingCallPayload, CancelIncomingCallPayload, AcceptCallPayload } from './iam_types';
+import { sendToUser, broadcastMessage } from '#websocket/broadcast';
+import { SendIncomingCallPayload, CancelIncomingCallPayload, AcceptCallPayload, CallCompletedPayload } from './iam_types';
 
 export function onSendIncomingCall(payload: SendIncomingCallPayload): void {
     console.log(`[IAM] incoming_call_sent customer=${payload.customerId} attendant=${payload.attendantId} calledBy=${payload.calledBy}`);
@@ -45,5 +45,29 @@ export function onCallAccepted(payload: AcceptCallPayload): void {
     sendToUser(payload.attendantId, {
         event: 'call_accepted',
         data: { incomingCall: payload.incomingCall },
+    });
+
+    broadcastMessage({
+        event: 'call_accepted_broadcast',
+        data: {},
+    });
+}
+
+export function onCallCompleted(payload: CallCompletedPayload): void {
+    console.log(`[IAM] call_completed customer=${payload.customerId} attendant=${payload.attendantId}`);
+
+    sendToUser(payload.customerId, {
+        event: 'call_completed',
+        data: {},
+    });
+
+    sendToUser(payload.attendantId, {
+        event: 'call_completed',
+        data: {},
+    });
+
+    broadcastMessage({
+        event: 'call_completed_broadcast',
+        data: {},
     });
 }

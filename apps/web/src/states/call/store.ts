@@ -9,8 +9,8 @@ import { CallStore, initialCallStore } from './state.ts';
 import { CallActions, createCallActions } from './actions.ts';
 
 export const createCallStore = (dailyService: IDailyService) => create<CallStore & CallActions>()(
-  (set) => ({
+  (set, get) => ({
     ...initialCallStore,
-    ...createCallActions(set, dailyService),
+    ...createCallActions(set, get, dailyService),
   })
 );
