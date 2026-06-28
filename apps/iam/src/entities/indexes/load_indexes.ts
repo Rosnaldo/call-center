@@ -2,6 +2,7 @@ import { Connection } from 'mongoose';
 import path from 'path';
 import { IndexDescription } from 'mongodb';
 import { RuntimeFiles } from '#utils/runtime_files';
+import logger from '#logger';
 
 export class LoadIndexes {
     private readonly connection: Connection;
@@ -22,7 +23,7 @@ export class LoadIndexes {
 
             return await collection.createIndexes(missing);
         } catch (error) {
-            console.error(`[LoadIndexes.createIndexes]: Error create index ${collectionName}`, error)
+            logger.error(error, `[LoadIndexes.createIndexes]: Error create index ${collectionName}`)
             throw error;
         }
     };
@@ -33,7 +34,7 @@ export class LoadIndexes {
             const dir = path.join(__dirname, 'entities');
             return runtime.get(dir, __filename);
         } catch (error) {
-            console.error(`[LoadIndexes.getIndexesFiles]: Error loading index file`, error)
+            logger.error(error, '[LoadIndexes.getIndexesFiles]: Error loading index file')
             throw error;
         }
     };
@@ -46,7 +47,7 @@ export class LoadIndexes {
                 await this.createIndexes(indexes, collectionName);
             })).then();
         } catch (error) {
-            console.error(`[LoadIndexes.loadIndexes]: Error loading indexes`, error)
+            logger.error(error, '[LoadIndexes.loadIndexes]: Error loading indexes')
             throw error;
         }
     };
@@ -56,7 +57,7 @@ export class LoadIndexes {
     public readonly fireAndForget = (): void => {
         setImmediate(() => {
             this.loadIndexes().catch((error) =>
-                console.error('[LoadIndexes.fireAndForget]', error)
+                logger.error(error, '[LoadIndexes.fireAndForget]')
             );
         });
     };

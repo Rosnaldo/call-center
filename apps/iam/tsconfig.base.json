@@ -38,7 +38,8 @@
             "#properties": ["./src/properties"],
             "#auth/*": ["./src/auth/*"],
             "#db/*": ["./src/db/*"],
-            "#redis/*": ["./src/redis/*"]
+            "#redis/*": ["./src/redis/*"],
+            "#logger": ["./src/logger"]
         },
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,

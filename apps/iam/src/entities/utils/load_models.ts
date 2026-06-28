@@ -1,11 +1,12 @@
 import { getUserModel } from '#models/singleton';
+import logger from '#logger';
 
 export class LoadModels {
     private readonly loadModels = (): void => {
         try {
             getUserModel();
         } catch (error) {
-            console.error(`[LoadModels.loadModels]: Error loading models`, error)
+            logger.error(error, '[LoadModels.loadModels]: Error loading models')
             throw error;
         }
     };

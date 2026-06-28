@@ -1,5 +1,6 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import { UserRole } from '@repo/shared-types';
+import logger from '#logger';
 
 import { UserCrud } from '#crud/user';
 import { UserBuilder } from '#schemas/user/utils';
@@ -20,7 +21,7 @@ export const GetUser = async (req: Request, res: Response, next: NextFunction) =
 
         return next();
     } catch (error) {
-        console.log('GetUser: Não autorizado', error)
+        logger.warn(error, 'GetUser: Não autorizado')
         return res.status(403).send({ isError: true, data: {}, message: 'Não autorizado', status: 401 });
     }
 };

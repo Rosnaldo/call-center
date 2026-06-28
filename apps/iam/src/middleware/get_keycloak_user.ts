@@ -4,6 +4,7 @@ import jwksClient, { JwksClient } from 'jwks-rsa';
 import _ from 'lodash';
 
 import properties from '#properties';
+import logger from '#logger';
 
 function getKey(client: JwksClient, header: JwtHeader): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -72,7 +73,7 @@ export const GetKeycloakUser = async (req: Request, res: Response, next: NextFun
 
         return next();
     } catch (error) {
-        console.log('GetKeycloakUser: Não autorizado', error)
+        logger.warn(error, 'GetKeycloakUser: Não autorizado')
         return res.status(403).send({ isError: true, data: {}, message: 'Não autorizado', status: 401 });
     }
 };

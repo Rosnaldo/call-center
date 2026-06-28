@@ -1,6 +1,7 @@
 import path from 'path';
 import { type Application } from 'express';
 import { RuntimeFiles } from '#utils/runtime_files';
+import logger from '#logger';
 
 export class LoadRoutes {
     private readonly app: Application;
@@ -20,7 +21,7 @@ export class LoadRoutes {
                 })
             ).then();
         } catch (error) {
-            console.error(`[LoadRoutes.loadRoutes]: Error loading routes`, error)
+            logger.error(error, '[LoadRoutes.loadRoutes]: Error loading routes')
             throw error;
         }
     }
@@ -32,7 +33,7 @@ export class LoadRoutes {
     public readonly fireAndForget = (): void => {
         setImmediate(() => {
             this.loadRoutes()
-                .catch((error) => console.error('[LoadRoutes.fireAndForget]: Errorloading routes', error))
+                .catch((error) => logger.error(error, '[LoadRoutes.fireAndForget]: Error loading routes'))
         });
     };
 }

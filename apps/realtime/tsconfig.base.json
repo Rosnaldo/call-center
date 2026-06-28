@@ -15,7 +15,8 @@
             "#types/*": ["./src/types/*"],
             "#utils/*": ["./src/utils/*"],
             "#websocket/*": ["./src/websocket/*"],
-            "#properties": ["./src/properties"]
+            "#properties": ["./src/properties"],
+            "#logger": ["./src/logger"]
         },
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,

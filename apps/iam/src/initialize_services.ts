@@ -2,6 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import http from 'http';
 import cors from 'cors';
+import logger from '#logger';
 import { Properties } from './properties';
 import './extensions/transform_in_dict';
 
@@ -65,7 +66,7 @@ class InitializeServices {
                     const addr = s.address();
                     const boundPort = typeof addr === 'object' ? addr!.port : port;
                     this.properties.port = boundPort;
-                    console.log(`Application running on  ${boundPort}`);
+                    logger.info(`Application running on ${boundPort}`);
                     resolve(s);
                 });
             });
@@ -78,24 +79,24 @@ class InitializeServices {
 
                 try {
                     await Promise.all(mongoose.connections.map((conn) => conn.close(false)));
-                    console.log('[DB] Todas as conexões Mongo fechadas');
+                    logger.info('[DB] Todas as conexões Mongo fechadas');
                 } catch (err) {
-                    console.error('[DB] Erro ao fechar conexões', err);
+                    logger.error(err, '[DB] Erro ao fechar conexões');
                 }
 
                 try {
                     await disconnectRedis();
-                    console.log('[Redis] Conexão fechada');
+                    logger.info('[Redis] Conexão fechada');
                 } catch (err) {
-                    console.error('[Redis] Erro ao fechar conexão', err);
+                    logger.error(err, '[Redis] Erro ao fechar conexão');
                 }
                 this.server!.close(() => {
-                    console.log(`[*] - WEB Service - Closed`);
+                    logger.info('[*] - WEB Service - Closed');
                     process.exit(0);
                 });
 
                 setTimeout(() => {
-                    console.error('Forçando shutdown após timeout');
+                    logger.error('Forçando shutdown após timeout');
                     process.exit(1);
                 }, 10_000);
             }
@@ -103,7 +104,7 @@ class InitializeServices {
             process.on('SIGINT', gracefulShutdown);
             process.on('SIGTERM', gracefulShutdown);
         } catch (error) {
-            console.error('Error initializing services:', error);
+            logger.error(error, 'Error initializing services');
             process.exit(1);
         }
     }
@@ -117,13 +118,13 @@ class InitializeServices {
         try {
             await Promise.all(mongoose.connections.map((conn) => conn.close(false)));
         } catch (err) {
-            console.error('[DB] Erro ao fechar conexões', err);
+            logger.error(err, '[DB] Erro ao fechar conexões');
         }
 
         try {
             await disconnectRedis();
         } catch (err) {
-            console.error('[Redis] Erro ao fechar conexão', err);
+            logger.error(err, '[Redis] Erro ao fechar conexão');
         }
     }
 }
