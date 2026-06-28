@@ -10,7 +10,7 @@ import { ScreenShareTile } from '../ScreenShareTile.tsx';
 import { useParticipantIds, useScreenShare } from '@daily-co/daily-react';
 import { useDevicesContext } from '../../../providers/devices.tsx';
 
-import { getInitials } from '@/src/utils/helpers.ts';
+
 
 interface CallViewportProps {
   state: CallViewState;
@@ -22,8 +22,8 @@ interface CallViewportProps {
 }
 
 const renderNoneViewport = () => (
-  <div id="viewport-none" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans animate-fade-in select-none">
-    <div className="w-16 h-16 rounded-full bg-slate-500/10 border border-slate-500/20 flex items-center justify-center text-slate-400 mb-4 animate-pulse">
+  <div id="viewport-none" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
+    <div className="w-16 h-16 rounded-full bg-slate-500/10 border border-slate-500/20 flex items-center justify-center text-slate-400 mb-4">
       <User className="w-8 h-8 text-slate-400" />
     </div>
     <h3 className="text-sm font-semibold text-slate-200 tracking-wide uppercase">
@@ -32,37 +32,14 @@ const renderNoneViewport = () => (
   </div>
 );
 
-const renderPartnerAvatar = (
-  partnerName: string,
-  partnerInitials: string,
-  avatarUrl?: string,
-  extraClass = ''
-): React.ReactNode =>
-  avatarUrl ? (
-    <img
-      src={avatarUrl}
-      alt={partnerName}
-      className={`w-20 h-20 rounded-full object-cover border border-slate-500/20 mb-3 shadow-none bg-slate-800 ${extraClass}`}
-      referrerPolicy="no-referrer"
-    />
-  ) : (
-    <div className={`w-20 h-20 rounded-full bg-brand-ochre/15 border border-slate-500/20 flex items-center justify-center text-brand-ochre font-bold text-2xl mb-3 shadow-none select-none ${extraClass}`}>
-      {partnerInitials}
-    </div>
-  );
-
-const renderAwaitingAttendant = (
-  partnerName: string,
-  partnerInitials: string,
-  avatarUrl?: string
-) => (
-  <div id="viewport-awaiting-attendant" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans animate-fade-in select-none">
-    {renderPartnerAvatar(partnerName, partnerInitials, avatarUrl, 'animate-pulse')}
+const renderAwaitingAttendant = (partner: IOnlineUser | undefined) => (
+  <div id="viewport-awaiting-attendant" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
+    <PartnerAvatar partner={partner} size="md" pulse />
     <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1">
       Chamada Recebida
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">
-      {partnerName} está ligando...
+      {partner?.name ?? ''} está ligando...
     </p>
     <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
       Clique no botão verde <strong className="text-emerald-400 font-semibold">"Atender Chamada"</strong> abaixo para iniciar a videoconferência.
@@ -70,37 +47,26 @@ const renderAwaitingAttendant = (
   </div>
 );
 
-const renderAwaitingClient = (
-  partnerName: string,
-  partnerInitials: string,
-  avatarUrl?: string
-) => (
-  <div id="viewport-awaiting-client" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans animate-fade-in select-none">
-    {renderPartnerAvatar(partnerName, partnerInitials, avatarUrl, 'animate-pulse')}
-    <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1 animate-pulse">
+const renderAwaitingClient = (partner: IOnlineUser | undefined) => (
+  <div id="viewport-awaiting-client" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
+    <PartnerAvatar partner={partner} size="md" pulse />
+    <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1">
       Chamada Iniciada
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">
-      Aguardando que {partnerName} atenda a ligação...
+      Aguardando que {partner?.name ?? ''} atenda a ligação...
     </p>
   </div>
 );
 
-const renderInterruptedAttendant = (
-  partnerName: string,
-  partnerInitials: string,
-  avatarUrl?: string
-) => (
-  <div id="viewport-interrupted-attendant" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans animate-fade-in select-none">
-    <div className="relative">
-      {renderPartnerAvatar(partnerName, partnerInitials, avatarUrl, 'animate-pulse')}
-      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 border-2 border-[#0e1012] rounded-full animate-pulse" />
-    </div>
+const renderInterruptedAttendant = (partner: IOnlineUser | undefined) => (
+  <div id="viewport-interrupted-attendant" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
+    <PartnerAvatar partner={partner} size="md" pulse />
     <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mb-1">
       Conexão Interrompida
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">
-      Aguardando {partnerName} retornar à ligação...
+      Aguardando {partner?.name ?? ''} retornar à ligação...
     </p>
     <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
       Timer e cobrança pausados. Aguarde o retorno do cliente ou finalize a sessão se preferir.
@@ -108,18 +74,14 @@ const renderInterruptedAttendant = (
   </div>
 );
 
-const renderInterruptedClient = (
-  partnerName: string,
-  partnerInitials: string,
-  avatarUrl?: string
-) => (
-  <div id="viewport-interrupted-client" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans animate-fade-in select-none">
-    {renderPartnerAvatar(partnerName, partnerInitials, avatarUrl, 'animate-pulse')}
-    <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mb-1 animate-pulse">
+const renderInterruptedClient = (partner: IOnlineUser | undefined) => (
+  <div id="viewport-interrupted-client" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
+    <PartnerAvatar partner={partner} size="md" pulse />
+    <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mb-1">
       Conexão Interrompida
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">
-      Aguardando o atendente {partnerName} retornar...
+      Aguardando o atendente {partner?.name ?? ''} retornar...
     </p>
     <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
       Timer e cobrança pausados. Aguarde o retorno do atendente ou finalize a sessão se preferir.
@@ -127,53 +89,19 @@ const renderInterruptedClient = (
   </div>
 );
 
-const renderLobbyViewport = (
-  attendant: IOnlineUser,
-) => {
-  const nameToDisplay = attendant.name;
-
-  let lobbyVisual: React.ReactNode = (
-    <div className="w-16 h-16 rounded-full bg-brand-ochre/15 border border-slate-500/20 flex items-center justify-center text-brand-ochre font-bold text-lg mb-3 shadow-none select-none">
-      {getInitials(attendant.name)}
-    </div>
-  );
-
-  if (attendant.avatarUrl) {
-    lobbyVisual = (
-      <img
-        src={attendant.avatarUrl}
-        alt={nameToDisplay}
-        className="w-16 h-16 rounded-full object-cover border border-slate-500/20 mb-3 shadow-none"
-        referrerPolicy="no-referrer"
-      />
-    );
-  }
-
-  return (
-    <div id="viewport-lobby" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans animate-fade-in">
-      {lobbyVisual}
-      <h3 className="text-sm font-semibold text-slate-100 tracking-wide">
-        {nameToDisplay}
-      </h3>
-    </div>
-  );
-};
+const renderLobbyViewport = (attendant: IOnlineUser) => (
+  <div id="viewport-lobby" className="flex flex-col items-center justify-center gap-3 p-8 text-center max-w-sm font-sans">
+    <PartnerAvatar partner={attendant} size="md" fadeIn />
+    <h3 className="text-sm font-semibold text-slate-100 tracking-wide">
+      {attendant.name}
+    </h3>
+  </div>
+);
 
 const renderAwaitingAnswer = (attendant: IOnlineUser | null) => (
-  <div id="viewport-awaiting-answer" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans animate-fade-in select-none">
-    {attendant?.avatarUrl ? (
-      <img
-        src={attendant.avatarUrl}
-        alt={attendant.name}
-        className="w-20 h-20 rounded-full object-cover border border-slate-500/20 mb-3 shadow-none bg-slate-800 animate-pulse"
-        referrerPolicy="no-referrer"
-      />
-    ) : (
-      <div className="w-20 h-20 rounded-full bg-brand-ochre/15 border border-slate-500/20 flex items-center justify-center text-brand-ochre font-bold text-2xl mb-3 animate-pulse">
-        {attendant ? getInitials(attendant.name) : 'VC'}
-      </div>
-    )}
-    <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1 animate-pulse">
+  <div id="viewport-awaiting-answer" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
+    <PartnerAvatar partner={attendant} size="md" pulse />
+    <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1">
       Chamada Iniciada
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">
@@ -199,8 +127,8 @@ const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ p
   const activeScreen = screens[0];
 
   if (!id && !activeScreen) return (
-    <div className="flex flex-col items-center justify-center p-8 text-center font-sans animate-fade-in select-none">
-      <PartnerAvatar partner={partner} />
+    <div className="flex flex-col items-center justify-center p-8 text-center font-sans select-none">
+      <PartnerAvatar partner={partner} size="md" />
       <p className="text-xs text-slate-400 mt-2">Esperando entrar na ligação...</p>
     </div>
   );
@@ -242,8 +170,6 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   const partner = users.find(u => u.id === partnerId);
 
   const partnerName = partner?.name ?? '';
-  const partnerInitials = getInitials(partnerName);
-  const partinerAvatarUrl = partner?.avatarUrl;
   const attendant = users.find(u => u.id === selectedAttendantId) ?? null;
 
   if (state === CallViewState.None) {
@@ -251,13 +177,13 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   } else if (state === CallViewState.AwaitingAnswer) {
     content = renderAwaitingAnswer(attendant);
   } else if (state === CallViewState.AwaitingToAnswer && isReceiving) {
-    content = renderAwaitingAttendant(partnerName, partnerInitials, partinerAvatarUrl);
+    content = renderAwaitingAttendant(partner);
   } else if (state === CallViewState.AwaitingToAnswer && !isReceiving) {
-    content = renderAwaitingClient(partnerName, partnerInitials, partinerAvatarUrl);
+    content = renderAwaitingClient(partner);
   } else if (state === CallViewState.CallInterrupted && isReceiving) {
-    content = renderInterruptedAttendant(partnerName, partnerInitials, partinerAvatarUrl);
+    content = renderInterruptedAttendant(partner);
   } else if (state === CallViewState.CallInterrupted && !isReceiving) {
-    content = renderInterruptedClient(partnerName, partnerInitials, partinerAvatarUrl);
+    content = renderInterruptedClient(partner);
   } else if (state === CallViewState.Lobby) {
     content = attendant ? renderLobbyViewport(attendant) : renderNoneViewport();
   } else if (state === CallViewState.InCall) {
