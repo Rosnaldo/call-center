@@ -45,7 +45,7 @@ export const createCallActions = (
         const attendant = updatedUsers.find(u => u.id === incomingCall.attendantId);
         if (!customer || !attendant) return;
 
-        const currentUser = useCurrentUserStore((s) => s.currentUser);
+        const currentUser = useCurrentUserStore.getState().currentUser;
         if (!currentUser) return;
 
         dailyService.join({

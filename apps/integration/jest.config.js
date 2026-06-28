@@ -27,8 +27,11 @@ module.exports = {
         // realtime websocket paths
         '^#websocket/(.*)$': '<rootDir>/../realtime/src/websocket/$1',
 
-        // realtime service layer — intercepted by the integration mock
+        // realtime service layer
         '^src/services/users$': '<rootDir>/src/mocks/realtime-users-service.ts',
+        '^src/services/calls$': '<rootDir>/src/mocks/realtime-calls-service.ts',
+        '^src/helpers/(.*)$': '<rootDir>/../realtime/src/helpers/$1',
+        '^src/apis/(.*)$': '<rootDir>/../realtime/src/apis/$1',
 
         // IAM alias paths
         '^#properties$': '<rootDir>/../iam/src/properties',

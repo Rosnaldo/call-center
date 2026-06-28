@@ -1,36 +1,38 @@
 jest.mock('src/services/users');
-jest.mock('@/src/services/online-users', () => ({
-    fetchOnlineUsers: jest.fn(),
+jest.mock('@/src/services/online-users', () => ({ fetchOnlineUsers: jest.fn() }));
+const mockSendIncomingCall = jest.fn();
+const mockAcceptIncomingCall = jest.fn();
+jest.mock('@/src/services/incoming-calls', () => ({
+    sendIncomingCall: mockSendIncomingCall,
+    cancelIncomingCall: jest.fn(),
+    acceptIncomingCall: mockAcceptIncomingCall,
 }));
-jest.mock('@/src/services/calls', () => ({
-    fetchCall: jest.fn(),
-}));
+const mockFetchCall = jest.fn();
+jest.mock('@/src/services/calls', () => ({ fetchCall: mockFetchCall }));
 
 import { EventEmitter } from 'node:events';
-import { IOnlineUser, IUser } from '@repo/shared-types';
+import { IOnlineUser, IUser, mapUserToOnlineUser } from '@repo/shared-types';
 
-import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
-import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
+import { startIamServer, stopIamServer, IamAgent, getIamPort } from './helpers/iam-server';
+import { startRealtimeServer, stopRealtimeServer, linkRealtimeToIam } from './helpers/realtime-server';
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { createWsClient } from './helpers/mock-wss';
-import { DailyCoService } from './helpers/daily-service';
+import { DailyTestService } from './helpers/daily-test-service';
+import { deleteRoom } from './helpers/dailyco-room';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 
-import { createStores, Stores } from '../../web/src/states/stores';
-import { InitWs } from '../../web/src/services/init-ws';
-import { ITransport, TransportFactory } from '../../web/src/services/transport';
+import { createStores } from '../../web/src/states/stores';
 import { AuthSession } from '../../web/src/auth/session';
 
 import * as usersService from 'src/services/users';
 import * as onlineUsersService from '@/src/services/online-users';
-import * as callsService from '@/src/services/calls';
 
 const addToIamMock = usersService.addToIam as jest.Mock;
+const findUserBySlugMock = usersService.findUserBySlug as jest.Mock;
 const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
-const fetchCallMock = callsService.fetchCall as jest.Mock;
 
 const pendingCalls: Array<Promise<unknown>> = [];
 
@@ -40,169 +42,176 @@ async function flushPendingCalls(): Promise<void> {
     await Promise.all(snapshot);
 }
 
-function createBridgedClient(user: IUser, token: string) {
-    const serverWs = createWsClient(user, token);
+function waitForMessage(messages: any[], event: string, timeout = 5000): Promise<any> {
+    const existing = messages.find((m) => m.event === event);
+    if (existing) return Promise.resolve(existing);
 
-    const webFactory: TransportFactory = (_url: string): ITransport => {
-        const transport: ITransport = {
-            get readyState() { return serverWs.readyState; },
-            onopen: null,
-            onmessage: null,
-            onerror: null,
-            onclose: null,
-            send(data: string) {
-                (serverWs as unknown as EventEmitter).emit('message', data);
-            },
-            close() {
-                serverWs.terminate();
-            },
-        };
-
-        (serverWs as unknown as EventEmitter).on('sent', (data: string) => {
-            transport.onmessage?.({ data } as any);
-        });
-
-        return transport;
-    };
-
-    return { serverWs, webFactory };
+    return new Promise((resolve, reject) => {
+        const interval = setInterval(() => {
+            const msg = messages.find((m) => m.event === event);
+            if (msg) { clearInterval(interval); resolve(msg); }
+        }, 50);
+        setTimeout(() => { clearInterval(interval); reject(new Error(`Timeout waiting for ${event}`)); }, timeout);
+    });
 }
 
-describe('Accept Call Flow', () => {
+// ─── suite ──────────────────────────────────────────────────────────────────
+
+describe('Accept Call Flow (Daily.co webhooks)', () => {
     let iamRequest: IamAgent;
     let customerUser: IUser;
     let attendantUser: IUser;
-
-    let customerStores: Stores;
-    let attendantStores: Stores;
+    let dailyService: DailyTestService;
+    let roomName: string;
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
-        await startRealtimeServer();
+        linkRealtimeToIam(getIamPort(), CUSTOMER_TOKEN);
+        const realtimeServer = await startRealtimeServer();
+
+        const port = Number(realtimeServer.properties.port);
+        dailyService = new DailyTestService(`http://localhost:${port}/webhooks/daily`);
+
         const users = await createMockUsers();
         customerUser = { ...users.customer, tokens: 10 };
         attendantUser = users.attendant;
+
+        roomName = `${customerUser.slug}--${attendantUser.slug}`;
     });
 
     afterAll(async () => {
+        await deleteRoom(roomName).catch(() => {});
         stopRealtimeServer();
         await stopIamServer();
     });
 
     beforeEach(async () => {
-        await getRedisClient().del('online_users');
+        const redis = getRedisClient();
+        const icKeys = await redis.keys('incoming_call:*');
+        if (icKeys.length) await redis.del(...icKeys);
+        const callKeys = await redis.keys('calls:*');
+        if (callKeys.length) await redis.del(...callKeys);
 
         clientRegistry.clear();
         pendingCalls.length = 0;
         jest.clearAllMocks();
-        DailyCoService.reset();
         AuthSession.override({ token: CUSTOMER_TOKEN });
 
         addToIamMock.mockImplementation((user: IOnlineUser) => {
-            const op = iamRequest
-                .post('/online-users/add')
-                .set('Authorization', CUSTOMER_TOKEN)
-                .send(user);
+            const op = iamRequest.post('/online-users/add').set('Authorization', CUSTOMER_TOKEN).send(user);
             pendingCalls.push(op);
             return op;
         });
 
+        findUserBySlugMock.mockImplementation(async (slug: string) => {
+            const res = await iamRequest.get('/users/find-by-slug')
+                .query({ slug }).set('Authorization', CUSTOMER_TOKEN);
+            return res.body;
+        });
+
         fetchOnlineUsersMock.mockImplementation(async () => {
-            const res = await iamRequest
-                .get('/online-users/list')
-                .set('Authorization', CUSTOMER_TOKEN);
+            const res = await iamRequest.get('/online-users/list').set('Authorization', CUSTOMER_TOKEN);
             return res.body.users ?? [];
         });
 
-        fetchCallMock.mockImplementation(async (customerId: string, attendantId: string) => {
-            const res = await iamRequest
-                .get('/calls/get')
-                .set('Authorization', CUSTOMER_TOKEN)
-                .query({ customerId, attendantId });
+        mockSendIncomingCall.mockImplementation(async (customerId: string, attendantId: string) => {
+            await iamRequest.post('/incoming-calls/send').set('Authorization', CUSTOMER_TOKEN)
+                .send({ customerId, attendantId, whoIsCalling: 'customer' });
+        });
+
+        mockAcceptIncomingCall.mockImplementation(async (attendantId: string) => {
+            await iamRequest.post('/incoming-calls/accept').set('Authorization', ATTENDANT_TOKEN)
+                .send({ attendantId, userId: attendantId });
+        });
+
+        mockFetchCall.mockImplementation(async (customerId: string, attendantId: string) => {
+            const res = await iamRequest.get('/calls/get')
+                .query({ customerId, attendantId }).set('Authorization', CUSTOMER_TOKEN);
             return res.body;
         });
     });
 
-    it('attendant accepts incoming call and both stores reflect the accepted state', async () => {
-        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
-        const { serverWs: attendantWs, webFactory: attendantWebFactory } = createBridgedClient(attendantUser, ATTENDANT_TOKEN);
+    it('after accept both users join room and receive participant_joined', async () => {
+        // ── connect WS clients & capture messages ─────────────────────
+        const customerWs = createWsClient(customerUser, CUSTOMER_TOKEN);
+        const attendantWs = createWsClient(attendantUser, ATTENDANT_TOKEN);
 
-        clientRegistry.add(customerWs);
-        clientRegistry.add(attendantWs);
+        const customerMessages: any[] = [];
+        const attendantMessages: any[] = [];
 
-        const customerInitWs = new InitWs();
-        const attendantInitWs = new InitWs();
+        (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
+            customerMessages.push(JSON.parse(data));
+        });
+        (attendantWs as unknown as EventEmitter).on('sent', (data: string) => {
+            attendantMessages.push(JSON.parse(data));
+        });
 
-        const dailyService = DailyCoService.getInstance();
-
-        attendantStores = createStores(dailyService);
-        customerStores = createStores(dailyService);
-
-        customerInitWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
-        attendantInitWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
-
-        // ── both users connect and become idle ──────────────────────────
         onConnection()(customerWs);
         await flushPendingCalls();
-
         onConnection()(attendantWs);
         await flushPendingCalls();
 
-        expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
-        expect(attendantStores.onlineUsers.getState().users).toHaveLength(2);
+        // ── send incoming call ────────────────────────────────────────
+        const sendStores = createStores(dailyService);
+        sendStores.onlineUsers.setState({
+            users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
+        });
 
-        // ── customer sends incoming call ────────────────────────────────
-        customerStores.callView.getState().setSelectedAttendantId(attendantUser._id);
-        customerStores.incomingCall.getState().sendIncomingCall(
-            customerUser._id,
-            attendantUser._id,
-        );
+        sendStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
+        await new Promise((r) => setTimeout(r, 100));
 
-        await new Promise((r) => setTimeout(r, 50));
+        // ── accept call (attendant) ───────────────────────────────────
+        const acceptMsg = attendantMessages.find((m) => m.event === 'incoming_call_received');
+        expect(acceptMsg).toBeTruthy();
 
-        // ── verify both stores received the incoming call ───────────────
-        expect(customerStores.incomingCall.getState().incomingCall).toBeTruthy();
-        expect(attendantStores.incomingCall.getState().incomingCall).toBeTruthy();
+        await iamRequest.post('/incoming-calls/accept').set('Authorization', ATTENDANT_TOKEN)
+            .send({ attendantId: attendantUser._id, userId: attendantUser._id });
 
-        // ── attendant accepts the call ──────────────────────────────────
-        AuthSession.override({ token: ATTENDANT_TOKEN });
-        attendantStores.call.getState().acceptIncomingCall();
+        await new Promise((r) => setTimeout(r, 100));
 
-        await new Promise((r) => setTimeout(r, 200));
+        // ── both users receive call_accepted ──────────────────────────
+        const customerAccepted = customerMessages.find((m) => m.event === 'call_accepted');
+        const attendantAccepted = attendantMessages.find((m) => m.event === 'call_accepted');
+        expect(customerAccepted).toBeTruthy();
+        expect(attendantAccepted).toBeTruthy();
 
-        // Zustand's `set` is closure-bound to each store instance, so
-        // call state is set correctly on both stores. Module-level singletons
-        // (useIncomingCallStore, useCallViewStore) point to customerStores
-        // (the last createStores call), so incomingCall/callView assertions
-        // go through customerStores only.
+        // ── attendant joins (singletons → attendant) ──────────────────
+        customerMessages.length = 0;
+        attendantMessages.length = 0;
 
-        // ── customer store: call populated ─────────────────────────────
-        const customerCall = customerStores.call.getState().call;
-        expect(customerCall).toBeTruthy();
-        expect(customerCall!.customerId).toBe(customerUser._id);
-        expect(customerCall!.attendantId).toBe(attendantUser._id);
-        expect(customerCall!.customerInCall).toBe(true);
-        expect(customerCall!.attendantInCall).toBe(true);
+        const attendantStores = createStores(dailyService);
+        attendantStores.currentUser.setState({
+            currentUser: mapUserToOnlineUser(attendantUser),
+        });
 
-        // ── attendant store: call populated ────────────────────────────
-        const attendantCall = attendantStores.call.getState().call;
-        expect(attendantCall).toBeTruthy();
-        expect(attendantCall!.customerId).toBe(customerUser._id);
-        expect(attendantCall!.attendantId).toBe(attendantUser._id);
-        expect(attendantCall!.customerInCall).toBe(true);
-        expect(attendantCall!.attendantInCall).toBe(true);
+        attendantStores.call.getState().incomingCallAccepted(attendantAccepted.data.incomingCall);
+        await waitForMessage(attendantMessages, 'participant_joined', 10000);
 
-        // ── incomingCall cleared (via singleton — points to customerStores) ──────
-        expect(customerStores.incomingCall.getState().incomingCall).toBeNull();
+        const attJoinMsg = attendantMessages.find((m) => m.event === 'participant_joined');
+        attendantStores.call.getState().updateJoinedView(attJoinMsg.data.call);
+        await new Promise((r) => setTimeout(r, 100));
 
-        // ── callView: 'in-call' now happens in updateJoinedView (Daily participant.joined),
-        //    not in incomingCallAccepted. After accept, singleton keeps last writer's state.
+        expect(attendantStores.callView.getState().viewState).toBe('in-call');
+        expect(attendantStores.call.getState().call).toBeTruthy();
+        expect(attendantStores.call.getState().call!.attendantInCall).toBe(true);
+        expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('in-call');
 
-        // ── Redis: incoming_call entry deleted ──────────────────────────
-        const redis = getRedisClient();
-        const incomingCallRedis = await redis.get(`incoming_call:${attendantUser._id}`);
-        expect(incomingCallRedis).toBeNull();
+        // ── customer joins (singletons → customer) ────────────────────
+        const customerStores = createStores(dailyService);
+        customerStores.currentUser.setState({
+            currentUser: mapUserToOnlineUser(customerUser),
+        });
 
-        // dailyService.join depends on useCurrentUserStore (not populated in integration tests)
-    });
+        customerStores.call.getState().incomingCallAccepted(customerAccepted.data.incomingCall);
+        await waitForMessage(customerMessages, 'participant_joined', 10000);
+
+        const custJoinMsg = customerMessages.find((m) => m.event === 'participant_joined');
+        customerStores.call.getState().updateJoinedView(custJoinMsg.data.call);
+        await new Promise((r) => setTimeout(r, 100));
+
+        expect(customerStores.callView.getState().viewState).toBe('in-call');
+        expect(customerStores.call.getState().call).toBeTruthy();
+        expect(customerStores.call.getState().call!.customerInCall).toBe(true);
+        expect(customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('in-call');
+    }, 30000);
 });

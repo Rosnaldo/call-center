@@ -85,15 +85,18 @@ export async function onParticipantJoined(payload: DailyParticipantPayload): Pro
         const isCustomer = `${customer.firstName} ${customer.lastName}` === payload.user_name;
         call = await updateCall(call.customerId, call.attendantId, isCustomer ? { customerInCall: true } : { attendantInCall: true });
 
-        sendToUser(customer._id, {
-            event: 'participant_joined',
-            data: { call },
-        });
+        if (isCustomer) {
+            sendToUser(customer._id, {
+                event: 'participant_joined',
+                data: { call },
+            });
+        } else {
+            sendToUser(attendant._id, {
+                event: 'participant_joined',
+                data: { call },
+            });
+        }
 
-        sendToUser(attendant._id, {
-            event: 'participant_joined',
-            data: { call },
-        });
     } catch (error) {
         console.error('[Daily] onParticipantJoined: ', error)
     }
