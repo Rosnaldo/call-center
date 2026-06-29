@@ -15,7 +15,8 @@ export default (app: Application) => {
                 firstName: payload.given_name ?? null,
                 lastName: payload.family_name ?? null,
             });
-        } catch {
+        } catch (err) {
+            console.error('[auth/validate-token]', err instanceof Error ? err.message : err);
             return res.status(401).send({ isError: true, message: 'Token inválido' });
         }
     });
