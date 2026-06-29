@@ -15,10 +15,10 @@ function dailyHeaders() {
 }
 
 async function startNgrok(): Promise<string> {
-    const baseUrl = properties.webhookUrl.replace(/\/$/, '');
-    console.log(`[ngrok] abrindo tunnel para ${baseUrl}...`);
+    const port = String(properties.port);
+    console.log(`[ngrok] abrindo tunnel para localhost:${port}...`);
 
-    const proc = spawn('ngrok', ['http', baseUrl], {
+    const proc = spawn('ngrok', ['http', port], {
         stdio: 'ignore',
         detached: true,
     });
@@ -52,7 +52,27 @@ async function deleteAllWebhooks(): Promise<void> {
     }
 }
 
+async function waitForEndpoint(url: string): Promise<boolean> {
+    const maxAttempts = 30;
+    const intervalMs = 2000;
+    for (let i = 0; i < maxAttempts; i++) {
+        try {
+            const res = await fetch(url);
+            if (res.ok) return true;
+        } catch {}
+        console.log(`[Daily] aguardando endpoint ficar acessível... (${i + 1}/${maxAttempts})`);
+        await new Promise(r => setTimeout(r, intervalMs));
+    }
+    return false;
+}
+
 async function createWebhook(url: string): Promise<void> {
+    const reachable = await waitForEndpoint(url);
+    if (!reachable) {
+        console.error(`[Daily] endpoint ${url} não ficou acessível após tentativas, abortando registro`);
+        return;
+    }
+
     const res = await fetch(`${DAILY_API_URL}/webhooks`, {
         method: 'POST',
         headers: dailyHeaders(),
@@ -91,9 +111,14 @@ export async function registerDailyWebhooks(): Promise<void> {
     let baseUrl: string;
 
     if (properties.nodeEnv === 'dev' || properties.nodeEnv === 'local') {
-        const ngrokUrl = await startNgrok();
-        console.log(`[ngrok] tunnel: ${ngrokUrl}`);
-        baseUrl = ngrokUrl;
+        try {
+            const ngrokUrl = await startNgrok();
+            console.log(`[ngrok] tunnel: ${ngrokUrl}`);
+            baseUrl = ngrokUrl;
+        } catch (err) {
+            console.warn(`[Daily] ngrok não disponível, pulando registro de webhooks: ${err}`);
+            return;
+        }
     } else {
         baseUrl = properties.webhookUrl.replace(/\/$/, '');
     }
