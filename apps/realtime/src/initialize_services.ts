@@ -3,6 +3,7 @@ import http from 'http';
 import cors from 'cors';
 import { Properties } from './properties';
 import { buildKcMain } from './keycloak/singleton';
+import { registerDailyWebhooks, cleanupDailyWebhooks } from './webhooks/daily_manager';
 
 class WebhookServer {
     private static instance: WebhookServer;
@@ -117,10 +118,14 @@ async function startAll(properties?: Properties): Promise<WebhookServer> {
         const wsServer = WsServer.getInstance(webhookServer.server!);
         await wsServer.start();
 
+        await registerDailyWebhooks();
+
         let isShuttingDown = false;
         const gracefulShutdown = async () => {
             if (isShuttingDown) return;
             isShuttingDown = true;
+
+            await cleanupDailyWebhooks().catch(() => {});
 
             webhookServer.server!.close(() => {
                 console.log(`[*] - WEB Service - Closed`);

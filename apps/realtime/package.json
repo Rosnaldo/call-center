@@ -8,9 +8,7 @@
     "local": "NODE_ENV=local nodemon",
     "dev": "NODE_ENV=dev nodemon",
     "tsc": "rimraf build && tsc -p tsconfig.src.json && tsc-alias -p tsconfig.src.json && rimraf *.tsbuildinfo",
-    "build": "npm run tsc",
-    "daily-webhook": "NODE_ENV=dev node scripts/daily-webhook-service.js",
-    "daily-webhook:local": "NODE_ENV=local node scripts/daily-webhook-service.js"
+    "build": "npm run tsc"
   },
   "author": "",
   "license": "ISC",
