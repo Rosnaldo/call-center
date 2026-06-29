@@ -51,7 +51,6 @@ services:
       - ./letsencrypt:/etc/letsencrypt
     depends_on:
       - nginx-http
-      - nginx-https
     entrypoint: "/bin/sh -c 'certbot certonly --non-interactive --agree-tos -m $$ADMIN_EMAIL --webroot -w /var/www/certbot -d $$BASE_DOMAIN'"
     env_file:
       - ./apps/nginx/.env.prod
