@@ -1,7 +1,7 @@
 #!/bin/bash
 npm run build -w apps/admin
 
-AWS_S3_BUCKET="nanithefuck-admin"      # Replace with your bucket name
+BUCKET_NAME="nanithefuck-admin"      # Replace with your bucket name
 BUILD_DIR="dist"                      # Folder containing your final build
 REGION="sa-east-1"                     # AWS region of your bucket
 
