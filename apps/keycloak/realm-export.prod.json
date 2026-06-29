@@ -495,52 +495,6 @@
       "requiredActions": [],
       "notBefore": 0,
       "groups": []
-    },
-    {
-      "id": "e2e-customer-0001",
-      "username": "customer@e2e.test",
-      "email": "customer@e2e.test",
-      "firstName": "Maria",
-      "lastName": "Cliente",
-      "emailVerified": true,
-      "enabled": true,
-      "createdTimestamp": 1770566922074,
-      "totp": false,
-      "disableableCredentialTypes": [],
-      "requiredActions": [],
-      "realmRoles": ["default-roles-poc"],
-      "notBefore": 0,
-      "groups": [],
-      "credentials": [
-        {
-          "type": "password",
-          "value": "Test1234!",
-          "temporary": false
-        }
-      ]
-    },
-    {
-      "id": "e2e-attendant-0001",
-      "username": "attendant@e2e.test",
-      "email": "attendant@e2e.test",
-      "firstName": "João",
-      "lastName": "Atendente",
-      "emailVerified": true,
-      "enabled": true,
-      "createdTimestamp": 1770566922074,
-      "totp": false,
-      "disableableCredentialTypes": [],
-      "requiredActions": [],
-      "realmRoles": ["default-roles-poc"],
-      "notBefore": 0,
-      "groups": [],
-      "credentials": [
-        {
-          "type": "password",
-          "value": "Test1234!",
-          "temporary": false
-        }
-      ]
     }
   ],
   "scopeMappings": [

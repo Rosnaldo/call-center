@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: true,
-      port: 5173,
+      port: 5174,
       allowedHosts: [
         "nanithefuck.com.br",
         "free-porn-block.com",
