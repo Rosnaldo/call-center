@@ -38,7 +38,7 @@ services:
     volumes:
       # Main nginx config
       - ./apps/nginx/prod/https/nginx.conf:/etc/nginx/nginx.conf:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro   # certificados
+      - ./letsencrypt:/etc/letsencrypt:ro  # certificados
       - ./certbot/www:/var/www/certbot
     networks:
       - frontend
@@ -48,7 +48,7 @@ services:
     image: certbot/certbot:v1.4.0
     volumes:
       - ./certbot/www:/var/www/certbot
-      - ./volumes/letsencrypt:/etc/letsencrypt
+      - ./letsencrypt:/etc/letsencrypt
     depends_on:
       - nginx-http
       - nginx-https
