@@ -1869,10 +1869,10 @@
     "port": "465",
     "host": "smtp.hostinger.com",
     "replyTo": "",
-    "from": "contato@nanithefuck.com.br",
+    "from": "contato@nanithefuck.com.br.br",
     "fromDisplayName": "Contato poc",
     "authType": "basic",
-    "user": "contato@nanithefuck.com.br"
+    "user": "contato@nanithefuck.com.br.br"
   },
   "loginTheme": "callcenter",
   "accountTheme": "",

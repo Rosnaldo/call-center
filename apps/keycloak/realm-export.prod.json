@@ -837,18 +837,18 @@
       "clientId": "login",
       "name": "",
       "description": "",
-      "rootUrl": "https://nanithefuck.com",
-      "adminUrl": "https://nanithefuck.com",
-      "baseUrl": "https://nanithefuck.com",
+      "rootUrl": "https://nanithefuck.com.br",
+      "adminUrl": "https://nanithefuck.com.br",
+      "baseUrl": "https://nanithefuck.com.br",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "https://nanithefuck.com/*"
+        "https://nanithefuck.com.br/*"
       ],
       "webOrigins": [
-        "https://nanithefuck.com"
+        "https://nanithefuck.com.br"
       ],
       "notBefore": 0,
       "bearerOnly": false,
@@ -867,7 +867,7 @@
         "standard.token.exchange.enabled": "false",
         "login_theme": "callcenter",
         "frontchannel.logout.session.required": "true",
-        "post.logout.redirect.uris": "https://nanithefuck.com/*",
+        "post.logout.redirect.uris": "https://nanithefuck.com.br/*",
         "display.on.consent.screen": "false",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
@@ -897,20 +897,20 @@
       "clientId": "myadmin",
       "name": "",
       "description": "",
-      "rootUrl": "https://nanithefuck.com/myadmin",
-      "adminUrl": "https://nanithefuck.com",
-      "baseUrl": "https://nanithefuck.com/myadmin",
+      "rootUrl": "https://nanithefuck.com.br/myadmin",
+      "adminUrl": "https://nanithefuck.com.br",
+      "baseUrl": "https://nanithefuck.com.br/myadmin",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
         "http://localhost:5174/myadmin/*",
-        "https://nanithefuck.com/myadmin/*",
+        "https://nanithefuck.com.br/myadmin/*",
         "http://localhost:5174/myadmin"
       ],
       "webOrigins": [
-        "https://nanithefuck.com",
+        "https://nanithefuck.com.br",
         "http://localhost:5173",
         "http://localhost:5174"
       ],
@@ -927,7 +927,7 @@
       "attributes": {
         "request.object.signature.alg": "any",
         "frontchannel.logout.session.required": "true",
-        "post.logout.redirect.uris": "https://nanithefuck.com/myadmin/*##http://localhost:5174/myadmin/*##http://localhost:5174/myadmin",
+        "post.logout.redirect.uris": "https://nanithefuck.com.br/myadmin/*##http://localhost:5174/myadmin/*##http://localhost:5174/myadmin",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
         "use.refresh.tokens": "true",
@@ -1869,10 +1869,10 @@
     "port": "465",
     "host": "smtp.hostinger.com",
     "replyTo": "",
-    "from": "contato@nanithefuck.com.br",
+    "from": "contato@nanithefuck.com.br.br",
     "fromDisplayName": "Contato poc",
     "authType": "basic",
-    "user": "contato@nanithefuck.com.br"
+    "user": "contato@nanithefuck.com.br.br"
   },
   "loginTheme": "callcenter",
   "accountTheme": "",
