@@ -175,7 +175,7 @@ services:
       - backend
 
   loki:
-    image: grafana/loki:3.5.0
+    image: grafana/loki:3.6.12
     container_name: loki
     restart: no
     expose:
@@ -184,17 +184,11 @@ services:
       - ./monitoring/loki/loki-config.yml:/etc/loki/local-config.yaml
       - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
     networks:
       - backend
 
   promtail:
-    image: grafana/promtail:3.5.0
+    image: grafana/promtail:3.6.11
     container_name: promtail
     restart: no
     volumes:
@@ -203,8 +197,7 @@ services:
     command: -config.file=/etc/promtail/config.yml
     depends_on:
       loki:
-        condition: service_healthy
-        restart: true
+        condition: service_started
     networks:
       - backend
 
@@ -224,8 +217,7 @@ services:
       - grafana_data:/var/lib/grafana
     depends_on:
       loki:
-        condition: service_healthy
-        restart: true
+        condition: service_started
     networks:
       - frontend
       - backend
