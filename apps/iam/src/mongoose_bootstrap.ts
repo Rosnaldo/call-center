@@ -30,7 +30,5 @@ export const mongooseBootstrap = async (
         void loadIndexes.fireAndForget();
     }
 
-    if (['dev', 'local'].includes(Properties.nodeEnv)) {
-        await migration.runScripts();
-    }
+    await migration.runScripts();
 };
