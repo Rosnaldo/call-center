@@ -40,6 +40,11 @@ class WebhookServer {
         this.app.use(express.urlencoded({ extended: false }));
     }
 
+    setupRoutes(): void {
+        const health = require('./routes/health').default;
+        health(this.app);
+    }
+
     setupWebhooks(): void {
         const dailyWebhook = require('./webhooks/daily').default;
         const iamWebhook = require('./webhooks/iam').default;
@@ -50,6 +55,7 @@ class WebhookServer {
     async start(): Promise<void> {
         await buildKcMain();
         this.setupMiddleware();
+        this.setupRoutes();
 
         const port = this.properties.nodeEnv === 'test' ? 0 : Number(this.properties.port);
 

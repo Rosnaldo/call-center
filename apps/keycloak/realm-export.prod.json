@@ -302,6 +302,7 @@
           "attributes": {}
         }
       ],
+      "realtime": [],
       "iam": [],
       "myadmin": [],
       "security-admin-console": [],
@@ -473,18 +474,73 @@
       "serviceAccountClientId": "iam",
       "disableableCredentialTypes": [],
       "requiredActions": [],
-      "realmRoles": [
-        "default-roles-poc"
-      ],
       "clientRoles": {
         "realm-management": [
           "manage-users",
-          "view-clients",
           "view-users"
         ]
       },
       "notBefore": 0,
       "groups": []
+    },
+    {
+      "id": "bf615c55-8a7e-4b05-a57b-b3c5760ef496",
+      "username": "service-account-realtime",
+      "emailVerified": false,
+      "enabled": true,
+      "createdTimestamp": 1782407651971,
+      "totp": false,
+      "serviceAccountClientId": "realtime",
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "notBefore": 0,
+      "groups": []
+    },
+    {
+      "id": "e2e-customer-0001",
+      "username": "customer@e2e.test",
+      "email": "customer@e2e.test",
+      "firstName": "Maria",
+      "lastName": "Cliente",
+      "emailVerified": true,
+      "enabled": true,
+      "createdTimestamp": 1770566922074,
+      "totp": false,
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": ["default-roles-poc"],
+      "notBefore": 0,
+      "groups": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Test1234!",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "e2e-attendant-0001",
+      "username": "attendant@e2e.test",
+      "email": "attendant@e2e.test",
+      "firstName": "João",
+      "lastName": "Atendente",
+      "emailVerified": true,
+      "enabled": true,
+      "createdTimestamp": 1770566922074,
+      "totp": false,
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": ["default-roles-poc"],
+      "notBefore": 0,
+      "groups": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Test1234!",
+          "temporary": false
+        }
+      ]
     }
   ],
   "scopeMappings": [
@@ -744,7 +800,7 @@
         "request.object.encryption.enc": "any",
         "dpop.bound.access.tokens": "false",
         "id.token.as.detached.signature": "false",
-        "client.secret.creation.time": "1780704243",
+        "client.secret.creation.time": "1782420915",
         "request.object.encryption.alg": "any",
         "client.introspection.response.allow.jwt.claim.enabled": "false",
         "standard.token.exchange.enabled": "false",
@@ -781,20 +837,18 @@
       "clientId": "login",
       "name": "",
       "description": "",
-      "rootUrl": "https://free-porn-block.tech",
-      "adminUrl": "https://free-porn-block.tech",
-      "baseUrl": "https://free-porn-block.tech",
+      "rootUrl": "https://free-porn-block.net",
+      "adminUrl": "https://free-porn-block.net",
+      "baseUrl": "https://free-porn-block.net",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "http://localhost:5173/*",
-        "https://free-porn-block.tech/*"
+        "https://free-porn-block.net/*"
       ],
       "webOrigins": [
-        "https://free-porn-block.tech",
-        "http://localhost:5173"
+        "https://free-porn-block.net"
       ],
       "notBefore": 0,
       "bearerOnly": false,
@@ -813,7 +867,7 @@
         "standard.token.exchange.enabled": "false",
         "login_theme": "callcenter",
         "frontchannel.logout.session.required": "true",
-        "post.logout.redirect.uris": "https://free-porn-block.tech/*##http://localhost:5173/*",
+        "post.logout.redirect.uris": "https://free-porn-block.net/*",
         "display.on.consent.screen": "false",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
@@ -843,20 +897,20 @@
       "clientId": "myadmin",
       "name": "",
       "description": "",
-      "rootUrl": "https://free-porn-block.tech/myadmin",
-      "adminUrl": "https://free-porn-block.tech",
-      "baseUrl": "https://free-porn-block.tech/myadmin",
+      "rootUrl": "https://free-porn-block.net/myadmin",
+      "adminUrl": "https://free-porn-block.net",
+      "baseUrl": "https://free-porn-block.net/myadmin",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "https://free-porn-block.tech/myadmin/*",
         "http://localhost:5174/myadmin/*",
+        "https://free-porn-block.net/myadmin/*",
         "http://localhost:5174/myadmin"
       ],
       "webOrigins": [
-        "https://free-porn-block.tech",
+        "https://free-porn-block.net",
         "http://localhost:5173",
         "http://localhost:5174"
       ],
@@ -873,7 +927,7 @@
       "attributes": {
         "request.object.signature.alg": "any",
         "frontchannel.logout.session.required": "true",
-        "post.logout.redirect.uris": "https://free-porn-block.tech/myadmin/*##http://localhost:5174/myadmin/*##http://localhost:5174/myadmin",
+        "post.logout.redirect.uris": "https://free-porn-block.net/myadmin/*##http://localhost:5174/myadmin/*##http://localhost:5174/myadmin",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
         "use.refresh.tokens": "true",
@@ -946,6 +1000,66 @@
       "nodeReRegistrationTimeout": 0,
       "defaultClientScopes": [
         "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "basic",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "organization",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    },
+    {
+      "id": "4785aa8a-c432-4e3e-bd86-139d89251e6b",
+      "clientId": "realtime",
+      "name": "",
+      "description": "",
+      "rootUrl": "",
+      "adminUrl": "",
+      "baseUrl": "",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "**********",
+      "redirectUris": [
+        "/*"
+      ],
+      "webOrigins": [
+        "/*"
+      ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "realm_client": "false",
+        "oidc.ciba.grant.enabled": "false",
+        "client.secret.creation.time": "1782420931",
+        "backchannel.logout.session.required": "true",
+        "standard.token.exchange.enabled": "false",
+        "post.logout.redirect.uris": "+",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "dpop.bound.access.tokens": "false"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "web-origins",
+        "service_account",
         "acr",
         "roles",
         "profile",
@@ -1744,18 +1858,21 @@
     "strictTransportSecurity": "max-age=31536000; includeSubDomains"
   },
   "smtpServer": {
-    "allowutf8": "",
+    "allowutf8": "true",
     "debug": "false",
     "replyToDisplayName": "",
     "starttls": "false",
-    "auth": "",
-    "port": "1025",
-    "host": "mailhog",
-    "replyTo": "",
-    "from": "contato@equipe-poc.com.br",
-    "fromDisplayName": "Contato poc",
+    "auth": "true",
     "envelopeFrom": "",
-    "ssl": "false"
+    "ssl": "true",
+    "password": "**********",
+    "port": "465",
+    "host": "smtp.hostinger.com",
+    "replyTo": "",
+    "from": "contato@nanithefuck.com.br",
+    "fromDisplayName": "Contato poc",
+    "authType": "basic",
+    "user": "contato@nanithefuck.com.br"
   },
   "loginTheme": "callcenter",
   "accountTheme": "",
@@ -1824,14 +1941,14 @@
         "subComponents": {},
         "config": {
           "allowed-protocol-mapper-types": [
-            "oidc-sha256-pairwise-sub-mapper",
-            "oidc-usermodel-property-mapper",
-            "oidc-full-name-mapper",
-            "oidc-address-mapper",
             "saml-user-property-mapper",
+            "oidc-usermodel-property-mapper",
             "saml-role-list-mapper",
-            "oidc-usermodel-attribute-mapper",
-            "saml-user-attribute-mapper"
+            "saml-user-attribute-mapper",
+            "oidc-full-name-mapper",
+            "oidc-sha256-pairwise-sub-mapper",
+            "oidc-address-mapper",
+            "oidc-usermodel-attribute-mapper"
           ]
         }
       },
@@ -1858,14 +1975,14 @@
         "subComponents": {},
         "config": {
           "allowed-protocol-mapper-types": [
-            "oidc-usermodel-property-mapper",
-            "oidc-full-name-mapper",
             "saml-role-list-mapper",
             "saml-user-property-mapper",
-            "oidc-usermodel-attribute-mapper",
+            "oidc-usermodel-property-mapper",
             "oidc-address-mapper",
             "oidc-sha256-pairwise-sub-mapper",
-            "saml-user-attribute-mapper"
+            "oidc-full-name-mapper",
+            "saml-user-attribute-mapper",
+            "oidc-usermodel-attribute-mapper"
           ]
         }
       },

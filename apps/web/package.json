@@ -7,7 +7,7 @@
     "simulation": "vite --mode simulation",
     "dev": "vite --port 5173",
     "dev:local": "node --env-file=.env.local ../../node_modules/.bin/vite -- --port 5173",
-    "build": "vite build",
+    "build": "vite build --mode production",
     "build-dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "tsc",

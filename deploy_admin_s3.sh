@@ -1,7 +1,7 @@
 #!/bin/bash
 npm run build -w apps/admin
 
-BUCKET_NAME="call-center-admin"      # Replace with your bucket name
+AWS_S3_BUCKET="call-center-j6e"      # Replace with your bucket name
 BUILD_DIR="dist"                      # Folder containing your final build
 REGION="sa-east-1"                     # AWS region of your bucket
 
