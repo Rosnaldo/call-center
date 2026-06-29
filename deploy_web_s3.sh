@@ -1,7 +1,7 @@
 #!/bin/bash
 npm run build -w apps/web
 
-BUCKET_NAME="call-center-web-68"      # Replace with your bucket name
+BUCKET_NAME="nanithefuck-website"      # Replace with your bucket name
 BUILD_DIR="dist"                      # Folder containing your final build
 REGION="sa-east-1"                     # AWS region of your bucket
 
