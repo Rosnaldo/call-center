@@ -177,8 +177,8 @@ services:
     image: mongo:8.0.14-noble
     pull_policy: always
     restart: no
-    expose:
-      - "27017"
+    ports:
+      - 127.0.0.1:27017:27017
     env_file:
       - ./apps/iam/.env.production
     volumes:
@@ -240,8 +240,8 @@ services:
     image: grafana/grafana:11.6.0
     container_name: grafana
     restart: unless-stopped
-    expose:
-      - "3000"
+    ports:
+      - 127.0.0.1:3000:3000
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
