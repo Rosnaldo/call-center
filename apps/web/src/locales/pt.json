@@ -10,7 +10,8 @@
     "usageHistory": "Extrato de Consumo",
     "logout": "Sair / Desconectar",
     "roleCustomer": "Cliente",
-    "roleAttendant": "Atendente"
+    "roleAttendant": "Atendente",
+    "roleAdmin": "Admin"
   },
   "error": {
     "restrictedAccess": "Acesso Restrito",

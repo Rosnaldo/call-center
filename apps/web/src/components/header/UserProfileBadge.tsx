@@ -85,7 +85,11 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
             {currentUser.name}
           </div>
           <div className="text-[8px] uppercase font-bold tracking-wide text-brand-ochre">
-            {currentUser.role === 'customer' ? t('header.roleCustomer') : t('header.roleAttendant')}
+            {{
+              customer: t('header.roleCustomer'),
+              admin: t('header.roleAdmin'),
+              attendant: t('header.roleAttendant'),
+            }[currentUser.role]}
           </div>
         </div>
 

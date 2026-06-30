@@ -42,8 +42,7 @@ export const UserProfileContainer: React.FC = () => {
         if (typeof reader.result === 'string') {
           const newUrl = reader.result;
           setAvatarUrl(newUrl);
-          currentUser!.avatarUrl = newUrl;
-          setCurrentUser(currentUser);
+          setCurrentUser({ ...currentUser!, avatarUrl: newUrl });
         }
       };
       reader.onerror = () => setFileError(t('profile.imageReadError'));
@@ -54,8 +53,7 @@ export const UserProfileContainer: React.FC = () => {
     try {
       const url = await fetchUserUpload(formData);
       setAvatarUrl(url);
-      currentUser!.avatarUrl = url;
-      setCurrentUser(currentUser);
+      setCurrentUser({ ...currentUser!, avatarUrl: url });
     } catch (error) {
       setFileError(t('profile.imageReadError'));
       throw error;

@@ -10,7 +10,8 @@
     "usageHistory": "Usage History",
     "logout": "Log Out",
     "roleCustomer": "Customer",
-    "roleAttendant": "Attendant"
+    "roleAttendant": "Attendant",
+    "roleAdmin": "Admin"
   },
   "error": {
     "restrictedAccess": "Restricted Access",
