@@ -1,6 +1,7 @@
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
+import logger from '#logger';
 import { Properties } from './properties';
 import { buildKcMain } from './keycloak/singleton';
 import { registerDailyWebhooks, cleanupDailyWebhooks } from './webhooks/daily_manager';
@@ -65,7 +66,7 @@ class WebhookServer {
                 const addr = s.address();
                 const boundPort = typeof addr === 'object' ? addr!.port : port;
                 this.properties.port = boundPort;
-                console.log(`[Webhook] running on ${boundPort}`);
+                logger.info({ port: boundPort }, 'webhook server running');
                 resolve(s);
             });
         });
@@ -106,7 +107,7 @@ class WsServer {
     async start(): Promise<void> {
         const { createWebSocketServer } = await import('./websocket/main');
         createWebSocketServer(this.server);
-        console.log('[WS] WebSocket server attached');
+        logger.info('websocket server attached');
     }
 }
 
@@ -128,7 +129,7 @@ async function startAll(properties?: Properties): Promise<WebhookServer> {
             await cleanupDailyWebhooks().catch(() => {});
 
             webhookServer.server!.close(() => {
-                console.log(`[*] - WEB Service - Closed`);
+                logger.info('web service closed');
                 process.exit(0);
             });
 

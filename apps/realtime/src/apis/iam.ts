@@ -1,4 +1,5 @@
 import properties from '#properties';
+import logger from '#logger';
 import axios from 'axios';
 import { getServiceToken } from './service_token';
 
@@ -15,13 +16,9 @@ iamApi.interceptors.request.use(async (config) => {
 
 iamApi.interceptors.response.use(undefined, (error) => {
     if (axios.isAxiosError(error)) {
-        console.error({
-            status: error.response?.status,
-            message: error.response?.data,
-            url: error.config?.url,
-        });
+        logger.error({ status: error.response?.status, message: error.response?.data, url: error.config?.url }, 'iamApi error');
     } else {
-        console.error(error);
+        logger.error(error, 'iamApi error');
     }
     return Promise.reject(error);
 });

@@ -1,10 +1,11 @@
+import logger from '#logger';
 import { findUserBySlug } from 'src/services/users';
 import { createCall, deleteCall, getCallByRoom, updateCall, trackRoom } from 'src/services/calls';
 import { parseRoomName } from 'src/helpers/parse_room_name';
 import { DailyMeetingPayload, DailyParticipantPayload } from './daily_types';
 
 export async function onMeetingStarted(payload: DailyMeetingPayload): Promise<void> {
-    console.log(`[Daily] meeting.started room=${payload.room}`);
+    logger.info({ room: payload.room }, 'daily meeting.started');
 
     try {
         trackRoom(payload.room).catch(() => {});
@@ -41,17 +42,17 @@ export async function onMeetingStarted(payload: DailyMeetingPayload): Promise<vo
         }
 
     } catch (error) {
-        console.error('[Daily] onMeetingStarted: ', error)
+        logger.error(error, 'daily onMeetingStarted')
     }
 }
 
 export function onMeetingEnded(payload: DailyMeetingPayload): void {
-    console.log(`[Daily] meeting.ended room=${payload.room}`);
+    logger.info({ room: payload.room }, 'daily meeting.ended');
     // create call history + tokens charged
 }
 
 export async function onParticipantJoined(payload: DailyParticipantPayload): Promise<void> {
-    console.log(`[Daily] participant.joined room=${payload.room} user=${payload.user_name}`);
+    logger.info({ room: payload.room, user: payload.user_name }, 'daily participant.joined');
 
     try {
         const parsed = parseRoomName(payload.room);
@@ -94,12 +95,12 @@ export async function onParticipantJoined(payload: DailyParticipantPayload): Pro
         // }
 
     } catch (error) {
-        console.error('[Daily] onParticipantJoined: ', error)
+        logger.error(error, 'daily onParticipantJoined')
     }
 }
 
 export async function onParticipantLeft(payload: DailyParticipantPayload): Promise<void> {
-    console.log(`[Daily] participant.left room=${payload.room} user=${payload.user_name}`);
+    logger.info({ room: payload.room, user: payload.user_name }, 'daily participant.left');
 
     try {
         const parsed = parseRoomName(payload.room);
@@ -131,6 +132,6 @@ export async function onParticipantLeft(payload: DailyParticipantPayload): Promi
         //     data: { call },
         // });
     } catch (error) {
-        console.error('[Daily] onParticipantLeft: ', error)
+        logger.error(error, 'daily onParticipantLeft')
     }
 }

@@ -1,4 +1,5 @@
 import { type Application } from 'express';
+import logger from '#logger';
 import { defaultValidateToken } from '#middleware/get_keycloak_user';
 
 export default (app: Application) => {
@@ -16,7 +17,7 @@ export default (app: Application) => {
                 lastName: payload.family_name ?? null,
             });
         } catch (err) {
-            console.error('[auth/validate-token]', err instanceof Error ? err.message : err);
+            logger.error({ err: err instanceof Error ? err.message : err }, 'auth/validate-token failed');
             return res.status(401).send({ isError: true, message: 'Token inválido' });
         }
     });

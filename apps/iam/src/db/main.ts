@@ -2,6 +2,7 @@ import mongoose, { type Connection } from 'mongoose';
 import _ from 'lodash';
 
 import Properties from '#properties';
+import logger from '#logger';
 import { MongoMemoryServer, MongoMemoryReplSet } from 'mongodb-memory-server';
 
 interface Props {
@@ -25,9 +26,9 @@ export class MainConnection {
         const connection = await this.createConnection(props);
         this.connection = connection;
 
-        // connection.on('connected', () => console.log('[mongo] conectado:', Properties.mongoUri));
-        // connection.on('error', (err) => console.error('[mongo] erro:', err));
-        // connection.on('disconnected', () => console.log('[mongo] desconectado'));
+        connection.on('connected', () => logger.info({ uri: Properties.mongoUri }, 'mongo connected'));
+        connection.on('error', (err) => logger.error(err, 'mongo error'));
+        connection.on('disconnected', () => logger.warn('mongo disconnected'));
 
         return connection.asPromise();
     };

@@ -1,5 +1,6 @@
 import { spawn, ChildProcess } from 'child_process';
 import properties from '#properties';
+import logger from '#logger';
 import { iamApi } from '#apis/iam';
 
 const DAILY_API_URL = 'https://api.daily.co/v1';
@@ -16,7 +17,7 @@ function dailyHeaders() {
 
 async function startNgrok(): Promise<string> {
     const port = String(properties.port);
-    console.log(`[ngrok] abrindo tunnel para localhost:${port}...`);
+    logger.info({ port }, 'ngrok abrindo tunnel');
 
     const proc = spawn('ngrok', ['http', port], {
         stdio: 'ignore',
@@ -48,7 +49,7 @@ async function deleteAllWebhooks(): Promise<void> {
             method: 'DELETE',
             headers: dailyHeaders(),
         });
-        console.log(`[Daily] webhook removido: ${wh.uuid}`);
+        logger.info({ uuid: wh.uuid }, 'daily webhook removido');
     }
 }
 
@@ -60,7 +61,7 @@ async function waitForEndpoint(url: string): Promise<boolean> {
             const res = await fetch(url);
             if (res.ok) return true;
         } catch {}
-        console.log(`[Daily] aguardando endpoint ficar acessível... (${i + 1}/${maxAttempts})`);
+        logger.info({ attempt: i + 1, maxAttempts }, 'daily aguardando endpoint');
         await new Promise(r => setTimeout(r, intervalMs));
     }
     return false;
@@ -69,7 +70,7 @@ async function waitForEndpoint(url: string): Promise<boolean> {
 async function createWebhook(url: string): Promise<void> {
     const reachable = await waitForEndpoint(url);
     if (!reachable) {
-        console.error(`[Daily] endpoint ${url} não ficou acessível após tentativas, abortando registro`);
+        logger.error({ url }, 'daily endpoint não ficou acessível, abortando registro');
         return;
     }
 
@@ -82,11 +83,11 @@ async function createWebhook(url: string): Promise<void> {
         }),
     });
     if (!res.ok) {
-        console.error('[Daily] erro ao criar webhook:', res.status, await res.text());
+        logger.error({ status: res.status, body: await res.text() }, 'daily erro ao criar webhook');
         return;
     }
     const webhook = await res.json();
-    console.log(`[Daily] webhook criado: ${webhook.uuid} → ${url}`);
+    logger.info({ uuid: webhook.uuid, url }, 'daily webhook criado');
 }
 
 async function deleteTrackedRooms(): Promise<void> {
@@ -97,14 +98,14 @@ async function deleteTrackedRooms(): Promise<void> {
                 method: 'DELETE',
                 headers: dailyHeaders(),
             }).catch(() => {});
-            console.log(`[Daily] room removida: ${room}`);
+            logger.info({ room }, 'daily room removida');
         }
     } catch {}
 }
 
 export async function registerDailyWebhooks(): Promise<void> {
     if (!properties.dailyApiKey || !properties.webhookUrl) {
-        console.warn('[Daily] DAILY_API_KEY ou WEBHOOK_URL não definida, pulando registro de webhooks');
+        logger.warn('daily DAILY_API_KEY ou WEBHOOK_URL não definida, pulando registro de webhooks');
         return;
     }
 
@@ -113,10 +114,10 @@ export async function registerDailyWebhooks(): Promise<void> {
     if (properties.nodeEnv === 'dev' || properties.nodeEnv === 'local') {
         try {
             const ngrokUrl = await startNgrok();
-            console.log(`[ngrok] tunnel: ${ngrokUrl}`);
+            logger.info({ url: ngrokUrl }, 'ngrok tunnel ativo');
             baseUrl = ngrokUrl;
         } catch (err) {
-            console.warn(`[Daily] ngrok não disponível, pulando registro de webhooks: ${err}`);
+            logger.warn({ err: String(err) }, 'daily ngrok não disponível, pulando registro de webhooks');
             return;
         }
     } else {
@@ -128,7 +129,7 @@ export async function registerDailyWebhooks(): Promise<void> {
     await deleteAllWebhooks();
     await createWebhook(webhookUrl);
 
-    console.log('[Daily] webhooks registrados');
+    logger.info('daily webhooks registrados');
 }
 
 export async function cleanupDailyWebhooks(): Promise<void> {

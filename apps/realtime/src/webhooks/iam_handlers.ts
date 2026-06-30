@@ -1,8 +1,9 @@
+import logger from '#logger';
 import { sendToUser, broadcastMessage } from '#websocket/broadcast';
 import { SendIncomingCallPayload, CancelIncomingCallPayload, AcceptCallPayload, CallCompletedPayload } from './iam_types';
 
 export function onSendIncomingCall(payload: SendIncomingCallPayload): void {
-    console.log(`[IAM] incoming_call_sent customer=${payload.customerId} attendant=${payload.attendantId} calledBy=${payload.calledBy}`);
+    logger.info({ customerId: payload.customerId, attendantId: payload.attendantId, calledBy: payload.calledBy }, 'iam incoming_call_sent');
 
     const incomingCall = { customerId: payload.customerId, attendantId: payload.attendantId, calledBy: payload.calledBy };
 
@@ -26,7 +27,7 @@ export function onSendIncomingCall(payload: SendIncomingCallPayload): void {
 }
 
 export function onCancelIncomingCall(payload: CancelIncomingCallPayload): void {
-    console.log(`[IAM] cancel_incoming_call customer=${payload.customerId} attendant=${payload.attendantId}`);
+    logger.info({ customerId: payload.customerId, attendantId: payload.attendantId }, 'iam cancel_incoming_call');
 
     sendToUser(payload.customerId, {
         event: 'incoming_call_cancelled',
@@ -45,7 +46,7 @@ export function onCancelIncomingCall(payload: CancelIncomingCallPayload): void {
 }
 
 export function onCallAccepted(payload: AcceptCallPayload): void {
-    console.log(`[IAM] call_accepted customer=${payload.customerId} attendant=${payload.attendantId}`);
+    logger.info({ customerId: payload.customerId, attendantId: payload.attendantId }, 'iam call_accepted');
 
     sendToUser(payload.customerId, {
         event: 'call_accepted',
@@ -64,7 +65,7 @@ export function onCallAccepted(payload: AcceptCallPayload): void {
 }
 
 export function onCallCompleted(payload: CallCompletedPayload): void {
-    console.log(`[IAM] call_completed customer=${payload.customerId} attendant=${payload.attendantId}`);
+    logger.info({ customerId: payload.customerId, attendantId: payload.attendantId }, 'iam call_completed');
 
     sendToUser(payload.customerId, {
         event: 'call_completed',

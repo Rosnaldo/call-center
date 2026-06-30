@@ -1,4 +1,5 @@
 import properties from "#properties";
+import logger from '#logger';
 import axios from "axios";
 
 export const keycloakApi = axios.create({
@@ -7,13 +8,9 @@ export const keycloakApi = axios.create({
 
 keycloakApi.interceptors.response.use(undefined, (error) => {
     if (axios.isAxiosError(error)) {
-        console.error({
-            status: error.response?.status,
-            message: error.response?.data,
-            url: error.config?.url,
-        });
+        logger.error({ status: error.response?.status, message: error.response?.data, url: error.config?.url }, 'keycloakApi error');
     } else {
-        console.error(error);
+        logger.error(error, 'keycloakApi error');
     }
     return Promise.reject(error);
 });

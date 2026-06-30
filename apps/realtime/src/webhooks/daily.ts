@@ -1,3 +1,4 @@
+import logger from '#logger';
 import { type Application, type Request, type Response } from 'express';
 import { DailyWebhookBody } from './daily_types';
 import {
@@ -17,7 +18,7 @@ export default (app: Application) => {
 
         if (!body?.type) return res.sendStatus(200);
 
-        console.log('/webhooks/daily: ', body.type)
+        logger.info({ type: body.type }, 'daily webhook received');
 
         switch (body.type) {
             case 'meeting.started':
