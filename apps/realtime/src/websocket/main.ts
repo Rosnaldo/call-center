@@ -8,6 +8,7 @@ import { WsTransport } from './transport';
 import { onConnection } from './connection';
 import { userExists } from 'src/services/users';
 import { IUser } from '@repo/shared-types';
+import logger from '#logger';
 
 interface IamValidateResponse {
     id: string;
@@ -50,6 +51,7 @@ export function createWebSocketServer(server: Server): ISocketServer {
             })
             .catch((err: unknown) => {
                 const message = err instanceof Error ? err.message : 'Authentication failed';
+                logger.error({ err: message }, 'ws auth failed');
                 wss.handleUpgrade(req, socket, head, (ws) => {
                     ws.send(JSON.stringify({ isError: true, message }), () => ws.close());
                 });

@@ -6,6 +6,20 @@ import _ from 'lodash';
 import properties from '#properties';
 import logger from '#logger';
 
+let _jwksClient: JwksClient | undefined;
+
+function getJwksClient(): JwksClient {
+    if (!_jwksClient) {
+        _jwksClient = jwksClient({
+            jwksUri: `${properties.keycloakUri}/realms/poc/protocol/openid-connect/certs`,
+            cache: true,
+            cacheMaxEntries: 5,
+            cacheMaxAge: 10 * 60 * 1000,
+        });
+    }
+    return _jwksClient;
+}
+
 function getKey(client: JwksClient, header: JwtHeader): Promise<string> {
     return new Promise((resolve, reject) => {
         if (!header.kid) return reject(new Error('No KID found in token header'));
@@ -46,16 +60,10 @@ export async function defaultValidateToken(token: string): Promise<JwtPayload> {
     const payload = jwt.decode(token) as JwtPayload;
     const issuer = payload.iss || '';
 
-    const jclient = jwksClient({
-        jwksUri: `${properties.keycloakUri}/realms/poc/protocol/openid-connect/certs`,
-        cache: true,
-        cacheMaxEntries: 5,
-        cacheMaxAge: 10 * 60 * 1000
-    });
     const decodedHeader = jwt.decode(token, { complete: true })?.header as JwtHeader;
     if (!decodedHeader) throw new Error('Invalid token');
 
-    const key = await getKey(jclient, decodedHeader);
+    const key = await getKey(getJwksClient(), decodedHeader);
     return await resolveToken(key, token, issuer);
 }
 
