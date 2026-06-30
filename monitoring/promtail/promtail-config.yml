@@ -23,8 +23,8 @@ scrape_configs:
             traceId: traceId
 
       - labels:
-          level
-          traceId
+          level:
+          traceId:
 
       - output:
           source: msg
