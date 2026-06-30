@@ -29,6 +29,8 @@ export function createWebSocketServer(server: Server): ISocketServer {
 
     server.on('upgrade', (req, socket, head) => {
         const parsedUrl = url.parse(req.url ?? '', true);
+        if (parsedUrl.pathname === '/logs') return;
+
         const token = parsedUrl.query['token'] as string | undefined;
 
         if (!token) {
@@ -41,6 +43,7 @@ export function createWebSocketServer(server: Server): ISocketServer {
             .then((tokenUser) => userExists(tokenUser.email, token))
             .then((fullUser: IUser) => {
                 wss.handleUpgrade(req, socket, head, (ws) => {
+                    logger.info({ userId: fullUser._id, email: fullUser.email, role: fullUser.role }, 'ws upgrade successful');
                     const transport = new WsTransport(ws);
                     const authWs = transport as unknown as AuthenticatedWebSocket;
                     authWs.user = fullUser;

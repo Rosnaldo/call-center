@@ -9,8 +9,10 @@ import { handlePong } from '#websocket/handler/on_pong';
 import { handleMessageHeartbeat } from '#websocket/handler/message/heartbeat';
 import { handleMessageLogout } from '#websocket/handler/message/logout';
 import { clientRegistry } from '#websocket/client_registry';
+import logger from '#logger';
 
 export const onConnection = () => (ws: AuthenticatedWebSocket): void => {
+    logger.info({ userId: ws.user._id, email: ws.user.email, role: ws.user.role }, 'ws authenticated client connected');
     graceTimer.cancel(ws.user._id);
     clientRegistry.add(ws);
 
@@ -42,6 +44,7 @@ export const onConnection = () => (ws: AuthenticatedWebSocket): void => {
     handleOpen(user);
 
     ws.on('close', () => {
+        logger.info({ userId: ws.user._id, email: ws.user.email }, 'ws client disconnected');
         clientRegistry.remove(ws);
         handleClose(hb, startGracePeriod);
     });
