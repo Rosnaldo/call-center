@@ -55,14 +55,15 @@ export const createIncomingCallActions = (
       return;
     }
 
-    const { users } = ref.onlineUsers.getState();
     if (!customerId || !attendantId) return;
 
-    const customer = users.find(u => u.id === customerId);
-    const attendant = users.find(u => u.id === attendantId);
-    if (!customer || !attendant) return;
+    const currentUser = ref.currentUser.getState().currentUser;
+    if (!currentUser || currentUser.id !== customerId) return;
+    if ((currentUser.tokens ?? 0) <= 0) return;
 
-    if ((customer.tokens ?? 0) <= 0) return;
+    const { users } = ref.onlineUsers.getState();
+    const attendant = users.find(u => u.id === attendantId);
+    if (!attendant) return;
     if (attendant.status !== 'idle') return;
 
     sendIncomingCallService(customerId, attendantId)
