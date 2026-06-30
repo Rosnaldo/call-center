@@ -31,6 +31,3 @@ scrape_configs:
           level:
           traceId:
           service:
-
-      - output:
-          source: msg
