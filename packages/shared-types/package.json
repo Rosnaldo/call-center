@@ -16,6 +16,7 @@
     },
     "devDependencies": {
         "@babel/parser": "^7.28.5",
+        "esbuild": "^0.28.1",
         "tsup": "^8.5.1",
         "typescript": "^5.0.0"
     },

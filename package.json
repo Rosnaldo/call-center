@@ -9,11 +9,10 @@
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
-    "@react-email/preview-server": "^5.2.8",
     "eslint": "^9.39.3",
     "nodemon": "^3.1.11",
     "prettier": "^3.6.2",
-    "react-email": "5.2.1",
+    "react-email": "^6.6.5",
     "ts-node": "^10.9.2",
     "turbo": "^2.6.1",
     "typescript": "5.9.2",
@@ -36,6 +35,9 @@
   "overrides": {
     "minimatch": "^10.2.2",
     "glob": "^13.0.6",
-    "fast-xml-parser": "^5.3.7"
+    "fast-xml-parser": "^5.3.7",
+    "next": {
+      "postcss": "^8.5.10"
+    }
   }
 }
