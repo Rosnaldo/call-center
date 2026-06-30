@@ -98,7 +98,7 @@ async function deleteTrackedRooms(): Promise<void> {
             await fetch(`${DAILY_API_URL}/rooms/${room}`, {
                 method: 'DELETE',
                 headers: dailyHeaders(),
-            }).catch(() => {});
+            })
             logger.info({ room }, 'daily room removida');
         }
     } catch {}
@@ -135,8 +135,8 @@ export async function registerDailyWebhooks(): Promise<void> {
 }
 
 export async function cleanupDailyWebhooks(): Promise<void> {
-    await deleteAllWebhooks().catch(() => {});
-    await deleteTrackedRooms().catch(() => {});
+    await deleteAllWebhooks()
+    await deleteTrackedRooms()
     if (ngrokProcess) {
         ngrokProcess.kill();
         ngrokProcess = null;

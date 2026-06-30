@@ -20,18 +20,20 @@ export default (app: Application) => {
 
         logger.info({ type: body.type }, 'daily webhook received');
 
+        const { traceId } = req;
+
         switch (body.type) {
             case 'meeting.started':
-                onMeetingStarted(body.payload);
+                onMeetingStarted(traceId, body.payload);
                 break;
             case 'meeting.ended':
-                onMeetingEnded(body.payload);
+                onMeetingEnded(traceId, body.payload);
                 break;
             case 'participant.joined':
-                onParticipantJoined(body.payload);
+                onParticipantJoined(traceId, body.payload);
                 break;
             case 'participant.left':
-                onParticipantLeft(body.payload);
+                onParticipantLeft(traceId, body.payload);
                 break;
         }
 

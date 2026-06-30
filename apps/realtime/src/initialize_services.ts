@@ -131,7 +131,7 @@ async function startAll(properties?: Properties): Promise<WebhookServer> {
             if (isShuttingDown) return;
             isShuttingDown = true;
 
-            await cleanupDailyWebhooks().catch(() => {});
+            await cleanupDailyWebhooks()
 
             webhookServer.server!.close(() => {
                 logger.info('web service closed');

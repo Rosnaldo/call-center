@@ -79,7 +79,7 @@ export default (app: Application) => {
         async (req, res) => {
             const controller = new CallController();
             const mapped = controller.complete.mapper(req.body);
-            const either = await controller.complete.exec({ mapped });
+            const either = await controller.complete.exec({ traceId: req.traceId, mapped });
             if (either.isError) {
                 return res.status(either.status).send(either);
             }

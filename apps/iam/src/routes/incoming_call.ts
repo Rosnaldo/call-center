@@ -9,7 +9,7 @@ export default (app: Application) => {
         async (req, res) => {
             const controller = new IncomingCallController();
             const mapped = controller.send.mapper(req.body);
-            const either = await controller.send.exec({ mapped });
+            const either = await controller.send.exec({ traceId: req.traceId, mapped });
             if (either.isError) {
                 return res.status(either.status).send(either);
             }
@@ -23,7 +23,7 @@ export default (app: Application) => {
         async (req, res) => {
             const controller = new IncomingCallController();
             const mapped = controller.accept.mapper(req.body);
-            const either = await controller.accept.exec({ mapped });
+            const either = await controller.accept.exec({ traceId: req.traceId, mapped });
             if (either.isError) {
                 return res.status(either.status).send(either);
             }
@@ -37,7 +37,7 @@ export default (app: Application) => {
         async (req, res) => {
             const controller = new IncomingCallController();
             const mapped = controller.cancel.mapper(req.body);
-            const either = await controller.cancel.exec({ mapped });
+            const either = await controller.cancel.exec({ traceId: req.traceId, mapped });
             if (either.isError) {
                 return res.status(either.status).send(either);
             }

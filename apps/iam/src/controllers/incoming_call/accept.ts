@@ -19,6 +19,7 @@ const CALLS_KEY = 'calls';
 const ONLINE_USERS_PREFIX = 'online_user:';
 
 interface Props {
+    traceId: string;
     mapped: IInput;
 }
 
@@ -36,6 +37,7 @@ export class Accept {
 
     public readonly exec = async (props: Props): Promise<Either<IOutput>> => {
         try {
+            const { traceId } = props;
             logger.info({ attendantId: props.mapped.attendantId, userId: props.mapped.userId }, 'incoming call accept');
             const { attendantId, userId } = this.transform(props.mapped);
             const redis = getRedisClient();
@@ -89,7 +91,7 @@ export class Accept {
                 await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'in-call' }), 'EX', 90);
             }
 
-            notifyCallAccepted(incomingCall.customerId, incomingCall.attendantId, incomingCall.calledBy, incomingCall).catch(() => {});
+            notifyCallAccepted(traceId, incomingCall.customerId, incomingCall.attendantId, incomingCall.calledBy, incomingCall).catch(() => {});
 
             return successData(incomingCall);
         } catch (error: unknown) {

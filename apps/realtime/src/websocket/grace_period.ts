@@ -11,11 +11,11 @@ export const createGracePeriod = (
         () => {
             const transitionUser: IOnlineUser = { ...user, status: status };
             broadcastMessage({ event: 'add_to_online_users', data: transitionUser });
-            addToIam(transitionUser).catch(() => {});
+            addToIam(transitionUser)
         },
         () => {
             broadcastMessage({ event: 'user_logout', data: { id: user.id } });
-            removeFromIam(user.id).catch(() => {});
+            removeFromIam(user.id)
         },
     );
 };

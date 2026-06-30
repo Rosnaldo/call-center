@@ -15,6 +15,7 @@ const CALLS_KEY = 'calls';
 const ONLINE_USERS_PREFIX = 'online_user:';
 
 interface Props {
+    traceId: string;
     mapped: ICancelInput;
 }
 
@@ -32,6 +33,7 @@ export class Cancel {
 
     public readonly exec = async (props: Props): Promise<Either<{}>> => {
         try {
+            const { traceId } = props;
             logger.info({ customerId: props.mapped.customerId, attendantId: props.mapped.attendantId }, 'incoming call cancel');
             const { customerId, attendantId } = this.transform(props.mapped);
             const redis = getRedisClient();
@@ -57,7 +59,7 @@ export class Cancel {
                 await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'idle' }), 'EX', 90);
             }
 
-            notifyIncomingCallCancelled(customerId, attendantId).catch(() => {});
+            notifyIncomingCallCancelled(traceId, customerId, attendantId).catch(() => {});
 
             return successData({});
         } catch (error: unknown) {

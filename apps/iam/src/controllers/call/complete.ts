@@ -18,6 +18,7 @@ interface CompleteInput {
 }
 
 interface Props {
+    traceId: string;
     mapped: CompleteInput;
 }
 
@@ -35,6 +36,7 @@ export class Complete {
 
     public readonly exec = async (props: Props): Promise<Either<{}>> => {
         try {
+            const { traceId } = props;
             const { customerId, attendantId } = props.mapped;
             logger.info({ customerId, attendantId }, 'call complete');
             if (!customerId || !attendantId) throw new BadRequestException('customerId e attendantId são obrigatórios');
@@ -56,7 +58,7 @@ export class Complete {
                 await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'idle' }), 'EX', 90);
             }
 
-            notifyCallCompleted(customerId, attendantId).catch(() => {});
+            notifyCallCompleted(traceId, customerId, attendantId).catch(() => {});
 
             return successData({});
         } catch (error: unknown) {
