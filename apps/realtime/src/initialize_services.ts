@@ -108,11 +108,8 @@ class WsServer {
 
     async start(): Promise<void> {
         const { createWebSocketServer } = await import('./websocket/main');
-        const { createLogWebSocketServer } = await import('./websocket/log_server');
         createWebSocketServer(this.server);
-        createLogWebSocketServer(this.server);
         logger.info('websocket server attached');
-        logger.info('log websocket server attached');
     }
 }
 
