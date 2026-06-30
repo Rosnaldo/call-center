@@ -72,10 +72,10 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
     render(<UserProfilePage {...defaultProps} />);
 
     expect(screen.getByTestId('mock-header')).toBeDefined();
-    expect(screen.getByText('Profile')).toBeDefined();
+    expect(screen.getByText('Perfil')).toBeDefined();
     expect(screen.getByText('Voltar para a área de Cliente')).toBeDefined();
     expect(screen.getByText('John Customer')).toBeDefined();
-    expect(screen.getByText('Edit')).toBeDefined();
+    expect(screen.getByText('Editar')).toBeDefined();
   });
 
   it('renders correct labels when the attendant user is logged in', () => {
@@ -87,7 +87,7 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
   it('updates name input state as values are typed', () => {
     render(<UserProfilePage {...defaultProps} />);
 
-    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByText('Editar'));
 
     const nameInput = screen.getByPlaceholderText('Seu nome visível...') as HTMLInputElement;
     fireEvent.change(nameInput, { target: { value: 'New Custom Name' } });
@@ -97,12 +97,12 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
   it('does not navigate if name input is cleared and form is submitted', () => {
     render(<UserProfilePage {...defaultProps} />);
 
-    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByText('Editar'));
 
     const nameInput = screen.getByPlaceholderText('Seu nome visível...') as HTMLInputElement;
     fireEvent.change(nameInput, { target: { value: '   ' } });
 
-    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByText('Salvar'));
 
     expect(defaultProps.navigate).not.toHaveBeenCalled();
     expect(screen.getByPlaceholderText('Seu nome visível...')).toBeDefined();
@@ -113,12 +113,12 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
 
     render(<UserProfilePage {...defaultProps} />);
 
-    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByText('Editar'));
 
     const nameInput = screen.getByPlaceholderText('Seu nome visível...') as HTMLInputElement;
     fireEvent.change(nameInput, { target: { value: 'Updated Client' } });
 
-    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByText('Salvar'));
 
     expect(defaultProps.navigate).not.toHaveBeenCalled();
 
@@ -148,10 +148,10 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
   it('Cancel button resets editing state without navigating', () => {
     render(<UserProfilePage {...defaultProps} />);
 
-    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByText('Editar'));
     expect(screen.getByPlaceholderText('Seu nome visível...')).toBeDefined();
 
-    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByText('Cancelar'));
     expect(screen.queryByPlaceholderText('Seu nome visível...')).toBeNull();
     expect(defaultProps.navigate).not.toHaveBeenCalled();
   });

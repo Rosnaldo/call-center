@@ -4,7 +4,8 @@ import logger from '#logger';
 import { iamApi } from '#apis/iam';
 
 const DAILY_API_URL = 'https://api.daily.co/v1';
-const WEBHOOK_PATH = '/realtime/webhooks/daily';
+const WEBHOOK_PATH_LOCAL = '/webhooks/daily';
+const WEBHOOK_PATH_REMOTE = '/realtime/webhooks/daily';
 
 let ngrokProcess: ChildProcess | null = null;
 
@@ -124,7 +125,8 @@ export async function registerDailyWebhooks(): Promise<void> {
         baseUrl = properties.webhookUrl.replace(/\/$/, '');
     }
 
-    const webhookUrl = `${baseUrl}${WEBHOOK_PATH}`;
+    const webhookPath = properties.nodeEnv === 'local' ? WEBHOOK_PATH_LOCAL : WEBHOOK_PATH_REMOTE;
+    const webhookUrl = `${baseUrl}${webhookPath}`;
 
     await deleteAllWebhooks();
     await createWebhook(webhookUrl);

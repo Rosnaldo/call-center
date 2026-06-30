@@ -4,6 +4,7 @@ import { WsCallService } from './call';
 import { WsMeetingService } from './meeting';
 import type { OnlineUsersStoreInstance, IncomingCallStoreInstance, CallStoreInstance, CallViewStoreInstance } from '../../states/stores';
 import properties from '../../properties';
+import { mytoast } from '../../components/toast';
 
 const WS_URL = properties.realtimeWsUrl || undefined;
 const RECONNECT_DELAY_MS = 3_000;
@@ -49,15 +50,21 @@ export class InitWs {
         ws.onmessage = (event) => {
             try {
                 const msg = JSON.parse(event.data as string);
-                const data = 'data' in msg ? msg.data : undefined;
-                console.log('ws: ', msg.event, data);
+                if (msg.isError) {
+                    mytoast.error(msg.message);
+                    this.running = false;
+                    ws.close();
+                    return;
+                }
                 usersService.handle(msg) || callService.handle(msg) || meetingService.handle(msg);
             } catch {
                 // malformed frame — ignore
             }
         };
 
-        ws.onerror = (err) => console.error('[WS] error', err);
+        ws.onerror = (_err) => {
+            mytoast.error('Connection error');
+        };
 
         ws.onclose = () => {
             usersService.stopHeartbeat();

@@ -30,5 +30,7 @@ export const mongooseBootstrap = async (
         void loadIndexes.fireAndForget();
     }
 
-    await migration.runScripts();
+    if (!['test'].includes(Properties.nodeEnv)) {
+        await migration.runScripts();
+    }
 };

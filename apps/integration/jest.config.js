@@ -9,6 +9,7 @@ module.exports = {
     testMatch: ['**/?(*.)+(spec|test).[tj]s'],
     testTimeout: 60000,
     maxWorkers: 1,
+    forceExit: true,
     setupFiles: ['<rootDir>/src/setup-properties.ts'],
     transform: {
         '^.+\\.tsx?$': ['ts-jest', {
@@ -32,8 +33,10 @@ module.exports = {
         '^src/services/calls$': '<rootDir>/src/mocks/realtime-calls-service.ts',
         '^src/helpers/(.*)$': '<rootDir>/../realtime/src/helpers/$1',
         '^src/apis/(.*)$': '<rootDir>/../realtime/src/apis/$1',
+        '^#apis/iam$': '<rootDir>/../realtime/src/apis/iam',
 
         // IAM alias paths
+        '^#logger$': '<rootDir>/../iam/src/logger',
         '^#properties$': '<rootDir>/../iam/src/properties',
         '^#middleware/(.*)$': '<rootDir>/../iam/src/middleware/$1',
         '^#controllers/(.*)$': '<rootDir>/../iam/src/controllers/$1',

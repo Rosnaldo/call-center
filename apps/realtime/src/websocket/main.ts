@@ -48,9 +48,11 @@ export function createWebSocketServer(server: Server): ISocketServer {
                     wss.emit('connection', authWs, req);
                 });
             })
-            .catch(() => {
-                socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-                socket.destroy();
+            .catch((err: unknown) => {
+                const message = err instanceof Error ? err.message : 'Authentication failed';
+                wss.handleUpgrade(req, socket, head, (ws) => {
+                    ws.send(JSON.stringify({ isError: true, message }), () => ws.close());
+                });
             });
     });
 

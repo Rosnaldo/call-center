@@ -33,8 +33,12 @@ class AuthSession {
 
     async getToken(): Promise<string | undefined> {
         if (keycloak.authenticated) {
-            await keycloak.updateToken(30);
-            this.token = keycloak.token;
+            try {
+                await keycloak.updateToken(30);
+                this.token = keycloak.token;
+            } catch {
+                keycloak.login();
+            }
         }
         return this.token;
     }
