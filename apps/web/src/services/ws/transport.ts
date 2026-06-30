@@ -16,7 +16,7 @@ export interface ITransport {
 export type TransportFactory = (url: string) => ITransport;
 
 export interface AuthenticatedWebSocket extends ITransport {
-    token: string;
+    token?: string;
 }
 
 export const createWsTransport: TransportFactory = (url) =>

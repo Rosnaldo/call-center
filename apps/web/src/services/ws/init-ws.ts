@@ -5,6 +5,7 @@ import { WsMeetingService } from './meeting';
 import type { OnlineUsersStoreInstance, IncomingCallStoreInstance, CallStoreInstance, CallViewStoreInstance } from '../../states/stores';
 import properties from '../../properties';
 import { mytoast } from '../../components/toast';
+import authSession from '../../auth/session';
 
 const WS_URL = properties.realtimeWsUrl || undefined;
 const RECONNECT_DELAY_MS = 3_000;
@@ -26,7 +27,7 @@ export class InitWs {
 
     private createAuthWs(token: string): AuthenticatedWebSocket {
         const transport = this.factory(`${WS_URL}?token=${token}`);
-        return Object.assign(transport, { token });
+        return transport as AuthenticatedWebSocket;
     }
 
     private connect(
@@ -39,6 +40,7 @@ export class InitWs {
         this.activeWs = ws;
 
         ws.onopen = () => {
+            authSession.getToken();
             usersService.startHeartbeat(
                 () => { if (ws.readyState === TRANSPORT_OPEN) ws.send(JSON.stringify({ event: 'heartbeat' })); },
                 () => ws.close(),
@@ -69,7 +71,12 @@ export class InitWs {
         ws.onclose = () => {
             usersService.stopHeartbeat();
             if (!this.running) return;
-            setTimeout(() => this.connect(this.createAuthWs(ws.token), usersService, callService, meetingService), RECONNECT_DELAY_MS);
+            setTimeout(() => {
+                authSession.getToken().then((token) => {
+                    if (!token) return;
+                    this.connect(this.createAuthWs(token), usersService, callService, meetingService);
+                });
+            }, RECONNECT_DELAY_MS);
         };
     }
 

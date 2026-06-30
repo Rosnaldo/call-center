@@ -1,4 +1,5 @@
 import { type Application } from 'express';
+import { TokenExpiredError } from 'jsonwebtoken';
 import logger from '#logger';
 import { defaultValidateToken } from '#middleware/get_keycloak_user';
 
@@ -17,6 +18,9 @@ export default (app: Application) => {
                 lastName: payload.family_name ?? null,
             });
         } catch (err) {
+            if (err instanceof TokenExpiredError) {
+                return res.status(401).send({ isError: true, code: 'TOKEN_EXPIRED', message: 'Token expirado' });
+            }
             logger.error({ err: err instanceof Error ? err.message : err }, 'auth/validate-token failed');
             return res.status(401).send({ isError: true, message: 'Token inválido' });
         }
