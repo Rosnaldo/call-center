@@ -1,18 +1,18 @@
 import { IncomingCallState } from '@repo/shared-types';
 import { IncomingCallStore } from './state.ts';
 import type { StoresRef } from '../stores.ts';
-import { sendIncomingCall as sendIncomingCallService, cancelIncomingCall as cancelIncomingCallService } from '@/src/services/api/incoming-calls.ts';
-import { fetchOnlineUsers } from '@/src/services/api/online-users.ts';
+import { sendIncomingCall as sendIncomingCallService, cancelIncomingCall as cancelIncomingCallService } from '../../services/api/incoming-calls.ts';
+import { fetchOnlineUsers } from '../../services/api/online-users.ts';
 import {
   simulateSendIncomingCall,
   simulateCancelIncomingCall,
   simulateIncomingCall,
   simulateIncomingCallAsCustomer,
 } from './simulation.ts';
-import { handleRequestError } from '@/src/utils/utils.ts';
+import { handleRequestError } from '../../utils/utils.ts';
+import { ApiError } from '../../error/api.ts';
+import i18n from '../../i18n.ts';
 import properties from '../../properties';
-
-const { isSimulation } = properties;
 
 export interface IncomingCallActions {
   cancel: () => void;
@@ -33,7 +33,7 @@ export const createIncomingCallActions = (
   cancel: () => set({ incomingCall: null }),
 
   cancelIncomingCall: () => {
-    if (isSimulation) {
+    if (properties.isSimulation) {
       simulateCancelIncomingCall(set, get);
       return;
     }
@@ -49,35 +49,40 @@ export const createIncomingCallActions = (
       .catch((error) => handleRequestError(error));
   },
 
-  sendIncomingCall: (customerId, attendantId) => {
-    if (isSimulation) {
+  sendIncomingCall: async (customerId, attendantId) => {
+    if (properties.isSimulation) {
       simulateSendIncomingCall(set, customerId, attendantId);
       return;
     }
 
-    if (!customerId || !attendantId) return;
+    try {
+      if (!customerId || !attendantId) throw new ApiError(i18n.t('error.somethingWentWrong'));
 
-    const currentUser = ref.currentUser.getState().currentUser;
-    if (!currentUser || currentUser.id !== customerId) return;
-    if ((currentUser.tokens ?? 0) <= 0) return;
+      const currentUser = ref.currentUser.getState().currentUser;
+      if (!currentUser || currentUser.id !== customerId) throw new ApiError(i18n.t('error.somethingWentWrong'));
 
-    const { users } = ref.onlineUsers.getState();
-    const attendant = users.find(u => u.id === attendantId);
-    if (!attendant) return;
-    if (attendant.status !== 'idle') return;
+      if ((currentUser.tokens ?? 0) <= 0) throw new ApiError(i18n.t('attendantList.noTokensHint'));
 
-    sendIncomingCallService(customerId, attendantId)
-      .catch((error) => handleRequestError(error));
+      const { users } = ref.onlineUsers.getState();
+      const attendant = users.find(u => u.id === attendantId);
+      if (!attendant) throw new ApiError(i18n.t('error.somethingWentWrong'));
+
+      if (attendant.status !== 'idle') throw new ApiError(i18n.t('attendantList.attendantBusy'));
+
+      await sendIncomingCallService(customerId, attendantId);
+    } catch (error) {
+      handleRequestError(error);
+    }
   },
 
   simulateIncomingCall: (attendantId) => {
-    if (isSimulation) {
+    if (properties.isSimulation) {
       simulateIncomingCall(set, get, attendantId);
     }
   },
 
   simulateIncomingCallAsCustomer: (customerId, attendantId) => {
-    if (isSimulation) {
+    if (properties.isSimulation) {
       simulateIncomingCallAsCustomer(set, get, customerId, attendantId);
     }
   },
