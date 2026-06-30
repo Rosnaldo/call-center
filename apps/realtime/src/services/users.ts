@@ -1,8 +1,8 @@
 import { IOnlineUser, IUser } from "@repo/shared-types";
-import { iamApi } from "src/apis/iam";
+import { createIamClient, iamApi } from "src/apis/iam";
 
-export const userExists = async (email: string, token: string): Promise<IUser> => {
-    const { data } = await iamApi.get<IUser>('/users/exists', {
+export const userExists = async (traceId: string, email: string, token: string): Promise<IUser> => {
+    const { data } = await createIamClient(traceId).get<IUser>('/users/exists', {
         headers: { Authorization: token },
         params: { email },
     });
@@ -19,7 +19,7 @@ export const removeFromIam = async (userId: string): Promise<void> => {
     });
 };
 
-export const findUserBySlug = async (slug: string): Promise<IUser> => {
-    const { data } = await iamApi.get<IUser>('/users/find-by-slug', { params: { slug } });
+export const findUserBySlug = async (traceId: string, slug: string): Promise<IUser> => {
+    const { data } = await createIamClient(traceId).get<IUser>('/users/find-by-slug', { params: { slug } });
     return data;
 };

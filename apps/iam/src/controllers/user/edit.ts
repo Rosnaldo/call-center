@@ -1,6 +1,7 @@
 import { Request } from 'express';
 import _ from 'lodash';
 
+import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { UserCrud } from '#crud/user';
 import { IUserController } from './params';
@@ -48,6 +49,7 @@ export class Edit {
     public readonly exec = async (props: Props): Promise<Either<IOutput>> => {
         try {
             const { mapped, userSource } = props;
+            logger.info({ _id: mapped._id }, 'user edit');
             const params = this.transform(mapped);
             const { _id, firstName, lastName, email, role } = params;
 

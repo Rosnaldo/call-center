@@ -1,3 +1,4 @@
+import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { Either, successData } from '#utils/either';
 import { getRedisClient } from '#redis/singleton';
@@ -22,6 +23,7 @@ export class List {
 
     public readonly get = async (): Promise<Either<IOutput>> => {
         try {
+            logger.info('online user list');
             const redis = getRedisClient();
             const keys = await redis.keys(`${ONLINE_USERS_PREFIX}*`);
             if (keys.length === 0) return successData({ users: [] });

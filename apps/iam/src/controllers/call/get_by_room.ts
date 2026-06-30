@@ -1,5 +1,6 @@
 import { Request } from 'express';
 
+import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
@@ -31,6 +32,7 @@ export class GetByRoom {
     public readonly exec = async (props: Props): Promise<Either<IOutput>> => {
         try {
             const { roomName } = props;
+            logger.info({ roomName }, 'call get by room');
             if (!roomName) throw new BadRequestException('roomName é obrigatório');
 
             const redis = getRedisClient();

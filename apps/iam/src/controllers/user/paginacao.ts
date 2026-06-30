@@ -1,5 +1,6 @@
 import { Request } from 'express';
 
+import logger from '#logger';
 import { getUserDao } from '#daos/singleton';
 
 import { IUser } from '#schemas/user/types';
@@ -40,6 +41,7 @@ export class Paginacao {
         try {
             const { user: _user } = props;
             const input = this.transform(props.params);
+            logger.info({ page: input.page, pageSize: input.pageSize, search: input.search }, 'user paginacao');
             const { page, pageSize, isPagination, search } = input;
             const query = _.isNil(search) ? {} : {
                 $or: [

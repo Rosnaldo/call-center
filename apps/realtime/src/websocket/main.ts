@@ -8,7 +8,8 @@ import { WsTransport } from './transport';
 import { onConnection } from './connection';
 import { userExists } from 'src/services/users';
 import { IUser } from '@repo/shared-types';
-import logger from '#logger';
+import { buildLogger } from '#logger';
+import { randomUUID } from 'crypto';
 
 interface IamValidateResponse {
     id: string;
@@ -17,8 +18,9 @@ interface IamValidateResponse {
     lastName: string;
 }
 
-async function verifyToken(token: string): Promise<IamValidateResponse> {
-    const response = await iamApi.post<IamValidateResponse>('/auth/validate-token', {}, {
+async function verifyToken(traceId: string, token: string): Promise<IamValidateResponse> {
+    const { createIamClient } = await import('src/apis/iam');
+    const response = await createIamClient(traceId).post<IamValidateResponse>('/auth/validate-token', {}, {
         headers: { Authorization: token },
     });
     return response.data;
@@ -39,8 +41,11 @@ export function createWebSocketServer(server: Server): ISocketServer {
             return;
         }
 
-        verifyToken(token)
-            .then((tokenUser) => userExists(tokenUser.email, token))
+        const traceId = (req.headers['x-trace-id'] as string) || randomUUID();
+        const logger = buildLogger(traceId);
+
+        verifyToken(traceId, token)
+            .then((tokenUser) => userExists(traceId, tokenUser.email, token))
             .then((fullUser: IUser) => {
                 wss.handleUpgrade(req, socket, head, (ws) => {
                     logger.info({ userId: fullUser._id, email: fullUser.email, role: fullUser.role }, 'ws upgrade successful');
@@ -48,6 +53,7 @@ export function createWebSocketServer(server: Server): ISocketServer {
                     const authWs = transport as unknown as AuthenticatedWebSocket;
                     authWs.user = fullUser;
                     authWs.token = token;
+                    authWs.traceId = traceId;
                     authWs.isAlive = false;
                     wss.emit('connection', authWs, req);
                 });

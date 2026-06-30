@@ -1,5 +1,6 @@
 import { Request } from 'express';
 
+import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { IUserController } from './params';
 import { Either, successData } from '#utils/either';
@@ -35,6 +36,7 @@ export class Create {
     public readonly exec = async (props: Props): Promise<Either<IOutput>> => {
         try {
             const { mapped } = props;
+            logger.info({ email: mapped.email }, 'user create');
             const params = this.transform(mapped);
             const builder = new UserBuilder();
             const user = await builder.create(params).save();

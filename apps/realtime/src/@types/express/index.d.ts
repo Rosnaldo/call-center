@@ -11,6 +11,7 @@ declare global {
         interface Request {
             user: IUser['IDocument'];
             userKc: UserKc;
+            traceId: string;
         }
     }
 }

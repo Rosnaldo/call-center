@@ -1,5 +1,6 @@
 import { Request } from 'express';
 
+import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { IUserController } from './params';
 import { Either, successData } from '#utils/either';
@@ -36,6 +37,7 @@ export class FindBySlug {
     public readonly get = async (props: Props): Promise<Either<IOutput>> => {
         try {
             const { slug } = props.params;
+            logger.info({ slug }, 'user find by slug');
             if (!slug) throw new BadRequestException('slug é obrigatório');
 
             const user = await getUserDao().findOne({ slug });

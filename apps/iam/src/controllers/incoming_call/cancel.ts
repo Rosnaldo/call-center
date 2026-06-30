@@ -1,5 +1,6 @@
 import { Request } from 'express';
 
+import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
@@ -31,6 +32,7 @@ export class Cancel {
 
     public readonly exec = async (props: Props): Promise<Either<{}>> => {
         try {
+            logger.info({ customerId: props.mapped.customerId, attendantId: props.mapped.attendantId }, 'incoming call cancel');
             const { customerId, attendantId } = this.transform(props.mapped);
             const redis = getRedisClient();
 

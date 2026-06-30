@@ -1,5 +1,6 @@
 import { Request } from 'express';
 
+import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { IUserController } from './params';
 import { Either, successData } from '#utils/either';
@@ -35,6 +36,7 @@ export class Exists {
 
     public readonly get = async (props: Props): Promise<Either<IOutput>> => {
         try {
+            logger.info({ email: props.params.email }, 'user exists');
             const input = this.transform(props.params);
             const { email } = input;
 

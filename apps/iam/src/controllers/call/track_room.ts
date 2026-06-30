@@ -1,5 +1,6 @@
 import { Request } from 'express';
 
+import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
@@ -31,6 +32,7 @@ export class TrackRoom {
     public readonly exec = async (props: Props): Promise<Either<{ roomName: string }>> => {
         try {
             const { roomName } = props.mapped;
+            logger.info({ roomName }, 'call track room');
             if (!roomName) throw new BadRequestException('roomName é obrigatório');
 
             const redis = getRedisClient();
@@ -60,6 +62,7 @@ export class DeleteRooms {
 
     public readonly exec = async (): Promise<Either<{ rooms: string[] }>> => {
         try {
+            logger.info('call delete rooms');
             const redis = getRedisClient();
             const rooms = await redis.smembers(ROOMS_KEY);
             if (rooms.length) await redis.del(ROOMS_KEY);

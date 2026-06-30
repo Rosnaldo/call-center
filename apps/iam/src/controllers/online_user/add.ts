@@ -1,5 +1,6 @@
 import { Request } from 'express';
 
+import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
@@ -33,6 +34,7 @@ export class Add {
 
     public readonly exec = async (props: Props): Promise<Either<IOutput>> => {
         try {
+            logger.info({ id: props.mapped.id }, 'online user add');
             const params = this.transform(props.mapped);
             const redis = getRedisClient();
             await redis.set(`${ONLINE_USERS_PREFIX}${params.id}`, JSON.stringify(params), 'EX', TTL_SECONDS);

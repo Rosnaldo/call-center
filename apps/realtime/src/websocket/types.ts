@@ -4,6 +4,7 @@ import { EventEmitterTransport } from '#websocket/transport';
 export interface AuthenticatedWebSocket extends EventEmitterTransport {
     user: IUser;
     token: string;
+    traceId: string;
     isAlive: boolean;
 }
 

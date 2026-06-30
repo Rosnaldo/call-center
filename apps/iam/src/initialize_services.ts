@@ -4,6 +4,7 @@ import http from 'http';
 import cors from 'cors';
 import logger from '#logger';
 import { Properties } from './properties';
+import { traceMiddleware } from './middleware/trace';
 import './extensions/transform_in_dict';
 
 import { mongooseBootstrap } from '#mongoose_bootstrap';
@@ -52,6 +53,7 @@ class InitializeServices {
                 methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                 allowedHeaders: ["Content-Type", "Authorization"],
             }));
+            this.app.use(traceMiddleware);
             this.app.use(express.json());
 
             this.app.use(express.json({ limit: '10MB' }));

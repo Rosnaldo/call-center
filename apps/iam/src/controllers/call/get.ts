@@ -1,5 +1,6 @@
 import { Request } from 'express';
 
+import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
@@ -32,6 +33,7 @@ export class Get {
     public readonly exec = async (props: Props): Promise<Either<IOutput>> => {
         try {
             const { customerId, attendantId } = props;
+            logger.info({ customerId, attendantId }, 'call get');
             if (!customerId || !attendantId) throw new BadRequestException('customerId e attendantId são obrigatórios');
 
             const key = `${CALLS_KEY}:${customerId}--${attendantId}`;

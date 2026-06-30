@@ -1,8 +1,18 @@
 import pino from 'pino';
 
-const logger = pino({
-    name: 'iam',
+const baseLogger = pino({
     level: 'info',
+    base: {
+        service: 'iam',
+    },
+    formatters: {
+        level(label) {
+            return { level: label };
+        },
+    },
 }, process.stdout);
 
-export default logger;
+export const buildLogger = (traceId: string) =>
+    baseLogger.child({ traceId });
+
+export default baseLogger;

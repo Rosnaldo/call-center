@@ -1,5 +1,6 @@
 import { Request } from 'express';
 
+import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
@@ -27,6 +28,7 @@ export class Remove {
 
     public readonly exec = async (props: Props): Promise<Either<{}>> => {
         try {
+            logger.info({ id: props.mapped.id }, 'online user remove');
             const { id } = this.transform(props.mapped);
             const redis = getRedisClient();
             await redis.del(`${ONLINE_USERS_PREFIX}${id}`);

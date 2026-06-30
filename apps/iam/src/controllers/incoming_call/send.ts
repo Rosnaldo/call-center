@@ -1,5 +1,6 @@
 import { Request } from 'express';
 
+import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
@@ -34,6 +35,7 @@ export class Send {
 
     public readonly exec = async (props: Props): Promise<Either<IOutput>> => {
         try {
+            logger.info({ customerId: props.mapped.customerId, attendantId: props.mapped.attendantId }, 'incoming call send');
             const params = this.transform(props.mapped);
             const redis = getRedisClient();
 

@@ -2,6 +2,7 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import logger from '#logger';
+import { traceMiddleware } from './middleware/trace';
 import { Properties } from './properties';
 import { buildKcMain } from './keycloak/singleton';
 import { registerDailyWebhooks, cleanupDailyWebhooks } from './webhooks/daily_manager';
@@ -37,6 +38,7 @@ class WebhookServer {
             methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             allowedHeaders: ["Content-Type", "Authorization"],
         }));
+        this.app.use(traceMiddleware);
         this.app.use(express.json());
         this.app.use(express.json({ limit: '10MB' }));
         this.app.use(express.urlencoded({ extended: false }));

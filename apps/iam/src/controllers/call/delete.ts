@@ -1,5 +1,6 @@
 import { Request } from 'express';
 
+import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
@@ -31,6 +32,7 @@ export class Delete {
     public readonly exec = async (props: Props): Promise<Either<{}>> => {
         try {
             const { customerId, attendantId } = props.mapped;
+            logger.info({ customerId, attendantId }, 'call delete');
             if (!customerId || !attendantId) throw new BadRequestException('customerId e attendantId são obrigatórios');
 
             const key = `${CALLS_KEY}:${customerId}--${attendantId}`;

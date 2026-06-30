@@ -1,3 +1,4 @@
+import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { UserCrud } from '#crud/user';
 import { Either, successData } from '#utils/either';
@@ -23,6 +24,7 @@ export class Count {
 
     public readonly get = async (): Promise<Either<IOutput>> => {
         try {
+            logger.info('user count');
             const admins = await this.crud.count({ role: UserRole.admin });
             const customers = await this.crud.count({ role: UserRole.customer });
             const attendants = await this.crud.count({ role: UserRole.attendant });

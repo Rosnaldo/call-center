@@ -82,7 +82,7 @@ services:
         condition: service_healthy
         restart: true
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"const http = require('http'); http.get('http://127.0.0.1:5003/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      test: ["CMD-SHELL", "node -e \"const http = require('http'); const check = (url, cb) => http.get(url, r => cb(r.statusCode === 200)).on('error', () => cb(false)); check('http://127.0.0.1:5003/health', ok1 => { if (!ok1) process.exit(1); check('http://127.0.0.1:5003/webhooks/daily', ok2 => { if (!ok2) process.exit(1); check('http://127.0.0.1:5003/webhooks/iam', ok3 => process.exit(ok3 ? 0 : 1)); }); });\""]
       interval: 10s
       timeout: 3s
       retries: 5

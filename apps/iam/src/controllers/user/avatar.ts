@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import _ from 'lodash';
 
+import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { UserCrud } from '#crud/user';
 import { Either, successData } from '#utils/either';
@@ -40,6 +41,7 @@ export class Avatar {
     public readonly exec = async (props: Props): Promise<Either<IUser['IParams']>> => {
         try {
             const { userId, buffer, mimetype, userSource } = props;
+            logger.info({ userId }, 'user avatar');
 
             if (userSource.role !== UserRole.admin && userSource._id !== userId) {
                 throw new UnauthorizedRequestException('Usuario sem permissão')

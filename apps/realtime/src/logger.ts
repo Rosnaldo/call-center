@@ -1,12 +1,25 @@
 import pino from 'pino';
 import { logBroadcaster } from './websocket/log_broadcaster';
 
-const logger = pino(
-    { name: 'realtime', level: 'info' },
+const baseLogger = pino(
+    {
+        level: 'info',
+        base: {
+            service: 'realtime',
+        },
+        formatters: {
+            level(label) {
+                return { level: label };
+            },
+        },
+    },
     pino.multistream([
         { stream: process.stdout },
         { stream: logBroadcaster },
     ]),
 );
 
-export default logger;
+export const buildLogger = (traceId: string) =>
+    baseLogger.child({ traceId });
+
+export default baseLogger;

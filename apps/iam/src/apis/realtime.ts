@@ -1,23 +1,28 @@
 import properties from '#properties';
 import axios from 'axios';
-import logger from '#logger';
+import { buildLogger } from '#logger';
 
-export const realtimeApi = axios.create();
+export function createRealtimeClient(traceId: string) {
+    const logger = buildLogger(traceId);
+    const client = axios.create({ baseURL: properties.realtimeUri });
 
-realtimeApi.interceptors.request.use((config) => {
-    config.baseURL = properties.realtimeUri;
-    return config;
-});
+    client.interceptors.request.use((config) => {
+        config.headers['x-trace-id'] = traceId;
+        return config;
+    });
 
-realtimeApi.interceptors.response.use(undefined, (error) => {
-    if (axios.isAxiosError(error)) {
-        logger.error({
-            status: error.response?.status,
-            message: error.response?.data,
-            url: error.config?.url,
-        }, 'realtimeApi error');
-    } else {
-        logger.error(error, 'realtimeApi error');
-    }
-    return Promise.reject(error);
-});
+    client.interceptors.response.use(undefined, (error) => {
+        if (axios.isAxiosError(error)) {
+            logger.error({
+                status: error.response?.status,
+                message: error.response?.data,
+                url: error.config?.url,
+            }, 'realtimeApi error');
+        } else {
+            logger.error(error, 'realtimeApi error');
+        }
+        return Promise.reject(error);
+    });
+
+    return client;
+}
