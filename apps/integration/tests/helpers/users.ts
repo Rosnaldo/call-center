@@ -49,7 +49,7 @@ export async function createMockUsers(): Promise<MockUsers> {
         .save();
 
     const customer = await new UserBuilder()
-        .create({ firstName: 'Customer', lastName: 'Integration', email: CUSTOMER_EMAIL, role: 'customer' })
+        .create({ firstName: 'Customer', lastName: 'Integration', email: CUSTOMER_EMAIL, role: 'customer', tokens: 10 })
         .save();
 
     const attendant = await new UserBuilder()

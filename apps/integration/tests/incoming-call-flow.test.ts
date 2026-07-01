@@ -109,6 +109,8 @@ describe('Incoming Call Flow', () => {
         customerStores = createStores(dailyService);
         attendantStores = createStores(dailyService);
 
+        customerStores.currentUser.setState({ currentUser: mapUserToOnlineUser(customerUser) });
+
         addToIamMock.mockImplementation((user: IOnlineUser) => {
             const op = iamRequest
                 .post('/online-users/add')

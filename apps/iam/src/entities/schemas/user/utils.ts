@@ -57,6 +57,7 @@ export type IInitBuilder = {
     lastName: IUser['IParams']['lastName'];
     email?: IUser['IParams']['email'];
     role: IUser['IParams']['role'];
+    tokens?: IUser['IParams']['tokens'];
 }
 
 export class UserBuilder {
@@ -85,7 +86,7 @@ export class UserBuilder {
     };
 
     public readonly create = (params: IInitBuilder): this => {
-        const { _id, firstName, lastName, email, role } = params;
+        const { _id, firstName, lastName, email, role, tokens } = params;
         const slug = toSlug(`${firstName}-${lastName}`);
 
         if (notNil(_id)) {
@@ -97,6 +98,10 @@ export class UserBuilder {
         this.doc.slug = slug;
         this.doc.email = email;
         this.doc.role = role;
+
+        if (notNil(tokens)) {
+            this.doc.tokens = tokens;
+        }
 
         return this;
     };
