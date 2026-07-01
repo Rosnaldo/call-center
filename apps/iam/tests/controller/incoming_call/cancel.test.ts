@@ -3,12 +3,9 @@ import { IncomingCallController } from 'src/controllers/incoming_call';
 import { isSuccess } from 'src/utils/either';
 import { buildOnlineUser, buildIncomingCall, buildCallState } from '../../builders';
 
-jest.mock('src/apis/realtime', () => ({
-    realtimeApi: { post: jest.fn().mockResolvedValue({}) },
+jest.mock('src/services/realtime', () => ({
+    notifyIncomingCallCancelled: jest.fn().mockResolvedValue(undefined),
 }));
-
-import { realtimeApi } from 'src/apis/realtime';
-const api = realtimeApi as jest.Mocked<typeof realtimeApi>;
 
 beforeAll(async () => {
     await connectRedis();
@@ -23,49 +20,61 @@ beforeEach(async () => {
     jest.clearAllMocks();
 });
 
+const TRACE = 'test-trace';
+
+const seedUsers = async (customer: ReturnType<typeof buildOnlineUser>, attendant: ReturnType<typeof buildOnlineUser>) => {
+    const redis = getRedisClient();
+    await redis.set(`online_user:${customer.id}`, JSON.stringify(customer));
+    await redis.set(`online_user:${attendant.id}`, JSON.stringify(attendant));
+};
+
 describe('Controller > IncomingCall > Cancel', () => {
     it('removes the incoming call from redis', async () => {
-        const incoming = buildIncomingCall();
+        const customer = buildOnlineUser({ role: 'customer' });
+        const attendant = buildOnlineUser({ role: 'attendant' });
+        const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
         const redis = getRedisClient();
-        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
+        await redis.set(`incoming_call:${attendant.id}`, JSON.stringify(incoming));
+        await seedUsers(customer, attendant);
 
         const controller = new IncomingCallController();
-        const mapped = controller.cancel.mapper({ customerId: incoming.customerId, attendantId: incoming.attendantId });
-        const either = await controller.cancel.exec({ mapped });
+        const mapped = controller.cancel.mapper({ customerId: customer.id, attendantId: attendant.id });
+        const either = await controller.cancel.exec({ traceId: TRACE, mapped });
 
         expect(isSuccess(either)).toBe(true);
-        const stored = await redis.get(`incoming_call:${incoming.attendantId}`);
-        expect(stored).toBeNull();
+        expect(await redis.get(`incoming_call:${attendant.id}`)).toBeNull();
     });
 
     it('removes matching call from redis when it exists', async () => {
-        const incoming = buildIncomingCall();
-        const call = buildCallState({ customerId: incoming.customerId, attendantId: incoming.attendantId });
+        const customer = buildOnlineUser({ role: 'customer' });
+        const attendant = buildOnlineUser({ role: 'attendant' });
+        const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
+        const call = buildCallState({ customerId: customer.id, attendantId: attendant.id });
         const redis = getRedisClient();
-        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
-        await redis.hset('calls', call.id, JSON.stringify(call));
+        await redis.set(`incoming_call:${attendant.id}`, JSON.stringify(incoming));
+        await redis.set(`calls:${customer.id}--${attendant.id}`, JSON.stringify(call));
+        await seedUsers(customer, attendant);
 
         const controller = new IncomingCallController();
-        const mapped = controller.cancel.mapper({ customerId: incoming.customerId, attendantId: incoming.attendantId });
-        await controller.cancel.exec({ mapped });
+        await controller.cancel.exec({ traceId: TRACE, mapped: controller.cancel.mapper({ customerId: customer.id, attendantId: attendant.id }) });
 
-        const stored = await redis.hget('calls', call.id);
-        expect(stored).toBeNull();
+        expect(await redis.get(`calls:${customer.id}--${attendant.id}`)).toBeNull();
     });
 
     it('does not delete unrelated calls', async () => {
-        const incoming = buildIncomingCall();
+        const customer = buildOnlineUser({ role: 'customer' });
+        const attendant = buildOnlineUser({ role: 'attendant' });
+        const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
         const unrelatedCall = buildCallState();
         const redis = getRedisClient();
-        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
-        await redis.hset('calls', unrelatedCall.id, JSON.stringify(unrelatedCall));
+        await redis.set(`incoming_call:${attendant.id}`, JSON.stringify(incoming));
+        await redis.set(`calls:${unrelatedCall.customerId}--${unrelatedCall.attendantId}`, JSON.stringify(unrelatedCall));
+        await seedUsers(customer, attendant);
 
         const controller = new IncomingCallController();
-        const mapped = controller.cancel.mapper({ customerId: incoming.customerId, attendantId: incoming.attendantId });
-        await controller.cancel.exec({ mapped });
+        await controller.cancel.exec({ traceId: TRACE, mapped: controller.cancel.mapper({ customerId: customer.id, attendantId: attendant.id }) });
 
-        const stored = await redis.hget('calls', unrelatedCall.id);
-        expect(stored).not.toBeNull();
+        expect(await redis.get(`calls:${unrelatedCall.customerId}--${unrelatedCall.attendantId}`)).not.toBeNull();
     });
 
     it('sets customer status to idle', async () => {
@@ -73,15 +82,13 @@ describe('Controller > IncomingCall > Cancel', () => {
         const attendant = buildOnlineUser({ role: 'attendant', status: 'occupied' });
         const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
         const redis = getRedisClient();
-        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
-        await redis.hset('online_users', customer.id, JSON.stringify(customer));
-        await redis.hset('online_users', attendant.id, JSON.stringify(attendant));
+        await redis.set(`incoming_call:${attendant.id}`, JSON.stringify(incoming));
+        await seedUsers(customer, attendant);
 
         const controller = new IncomingCallController();
-        const mapped = controller.cancel.mapper({ customerId: incoming.customerId, attendantId: incoming.attendantId });
-        await controller.cancel.exec({ mapped });
+        await controller.cancel.exec({ traceId: TRACE, mapped: controller.cancel.mapper({ customerId: customer.id, attendantId: attendant.id }) });
 
-        const stored = JSON.parse((await redis.hget('online_users', customer.id))!);
+        const stored = JSON.parse((await redis.get(`online_user:${customer.id}`))!);
         expect(stored.status).toBe('idle');
     });
 
@@ -90,37 +97,48 @@ describe('Controller > IncomingCall > Cancel', () => {
         const attendant = buildOnlineUser({ role: 'attendant', status: 'occupied' });
         const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
         const redis = getRedisClient();
-        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
-        await redis.hset('online_users', customer.id, JSON.stringify(customer));
-        await redis.hset('online_users', attendant.id, JSON.stringify(attendant));
+        await redis.set(`incoming_call:${attendant.id}`, JSON.stringify(incoming));
+        await seedUsers(customer, attendant);
 
         const controller = new IncomingCallController();
-        const mapped = controller.cancel.mapper({ customerId: incoming.customerId, attendantId: incoming.attendantId });
-        await controller.cancel.exec({ mapped });
+        await controller.cancel.exec({ traceId: TRACE, mapped: controller.cancel.mapper({ customerId: customer.id, attendantId: attendant.id }) });
 
-        const stored = JSON.parse((await redis.hget('online_users', attendant.id))!);
+        const stored = JSON.parse((await redis.get(`online_user:${attendant.id}`))!);
         expect(stored.status).toBe('idle');
     });
 
-    it('notifies the realtime service', async () => {
-        const incoming = buildIncomingCall();
-        const redis = getRedisClient();
-        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
+    it('returns 400 when customer not found', async () => {
+        const customer = buildOnlineUser({ role: 'customer' });
+        const attendant = buildOnlineUser({ role: 'attendant' });
+        const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
+        await getRedisClient().set(`incoming_call:${attendant.id}`, JSON.stringify(incoming));
+        await getRedisClient().set(`online_user:${attendant.id}`, JSON.stringify(attendant));
 
         const controller = new IncomingCallController();
-        const mapped = controller.cancel.mapper({ customerId: incoming.customerId, attendantId: incoming.attendantId });
-        await controller.cancel.exec({ mapped });
+        const either = await controller.cancel.exec({ traceId: TRACE, mapped: controller.cancel.mapper({ customerId: customer.id, attendantId: attendant.id }) });
 
-        expect(api.post).toHaveBeenCalledWith('/webhooks/iam', {
-            event: 'incoming_call_cancelled',
-            payload: { customerId: incoming.customerId, attendantId: incoming.attendantId },
-        });
+        expect(either.isError).toBe(true);
+        expect(either.status).toBe(400);
+    });
+
+    it('returns 400 when attendant not found', async () => {
+        const customer = buildOnlineUser({ role: 'customer' });
+        const attendant = buildOnlineUser({ role: 'attendant' });
+        const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
+        await getRedisClient().set(`incoming_call:${attendant.id}`, JSON.stringify(incoming));
+        await getRedisClient().set(`online_user:${customer.id}`, JSON.stringify(customer));
+
+        const controller = new IncomingCallController();
+        const either = await controller.cancel.exec({ traceId: TRACE, mapped: controller.cancel.mapper({ customerId: customer.id, attendantId: attendant.id }) });
+
+        expect(either.isError).toBe(true);
+        expect(either.status).toBe(400);
     });
 
     it('returns 400 when customerId is missing', async () => {
         const controller = new IncomingCallController();
         const mapped = controller.cancel.mapper({ attendantId: 'att-1' });
-        const either = await controller.cancel.exec({ mapped });
+        const either = await controller.cancel.exec({ traceId: TRACE, mapped });
 
         expect(either.isError).toBe(true);
         expect(either.status).toBe(400);
@@ -129,7 +147,7 @@ describe('Controller > IncomingCall > Cancel', () => {
     it('returns 400 when attendantId is missing', async () => {
         const controller = new IncomingCallController();
         const mapped = controller.cancel.mapper({ customerId: 'cust-1' });
-        const either = await controller.cancel.exec({ mapped });
+        const either = await controller.cancel.exec({ traceId: TRACE, mapped });
 
         expect(either.isError).toBe(true);
         expect(either.status).toBe(400);

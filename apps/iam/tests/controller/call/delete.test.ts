@@ -18,9 +18,9 @@ beforeEach(async () => {
 describe('Controller > Call > Delete', () => {
     it('removes the call from redis', async () => {
         const call = buildCallState();
-        const key = `${call.customerId}--${call.attendantId}`;
+        const key = `calls:${call.customerId}--${call.attendantId}`;
         const redis = getRedisClient();
-        await redis.hset('calls', key, JSON.stringify(call));
+        await redis.set(key, JSON.stringify(call));
 
         const controller = new CallController();
         const mapped = controller.delete.mapper({ customerId: call.customerId, attendantId: call.attendantId });
@@ -28,24 +28,24 @@ describe('Controller > Call > Delete', () => {
 
         expect(isSuccess(either)).toBe(true);
 
-        const stored = await redis.hget('calls', key);
+        const stored = await redis.get(key);
         expect(stored).toBeNull();
     });
 
     it('does not remove other calls', async () => {
         const call1 = buildCallState();
         const call2 = buildCallState();
-        const key1 = `${call1.customerId}--${call1.attendantId}`;
-        const key2 = `${call2.customerId}--${call2.attendantId}`;
+        const key1 = `calls:${call1.customerId}--${call1.attendantId}`;
+        const key2 = `calls:${call2.customerId}--${call2.attendantId}`;
         const redis = getRedisClient();
-        await redis.hset('calls', key1, JSON.stringify(call1));
-        await redis.hset('calls', key2, JSON.stringify(call2));
+        await redis.set(key1, JSON.stringify(call1));
+        await redis.set(key2, JSON.stringify(call2));
 
         const controller = new CallController();
         const mapped = controller.delete.mapper({ customerId: call1.customerId, attendantId: call1.attendantId });
         await controller.delete.exec({ mapped });
 
-        const stored = await redis.hget('calls', key2);
+        const stored = await redis.get(key2);
         expect(stored).not.toBeNull();
     });
 
@@ -69,9 +69,9 @@ describe('Controller > Call > Delete', () => {
 
     it('returns isError false and status 200 on success', async () => {
         const call = buildCallState();
-        const key = `${call.customerId}--${call.attendantId}`;
+        const key = `calls:${call.customerId}--${call.attendantId}`;
         const redis = getRedisClient();
-        await redis.hset('calls', key, JSON.stringify(call));
+        await redis.set(key, JSON.stringify(call));
 
         const controller = new CallController();
         const mapped = controller.delete.mapper({ customerId: call.customerId, attendantId: call.attendantId });

@@ -30,7 +30,7 @@ describe('Controller > OnlineUser > Add', () => {
         expect(either.data.status).toBe(user.status);
 
         const redis = getRedisClient();
-        const stored = await redis.hget('online_users', user.id);
+        const stored = await redis.get(`online_user:${user.id}`);
         expect(stored).not.toBeNull();
         expect(JSON.parse(stored!).id).toBe(user.id);
     });

@@ -18,9 +18,9 @@ beforeEach(async () => {
 describe('Controller > Call > Update', () => {
     it('updates the call and returns it', async () => {
         const call = buildCallState();
-        const key = `${call.customerId}--${call.attendantId}`;
+        const key = `calls:${call.customerId}--${call.attendantId}`;
         const redis = getRedisClient();
-        await redis.hset('calls', key, JSON.stringify(call));
+        await redis.set(key, JSON.stringify(call));
 
         const controller = new CallController();
         const mapped = controller.update.mapper({ customerId: call.customerId, attendantId: call.attendantId, updates: { customerInCall: true } });
@@ -34,23 +34,23 @@ describe('Controller > Call > Update', () => {
 
     it('persists the update in redis', async () => {
         const call = buildCallState();
-        const key = `${call.customerId}--${call.attendantId}`;
+        const key = `calls:${call.customerId}--${call.attendantId}`;
         const redis = getRedisClient();
-        await redis.hset('calls', key, JSON.stringify(call));
+        await redis.set(key, JSON.stringify(call));
 
         const controller = new CallController();
         const mapped = controller.update.mapper({ customerId: call.customerId, attendantId: call.attendantId, updates: { attendantInCall: true } });
         await controller.update.exec({ mapped });
 
-        const stored = JSON.parse((await redis.hget('calls', key))!);
+        const stored = JSON.parse((await redis.get(key))!);
         expect(stored.attendantInCall).toBe(true);
     });
 
     it('preserves fields not included in the update', async () => {
         const call = buildCallState({ customerName: 'Original' });
-        const key = `${call.customerId}--${call.attendantId}`;
+        const key = `calls:${call.customerId}--${call.attendantId}`;
         const redis = getRedisClient();
-        await redis.hset('calls', key, JSON.stringify(call));
+        await redis.set(key, JSON.stringify(call));
 
         const controller = new CallController();
         const mapped = controller.update.mapper({ customerId: call.customerId, attendantId: call.attendantId, updates: { attendantInCall: true } });
@@ -83,9 +83,9 @@ describe('Controller > Call > Update', () => {
 
     it('returns isError false and status 200 on success', async () => {
         const call = buildCallState();
-        const key = `${call.customerId}--${call.attendantId}`;
+        const key = `calls:${call.customerId}--${call.attendantId}`;
         const redis = getRedisClient();
-        await redis.hset('calls', key, JSON.stringify(call));
+        await redis.set(key, JSON.stringify(call));
 
         const controller = new CallController();
         const mapped = controller.update.mapper({ customerId: call.customerId, attendantId: call.attendantId, updates: {} });

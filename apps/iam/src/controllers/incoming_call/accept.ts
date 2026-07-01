@@ -52,14 +52,18 @@ export class Accept {
             }
 
             const callKey = `${CALLS_KEY}:${incomingCall.customerId}--${incomingCall.attendantId}`;
-            const existingCall = await redis.get(callKey);
 
-            const customerJson = await redis.get(`${ONLINE_USERS_PREFIX}${incomingCall.customerId}`);
-            const attendantJson = await redis.get(`${ONLINE_USERS_PREFIX}${incomingCall.attendantId}`);
-            const customerName = customerJson ? (JSON.parse(customerJson) as IOnlineUser).name : '';
-            const attendantName = attendantJson ? (JSON.parse(attendantJson) as IOnlineUser).name : '';
-            const customerSlug = customerJson ? (JSON.parse(customerJson) as IOnlineUser).slug : '';
-            const attendantSlug = attendantJson ? (JSON.parse(attendantJson) as IOnlineUser).slug : '';
+            const [customerJson, attendantJson, existingCall] = await Promise.all([
+                redis.get(`${ONLINE_USERS_PREFIX}${incomingCall.customerId}`),
+                redis.get(`${ONLINE_USERS_PREFIX}${incomingCall.attendantId}`),
+                redis.get(callKey),
+            ]);
+
+            if (!customerJson) throw new BadRequestException('Cliente não encontrado.');
+            if (!attendantJson) throw new BadRequestException('Atendente não encontrado.');
+
+            const customer = JSON.parse(customerJson) as IOnlineUser;
+            const attendant = JSON.parse(attendantJson) as IOnlineUser;
 
             if (existingCall) {
                 const call = JSON.parse(existingCall) as CallState;
@@ -68,10 +72,10 @@ export class Accept {
                 const newCall: CallState = {
                     id: `${incomingCall.customerId}--${incomingCall.attendantId}`,
                     customerId: incomingCall.customerId,
-                    customerName,
+                    customerName: customer.name,
                     attendantId: incomingCall.attendantId,
-                    attendantName,
-                    roomName: `${customerSlug}--${attendantSlug}`,
+                    attendantName: attendant.name,
+                    roomName: `${customer.slug}--${attendant.slug}`,
                     meetingId: '',
                     customerInCall: false,
                     attendantInCall: false,
@@ -81,15 +85,8 @@ export class Accept {
 
             await redis.del(`${INCOMING_CALL_PREFIX}${attendantId}`);
 
-            if (customerJson) {
-                const customer = JSON.parse(customerJson) as IOnlineUser;
-                await redis.set(`${ONLINE_USERS_PREFIX}${customer.id}`, JSON.stringify({ ...customer, status: 'in-call' }), 'EX', 90);
-            }
-
-            if (attendantJson) {
-                const attendant = JSON.parse(attendantJson) as IOnlineUser;
-                await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'in-call' }), 'EX', 90);
-            }
+            await redis.set(`${ONLINE_USERS_PREFIX}${customer.id}`, JSON.stringify({ ...customer, status: 'in-call' }), 'EX', 90);
+            await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'in-call' }), 'EX', 90);
 
             notifyCallAccepted(traceId, incomingCall.customerId, incomingCall.attendantId, incomingCall.calledBy, incomingCall).catch(() => {});
 

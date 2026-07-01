@@ -46,17 +46,19 @@ export class Complete {
             const callKey = `${CALLS_KEY}:${customerId}--${attendantId}`;
             await redis.del(callKey);
 
-            const customerJson = await redis.get(`${ONLINE_USERS_PREFIX}${customerId}`);
-            if (customerJson) {
-                const customer = JSON.parse(customerJson) as IOnlineUser;
-                await redis.set(`${ONLINE_USERS_PREFIX}${customer.id}`, JSON.stringify({ ...customer, status: 'idle' }), 'EX', 90);
-            }
+            const [customerJson, attendantJson] = await Promise.all([
+                redis.get(`${ONLINE_USERS_PREFIX}${customerId}`),
+                redis.get(`${ONLINE_USERS_PREFIX}${attendantId}`),
+            ]);
 
-            const attendantJson = await redis.get(`${ONLINE_USERS_PREFIX}${attendantId}`);
-            if (attendantJson) {
-                const attendant = JSON.parse(attendantJson) as IOnlineUser;
-                await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'idle' }), 'EX', 90);
-            }
+            if (!customerJson) throw new BadRequestException('Cliente não encontrado.');
+            if (!attendantJson) throw new BadRequestException('Atendente não encontrado.');
+
+            const customer = JSON.parse(customerJson) as IOnlineUser;
+            const attendant = JSON.parse(attendantJson) as IOnlineUser;
+
+            await redis.set(`${ONLINE_USERS_PREFIX}${customer.id}`, JSON.stringify({ ...customer, status: 'idle' }), 'EX', 90);
+            await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'idle' }), 'EX', 90);
 
             notifyCallCompleted(traceId, customerId, attendantId).catch(() => {});
 

@@ -38,26 +38,28 @@ export class Cancel {
             const { customerId, attendantId } = this.transform(props.mapped);
             const redis = getRedisClient();
 
-            await redis.del(`${INCOMING_CALL_PREFIX}${attendantId}`);
-
             const callKey = `${CALLS_KEY}:${customerId}--${attendantId}`;
-            const existingCall = await redis.get(callKey);
+
+            const [customerJson, attendantJson, existingCall] = await Promise.all([
+                redis.get(`${ONLINE_USERS_PREFIX}${customerId}`),
+                redis.get(`${ONLINE_USERS_PREFIX}${attendantId}`),
+                redis.get(callKey),
+            ]);
+
+            if (!customerJson) throw new BadRequestException('Cliente não encontrado.');
+            if (!attendantJson) throw new BadRequestException('Atendente não encontrado.');
+
+            const customer = JSON.parse(customerJson) as IOnlineUser;
+            const attendant = JSON.parse(attendantJson) as IOnlineUser;
+
+            await redis.del(`${INCOMING_CALL_PREFIX}${attendantId}`);
 
             if (existingCall) {
                 await redis.del(callKey);
             }
 
-            const customerJson = await redis.get(`${ONLINE_USERS_PREFIX}${customerId}`);
-            if (customerJson) {
-                const customer = JSON.parse(customerJson) as IOnlineUser;
-                await redis.set(`${ONLINE_USERS_PREFIX}${customer.id}`, JSON.stringify({ ...customer, status: 'idle' }), 'EX', 90);
-            }
-
-            const attendantJson = await redis.get(`${ONLINE_USERS_PREFIX}${attendantId}`);
-            if (attendantJson) {
-                const attendant = JSON.parse(attendantJson) as IOnlineUser;
-                await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'idle' }), 'EX', 90);
-            }
+            await redis.set(`${ONLINE_USERS_PREFIX}${customer.id}`, JSON.stringify({ ...customer, status: 'idle' }), 'EX', 90);
+            await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'idle' }), 'EX', 90);
 
             notifyIncomingCallCancelled(traceId, customerId, attendantId).catch(() => {});
 

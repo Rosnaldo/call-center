@@ -3,12 +3,9 @@ import { IncomingCallController } from 'src/controllers/incoming_call';
 import { isSuccess } from 'src/utils/either';
 import { buildOnlineUser, buildIncomingCall, buildCallState } from '../../builders';
 
-jest.mock('src/apis/realtime', () => ({
-    realtimeApi: { post: jest.fn().mockResolvedValue({}) },
+jest.mock('src/services/realtime', () => ({
+    notifyCallAccepted: jest.fn().mockResolvedValue(undefined),
 }));
-
-import { realtimeApi } from 'src/apis/realtime';
-const api = realtimeApi as jest.Mocked<typeof realtimeApi>;
 
 beforeAll(async () => {
     await connectRedis();
@@ -23,47 +20,63 @@ beforeEach(async () => {
     jest.clearAllMocks();
 });
 
+const TRACE = 'test-trace';
+
+const seedIncomingCall = async (incoming: ReturnType<typeof buildIncomingCall>) => {
+    await getRedisClient().set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
+};
+
+const seedUsers = async (customer: ReturnType<typeof buildOnlineUser>, attendant: ReturnType<typeof buildOnlineUser>) => {
+    const redis = getRedisClient();
+    await redis.set(`online_user:${customer.id}`, JSON.stringify(customer));
+    await redis.set(`online_user:${attendant.id}`, JSON.stringify(attendant));
+};
+
 describe('Controller > IncomingCall > Accept', () => {
     it('accepts the incoming call and returns it', async () => {
-        const incoming = buildIncomingCall();
-        const redis = getRedisClient();
-        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
+        const customer = buildOnlineUser({ role: 'customer' });
+        const attendant = buildOnlineUser({ role: 'attendant' });
+        const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
+        await seedIncomingCall(incoming);
+        await seedUsers(customer, attendant);
 
         const controller = new IncomingCallController();
-        const mapped = controller.accept.mapper({ attendantId: incoming.attendantId, userId: incoming.attendantId });
-        const either = await controller.accept.exec({ mapped });
+        const mapped = controller.accept.mapper({ attendantId: attendant.id, userId: attendant.id });
+        const either = await controller.accept.exec({ traceId: TRACE, mapped });
 
         if (!isSuccess(either)) throw new Error('Expected success');
-
-        expect(either.data.customerId).toBe(incoming.customerId);
-        expect(either.data.attendantId).toBe(incoming.attendantId);
+        expect(either.data.customerId).toBe(customer.id);
+        expect(either.data.attendantId).toBe(attendant.id);
     });
 
     it('removes the incoming call from redis after accepting', async () => {
-        const incoming = buildIncomingCall();
-        const redis = getRedisClient();
-        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
+        const customer = buildOnlineUser({ role: 'customer' });
+        const attendant = buildOnlineUser({ role: 'attendant' });
+        const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
+        await seedIncomingCall(incoming);
+        await seedUsers(customer, attendant);
 
         const controller = new IncomingCallController();
-        const mapped = controller.accept.mapper({ attendantId: incoming.attendantId, userId: incoming.attendantId });
-        await controller.accept.exec({ mapped });
+        await controller.accept.exec({ traceId: TRACE, mapped: controller.accept.mapper({ attendantId: attendant.id, userId: attendant.id }) });
 
-        const stored = await redis.get(`incoming_call:${incoming.attendantId}`);
+        const stored = await getRedisClient().get(`incoming_call:${attendant.id}`);
         expect(stored).toBeNull();
     });
 
     it('updates call to accepted when a matching call exists', async () => {
-        const incoming = buildIncomingCall();
-        const call = buildCallState({ customerId: incoming.customerId, attendantId: incoming.attendantId });
+        const customer = buildOnlineUser({ role: 'customer' });
+        const attendant = buildOnlineUser({ role: 'attendant' });
+        const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
+        const call = buildCallState({ customerId: customer.id, attendantId: attendant.id });
         const redis = getRedisClient();
-        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
-        await redis.hset('calls', call.id, JSON.stringify(call));
+        await seedIncomingCall(incoming);
+        await seedUsers(customer, attendant);
+        await redis.set(`calls:${customer.id}--${attendant.id}`, JSON.stringify(call));
 
         const controller = new IncomingCallController();
-        const mapped = controller.accept.mapper({ attendantId: incoming.attendantId, userId: incoming.attendantId });
-        await controller.accept.exec({ mapped });
+        await controller.accept.exec({ traceId: TRACE, mapped: controller.accept.mapper({ attendantId: attendant.id, userId: attendant.id }) });
 
-        const stored = JSON.parse((await redis.hget('calls', call.id))!);
+        const stored = JSON.parse((await redis.get(`calls:${customer.id}--${attendant.id}`))!);
         expect(stored.customerInCall).toBe(true);
         expect(stored.attendantInCall).toBe(true);
     });
@@ -72,16 +85,13 @@ describe('Controller > IncomingCall > Accept', () => {
         const customer = buildOnlineUser({ role: 'customer' });
         const attendant = buildOnlineUser({ role: 'attendant' });
         const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
-        const redis = getRedisClient();
-        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
-        await redis.hset('online_users', customer.id, JSON.stringify(customer));
-        await redis.hset('online_users', attendant.id, JSON.stringify(attendant));
+        await seedIncomingCall(incoming);
+        await seedUsers(customer, attendant);
 
         const controller = new IncomingCallController();
-        const mapped = controller.accept.mapper({ attendantId: incoming.attendantId, userId: incoming.attendantId });
-        await controller.accept.exec({ mapped });
+        await controller.accept.exec({ traceId: TRACE, mapped: controller.accept.mapper({ attendantId: attendant.id, userId: attendant.id }) });
 
-        const stored = JSON.parse((await redis.hget('online_users', customer.id))!);
+        const stored = JSON.parse((await getRedisClient().get(`online_user:${customer.id}`))!);
         expect(stored.status).toBe('in-call');
     });
 
@@ -89,51 +99,62 @@ describe('Controller > IncomingCall > Accept', () => {
         const customer = buildOnlineUser({ role: 'customer' });
         const attendant = buildOnlineUser({ role: 'attendant' });
         const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
-        const redis = getRedisClient();
-        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
-        await redis.hset('online_users', customer.id, JSON.stringify(customer));
-        await redis.hset('online_users', attendant.id, JSON.stringify(attendant));
+        await seedIncomingCall(incoming);
+        await seedUsers(customer, attendant);
 
         const controller = new IncomingCallController();
-        const mapped = controller.accept.mapper({ attendantId: incoming.attendantId, userId: incoming.attendantId });
-        await controller.accept.exec({ mapped });
+        await controller.accept.exec({ traceId: TRACE, mapped: controller.accept.mapper({ attendantId: attendant.id, userId: attendant.id }) });
 
-        const stored = JSON.parse((await redis.hget('online_users', attendant.id))!);
+        const stored = JSON.parse((await getRedisClient().get(`online_user:${attendant.id}`))!);
         expect(stored.status).toBe('in-call');
-    });
-
-    it('notifies the realtime service', async () => {
-        const incoming = buildIncomingCall();
-        const redis = getRedisClient();
-        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
-
-        const controller = new IncomingCallController();
-        const mapped = controller.accept.mapper({ attendantId: incoming.attendantId, userId: incoming.attendantId });
-        await controller.accept.exec({ mapped });
-
-        expect(api.post).toHaveBeenCalledWith('/webhooks/iam', {
-            event: 'call_accepted',
-            payload: { customerId: incoming.customerId, attendantId: incoming.attendantId },
-        });
     });
 
     it('returns 400 when incoming call does not exist', async () => {
         const controller = new IncomingCallController();
         const mapped = controller.accept.mapper({ attendantId: 'att-1', userId: 'att-1' });
-        const either = await controller.accept.exec({ mapped });
+        const either = await controller.accept.exec({ traceId: TRACE, mapped });
 
         expect(either.isError).toBe(true);
         expect(either.status).toBe(400);
     });
 
     it('returns 400 when customer tries to accept', async () => {
-        const incoming = buildIncomingCall();
-        const redis = getRedisClient();
-        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
+        const customer = buildOnlineUser({ role: 'customer' });
+        const attendant = buildOnlineUser({ role: 'attendant' });
+        const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
+        await seedIncomingCall(incoming);
+        await seedUsers(customer, attendant);
 
         const controller = new IncomingCallController();
-        const mapped = controller.accept.mapper({ attendantId: incoming.attendantId, userId: incoming.customerId });
-        const either = await controller.accept.exec({ mapped });
+        const mapped = controller.accept.mapper({ attendantId: attendant.id, userId: customer.id });
+        const either = await controller.accept.exec({ traceId: TRACE, mapped });
+
+        expect(either.isError).toBe(true);
+        expect(either.status).toBe(400);
+    });
+
+    it('returns 400 when customer not found', async () => {
+        const attendant = buildOnlineUser({ role: 'attendant' });
+        const incoming = buildIncomingCall({ attendantId: attendant.id });
+        await seedIncomingCall(incoming);
+        await getRedisClient().set(`online_user:${attendant.id}`, JSON.stringify(attendant));
+
+        const controller = new IncomingCallController();
+        const either = await controller.accept.exec({ traceId: TRACE, mapped: controller.accept.mapper({ attendantId: attendant.id, userId: attendant.id }) });
+
+        expect(either.isError).toBe(true);
+        expect(either.status).toBe(400);
+    });
+
+    it('returns 400 when attendant not found', async () => {
+        const customer = buildOnlineUser({ role: 'customer' });
+        const attendant = buildOnlineUser({ role: 'attendant' });
+        const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
+        await seedIncomingCall(incoming);
+        await getRedisClient().set(`online_user:${customer.id}`, JSON.stringify(customer));
+
+        const controller = new IncomingCallController();
+        const either = await controller.accept.exec({ traceId: TRACE, mapped: controller.accept.mapper({ attendantId: attendant.id, userId: attendant.id }) });
 
         expect(either.isError).toBe(true);
         expect(either.status).toBe(400);
@@ -142,20 +163,21 @@ describe('Controller > IncomingCall > Accept', () => {
     it('returns 400 when attendantId is missing', async () => {
         const controller = new IncomingCallController();
         const mapped = controller.accept.mapper({ userId: 'user-1' });
-        const either = await controller.accept.exec({ mapped });
+        const either = await controller.accept.exec({ traceId: TRACE, mapped });
 
         expect(either.isError).toBe(true);
         expect(either.status).toBe(400);
     });
 
     it('returns isError false and status 200 on success', async () => {
-        const incoming = buildIncomingCall();
-        const redis = getRedisClient();
-        await redis.set(`incoming_call:${incoming.attendantId}`, JSON.stringify(incoming));
+        const customer = buildOnlineUser({ role: 'customer' });
+        const attendant = buildOnlineUser({ role: 'attendant' });
+        const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
+        await seedIncomingCall(incoming);
+        await seedUsers(customer, attendant);
 
         const controller = new IncomingCallController();
-        const mapped = controller.accept.mapper({ attendantId: incoming.attendantId, userId: incoming.attendantId });
-        const either = await controller.accept.exec({ mapped });
+        const either = await controller.accept.exec({ traceId: TRACE, mapped: controller.accept.mapper({ attendantId: attendant.id, userId: attendant.id }) });
 
         expect(either.isError).toBe(false);
         expect(either.status).toBe(200);

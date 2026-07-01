@@ -6,15 +6,18 @@ import { mockOnlineUser } from '../../entities/schemas/online_user/mock';
 
 jest.mock('src/redis/singleton', () => ({
     getRedisClient: jest.fn().mockReturnValue({
-        hvals: jest.fn().mockResolvedValue([]),
+        keys: jest.fn().mockResolvedValue([]),
+        mget: jest.fn().mockResolvedValue([]),
     }),
 }));
 
-const hvals = () => (getRedisClient() as any).hvals as jest.Mock;
+const keysMock = () => (getRedisClient() as any).keys as jest.Mock;
+const mgetMock = () => (getRedisClient() as any).mget as jest.Mock;
 
 beforeEach(() => {
     jest.clearAllMocks();
-    hvals().mockResolvedValue([]);
+    keysMock().mockResolvedValue([]);
+    mgetMock().mockResolvedValue([]);
 });
 
 describe('Controller > OnlineUser > List', () => {
@@ -30,7 +33,8 @@ describe('Controller > OnlineUser > List', () => {
     it('returns stored users parsed from redis', async () => {
         const user1 = mockOnlineUser();
         const user2 = mockOnlineUser({ init: { status: 'in-call' } });
-        hvals().mockResolvedValue([JSON.stringify(user1), JSON.stringify(user2)]);
+        keysMock().mockResolvedValue([`online_user:${user1.id}`, `online_user:${user2.id}`]);
+        mgetMock().mockResolvedValue([JSON.stringify(user1), JSON.stringify(user2)]);
 
         const controller = new OnlineUserController();
         const either = await controller.list.get();
@@ -44,7 +48,8 @@ describe('Controller > OnlineUser > List', () => {
 
     it('output passes schema validation', async () => {
         const user = mockOnlineUser();
-        hvals().mockResolvedValue([JSON.stringify(user)]);
+        keysMock().mockResolvedValue([`online_user:${user.id}`]);
+        mgetMock().mockResolvedValue([JSON.stringify(user)]);
 
         const controller = new OnlineUserController();
         const either = await controller.list.get();
