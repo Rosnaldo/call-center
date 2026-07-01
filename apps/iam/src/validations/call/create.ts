@@ -12,9 +12,10 @@ export const inputSchema = z.object({
     attendantId: makeSmallStringSchema('attendantId'),
     attendantName: makeSmallStringSchema('attendantName'),
     roomName: makeSmallStringSchema('roomName'),
-    meetingId: makeSmallStringSchema('meetingId'),
-    customerInCall: z.boolean(),
-    attendantInCall: z.boolean(),
+    activeUserIds: z.array(z.string()),
+    accumulatedMs: z.number(),
+    startedAt: z.number().nullable(),
+    isPlaying: z.boolean(),
 });
 
 export const validateInput = (params: IInput): ValidateParseResult => {

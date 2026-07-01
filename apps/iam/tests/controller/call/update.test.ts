@@ -23,13 +23,13 @@ describe('Controller > Call > Update', () => {
         await redis.set(key, JSON.stringify(call));
 
         const controller = new CallController();
-        const mapped = controller.update.mapper({ customerId: call.customerId, attendantId: call.attendantId, updates: { customerInCall: true } });
+        const mapped = controller.update.mapper({ customerId: call.customerId, attendantId: call.attendantId, updates: { startedAt: 123 } });
         const either = await controller.update.exec({ mapped });
 
         if (!isSuccess(either)) throw new Error(`Expected success, got: ${either.message}`);
 
-        expect(either.data.customerInCall).toBe(true);
-        expect(either.data.attendantInCall).toBe(call.attendantInCall);
+        expect(either.data.startedAt).toBe(123);
+        expect(either.data.accumulatedMs).toBe(call.accumulatedMs);
     });
 
     it('persists the update in redis', async () => {
@@ -39,11 +39,11 @@ describe('Controller > Call > Update', () => {
         await redis.set(key, JSON.stringify(call));
 
         const controller = new CallController();
-        const mapped = controller.update.mapper({ customerId: call.customerId, attendantId: call.attendantId, updates: { attendantInCall: true } });
+        const mapped = controller.update.mapper({ customerId: call.customerId, attendantId: call.attendantId, updates: { accumulatedMs: 5000 } });
         await controller.update.exec({ mapped });
 
         const stored = JSON.parse((await redis.get(key))!);
-        expect(stored.attendantInCall).toBe(true);
+        expect(stored.accumulatedMs).toBe(5000);
     });
 
     it('preserves fields not included in the update', async () => {
@@ -53,7 +53,7 @@ describe('Controller > Call > Update', () => {
         await redis.set(key, JSON.stringify(call));
 
         const controller = new CallController();
-        const mapped = controller.update.mapper({ customerId: call.customerId, attendantId: call.attendantId, updates: { attendantInCall: true } });
+        const mapped = controller.update.mapper({ customerId: call.customerId, attendantId: call.attendantId, updates: { accumulatedMs: 5000 } });
         const either = await controller.update.exec({ mapped });
 
         if (!isSuccess(either)) throw new Error('Expected success');
@@ -65,7 +65,7 @@ describe('Controller > Call > Update', () => {
 
     it('returns 400 when call does not exist', async () => {
         const controller = new CallController();
-        const mapped = controller.update.mapper({ customerId: 'nonexistent', attendantId: 'nonexistent', updates: { attendantInCall: true } });
+        const mapped = controller.update.mapper({ customerId: 'nonexistent', attendantId: 'nonexistent', updates: { accumulatedMs: 5000 } });
         const either = await controller.update.exec({ mapped });
 
         expect(either.isError).toBe(true);
@@ -74,7 +74,7 @@ describe('Controller > Call > Update', () => {
 
     it('returns 400 when customerId or attendantId is missing', async () => {
         const controller = new CallController();
-        const mapped = controller.update.mapper({ updates: { attendantInCall: true } });
+        const mapped = controller.update.mapper({ updates: { accumulatedMs: 5000 } });
         const either = await controller.update.exec({ mapped });
 
         expect(either.isError).toBe(true);

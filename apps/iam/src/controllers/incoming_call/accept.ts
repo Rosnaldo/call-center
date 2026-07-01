@@ -65,10 +65,7 @@ export class Accept {
             const customer = JSON.parse(customerJson) as IOnlineUser;
             const attendant = JSON.parse(attendantJson) as IOnlineUser;
 
-            if (existingCall) {
-                const call = JSON.parse(existingCall) as CallState;
-                await redis.set(callKey, JSON.stringify({ ...call, customerInCall: true, attendantInCall: true }));
-            } else {
+            if (!existingCall) {
                 const newCall: CallState = {
                     id: `${incomingCall.customerId}--${incomingCall.attendantId}`,
                     customerId: incomingCall.customerId,
@@ -76,9 +73,10 @@ export class Accept {
                     attendantId: incomingCall.attendantId,
                     attendantName: attendant.name,
                     roomName: `${customer.slug}--${attendant.slug}`,
-                    meetingId: '',
-                    customerInCall: false,
-                    attendantInCall: false,
+                    activeUserIds: [],
+                    accumulatedMs: 0,
+                    startedAt: null,
+                    isPlaying: false,
                 };
                 await redis.set(callKey, JSON.stringify(newCall));
             }

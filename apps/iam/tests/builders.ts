@@ -28,7 +28,8 @@ export const buildCallState = (d?: Partial<CallState>): CallState => ({
     attendantId: d?.attendantId ?? nextId(),
     attendantName: d?.attendantName ?? 'Test Attendant',
     roomName: d?.roomName ?? 'test-room',
-    meetingId: d?.meetingId ?? nextId(),
-    customerInCall: d?.customerInCall ?? false,
-    attendantInCall: d?.attendantInCall ?? false,
+    activeUserIds: d?.activeUserIds ?? [],
+    accumulatedMs: d?.accumulatedMs ?? 0,
+    startedAt: d?.startedAt ?? null,
+    isPlaying: d?.isPlaying ?? false,
 });

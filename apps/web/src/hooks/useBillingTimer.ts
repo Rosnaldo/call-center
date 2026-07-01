@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { useCallStore, useOnlineUsersStore, useTimerStore, useCurrentUserStore, useBillingStore } from '../states/stores.ts';
+import { useOnlineUsersStore, useTimerStore, useCurrentUserStore, useBillingStore } from '../states/stores.ts';
 import { CallState } from '../states/call/state.ts';
 import { OnlineUserState } from '../states/online-users/state.ts';
 
@@ -16,69 +16,51 @@ export function useBillingTimer(call: CallState | undefined) {
   const currentUserRef = useRef<OnlineUserState | null>(currentUser);
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
 
-  // Accumulated active seconds from previous segments (before interruptions)
-  const accumulatedRef = useRef(0);
-  // Timestamp when the current active segment started
-  const segmentStartRef = useRef<number | null>(null);
   const callIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!call) {
       useTimerStore.getState().reset();
-      accumulatedRef.current = 0;
-      segmentStartRef.current = null;
       callIdRef.current = undefined;
       return;
     }
 
     if (call.id !== callIdRef.current) {
-      accumulatedRef.current = 0;
-      segmentStartRef.current = null;
       callIdRef.current = call.id;
       useTimerStore.getState().reset();
     }
 
-    if (segmentStartRef.current === null) {
-      segmentStartRef.current = Date.now();
-      useTimerStore.getState().play();
-    }
-
-    const interval = setInterval(() => {
-      if (segmentStartRef.current === null) return;
-
-      const elapsed = accumulatedRef.current + Math.floor((Date.now() - segmentStartRef.current) / 1000);
-      useTimerStore.setState({ elapsedSeconds: elapsed });
+    // startedAt/accumulatedMs come from the Daily.co webhook handlers, keeping
+    // both the customer and attendant browsers synced off the same server clock
+    // instead of each tab running its own independent stopwatch. The store is
+    // already synced at the moment of each join/left by the call actions —
+    // this just keeps it ticking every second while the call stays active.
+    const sync = () => {
+      useTimerStore.getState().syncFromCall(call);
+      const elapsedSeconds = useTimerStore.getState().elapsedSeconds;
 
       const user = currentUserRef.current;
       if (!user) return;
 
-      const snapshot = useCallStore.getState().call;
-      if (!snapshot) return;
-
-      const isMyCall = user.id === snapshot.customerId || user.id === snapshot.attendantId;
+      const isMyCall = user.id === call.customerId || user.id === call.attendantId;
       if (!isMyCall) return;
 
       const { initialTokens } = useBillingStore.getState();
       const tokensCount = initialTokens || 1;
-      if (elapsed >= tokensCount * BILLING_INTERVAL_SECONDS) {
-        const customerUser = useOnlineUsersStore.getState().users.find(u => u.id === snapshot.customerId);
+      if (elapsedSeconds >= tokensCount * BILLING_INTERVAL_SECONDS) {
+        const customerUser = useOnlineUsersStore.getState().users.find(u => u.id === call.customerId);
         const availableTokens = customerUser?.tokens ?? 5;
 
         if (tokensCount >= availableTokens) {
-          // useCallStore.getState().billingOutOfTokens(snapshot.id);
+          // useCallStore.getState().billingOutOfTokens(call.id);
         } else {
           useBillingStore.getState().addOneToken();
         }
       }
-    }, 1000);
-
-    return () => {
-      clearInterval(interval);
-      // Freeze elapsed time before this segment ends
-      if (segmentStartRef.current !== null) {
-        accumulatedRef.current += Math.floor((Date.now() - segmentStartRef.current) / 1000);
-        segmentStartRef.current = null;
-      }
     };
-  }, [call?.id]);
+
+    sync();
+    const interval = setInterval(sync, 1000);
+    return () => clearInterval(interval);
+  }, [call?.id, call?.startedAt, call?.accumulatedMs]);
 }

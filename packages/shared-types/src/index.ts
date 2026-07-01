@@ -47,9 +47,17 @@ export interface CallState {
     attendantId: string;
     attendantName: string;
     roomName: string;
-    meetingId: string;
-    customerInCall: boolean;
-    attendantInCall: boolean;
+    activeUserIds: string[];
+    accumulatedMs: number;
+    startedAt: number | null;
+    isPlaying: boolean;
+}
+
+export function getCallElapsedMs(call: Pick<CallState, 'accumulatedMs' | 'startedAt'>): number {
+    if (call.startedAt) {
+        return call.accumulatedMs + (Date.now() - call.startedAt);
+    }
+    return call.accumulatedMs;
 }
 
 export interface Pagination {

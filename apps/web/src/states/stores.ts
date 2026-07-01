@@ -24,6 +24,7 @@ export interface StoresRef {
     onlineUsers: OnlineUsersStoreInstance;
     incomingCall: IncomingCallStoreInstance;
     currentUser: CurrentUserStoreInstance;
+    timer: TimerStoreInstance;
 }
 
 export interface Stores {
@@ -74,6 +75,7 @@ export function createStores(dailyService: IDailyService = noopDailyService): St
     ref.onlineUsers = s.onlineUsers;
     ref.incomingCall = s.incomingCall;
     ref.currentUser = s.currentUser;
+    ref.timer = s.timer;
 
     useAuthStore = s.auth;
     useBillingStore = s.billing;

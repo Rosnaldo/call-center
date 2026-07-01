@@ -6,6 +6,7 @@ import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
 import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
+import { mapArray } from '#utils/mapper/array';
 import { validateInput } from 'src/validations/call/create';
 import { ICallController } from './params';
 
@@ -44,7 +45,7 @@ export class Create {
     };
 
     public readonly mapper = (body: Request['body']): IInput => {
-        const { id, customerId, customerName, attendantId, attendantName, roomName, meetingId, customerInCall, attendantInCall } = body;
+        const { id, customerId, customerName, attendantId, attendantName, roomName, activeUserIds, accumulatedMs, startedAt, isPlaying } = body;
         return {
             id: mapString(id),
             customerId: mapString(customerId),
@@ -52,9 +53,10 @@ export class Create {
             attendantId: mapString(attendantId),
             attendantName: mapString(attendantName),
             roomName: mapString(roomName),
-            meetingId: mapString(meetingId),
-            customerInCall: customerInCall === true,
-            attendantInCall: attendantInCall === true,
+            activeUserIds: mapArray(activeUserIds, []),
+            accumulatedMs: typeof accumulatedMs === 'number' ? accumulatedMs : 0,
+            startedAt: typeof startedAt === 'number' ? startedAt : null,
+            isPlaying: isPlaying === true,
         };
     };
 

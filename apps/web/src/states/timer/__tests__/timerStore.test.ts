@@ -1,5 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { useTimerStore } from '../../stores.ts';
+import { createTimerStore } from '../store.ts';
+import { buildCall } from '../../../__tests__/builders.ts';
 
 beforeEach(() => {
   useTimerStore.getState().reset();
@@ -94,6 +96,63 @@ describe('tick()', () => {
     useTimerStore.getState().tick();
     useTimerStore.getState().tick();
     expect(useTimerStore.getState().elapsedSeconds).toBe(3);
+  });
+});
+
+describe('syncFromCall()', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('stops and freezes elapsedSeconds at accumulatedMs when isPlaying is false', () => {
+    const call = buildCall({ isPlaying: false, startedAt: null, accumulatedMs: 42_000 });
+
+    useTimerStore.getState().syncFromCall(call);
+
+    expect(useTimerStore.getState().status).toBe('stopped');
+    expect(useTimerStore.getState().elapsedSeconds).toBe(42);
+  });
+
+  it('plays and computes elapsedSeconds from accumulatedMs + time since startedAt when isPlaying is true', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(100_000);
+    const call = buildCall({ isPlaying: true, startedAt: 100_000 - 5_000, accumulatedMs: 10_000 });
+
+    useTimerStore.getState().syncFromCall(call);
+
+    expect(useTimerStore.getState().status).toBe('playing');
+    expect(useTimerStore.getState().elapsedSeconds).toBe(15);
+  });
+
+  it('follows isPlaying rather than startedAt — backend is the single source of truth', () => {
+    // an inconsistent combination should never happen in practice, but the
+    // store must still defer to isPlaying, not re-derive status from startedAt
+    const call = buildCall({ isPlaying: false, startedAt: Date.now(), accumulatedMs: 0 });
+
+    useTimerStore.getState().syncFromCall(call);
+
+    expect(useTimerStore.getState().status).toBe('stopped');
+  });
+
+  it('resets to stopped/zero when call is null', () => {
+    useTimerStore.getState().play();
+    useTimerStore.setState({ elapsedSeconds: 99 });
+
+    useTimerStore.getState().syncFromCall(null);
+
+    expect(useTimerStore.getState().status).toBe('stopped');
+    expect(useTimerStore.getState().elapsedSeconds).toBe(0);
+  });
+
+  it('keeps two independent stores (e.g. customer and attendant) in sync when fed the same call', () => {
+    const attendantTimerStore = createTimerStore();
+    const call = buildCall({ isPlaying: false, startedAt: null, accumulatedMs: 7_000 });
+
+    useTimerStore.getState().syncFromCall(call);
+    attendantTimerStore.getState().syncFromCall(call);
+
+    expect(useTimerStore.getState().status).toBe(attendantTimerStore.getState().status);
+    expect(useTimerStore.getState().elapsedSeconds).toBe(attendantTimerStore.getState().elapsedSeconds);
   });
 });
 

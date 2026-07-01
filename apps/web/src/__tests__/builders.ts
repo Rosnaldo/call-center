@@ -24,9 +24,10 @@ export const buildCall = (d?: Partial<CallState>): CallState => ({
   attendantId: d?.attendantId ?? nextId(),
   attendantName: d?.attendantName ?? 'Test Attendant',
   roomName: d?.roomName ?? 'test-room',
-  meetingId: d?.meetingId ?? '',
-  customerInCall: d?.customerInCall ?? false,
-  attendantInCall: d?.attendantInCall ?? false,
+  activeUserIds: d?.activeUserIds ?? [],
+  accumulatedMs: d?.accumulatedMs ?? 0,
+  startedAt: d?.startedAt !== undefined ? d.startedAt : Date.now(),
+  isPlaying: d?.isPlaying ?? true,
 });
 
 export const buildTokenTransaction = (d?: Partial<TokenTransaction>): TokenTransaction => ({

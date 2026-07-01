@@ -11,30 +11,30 @@ export function setAuthToken(token: string): void {
     api.defaults.headers.common['Authorization'] = token;
 }
 
-export const createCall = async (call: CallState): Promise<CallState> => {
+export const createCall = async (_traceId: string, call: CallState): Promise<CallState> => {
     const { data } = await api.post<CallState>('/calls/create', call);
     return data;
 };
 
-export const getCallByRoom = async (roomName: string): Promise<CallState> => {
+export const getCallByRoom = async (_traceId: string, roomName: string): Promise<CallState> => {
     const { data } = await api.get<CallState>('/calls/get-by-room', { params: { roomName } });
     return data;
 };
 
-export const updateCall = async (customerId: string, attendantId: string, updates: Partial<CallState>): Promise<CallState> => {
+export const updateCall = async (_traceId: string, customerId: string, attendantId: string, updates: Partial<CallState>): Promise<CallState> => {
     const { data } = await api.put<CallState>('/calls/update', { customerId, attendantId, updates });
     return data;
 };
 
-export const deleteCall = async (customerId: string, attendantId: string): Promise<void> => {
+export const deleteCall = async (_traceId: string, customerId: string, attendantId: string): Promise<void> => {
     await api.delete('/calls/delete', { data: { customerId, attendantId } });
 };
 
-export const trackRoom = async (roomName: string): Promise<void> => {
+export const trackRoom = async (_traceId: string, roomName: string): Promise<void> => {
     await api.post('/calls/track-room', { roomName });
 };
 
-export const getAndDeleteRooms = async (): Promise<string[]> => {
+export const getAndDeleteRooms = async (_traceId: string): Promise<string[]> => {
     const { data } = await api.delete<{ rooms: string[] }>('/calls/rooms');
     return data.rooms;
 };

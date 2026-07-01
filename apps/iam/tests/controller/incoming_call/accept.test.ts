@@ -63,11 +63,11 @@ describe('Controller > IncomingCall > Accept', () => {
         expect(stored).toBeNull();
     });
 
-    it('updates call to accepted when a matching call exists', async () => {
+    it('leaves an existing call untouched', async () => {
         const customer = buildOnlineUser({ role: 'customer' });
         const attendant = buildOnlineUser({ role: 'attendant' });
         const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
-        const call = buildCallState({ customerId: customer.id, attendantId: attendant.id });
+        const call = buildCallState({ customerId: customer.id, attendantId: attendant.id, accumulatedMs: 42_000 });
         const redis = getRedisClient();
         await seedIncomingCall(incoming);
         await seedUsers(customer, attendant);
@@ -77,8 +77,7 @@ describe('Controller > IncomingCall > Accept', () => {
         await controller.accept.exec({ traceId: TRACE, mapped: controller.accept.mapper({ attendantId: attendant.id, userId: attendant.id }) });
 
         const stored = JSON.parse((await redis.get(`calls:${customer.id}--${attendant.id}`))!);
-        expect(stored.customerInCall).toBe(true);
-        expect(stored.attendantInCall).toBe(true);
+        expect(stored.accumulatedMs).toBe(42_000);
     });
 
     it('sets customer status to in-call', async () => {

@@ -1,4 +1,4 @@
-const GRACE_PERIOD_MS = 30_000;
+const GRACE_PERIOD_MS = 2 * 60_000;
 
 type Callback = () => void;
 

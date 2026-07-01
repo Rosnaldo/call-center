@@ -209,8 +209,8 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
                 .find(u => u.id === adminUser._id)?.status,
         ).toBe('offline');
 
-        // ── advance past grace period (30s) ──────────────────────────────
-        jest.advanceTimersByTime(30_001);
+        // ── advance past grace period (2min) ──────────────────────────────
+        jest.advanceTimersByTime(120_001);
         await flushPendingCalls();
 
         // customer's store no longer contains admin (broadcast removal)
@@ -288,7 +288,7 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         expect(adminInRedis!.status).toBe('idle');
 
         // ── advance past original grace window — nothing fires ───────────
-        jest.advanceTimersByTime(30_001);
+        jest.advanceTimersByTime(120_001);
         await flushPendingCalls();
 
         expect(removeFromIamMock).not.toHaveBeenCalled();

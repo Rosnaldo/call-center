@@ -116,9 +116,18 @@ export const createCallActions = (
       }
     },
 
-    meetingStarted: async (_newCall: CallState) => {},
-    updateJoinedView: async (_newCall: CallState) => {},
-    updateLeftView: async (_newCall: CallState) => {},
+    meetingStarted: async (newCall: CallState) => {
+      set(() => ({ call: newCall }));
+      ref.timer.getState().syncFromCall(newCall);
+    },
+    updateJoinedView: async (newCall: CallState) => {
+      set(() => ({ call: newCall }));
+      ref.timer.getState().syncFromCall(newCall);
+    },
+    updateLeftView: async (newCall: CallState) => {
+      set(() => ({ call: newCall }));
+      ref.timer.getState().syncFromCall(newCall);
+    },
 
     resetSimulation: () => {
       if (properties.isSimulation) {
