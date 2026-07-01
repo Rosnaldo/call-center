@@ -6,6 +6,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/header/Header.tsx';
+import { Footer } from '../../components/Footer.tsx';
 import { ArrowLeft } from 'lucide-react';
 import { TransactionsTable } from '../../components/TransactionsTable.tsx';
 import { PaginatedTransactionsResponse } from '../../queries/transaction/query.ts';
@@ -76,6 +77,7 @@ export const TokenHistoryPageUI: React.FC<TokenHistoryPageUIProps> = ({
           setCurrentPage={setCurrentPage}
         />
       </main>
+      <Footer />
     </div>
   );
 };

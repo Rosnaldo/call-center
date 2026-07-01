@@ -14,7 +14,6 @@ import { AttendantPageContainer } from './pages/attendant-page/container.tsx';
 import { UserProfileContainer } from './pages/user-profile/container.tsx';
 import { PaymentsPageContainer } from './pages/payments-page/container.tsx';
 import { TokenHistoryPageContainer } from './pages/token-history-page/container.tsx';
-import { Footer } from './components/Footer.tsx';
 import { ProtectedRoute } from './protected-route.tsx';
 import { UserPainelPage } from './pages/UserPainelPage.tsx';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -81,8 +80,6 @@ export default function App() {
           <Route path="/error" element={<ErrorPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-
-        <Footer />
       </QueryClientProvider>
     </DailyProvider>
   );

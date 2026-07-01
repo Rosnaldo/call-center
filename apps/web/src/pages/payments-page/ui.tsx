@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/header/Header.tsx';
+import { Footer } from '../../components/Footer.tsx';
 import {
   ArrowLeft,
   Coins,
@@ -350,6 +351,7 @@ export const PaymentsPageUI: React.FC<PaymentsPageUIProps> = ({
           </div>
         )}
       </main>
+      <Footer />
     </div>
   );
 };

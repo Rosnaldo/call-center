@@ -6,6 +6,7 @@
 import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/header/Header.tsx';
+import { Footer } from '../../components/Footer.tsx';
 import { Title } from '../../components/Title.tsx';
 import { Edit2, Check, UploadCloud, ShieldAlert } from 'lucide-react';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
@@ -283,6 +284,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
 
       </main>
+      <Footer />
     </div>
   );
 };

@@ -6,6 +6,7 @@
 import { useTranslation } from 'react-i18next';
 import { UserCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Footer } from '../Footer.tsx';
 
 export const UnauthorizedView= () => {
   const { t } = useTranslation();
@@ -29,6 +30,7 @@ export const UnauthorizedView= () => {
           </button>
         </div>
       </main>
+      <Footer />
     </div>
   );
 };

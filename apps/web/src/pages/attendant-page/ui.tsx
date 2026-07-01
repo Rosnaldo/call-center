@@ -6,6 +6,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/header/Header.tsx';
+import { Footer } from '../../components/Footer.tsx';
 import { DeveloperSimulator } from '../../components/developer-simulator/DeveloperSimulator.tsx';
 import { StoreBoard } from '../../components/store-board/StoreBoard.tsx';
 import { CallLobbyView } from '../../components/call-lobby-view/call-view/CallLobbyView.tsx';
@@ -77,6 +78,7 @@ export const AttendantPageUI: React.FC<AttendantPageUIProps> = ({
           <StoreBoard />
         </div>
       </main>
+      <Footer />
     </div>
   );
 };
