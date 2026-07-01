@@ -32,21 +32,24 @@ export const createIncomingCallActions = (
 ): IncomingCallActions => ({
   cancel: () => set({ incomingCall: null }),
 
-  cancelIncomingCall: () => {
+  cancelIncomingCall: async () => {
     if (properties.isSimulation) {
       simulateCancelIncomingCall(set, get);
       return;
     }
 
-    const incomingCall = get().incomingCall;
-    if (!incomingCall) return;
+    try {
+      const incomingCall = get().incomingCall;
+      if (!incomingCall) throw new ApiError(i18n.t('error.somethingWentWrong'));
 
-    set({ incomingCall: null });
-    ref.callView.getState().setViewState('none');
-    ref.callView.getState().setSelectedAttendantId(null);
+      set({ incomingCall: null });
+      ref.callView.getState().setViewState('none');
+      ref.callView.getState().setSelectedAttendantId(null);
 
-    cancelIncomingCallService(incomingCall.customerId, incomingCall.attendantId)
-      .catch((error) => handleRequestError(error));
+      await cancelIncomingCallService(incomingCall.customerId, incomingCall.attendantId);
+    } catch (error) {
+      handleRequestError(error);
+    }
   },
 
   sendIncomingCall: async (customerId, attendantId) => {
