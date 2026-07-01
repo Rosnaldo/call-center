@@ -81,16 +81,12 @@ exemplo de diretorio store para gerenciamento de estados do zustand:
 stores
 ├── call
 │   ├── actions.ts
-│   ├── simulation.ts
 │   ├── state.ts
 │   └── store.ts
 └── user
 ├── actions.ts
-├── simulation.ts
 ├── state.ts
 └── store.ts
-
-simulation devem guardar actions e mock do estado inicial referentes a simulação.
 
 - **Dependências Externas Ficam na Borda**
     - API, WebSocket, React Query e Zustand devem ficar em containers, serviços ou hooks de integração.
@@ -119,12 +115,6 @@ simulation devem guardar actions e mock do estado inicial referentes a simulaç�
 
 **3 Cenários de Execução**
 
-- **Simulation**
-    - Não realiza chamadas externas.
-    - APIs retornam dados mockados.
-    - WebSockets são simulados localmente.
-    - Mutations utilizam atualização otimista.
-    - Permite desenvolvimento e testes sem dependência de backend.
 - **Development**
     - Utiliza a infraestrutura local de desenvolvimento.
     - Conecta ao backend local.
@@ -134,6 +124,3 @@ simulation devem guardar actions e mock do estado inicial referentes a simulaç�
     - Utiliza a infraestrutura de produção.
     - Conecta aos serviços reais da aplicação.
     - Deve refletir o comportamento final entregue aos usuários.
-- **Troca de Cenário**
-    - através de uma única variável de ambiente com o valores (simulation, development e production)
-    - Toda dependência externa deve poder ser executada em Simulation, Development ou Production sem exigir alterações na UI, Containers ou regras de negócio.

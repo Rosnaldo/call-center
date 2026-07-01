@@ -2,7 +2,7 @@
   "header": {
     "customerArea": "Customer Area",
     "attendantArea": "Attendant (Agent)",
-    "simulatorDisconnected": "Simulator Mode Disconnected",
+    "disconnected": "Disconnected",
     "tokenBalance": "Available token balance for calls",
     "dashboard": "{{role}} Dashboard",
     "profileSettings": "Profile Settings",
@@ -146,7 +146,7 @@
   },
   "customerList": {
     "active": "Active",
-    "noCustomersOnline": "No customers online at the moment. Activate simulators to fill the rooms!",
+    "noCustomersOnline": "No customers online at the moment.",
     "you": "You",
     "offline": "Offline",
     "reconnecting": "Reconnecting...",
@@ -169,7 +169,7 @@
   },
   "profile": {
     "disconnected": "Disconnected",
-    "pleaseConnect": "Please log in with one of the test users in the simulator.",
+    "pleaseConnect": "Please log in to view your profile.",
     "goToLogin": "Go to Login",
     "changingAvatar": "Changing avatar...",
     "backToArea": "Back to {{role}} area",

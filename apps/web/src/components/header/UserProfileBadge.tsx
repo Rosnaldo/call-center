@@ -42,7 +42,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
     return (
       <div id="header-inactive-status-area" className="flex items-center gap-1.5 text-[11px] text-brand-muted">
         <Radio className="w-3 h-3 text-brand-muted animate-pulse" />
-        <span className="hidden sm:inline">{t('header.simulatorDisconnected')}</span>
+        <span className="hidden sm:inline">{t('header.disconnected')}</span>
       </div>
     );
   }

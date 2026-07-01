@@ -10,7 +10,6 @@ import { useOnlineUsersStore, useCurrentUserStore } from '../../states/stores.ts
 import { UserProfilePage } from './ui.tsx';
 import { mytoast } from '@/src/components/toast.tsx';
 import { fetchUserUpload } from '@/src/services/api/user.ts';
-import properties from '../../properties';
 
 export const UserProfileContainer: React.FC = () => {
   const { t } = useTranslation();
@@ -35,20 +34,6 @@ export const UserProfileContainer: React.FC = () => {
     const formData = new FormData();
     formData.append("image", file);
     setFileError(null);
-
-    if (properties.isSimulation) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          const newUrl = reader.result;
-          setAvatarUrl(newUrl);
-          setCurrentUser({ ...currentUser!, avatarUrl: newUrl });
-        }
-      };
-      reader.onerror = () => setFileError(t('profile.imageReadError'));
-      reader.readAsDataURL(file);
-      return;
-    }
 
     try {
       const url = await fetchUserUpload(formData);

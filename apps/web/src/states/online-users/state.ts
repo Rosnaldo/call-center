@@ -4,8 +4,6 @@
  */
 
 import { IOnlineUser } from '@repo/shared-types';
-import { MOCK_USERS } from './mock.ts';
-import properties from '../../properties';
 
 export interface OnlineUserState extends IOnlineUser {}
 
@@ -14,5 +12,5 @@ export interface OnlineUsersStore {
 }
 
 export const initialOnlineUsersStore: OnlineUsersStore = {
-  users: properties.isSimulation ? MOCK_USERS : [],
+  users: [],
 };

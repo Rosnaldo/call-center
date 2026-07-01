@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { MOCK_USERS } from './mock.ts';
 import { OnlineUserState } from './state.ts';
 import { fetchOnlineUsers } from '@/src/services/api/online-users.ts';
 
@@ -11,10 +10,9 @@ export interface OnlineUsersActions {
   addToOnlineUsers: (user: OnlineUserState) => void;
   removeFromOnlineUsers: (userId: string) => void;
   updateUser: (userId: string, updates: Partial<OnlineUserState>) => void;
-  addTokensSimulation: (userId: string, tokens: number) => void;
+  addTokens: (userId: string, tokens: number) => void;
   setUsers: (users: OnlineUserState[]) => void;
   refreshUsers: () => void;
-  resetSimulation: () => void;
 }
 
 export const createOnlineUsersActions = (
@@ -49,7 +47,7 @@ export const createOnlineUsersActions = (
       }));
     },
 
-    addTokensSimulation: (userId, tokens) => {
+    addTokens: (userId, tokens) => {
       set((state) => ({
         users: state.users.map((u: OnlineUserState) => {
           if (u.id === userId) {
@@ -73,12 +71,6 @@ export const createOnlineUsersActions = (
         const users = await fetchOnlineUsers();
         set(() => ({ users }));
       } catch {}
-    },
-
-    resetSimulation: () => {
-      set(() => ({
-        users: MOCK_USERS,
-      }));
     },
   };
 };

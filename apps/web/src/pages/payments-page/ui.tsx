@@ -18,19 +18,18 @@ import {
 } from 'lucide-react';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
 import { useLogout } from '../../hooks/auth/useLogout.ts';
-import properties from '../../properties';
 
 interface PaymentsPageUIProps {
   currentUser: OnlineUserState | null;
   users: OnlineUserState[];
-  addTokensSimulation: (userId: string, count: number) => void;
+  addTokens: (userId: string, count: number) => void;
   navigate: (path: string) => void;
 }
 
 export const PaymentsPageUI: React.FC<PaymentsPageUIProps> = ({
   currentUser,
   users,
-  addTokensSimulation,
+  addTokens,
   navigate,
 }) => {
   const { t } = useTranslation();
@@ -107,24 +106,22 @@ export const PaymentsPageUI: React.FC<PaymentsPageUIProps> = ({
     setSuccessInfo(null);
 
     try {
-      if (!properties.isSimulation) {
-        const response = await fetch('/api/buy-tokens', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: currentUser.id,
-            count: currentTokensAmount,
-          }),
-        });
+      const response = await fetch('/api/buy-tokens', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          count: currentTokensAmount,
+        }),
+      });
 
-        if (!response.ok) {
-          throw new Error(t('payments.purchaseError'));
-        }
+      if (!response.ok) {
+        throw new Error(t('payments.purchaseError'));
       }
 
-      addTokensSimulation(currentUser.id, currentTokensAmount);
+      addTokens(currentUser.id, currentTokensAmount);
 
       setSuccessInfo({
         amount: currentTokensAmount,

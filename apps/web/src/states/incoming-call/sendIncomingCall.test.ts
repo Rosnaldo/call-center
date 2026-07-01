@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { buildOnlineUserState } from '../../__tests__/builders.ts';
 import { useCurrentUserStore, useOnlineUsersStore, useCallStore, useCallViewStore, useIncomingCallStore } from '../stores.ts';
-import { Properties } from '../../properties.ts';
 import * as incomingCallsService from '../../services/api/incoming-calls.ts';
 import { mytoast } from '../../components/toast.tsx';
 
@@ -24,12 +23,10 @@ const customer = buildOnlineUserState({
 
 afterEach(() => {
   vi.restoreAllMocks();
-  Properties.reset();
 });
 
 describe('sendIncomingCall action', () => {
   beforeEach(() => {
-    Properties.override({ isSimulation: false });
     vi.spyOn(incomingCallsService, 'sendIncomingCall').mockResolvedValue(undefined);
     vi.spyOn(mytoast, 'error').mockImplementation(() => '');
 

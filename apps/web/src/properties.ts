@@ -8,7 +8,6 @@ class Properties {
     keycloakClientId: string;
     dailyDomain: string;
     dailyApiKey: string;
-    isSimulation: boolean;
     isProduction: boolean;
     lang: string;
 
@@ -21,7 +20,6 @@ class Properties {
         this.keycloakClientId = env.VITE_KEYCLOAK_CLIENT_ID ?? '';
         this.dailyDomain = env.VITE_DAILY_DOMAIN ?? 'meetcent';
         this.dailyApiKey = env.VITE_DAILY_API_KEY ?? '';
-        this.isSimulation = env.VITE_ENV === 'simulation';
         this.isProduction = env.VITE_ENV === 'production';
         this.lang = env.VITE_LANG ?? 'en';
     }

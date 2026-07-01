@@ -21,7 +21,6 @@ import { RoleProtectedRoute } from './role-protected-route.tsx';
 import { useAuthStore } from './states/stores.ts';
 import { DailyProvider } from '@daily-co/daily-react';
 import { DailyService } from './services/daily.ts';
-import properties from './properties';
 
 const queryClient = new QueryClient();
 
@@ -29,7 +28,6 @@ export default function App() {
   const { t } = useTranslation();
   const ready = useAuthStore((s) => s.ready);
   const error = useAuthStore((s) => s.error);
-  const { isSimulation } = properties;
 
   useEffect(() => {
     return () => {
@@ -52,7 +50,7 @@ export default function App() {
     </div>
   );
 
-  if (!ready && !isSimulation) return <div>{t('call.loadingSession')}</div>;
+  if (!ready) return <div>{t('call.loadingSession')}</div>;
 
   return (
     <DailyProvider callObject={DailyService.getInstance().callObject}>

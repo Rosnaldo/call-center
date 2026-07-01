@@ -12,13 +12,13 @@ export const PaymentsPageContainer: React.FC = () => {
   const navigate = useNavigate();
   const currentUser = useCurrentUserStore((s) => s.currentUser);
   const users = useOnlineUsersStore((state) => state.users);
-  const addTokensSimulation = useOnlineUsersStore((state) => state.addTokensSimulation);
+  const addTokens = useOnlineUsersStore((state) => state.addTokens);
 
   return (
     <PaymentsPageUI
       currentUser={currentUser || null}
       users={users}
-      addTokensSimulation={addTokensSimulation}
+      addTokens={addTokens}
       navigate={navigate}
     />
   );

@@ -23,7 +23,6 @@ export class InitWs {
     private activeWs: AuthenticatedWebSocket | null = null;
     private running = false;
     private factory: TransportFactory = createWsTransport;
-    private readonly isSimulation = properties.isSimulation;
 
     private createAuthWs(token: string): AuthenticatedWebSocket {
         const transport = this.factory(`${WS_URL}?token=${token}`);
@@ -97,7 +96,6 @@ export class InitWs {
     }
 
     notifyLogout(): void {
-        if (this.isSimulation) return;
         if (this.activeWs?.readyState === TRANSPORT_OPEN) {
             this.activeWs.send(JSON.stringify({ event: 'user_logout' }));
         }

@@ -3,23 +3,14 @@ import { IncomingCallStore } from './state.ts';
 import type { StoresRef } from '../stores.ts';
 import { sendIncomingCall as sendIncomingCallService, cancelIncomingCall as cancelIncomingCallService } from '../../services/api/incoming-calls.ts';
 import { fetchOnlineUsers } from '../../services/api/online-users.ts';
-import {
-  simulateSendIncomingCall,
-  simulateCancelIncomingCall,
-  simulateIncomingCall,
-  simulateIncomingCallAsCustomer,
-} from './simulation.ts';
 import { handleRequestError } from '../../utils/utils.ts';
 import { ApiError } from '../../error/api.ts';
 import i18n from '../../i18n.ts';
-import properties from '../../properties';
 
 export interface IncomingCallActions {
   cancel: () => void;
   cancelIncomingCall: () => void;
   sendIncomingCall: (customerId?: string, attendantId?: string | null) => void;
-  simulateIncomingCall: (attendantId: string) => void;
-  simulateIncomingCallAsCustomer: (customerId: string, attendantId: string) => void;
   incomingCallSent: (incomingCall: IncomingCallState) => void;
   incomingCallReceived: (incomingCall: IncomingCallState) => void;
   incomingCallCancelled: () => void;
@@ -33,11 +24,6 @@ export const createIncomingCallActions = (
   cancel: () => set({ incomingCall: null }),
 
   cancelIncomingCall: async () => {
-    if (properties.isSimulation) {
-      simulateCancelIncomingCall(set, get);
-      return;
-    }
-
     try {
       const incomingCall = get().incomingCall;
       if (!incomingCall) throw new ApiError(i18n.t('error.somethingWentWrong'));
@@ -53,11 +39,6 @@ export const createIncomingCallActions = (
   },
 
   sendIncomingCall: async (customerId, attendantId) => {
-    if (properties.isSimulation) {
-      simulateSendIncomingCall(set, customerId, attendantId);
-      return;
-    }
-
     try {
       if (!customerId || !attendantId) throw new ApiError(i18n.t('error.somethingWentWrong'));
 
@@ -78,17 +59,6 @@ export const createIncomingCallActions = (
     }
   },
 
-  simulateIncomingCall: (attendantId) => {
-    if (properties.isSimulation) {
-      simulateIncomingCall(set, get, attendantId);
-    }
-  },
-
-  simulateIncomingCallAsCustomer: (customerId, attendantId) => {
-    if (properties.isSimulation) {
-      simulateIncomingCallAsCustomer(set, get, customerId, attendantId);
-    }
-  },
   incomingCallSent: async (incomingCall: IncomingCallState) => {
     set({ incomingCall });
     ref.callView.getState().setViewState('awaiting-answer');

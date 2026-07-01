@@ -5,15 +5,12 @@ import { useOnlineUsersQuery } from '../../queries/online-users/query';
 import { useOnlineUsersStore } from '../../states/stores';
 import { OnlineUserState } from '../../states/online-users/state';
 import { CallState } from '../../states/call/state';
-import properties from '../../properties';
 
 interface Props {
   currentUser: OnlineUserState | null;
   call: CallState | null;
   onCompleteCall: (attendantId: string) => void;
 }
-
-const { isSimulation } = properties;
 
 function UserListsFetcher({ currentUser, call, onCompleteCall }: Props) {
   const { data: users } = useOnlineUsersQuery();
@@ -23,18 +20,6 @@ function UserListsFetcher({ currentUser, call, onCompleteCall }: Props) {
     setUsers(users);
   }, [users]);
 
-  return (
-    <UserLists
-      users={users}
-      currentUser={currentUser}
-      call={call}
-      onCompleteCall={onCompleteCall}
-    />
-  );
-}
-
-function UserListsSimulation({ currentUser, call, onCompleteCall }: Props) {
-  const users = useOnlineUsersStore((s) => s.users);
   return (
     <UserLists
       users={users}
@@ -55,10 +40,6 @@ function UserListsSkeleton() {
 }
 
 export const UserListsContainer: React.FC<Props> = (props) => {
-  if (isSimulation) {
-    return <UserListsSimulation {...props} />;
-  }
-
   return (
     <ErrorBoundary>
       <Suspense fallback={<UserListsSkeleton />}>

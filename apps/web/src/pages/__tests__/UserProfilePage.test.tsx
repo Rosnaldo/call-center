@@ -59,7 +59,7 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
   it('renders a warning if currentUser is not logged in', () => {
     render(<UserProfilePage {...defaultProps} currentUser={null} />);
 
-    expect(screen.getByText('Por favor, conecte-se com um dos usuários de teste no simulador.')).toBeDefined();
+    expect(screen.getByText('Por favor, faça login para acessar seu perfil.')).toBeDefined();
 
     const loginButton = screen.getByText('Ir para Login');
     expect(loginButton).toBeDefined();

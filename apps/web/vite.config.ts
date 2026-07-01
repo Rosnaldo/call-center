@@ -28,7 +28,7 @@ export default defineConfig(() => {
       },
       setupFiles: ['./src/__tests__/setup.ts'],
       env: {
-        VITE_ENV: 'simulation',
+        VITE_ENV: 'test',
       },
     },
   };

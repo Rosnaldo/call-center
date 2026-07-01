@@ -17,9 +17,7 @@ const dailyService = DailyService.getInstance({
 });
 const stores = createStores(dailyService);
 
-if (!properties.isSimulation) {
-    bootstrap(stores);
-}
+bootstrap(stores);
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>

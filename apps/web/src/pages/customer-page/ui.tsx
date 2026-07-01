@@ -7,7 +7,6 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/header/Header.tsx';
 import { Footer } from '../../components/Footer.tsx';
-import { DeveloperSimulator } from '../../components/developer-simulator/DeveloperSimulator.tsx';
 import { StoreBoard } from '../../components/store-board/StoreBoard.tsx';
 import { CallLobbyView } from '../../components/call-lobby-view/call-view/CallLobbyView.tsx';
 import { UserListsContainer } from '../../components/user-list/UserListsContainer.tsx';
@@ -22,8 +21,6 @@ interface CustomerPageUIProps {
   users: OnlineUserState[];
   call: CallState | null;
   completeCall: (attendantId: string, callId?: string, byAttendant?: boolean) => void;
-  addTokensSimulation: (userId: string, count: number) => void;
-  simulateIncomingCallAsCustomer: (customerId: string, attendantId: string) => void;
 }
 
 export const CustomerPageUI: React.FC<CustomerPageUIProps> = ({
@@ -31,8 +28,6 @@ export const CustomerPageUI: React.FC<CustomerPageUIProps> = ({
   users,
   call,
   completeCall,
-  addTokensSimulation,
-  simulateIncomingCallAsCustomer,
 }) => {
   const handleLogout = useLogout();
   const { t } = useTranslation();
@@ -70,11 +65,6 @@ export const CustomerPageUI: React.FC<CustomerPageUIProps> = ({
             />
           </div>
 
-          {/* Developer Simulator */}
-          <DeveloperSimulator
-            onAddTokens={addTokensSimulation}
-            onSimulateIncomingCallAsCustomer={simulateIncomingCallAsCustomer}
-          />
           <StoreBoard />
         </div>
       </main>

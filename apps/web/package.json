@@ -4,7 +4,6 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "simulation": "vite --mode simulation",
     "dev": "vite --port 5173",
     "dev:local": "node --env-file=.env.local ../../node_modules/.bin/vite -- --port 5173",
     "build": "vite build --mode production",
