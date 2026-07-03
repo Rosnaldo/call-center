@@ -83,4 +83,27 @@ describe('Controller > User > Edicao', () => {
         const zodResult = validateOutput(either.data);
         expect(zodResult.hasError).toBeFalsy();
     });
+
+    it('adds tokens to the user balance', async () => {
+        const before = await getUserModel().findById(user._id).lean();
+        const startingTokens = before!.tokens ?? 0;
+
+        const body = {
+            _id: user._id,
+            addTokens: 10,
+        };
+
+        const adminUser: IUser['IParams'] = { ...user, role: UserRole.admin };
+        const controller = new UserController();
+        const mapped = controller.edit.mapper(body);
+        const either = await controller.edit.exec({ mapped, userSource: adminUser });
+
+        if (!isSuccess(either)) throw new Error('Should not return error');
+
+        const saved = await getUserModel().findById(user._id).lean();
+        expect(saved!.tokens).toBe(startingTokens + 10);
+
+        const zodResult = validateOutput(either.data);
+        expect(zodResult.hasError).toBeFalsy();
+    });
 });

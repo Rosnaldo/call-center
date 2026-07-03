@@ -27,7 +27,7 @@ services:
       - ./apps/nginx/dev/certs:/etc/nginx/certs:ro
       - ./apps/nginx/dev/certs:/etc/nginx/certs:ro
       - ./apps/web/dist:/etc/nginx/html
-      - ./apps/admin/dist:/etc/nginx/html/myadmin
+      - ./apps/admin/dist:/etc/nginx/html-admin
     networks:
       - frontend
       - backend

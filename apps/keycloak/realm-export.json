@@ -497,8 +497,31 @@
       "groups": []
     },
     {
+      "id": "e2e-admin-0001",
+      "username": "andreytsuzuki@gmail.com",
+      "email": "andreytsuzuki@gmail.com",
+      "firstName": "Andrey",
+      "lastName": "Tsuzuki",
+      "emailVerified": true,
+      "enabled": true,
+      "createdTimestamp": 1770566922074,
+      "totp": false,
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": ["default-roles-poc"],
+      "notBefore": 0,
+      "groups": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "japoto",
+          "temporary": false
+        }
+      ]
+    },
+    {
       "id": "e2e-customer-0001",
-      "username": "customer@e2e.test",
+      "username": "maria-cliente",
       "email": "customer@e2e.test",
       "firstName": "Maria",
       "lastName": "Cliente",
@@ -514,14 +537,14 @@
       "credentials": [
         {
           "type": "password",
-          "value": "Test1234!",
+          "value": "japoto",
           "temporary": false
         }
       ]
     },
     {
       "id": "e2e-attendant-0001",
-      "username": "attendant@e2e.test",
+      "username": "joao-atendente",
       "email": "attendant@e2e.test",
       "firstName": "João",
       "lastName": "Atendente",
@@ -537,7 +560,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "Test1234!",
+          "value": "japoto",
           "temporary": false
         }
       ]
@@ -767,7 +790,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
+      "secret": "T7ylAx5SffmXEsNopyD8FevaLX6eijcW",
       "redirectUris": [
         "/*"
       ],
@@ -1026,7 +1049,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
+      "secret": "GAFJyFJNlmQIOTlkcM4Mz7b3ruCdYSE4",
       "redirectUris": [
         "/*"
       ],
@@ -1876,7 +1899,7 @@
   },
   "loginTheme": "callcenter",
   "accountTheme": "",
-  "adminTheme": "",
+  "adminTheme": "callcenter",
   "emailTheme": "callcenter",
   "eventsEnabled": false,
   "eventsListeners": [

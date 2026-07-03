@@ -51,7 +51,7 @@ export class Edit {
             const { mapped, userSource } = props;
             logger.info({ _id: mapped._id }, 'user edit');
             const params = this.transform(mapped);
-            const { _id, firstName, lastName, email, role } = params;
+            const { _id, firstName, lastName, email, role, addTokens } = params;
 
             if (or(!_.isNil(email), !_.isNil(role)) && userSource.role !== UserRole.admin) {
                 throw new UnauthorizedRequestException('Usuario sem permissão')
@@ -67,6 +67,10 @@ export class Edit {
             }
 
             const build = new UserBuilder(user);
+
+            if (!_.isNil(addTokens)) {
+                user.tokens = (user.tokens ?? 0) + addTokens;
+            }
 
             const updated = await build.update({ firstName, lastName, email, role }).save();
 
@@ -99,6 +103,7 @@ export class Edit {
             lastName,
             email,
             role,
+            addTokens,
         } = body;
 
         return {
@@ -107,6 +112,7 @@ export class Edit {
             ...(lastName ? { lastName: toUndefined('lastName', lastName) } : {}),
             ...(email ? { email: toUndefined('email', email) } : {}),
             ...(role ? { role: toUndefined('role', role) } : {}),
+            ...(addTokens !== undefined && addTokens !== '' ? { addTokens: typeof addTokens === 'number' ? addTokens : Number(addTokens) } : {}),
         };
     };
 

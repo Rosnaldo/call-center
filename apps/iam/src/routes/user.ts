@@ -7,8 +7,18 @@ import { authorizeMiddleware } from '#middleware/authorize';
 import { UserRole } from '@repo/shared-types';
 import { GetKeycloakUser } from '#middleware/get_keycloak_user';
 import { cacheMiddleware } from '#middleware/cache';
+import { UserUtils } from '#schemas/user/utils';
 
 export default (app: Application) => {
+    app.get(
+        '/users/me',
+        GetKeycloakUser,
+        GetUser,
+        async (req, res) => {
+            const utils = new UserUtils();
+            return res.status(200).send(utils.toObject(req.user));
+        }
+    );
     app.get(
         '/users/count',
         GetKeycloakUser,

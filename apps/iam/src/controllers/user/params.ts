@@ -38,6 +38,7 @@ interface IEditInput {
     lastName?: IUser['IParams']['lastName'];
     email?: IUser['IParams']['email'];
     role?: IUser['IParams']['role'];
+    addTokens?: number;
 }
 
 type IEditOutput = IUser['IParams'];

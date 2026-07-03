@@ -465,6 +465,22 @@
   "webAuthnPolicyPasswordlessExtraOrigins": [],
   "users": [
     {
+      "id": "e2e-admin-0001",
+      "username": "andreytsuzuki@gmail.com",
+      "email": "andreytsuzuki@gmail.com",
+      "firstName": "Andrey",
+      "lastName": "Tsuzuki",
+      "emailVerified": true,
+      "enabled": true,
+      "createdTimestamp": 1770566922074,
+      "totp": false,
+      "disableableCredentialTypes": [],
+      "requiredActions": ["UPDATE_PASSWORD"],
+      "realmRoles": ["default-roles-poc"],
+      "notBefore": 0,
+      "groups": []
+    },
+    {
       "id": "c0953a9f-94d6-4dea-b20f-6bb96aada8cc",
       "username": "service-account-iam",
       "emailVerified": false,
@@ -1830,7 +1846,7 @@
   },
   "loginTheme": "callcenter",
   "accountTheme": "",
-  "adminTheme": "",
+  "adminTheme": "callcenter",
   "emailTheme": "callcenter",
   "eventsEnabled": false,
   "eventsListeners": [

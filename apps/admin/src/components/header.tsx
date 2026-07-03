@@ -1,6 +1,7 @@
 import { Users } from "lucide-react"
 import { useLocation } from "react-router-dom"
 import { cn } from '@/lib/utils';
+import { UserProfileBadge } from '@/components/user-profile-badge';
 
 const navItems = [
   { href: "/myadmin/users", label: "Usuarios", icon: Users },
@@ -13,15 +14,6 @@ export function Header() {
     return (
         <header className="sticky top-0 z-30 border-b bg-card">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-4 sm:px-6">
-            <a href="/" className="flex items-center gap-2 shrink-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="text-sm font-bold text-primary-foreground">A</span>
-            </div>
-            <span className="font-semibold text-card-foreground hidden sm:inline">
-                Admin Panel
-            </span>
-            </a>
-
             <nav className="flex items-center gap-1">
             {navItems.map((item) => {
                 const isActive =
@@ -45,6 +37,10 @@ export function Header() {
                 )
             })}
             </nav>
+
+            <div className="ml-auto">
+                <UserProfileBadge />
+            </div>
         </div>
         </header>
     )

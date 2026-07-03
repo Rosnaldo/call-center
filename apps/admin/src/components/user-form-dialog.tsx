@@ -26,6 +26,8 @@ import { checkErrorByField } from "@/utils/check_error_by_field"
 import { mytoast } from "./toast"
 import { ApiError } from "@/error/api"
 
+const TOKEN_AMOUNT_OPTIONS = [5, 15, 40, 100]
+
 interface UserFormDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
@@ -47,10 +49,11 @@ export function UserFormDialog({
     const [email, setEmail] = useState("")
     const [avatarUrl, setAvatarUrl] = useState("")
     const [role, setRole] = useState<keyof typeof UserRole>("customer")
+    const [addTokens, setAddTokens] = useState("")
     const [errors, setErrors] = useState<Record<string, string>>({})
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    async function handleSaveUser(userData: Partial<IUser>) {
+    async function handleSaveUser(userData: Partial<IUser> & { addTokens?: number }) {
         try {
             let res;
             if (userData._id) {
@@ -96,6 +99,7 @@ export function UserFormDialog({
                 setRole("customer")
                 setAvatarUrl('')
             }
+            setAddTokens("")
             setErrors({})
         }
     }, [open, editingUser])
@@ -121,6 +125,7 @@ export function UserFormDialog({
             lastName: lastName.trim(),
             email: email.trim(),
             role,
+            ...(editingUser && addTokens.trim() ? { addTokens: Number(addTokens) } : {}),
         })
         onOpenChange(false)
         refetchUsersList()
@@ -291,6 +296,28 @@ export function UserFormDialog({
                 </SelectContent>
                 </Select>
             </div>
+
+            {/* Tokens */}
+            {editingUser && role === "customer" && (
+                <div className="flex flex-col gap-1.5">
+                <Label htmlFor="addTokens">Add Tokens</Label>
+                <Select value={addTokens} onValueChange={setAddTokens}>
+                    <SelectTrigger id="addTokens">
+                        <SelectValue placeholder="Select an amount" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {TOKEN_AMOUNT_OPTIONS.map((amount) => (
+                            <SelectItem key={amount} value={String(amount)}>
+                                {amount} tokens
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                    Current balance: {editingUser.tokens ?? 0}
+                </p>
+                </div>
+            )}
 
             <DialogFooter className="pt-2">
                 <Button

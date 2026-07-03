@@ -18,6 +18,7 @@ const partialFields = utils.zodSchema.pick({
 export const inputSchema = z.object({
     _id: makeObjectIdSchema('_id'),
     ...partialFields.shape,
+    addTokens: z.number().positive('addTokens deve ser maior que zero').optional(),
 });
 
 export const validateInput = (params: any): ValidateParseResult => {

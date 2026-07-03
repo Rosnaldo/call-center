@@ -1,7 +1,9 @@
 import pino from 'pino';
 
+const level = process.env.NODE_ENV === 'prod' ? 'info' : 'debug';
+
 const baseLogger = pino({
-  level: 'info',
+  level,
   base: {
     service: 'realtime',
   },
