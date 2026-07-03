@@ -25,9 +25,11 @@ async function startNgrok(): Promise<string> {
         detached: true,
     });
     ngrokProcess = proc;
-    proc.on('error', (err) => { throw new Error(`ngrok: ${err.message}`); });
+    let spawnError: Error | null = null;
+    proc.on('error', (err) => { spawnError = new Error(`ngrok: ${err.message}`); });
 
     for (let i = 0; i < 30; i++) {
+        if (spawnError) throw spawnError;
         await new Promise((r) => setTimeout(r, 500));
         try {
             const res = await fetch('http://localhost:4040/api/tunnels');
@@ -111,6 +113,7 @@ export async function registerDailyWebhooks(): Promise<void> {
     }
 
     let baseUrl: string;
+    let webhookPath: string;
 
     if (properties.nodeEnv === 'dev' || properties.nodeEnv === 'local') {
         try {
@@ -121,11 +124,13 @@ export async function registerDailyWebhooks(): Promise<void> {
             logger.warn({ err: String(err) }, 'daily ngrok não disponível, pulando registro de webhooks');
             return;
         }
+        // ngrok tunnels directly to this container's port, bypassing the nginx /realtime prefix
+        webhookPath = WEBHOOK_PATH_LOCAL;
     } else {
         baseUrl = properties.webhookUrl.replace(/\/$/, '');
+        webhookPath = WEBHOOK_PATH_REMOTE;
     }
 
-    const webhookPath = properties.nodeEnv === 'local' ? WEBHOOK_PATH_LOCAL : WEBHOOK_PATH_REMOTE;
     const webhookUrl = `${baseUrl}${webhookPath}`;
 
     await deleteAllWebhooks();

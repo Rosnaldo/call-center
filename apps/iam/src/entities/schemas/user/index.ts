@@ -19,7 +19,7 @@ export const UserSchema = new Schema<IUser['ISchema']>(
         slug: { type: String, required: true },
         email: { type: String, require: false },
         phone: { type: String, required: false },
-        tokens: { type: Number, required: false },
+        tokens: { type: Number, required: true, default: 0 },
         role: {
             type: String,
             enum: UserRoleAll,

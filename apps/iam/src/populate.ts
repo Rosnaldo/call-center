@@ -26,6 +26,24 @@ const users: UserPick[] = [
         },
         role: 'admin',
     },
+    {
+        firstName: "João",
+        lastName: "Atendente",
+        email: "attendant@e2e.test",
+        avatar: {
+            s3Path: `avatars/${properties.nodeEnv}/joao.atendente.jpeg`
+        },
+        role: 'attendant',
+    },
+    {
+        firstName: "Maria",
+        lastName: "Cliente",
+        email: "customer@e2e.test",
+        avatar: {
+            s3Path: `avatars/${properties.nodeEnv}/maria.cliente.jpeg`
+        },
+        role: 'customer',
+    },
 ];
 
 export const populate = async () => {

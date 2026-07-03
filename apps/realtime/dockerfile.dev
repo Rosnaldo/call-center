@@ -23,6 +23,12 @@ RUN npm run build --filter=@repo/shared-types
 
 FROM base AS runner
 
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
+    && curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/ngrok.gpg \
+    && echo "deb https://ngrok-agent.s3.amazonaws.com buster main" > /etc/apt/sources.list.d/ngrok.list \
+    && apt-get update && apt-get install -y ngrok \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /app .
 
 CMD ["npm", "run", "dev", "--workspace", "apps/realtime"]
