@@ -48,7 +48,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
   }
 
   const updatedUserTokens = users.find(u => u.id === currentUser.id)?.tokens;
-  const tokensCount = updatedUserTokens !== undefined ? updatedUserTokens : 5;
+  const tokensCount = updatedUserTokens !== undefined ? updatedUserTokens : 0;
 
   return (
     <div id="header-active-profile-area" className="flex items-center gap-2 relative select-none" ref={dropdownRef}>
