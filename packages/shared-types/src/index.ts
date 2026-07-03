@@ -47,17 +47,33 @@ export interface CallState {
     attendantId: string;
     attendantName: string;
     roomName: string;
+    meetingId: string;
     activeUserIds: string[];
     accumulatedMs: number;
-    startedAt: number | null;
+    // Timestamp (epoch ms) of when the current "both users present" overlap
+    // segment started. Null when the segment is frozen (not both present).
+    overlapStartedAt: number | null;
+    // Wall-clock timestamp of when the Daily.co meeting itself started/ended —
+    // set once each, independent of overlapStartedAt's join/leave toggling.
+    startedAt: Date | null;
+    endedAt: Date | null;
     isPlaying: boolean;
+    tokensToBeCharged: number;
 }
 
-export function getCallElapsedMs(call: Pick<CallState, 'accumulatedMs' | 'startedAt'>): number {
-    if (call.startedAt) {
-        return call.accumulatedMs + (Date.now() - call.startedAt);
+export function getCallElapsedMs(call: Pick<CallState, 'accumulatedMs' | 'overlapStartedAt'>): number {
+    if (call.overlapStartedAt) {
+        return call.accumulatedMs + (Date.now() - call.overlapStartedAt);
     }
     return call.accumulatedMs;
+}
+
+// 1 token per commenced 10-minute block of "both users present" call time.
+export const BILLING_INTERVAL_MS = 10 * 60 * 1000;
+
+export function computeTokensToBeCharged(elapsedMs: number): number {
+    if (elapsedMs <= 0) return 0;
+    return Math.ceil(elapsedMs / BILLING_INTERVAL_MS);
 }
 
 export interface Pagination {

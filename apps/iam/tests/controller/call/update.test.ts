@@ -23,12 +23,12 @@ describe('Controller > Call > Update', () => {
         await redis.set(key, JSON.stringify(call));
 
         const controller = new CallController();
-        const mapped = controller.update.mapper({ customerId: call.customerId, attendantId: call.attendantId, updates: { startedAt: 123 } });
+        const mapped = controller.update.mapper({ customerId: call.customerId, attendantId: call.attendantId, updates: { overlapStartedAt: 123 } });
         const either = await controller.update.exec({ mapped });
 
         if (!isSuccess(either)) throw new Error(`Expected success, got: ${either.message}`);
 
-        expect(either.data.startedAt).toBe(123);
+        expect(either.data.overlapStartedAt).toBe(123);
         expect(either.data.accumulatedMs).toBe(call.accumulatedMs);
     });
 

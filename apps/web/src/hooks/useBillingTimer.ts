@@ -62,5 +62,5 @@ export function useBillingTimer(call: CallState | undefined) {
     sync();
     const interval = setInterval(sync, 1000);
     return () => clearInterval(interval);
-  }, [call?.id, call?.startedAt, call?.accumulatedMs]);
+  }, [call?.id, call?.overlapStartedAt, call?.accumulatedMs]);
 }

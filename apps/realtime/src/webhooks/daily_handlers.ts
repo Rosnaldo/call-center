@@ -1,8 +1,8 @@
-import { CallState } from '@repo/shared-types';
+import { CallState, getCallElapsedMs, computeTokensToBeCharged } from '@repo/shared-types';
 import { buildLogger } from '#logger';
 import { sendToUser } from '#websocket/broadcast';
-import { findUserBySlug } from 'src/services/users';
-import { createCall, deleteCall, getCallByRoom, updateCall, trackRoom } from 'src/services/calls';
+import { findUserBySlug, chargeToken } from 'src/services/users';
+import { createCall, getCallByRoom, updateCall, trackRoom, completeCall, createCallHistory } from 'src/services/calls';
 import { parseRoomName } from 'src/helpers/parse_room_name';
 import { DailyMeetingPayload, DailyParticipantPayload } from './daily_types';
 
@@ -30,10 +30,19 @@ export async function onMeetingStarted(traceId: string, payload: DailyMeetingPay
                 attendantId: attendant._id,
                 attendantName: `${attendant.firstName} ${attendant.lastName}`,
                 roomName: payload.room,
+                meetingId: payload.meeting_id,
                 activeUserIds: [],
                 accumulatedMs: 0,
-                startedAt: null,
+                overlapStartedAt: null,
+                startedAt: new Date(),
+                endedAt: null,
                 isPlaying: false,
+                tokensToBeCharged: 0,
+            });
+        } else {
+            await updateCall(traceId, call.customerId, call.attendantId, {
+                meetingId: payload.meeting_id,
+                startedAt: new Date(),
             });
         }
 
@@ -42,9 +51,40 @@ export async function onMeetingStarted(traceId: string, payload: DailyMeetingPay
     }
 }
 
-export function onMeetingEnded(traceId: string, payload: DailyMeetingPayload): void {
-    buildLogger(traceId).info({ room: payload.room }, 'daily meeting.ended');
-    // create call history + tokens charged
+export async function onMeetingEnded(traceId: string, payload: DailyMeetingPayload): Promise<void> {
+    const logger = buildLogger(traceId);
+    logger.info({ room: payload.room }, 'daily meeting.ended');
+
+    try {
+        const call = await getCallByRoom(traceId, payload.room);
+        if (!call) return;
+
+        const elapsedMs = getCallElapsedMs(call);
+        const tokensToBeCharged = computeTokensToBeCharged(elapsedMs);
+
+        if (tokensToBeCharged > 0) {
+            await chargeToken(traceId, call.customerId, tokensToBeCharged);
+        }
+
+        await completeCall(traceId, call.customerId, call.attendantId);
+
+        const endedCall: CallState = {
+            ...call,
+            accumulatedMs: elapsedMs,
+            overlapStartedAt: null,
+            isPlaying: false,
+            endedAt: new Date(),
+            tokensToBeCharged,
+        };
+
+        await createCallHistory(traceId, endedCall);
+
+        sendToUser(call.customerId, { event: 'meeting_ended', data: { call: endedCall } });
+        sendToUser(call.attendantId, { event: 'meeting_ended', data: { call: endedCall } });
+
+    } catch (error) {
+        logger.error(error, 'daily onMeetingEnded');
+    }
 }
 
 export async function onParticipantJoined(traceId: string, payload: DailyParticipantPayload): Promise<void> {
@@ -70,10 +110,14 @@ export async function onParticipantJoined(traceId: string, payload: DailyPartici
                 attendantId: attendant._id,
                 attendantName: `${attendant.firstName} ${attendant.lastName}`,
                 roomName: payload.room,
+                meetingId: '',
                 activeUserIds: [],
                 accumulatedMs: 0,
+                overlapStartedAt: null,
                 startedAt: null,
+                endedAt: null,
                 isPlaying: false,
+                tokensToBeCharged: 0,
             });
         }
 
@@ -85,10 +129,11 @@ export async function onParticipantJoined(traceId: string, payload: DailyPartici
 
         const updates: Partial<CallState> = {
             activeUserIds: Array.from(activeUsers),
+            tokensToBeCharged: computeTokensToBeCharged(call.accumulatedMs),
         };
 
-        if (activeUsers.size === 2 && !call.startedAt) {
-            updates.startedAt = Date.now();
+        if (activeUsers.size === 2 && !call.overlapStartedAt) {
+            updates.overlapStartedAt = Date.now();
             updates.isPlaying = true;
         }
 
@@ -125,9 +170,9 @@ export async function onParticipantLeft(traceId: string, payload: DailyParticipa
 
             const updates: Partial<CallState> = {};
 
-            if (activeUsers.size === 2 && call.startedAt) {
-                updates.accumulatedMs = call.accumulatedMs + (Date.now() - call.startedAt);
-                updates.startedAt = null;
+            if (activeUsers.size === 2 && call.overlapStartedAt) {
+                updates.accumulatedMs = call.accumulatedMs + (Date.now() - call.overlapStartedAt);
+                updates.overlapStartedAt = null;
                 updates.isPlaying = false;
             }
 
@@ -139,9 +184,10 @@ export async function onParticipantLeft(traceId: string, payload: DailyParticipa
             sendToUser(call.customerId, { event: 'participant_left', data: { call } });
             sendToUser(call.attendantId, { event: 'participant_left', data: { call } });
 
-            if (call.activeUserIds.length === 0) {
-                await deleteCall(traceId, call.customerId, call.attendantId);
-            }
+            // The call record is intentionally kept around (even once both users
+            // have left) — the Daily.co room may still be open for a rejoin, and
+            // onMeetingEnded is the sole place that finalizes billing, flips the
+            // customer/attendant back to idle, and deletes the record.
         }
 
     } catch (error) {

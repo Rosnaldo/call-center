@@ -6,6 +6,7 @@ import { createCallViewStore } from './call-view/store.ts';
 import { createCurrentUserStore } from './current-user/store.ts';
 import { createDevicesStore } from './devices/store.ts';
 import { createIncomingCallStore } from './incoming-call/store.ts';
+import { createMeetingStore } from './meeting/store.ts';
 import { createOnlineUsersStore } from './online-users/store.ts';
 import { createTimerStore } from './timer/store.ts';
 
@@ -16,15 +17,18 @@ export type CallViewStoreInstance = ReturnType<typeof createCallViewStore>;
 export type CurrentUserStoreInstance = ReturnType<typeof createCurrentUserStore>;
 export type DevicesStoreInstance = ReturnType<typeof createDevicesStore>;
 export type IncomingCallStoreInstance = ReturnType<typeof createIncomingCallStore>;
+export type MeetingStoreInstance = ReturnType<typeof createMeetingStore>;
 export type OnlineUsersStoreInstance = ReturnType<typeof createOnlineUsersStore>;
 export type TimerStoreInstance = ReturnType<typeof createTimerStore>;
 
 export interface StoresRef {
+    call: CallStoreInstance;
     callView: CallViewStoreInstance;
     onlineUsers: OnlineUsersStoreInstance;
     incomingCall: IncomingCallStoreInstance;
     currentUser: CurrentUserStoreInstance;
     timer: TimerStoreInstance;
+    billing: BillingStoreInstance;
 }
 
 export interface Stores {
@@ -35,6 +39,7 @@ export interface Stores {
     currentUser: CurrentUserStoreInstance;
     devices: DevicesStoreInstance;
     incomingCall: IncomingCallStoreInstance;
+    meeting: MeetingStoreInstance;
     onlineUsers: OnlineUsersStoreInstance;
     timer: TimerStoreInstance;
 }
@@ -46,6 +51,7 @@ export let useCallViewStore: CallViewStoreInstance;
 export let useCurrentUserStore: CurrentUserStoreInstance;
 export let useDevicesStore: DevicesStoreInstance;
 export let useIncomingCallStore: IncomingCallStoreInstance;
+export let useMeetingStore: MeetingStoreInstance;
 export let useOnlineUsersStore: OnlineUsersStoreInstance;
 export let useTimerStore: TimerStoreInstance;
 
@@ -67,15 +73,18 @@ export function createStores(dailyService: IDailyService = noopDailyService): St
         currentUser: createCurrentUserStore(),
         devices: createDevicesStore(),
         incomingCall: createIncomingCallStore(ref),
+        meeting: createMeetingStore(ref),
         onlineUsers: createOnlineUsersStore(),
         timer: createTimerStore(),
     };
 
+    ref.call = s.call;
     ref.callView = s.callView;
     ref.onlineUsers = s.onlineUsers;
     ref.incomingCall = s.incomingCall;
     ref.currentUser = s.currentUser;
     ref.timer = s.timer;
+    ref.billing = s.billing;
 
     useAuthStore = s.auth;
     useBillingStore = s.billing;
@@ -84,6 +93,7 @@ export function createStores(dailyService: IDailyService = noopDailyService): St
     useCurrentUserStore = s.currentUser;
     useDevicesStore = s.devices;
     useIncomingCallStore = s.incomingCall;
+    useMeetingStore = s.meeting;
     useOnlineUsersStore = s.onlineUsers;
     useTimerStore = s.timer;
 

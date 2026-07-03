@@ -1,4 +1,4 @@
-import { IncomingCallState } from '@repo/shared-types';
+import { IncomingCallState, IUser } from '@repo/shared-types';
 import { createRealtimeClient } from '#apis/realtime';
 
 export async function notifyIncomingCallSent(traceId: string, customerId: string, attendantId: string, calledBy: string): Promise<void> {
@@ -26,5 +26,12 @@ export async function notifyCallCompleted(traceId: string, customerId: string, a
     await createRealtimeClient(traceId).post('/webhooks/iam', {
         event: 'call_completed',
         payload: { customerId, attendantId },
+    });
+}
+
+export async function notifyUserTokenCharged(traceId: string, user: IUser): Promise<void> {
+    await createRealtimeClient(traceId).post('/webhooks/iam', {
+        event: 'user_token_charged',
+        payload: { user },
     });
 }

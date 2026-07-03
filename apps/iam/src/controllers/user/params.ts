@@ -54,6 +54,13 @@ interface IFindBySlugInput {
 
 type IFindBySlugOutput = IUser['IParams'];
 
+interface IChargeTokenInput {
+    customerId: string;
+    tokens: number;
+}
+
+type IChargeTokenOutput = IUser['IParams'];
+
 export interface IUserController {
     IPaginacao: {
         IInput: IPaginacaoInput;
@@ -81,5 +88,9 @@ export interface IUserController {
     };
     ICount: {
         IOutput: ICountOutput
+    };
+    IChargeToken: {
+        IInput: IChargeTokenInput;
+        IOutput: IChargeTokenOutput;
     };
 }

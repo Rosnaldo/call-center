@@ -108,6 +108,19 @@ export default (app: Application) => {
         }
     );
     app.post(
+        '/users/charge-token',
+        GetKeycloakUser,
+        async (req, res) => {
+            const controller = new UserController();
+            const mapped = controller.chargeToken.mapper(req.body);
+            const either = await controller.chargeToken.exec({ traceId: req.traceId, mapped });
+            if (either.isError) {
+                return res.status(either.status).send(either);
+            }
+            return res.status(200).send(either.data);
+        }
+    );
+    app.post(
         '/users/upload-avatar',
         GetKeycloakUser,
         GetUser,

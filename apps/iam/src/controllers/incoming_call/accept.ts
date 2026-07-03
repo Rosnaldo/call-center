@@ -73,10 +73,14 @@ export class Accept {
                     attendantId: incomingCall.attendantId,
                     attendantName: attendant.name,
                     roomName: `${customer.slug}--${attendant.slug}`,
+                    meetingId: '',
                     activeUserIds: [],
                     accumulatedMs: 0,
+                    overlapStartedAt: null,
                     startedAt: null,
+                    endedAt: null,
                     isPlaying: false,
+                    tokensToBeCharged: 0,
                 };
                 await redis.set(callKey, JSON.stringify(newCall));
             }

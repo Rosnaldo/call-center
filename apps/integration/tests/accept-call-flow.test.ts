@@ -219,7 +219,7 @@ describe('Accept Call Flow', () => {
         expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('in-call');
     });
 
-    it('after completeCall both users are back to idle', async () => {
+    it('after completeCall the attendant clears local state without notifying the customer directly', async () => {
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         const { serverWs: attendantWs, webFactory: attendantWebFactory } = createBridgedClient(attendantUser, ATTENDANT_TOKEN);
 
@@ -270,34 +270,29 @@ describe('Accept Call Flow', () => {
         expect(attendantAcceptBroadcast).toBeTruthy();
 
         // ── attendant completes call ──────────────────────────────────
+        // completeCall() only leaves the Daily.co room locally now — freezing
+        // the timer, charging tokens, flipping users idle, and propagating to
+        // the other party is entirely driven by the Daily.co webhook chain
+        // (participant.left → meeting.ended), not this REST/WS round trip.
         customerMessages.length = 0;
         attendantMessages.length = 0;
 
         attendantStores.call.getState().completeCall();
         await new Promise((r) => setTimeout(r, 100));
 
-        // ── both receive call_completed ───────────────────────────────
+        // ── no call_completed is sent anymore from this local action ──
         const attendantCompleted = attendantMessages.find((m) => m.event === 'call_completed');
         const customerCompleted = customerMessages.find((m) => m.event === 'call_completed');
-        expect(attendantCompleted).toBeTruthy();
-        expect(customerCompleted).toBeTruthy();
+        expect(attendantCompleted).toBeUndefined();
+        expect(customerCompleted).toBeUndefined();
 
-        // ── both receive online_users_broadcast after complete ───────
-        const customerCompleteBroadcast = customerMessages.find((m) => m.event === 'online_users_broadcast');
-        const attendantCompleteBroadcast = attendantMessages.find((m) => m.event === 'online_users_broadcast');
-        expect(customerCompleteBroadcast).toBeTruthy();
-        expect(attendantCompleteBroadcast).toBeTruthy();
-
-        // ── attendant state cleared ───────────────────────────────────
+        // ── attendant state cleared locally ────────────────────────────
         expect(attendantStores.call.getState().call).toBeNull();
         expect(attendantStores.callView.getState().viewState).toBe('none');
 
-        // ── customer state cleared ────────────────────────────────────
-        expect(customerStores.call.getState().call).toBeNull();
-        expect(customerStores.callView.getState().viewState).toBe('none');
-
-        // ── both users idle ──────────────────────────────────────────
-        expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('idle');
-        expect(customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('idle');
+        // ── customer is untouched — they only learn about it via the
+        //    Daily.co webhook chain, which this test doesn't simulate ────
+        expect(customerStores.call.getState().call).not.toBeNull();
+        expect(customerStores.callView.getState().viewState).toBe('in-call');
     });
 });

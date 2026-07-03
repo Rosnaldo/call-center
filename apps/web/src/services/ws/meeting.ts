@@ -1,13 +1,14 @@
 import { CallState } from '@repo/shared-types';
-import type { CallStoreInstance } from '../../states/stores';
+import type { MeetingStoreInstance } from '../../states/stores';
 
 export type WsMeetingMessage =
     | { event: 'meeting_started'; data: { call: CallState } }
     | { event: 'participant_joined'; data: { call: CallState } }
-    | { event: 'participant_left'; data: { call: CallState } };
+    | { event: 'participant_left'; data: { call: CallState } }
+    | { event: 'meeting_ended'; data: { call: CallState } };
 
 export interface WsMeetingStores {
-    call: CallStoreInstance;
+    meeting: MeetingStoreInstance;
 }
 
 export class WsMeetingService {
@@ -18,7 +19,7 @@ export class WsMeetingService {
     }
 
     handle(msg: { event: string; data?: any }): boolean {
-        const { meetingStarted, updateJoinedView, updateLeftView } = this.stores.call.getState();
+        const { meetingStarted, updateJoinedView, updateLeftView, meetingEnded } = this.stores.meeting.getState();
 
         switch (msg.event) {
             case 'meeting_started':
@@ -29,6 +30,9 @@ export class WsMeetingService {
                 break;
             case 'participant_left':
                 updateLeftView(msg.data.call);
+                break;
+            case 'meeting_ended':
+                meetingEnded(msg.data.call);
                 break;
             default:
                 return false;

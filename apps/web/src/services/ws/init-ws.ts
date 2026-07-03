@@ -2,7 +2,7 @@ import { AuthenticatedWebSocket, TransportFactory, TRANSPORT_OPEN, createWsTrans
 import { WsUsersService } from './users';
 import { WsCallService } from './call';
 import { WsMeetingService } from './meeting';
-import type { OnlineUsersStoreInstance, IncomingCallStoreInstance, CallStoreInstance, CallViewStoreInstance } from '../../states/stores';
+import type { OnlineUsersStoreInstance, IncomingCallStoreInstance, CallStoreInstance, CallViewStoreInstance, MeetingStoreInstance } from '../../states/stores';
 import properties from '../../properties';
 import { mytoast } from '../../components/toast';
 import authSession from '../../auth/session';
@@ -17,6 +17,7 @@ interface InitWsStores {
     incomingCall: IncomingCallStoreInstance;
     call: CallStoreInstance;
     callView: CallViewStoreInstance;
+    meeting: MeetingStoreInstance;
 }
 
 export class InitWs {
@@ -90,7 +91,7 @@ export class InitWs {
             callView: stores.callView,
             incomingCall: stores.incomingCall,
         });
-        const meetingService = new WsMeetingService({ call: stores.call });
+        const meetingService = new WsMeetingService({ meeting: stores.meeting });
 
         this.connect(this.createAuthWs(token), usersService, callService, meetingService);
     }

@@ -206,10 +206,14 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
             attendantId: attendantUser._id,
             attendantName: `${attendantUser.firstName} ${attendantUser.lastName}`,
             roomName,
+            meetingId: '',
             activeUserIds: [],
             accumulatedMs: 0,
+            overlapStartedAt: null,
             startedAt: null,
+            endedAt: null,
             isPlaying: false,
+            tokensToBeCharged: 0,
         });
 
         // ── meeting starts, customer joins alone ──────────────────────────
@@ -219,7 +223,7 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         let call = customerStores.call.getState().call;
         expect(call).toBeTruthy();
         expect(call!.activeUserIds).toEqual([customerUser._id]);
-        expect(call!.startedAt).toBeNull();
+        expect(call!.overlapStartedAt).toBeNull();
         expect(call!.isPlaying).toBe(false);
         expect(attendantStores.call.getState().call).toEqual(call);
         expectTimersSynced();
@@ -231,7 +235,7 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
 
         call = customerStores.call.getState().call;
         expect(call!.activeUserIds.sort()).toEqual([attendantUser._id, customerUser._id].sort());
-        expect(call!.startedAt).not.toBeNull();
+        expect(call!.overlapStartedAt).not.toBeNull();
         expect(call!.isPlaying).toBe(true);
         expect(call!.accumulatedMs).toBe(0);
         expect(attendantStores.call.getState().call).toEqual(call);
@@ -248,7 +252,7 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         call = customerStores.call.getState().call;
         expect(call!.activeUserIds).toEqual([customerUser._id]);
         // shared timer freezes for BOTH users — not just the one who left
-        expect(call!.startedAt).toBeNull();
+        expect(call!.overlapStartedAt).toBeNull();
         expect(call!.isPlaying).toBe(false);
         expect(getCallElapsedMs(call!)).toBe(call!.accumulatedMs);
         expect(attendantStores.call.getState().call).toEqual(call);
@@ -284,8 +288,8 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         expect(attendantJoinedMsg).toBeTruthy();
 
         call = customerStores.call.getState().call;
-        expect(call!.startedAt).not.toBeNull();
-        expect(call!.startedAt).toBe(attendantJoinedMsg.data.call.startedAt);
+        expect(call!.overlapStartedAt).not.toBeNull();
+        expect(call!.overlapStartedAt).toBe(attendantJoinedMsg.data.call.overlapStartedAt);
         expect(call!.isPlaying).toBe(true);
         expect(attendantJoinedMsg.data.call.isPlaying).toBe(true);
         expect(call!.accumulatedMs).toBe(accumulatedAfterFirstLeave);
@@ -306,7 +310,7 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         const t3End = Date.now();
 
         call = customerStores.call.getState().call;
-        expect(call!.startedAt).toBeNull();
+        expect(call!.overlapStartedAt).toBeNull();
         expect(call!.isPlaying).toBe(false);
         expect(attendantStores.call.getState().call).toEqual(call);
         expectTimersSynced();
@@ -320,8 +324,21 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         // sanity check: a bug that keeps counting through the gap would land ~1.1s higher
         expect(call!.accumulatedMs).toBeLessThan(expectedFinal + 700);
 
-        // ── customer leaves too — call is torn down ───────────────────────
+        // ── customer leaves too — the call record is NOT torn down yet.
+        //    onParticipantLeft only freezes the timer; onMeetingEnded (fired
+        //    once the Daily.co room itself closes) is the sole place that
+        //    finalizes billing, flips users idle, and deletes the record.
         await postDailyWebhook(leavePayload(customerUser));
+
+        const stillThere = await iamRequest
+            .get('/calls/get-by-room')
+            .query({ roomName })
+            .set('Authorization', CUSTOMER_TOKEN);
+        expect(stillThere.body?.isError).toBeFalsy();
+        expect(stillThere.body?.accumulatedMs).toBe(call!.accumulatedMs);
+
+        // ── the Daily.co room finally closes — meeting.ended tears it down ──
+        await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: 'm-1', room: roomName, start_ts: Date.now() / 1000 } });
 
         const res = await iamRequest
             .get('/calls/get-by-room')

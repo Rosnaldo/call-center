@@ -1,3 +1,5 @@
+import { IUser } from '@repo/shared-types';
+
 export interface SendIncomingCallPayload {
     customerId: string;
     attendantId: string;
@@ -21,8 +23,13 @@ export interface CallCompletedPayload {
     attendantId: string;
 }
 
+export interface UserTokenChargedPayload {
+    user: IUser;
+}
+
 export type IamWebhookBody =
     | { event: 'incoming_call_sent'; payload: SendIncomingCallPayload }
     | { event: 'incoming_call_cancelled'; payload: CancelIncomingCallPayload }
     | { event: 'call_accepted'; payload: AcceptCallPayload }
-    | { event: 'call_completed'; payload: CallCompletedPayload };
+    | { event: 'call_completed'; payload: CallCompletedPayload }
+    | { event: 'user_token_charged'; payload: UserTokenChargedPayload };

@@ -105,7 +105,7 @@ describe('syncFromCall()', () => {
   });
 
   it('stops and freezes elapsedSeconds at accumulatedMs when isPlaying is false', () => {
-    const call = buildCall({ isPlaying: false, startedAt: null, accumulatedMs: 42_000 });
+    const call = buildCall({ isPlaying: false, overlapStartedAt: null, accumulatedMs: 42_000 });
 
     useTimerStore.getState().syncFromCall(call);
 
@@ -116,7 +116,7 @@ describe('syncFromCall()', () => {
   it('plays and computes elapsedSeconds from accumulatedMs + time since startedAt when isPlaying is true', () => {
     vi.useFakeTimers();
     vi.setSystemTime(100_000);
-    const call = buildCall({ isPlaying: true, startedAt: 100_000 - 5_000, accumulatedMs: 10_000 });
+    const call = buildCall({ isPlaying: true, overlapStartedAt: 100_000 - 5_000, accumulatedMs: 10_000 });
 
     useTimerStore.getState().syncFromCall(call);
 
@@ -124,10 +124,10 @@ describe('syncFromCall()', () => {
     expect(useTimerStore.getState().elapsedSeconds).toBe(15);
   });
 
-  it('follows isPlaying rather than startedAt — backend is the single source of truth', () => {
+  it('follows isPlaying rather than overlapStartedAt — backend is the single source of truth', () => {
     // an inconsistent combination should never happen in practice, but the
-    // store must still defer to isPlaying, not re-derive status from startedAt
-    const call = buildCall({ isPlaying: false, startedAt: Date.now(), accumulatedMs: 0 });
+    // store must still defer to isPlaying, not re-derive status from overlapStartedAt
+    const call = buildCall({ isPlaying: false, overlapStartedAt: Date.now(), accumulatedMs: 0 });
 
     useTimerStore.getState().syncFromCall(call);
 
@@ -146,7 +146,7 @@ describe('syncFromCall()', () => {
 
   it('keeps two independent stores (e.g. customer and attendant) in sync when fed the same call', () => {
     const attendantTimerStore = createTimerStore();
-    const call = buildCall({ isPlaying: false, startedAt: null, accumulatedMs: 7_000 });
+    const call = buildCall({ isPlaying: false, overlapStartedAt: null, accumulatedMs: 7_000 });
 
     useTimerStore.getState().syncFromCall(call);
     attendantTimerStore.getState().syncFromCall(call);

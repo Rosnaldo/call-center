@@ -60,7 +60,7 @@ export class Complete {
             await redis.set(`${ONLINE_USERS_PREFIX}${customer.id}`, JSON.stringify({ ...customer, status: 'idle' }), 'EX', 90);
             await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'idle' }), 'EX', 90);
 
-            notifyCallCompleted(traceId, customerId, attendantId).catch(() => {});
+            await notifyCallCompleted(traceId, customerId, attendantId);
 
             return successData({});
         } catch (error: unknown) {

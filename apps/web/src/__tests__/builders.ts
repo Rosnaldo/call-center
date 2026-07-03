@@ -24,10 +24,14 @@ export const buildCall = (d?: Partial<CallState>): CallState => ({
   attendantId: d?.attendantId ?? nextId(),
   attendantName: d?.attendantName ?? 'Test Attendant',
   roomName: d?.roomName ?? 'test-room',
+  meetingId: d?.meetingId ?? 'test-meeting',
   activeUserIds: d?.activeUserIds ?? [],
   accumulatedMs: d?.accumulatedMs ?? 0,
-  startedAt: d?.startedAt !== undefined ? d.startedAt : Date.now(),
+  overlapStartedAt: d?.overlapStartedAt !== undefined ? d.overlapStartedAt : Date.now(),
+  startedAt: d?.startedAt !== undefined ? d.startedAt : new Date(),
+  endedAt: d?.endedAt !== undefined ? d.endedAt : null,
   isPlaying: d?.isPlaying ?? true,
+  tokensToBeCharged: d?.tokensToBeCharged ?? 0,
 });
 
 export const buildTokenTransaction = (d?: Partial<TokenTransaction>): TokenTransaction => ({

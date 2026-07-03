@@ -1,24 +1,21 @@
 import z from 'zod';
 import { validateParse, ValidateParseResult } from '#utils/zod/validate_parse';
 import { makeSmallStringSchema } from '#utils/zod/valid_small_string';
-import { ICallController } from 'src/controllers/call/params';
+import { ICallHistoryController } from 'src/controllers/call_history/params';
 
-type IInput = ICallController['ICreate']['IInput'];
+type IInput = ICallHistoryController['ICreate']['IInput'];
 
 export const inputSchema = z.object({
-    id: makeSmallStringSchema('id'),
+    callId: makeSmallStringSchema('callId'),
     customerId: makeSmallStringSchema('customerId'),
     customerName: makeSmallStringSchema('customerName'),
     attendantId: makeSmallStringSchema('attendantId'),
     attendantName: makeSmallStringSchema('attendantName'),
     roomName: makeSmallStringSchema('roomName'),
     meetingId: makeSmallStringSchema('meetingId').or(z.literal('')),
-    activeUserIds: z.array(z.string()),
     accumulatedMs: z.number(),
-    overlapStartedAt: z.number().nullable(),
     startedAt: z.coerce.date().nullable(),
     endedAt: z.coerce.date().nullable(),
-    isPlaying: z.boolean(),
     tokensToBeCharged: z.number(),
 });
 

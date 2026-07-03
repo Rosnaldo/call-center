@@ -5,7 +5,8 @@ export type WsUsersMessage =
     | { event: 'add_to_online_users'; data: IOnlineUser }
     | { event: 'online_users_broadcast' }
     | { event: 'heartbeat_ack' }
-    | { event: 'user_logout'; data: { id: string } };
+    | { event: 'user_logout'; data: { id: string } }
+    | { event: 'user_tokens_updated'; data: { id: string; tokens?: number } };
 
 export interface WsUsersStores {
     onlineUsers: OnlineUsersStoreInstance;
@@ -45,7 +46,7 @@ export class WsUsersService {
     }
 
     handle(msg: { event: string; data?: any }): boolean {
-        const { addToOnlineUsers, refreshUsers, removeFromOnlineUsers } = this.stores.onlineUsers.getState();
+        const { addToOnlineUsers, refreshUsers, removeFromOnlineUsers, updateUser } = this.stores.onlineUsers.getState();
 
         switch (msg.event) {
             case 'add_to_online_users':
@@ -59,6 +60,9 @@ export class WsUsersService {
                 return true;
             case 'user_logout':
                 removeFromOnlineUsers(msg.data.id);
+                return true;
+            case 'user_tokens_updated':
+                updateUser(msg.data.id, { tokens: msg.data.tokens });
                 return true;
             default:
                 return false;

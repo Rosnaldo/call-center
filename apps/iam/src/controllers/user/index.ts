@@ -1,4 +1,5 @@
 import { Avatar } from './avatar';
+import { ChargeToken } from './charge_token';
 import { Count } from './count';
 import { Create } from './create';
 import { Delete } from './delete';
@@ -18,6 +19,7 @@ export class UserController {
     public readonly edit: Edit;
     public readonly avatar: Avatar;
     public readonly count: Count;
+    public readonly chargeToken: ChargeToken;
 
     constructor() {
         this.count = Count.construir(this.classId);
@@ -28,5 +30,6 @@ export class UserController {
         this.delete = Delete.construir(this.classId);
         this.edit = Edit.construir(this.classId);
         this.avatar = Avatar.construir(this.classId);
+        this.chargeToken = ChargeToken.construir(this.classId);
     }
 }

@@ -1,9 +1,9 @@
 import { IncomingCallState } from '@repo/shared-types';
 import type { StoresRef } from '../stores.ts';
-import { CallState, CallStore } from './state.ts';
+import { CallStore } from './state.ts';
 import type { IDailyService } from '../../services/daily.ts';
 import { fetchOnlineUsers } from '@/src/services/api/online-users.ts';
-import { fetchCall, completeCall as completeCallService } from '@/src/services/api/calls.ts';
+import { fetchCall } from '@/src/services/api/calls.ts';
 import { acceptIncomingCall as acceptIncomingCallService } from '@/src/services/api/incoming-calls.ts';
 import { handleRequestError } from '@/src/utils/utils.ts';
 import { ApiError } from '../../error/api.ts';
@@ -12,15 +12,12 @@ import i18n from '../../i18n.ts';
 export interface CallActions {
   acceptIncomingCall: () => Promise<void> | void;
   completeCall: () => void;
-  meetingStarted: (call: CallState) => void;
-  updateJoinedView: (call: CallState) => void;
-  updateLeftView: (call: CallState) => void;
   incomingCallAccepted: (incomingCall: IncomingCallState) => void;
 }
 
 export const createCallActions = (
   set: (fn: (state: any) => any) => void,
-  get: () => CallStore,
+  _get: () => CallStore,
   dailyService: IDailyService,
   ref: StoresRef,
 ): CallActions => {
@@ -72,35 +69,19 @@ export const createCallActions = (
     },
 
     completeCall: async () => {
-      const activeCall = get().call;
-
+      // Only leave the Daily.co room here — the realtime webhook chain
+      // (participant.left → meeting.ended) is the sole source of truth for
+      // freezing the timer, charging tokens, flipping users back to idle,
+      // and tearing down the call record.
       ref.callView.getState().setViewState('none');
       ref.callView.getState().setSelectedAttendantId(null);
       set(() => ({ call: null }));
 
       try {
         await dailyService.leave();
-        if (activeCall) {
-          await completeCallService(activeCall.customerId, activeCall.attendantId);
-        }
-        const users = await fetchOnlineUsers();
-        ref.onlineUsers.setState({ users });
       } catch (error) {
         handleRequestError(error);
       }
-    },
-
-    meetingStarted: async (newCall: CallState) => {
-      set(() => ({ call: newCall }));
-      ref.timer.getState().syncFromCall(newCall);
-    },
-    updateJoinedView: async (newCall: CallState) => {
-      set(() => ({ call: newCall }));
-      ref.timer.getState().syncFromCall(newCall);
-    },
-    updateLeftView: async (newCall: CallState) => {
-      set(() => ({ call: newCall }));
-      ref.timer.getState().syncFromCall(newCall);
     },
   };
 };

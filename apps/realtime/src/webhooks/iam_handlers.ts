@@ -1,6 +1,6 @@
 import logger from '#logger';
 import { sendToUser, broadcastMessage } from '#websocket/broadcast';
-import { SendIncomingCallPayload, CancelIncomingCallPayload, AcceptCallPayload, CallCompletedPayload } from './iam_types';
+import { SendIncomingCallPayload, CancelIncomingCallPayload, AcceptCallPayload, CallCompletedPayload, UserTokenChargedPayload } from './iam_types';
 
 export function onSendIncomingCall(payload: SendIncomingCallPayload): void {
     logger.info({ customerId: payload.customerId, attendantId: payload.attendantId, calledBy: payload.calledBy }, 'iam incoming_call_sent');
@@ -80,5 +80,14 @@ export function onCallCompleted(payload: CallCompletedPayload): void {
     broadcastMessage({
         event: 'online_users_broadcast',
         data: {},
+    });
+}
+
+export function onUserTokenCharged(payload: UserTokenChargedPayload): void {
+    logger.info({ userId: payload.user._id, tokens: payload.user.tokens }, 'iam user_token_charged');
+
+    sendToUser(payload.user._id, {
+        event: 'user_tokens_updated',
+        data: { id: payload.user._id, tokens: payload.user.tokens },
     });
 }

@@ -1,7 +1,7 @@
 import logger from '#logger';
 import { type Application, type Request, type Response } from 'express';
 import { IamWebhookBody } from './iam_types';
-import { onSendIncomingCall, onCancelIncomingCall, onCallAccepted, onCallCompleted } from './iam_handlers';
+import { onSendIncomingCall, onCancelIncomingCall, onCallAccepted, onCallCompleted, onUserTokenCharged } from './iam_handlers';
 
 export default (app: Application) => {
     app.get('/webhooks/iam', (_req: Request, res: Response) => {
@@ -25,6 +25,9 @@ export default (app: Application) => {
                 break;
             case 'call_completed':
                 onCallCompleted(body.payload);
+                break;
+            case 'user_token_charged':
+                onUserTokenCharged(body.payload);
                 break;
         }
 
