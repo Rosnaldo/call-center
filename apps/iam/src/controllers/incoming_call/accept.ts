@@ -80,7 +80,7 @@ export class Accept {
                     startedAt: null,
                     endedAt: null,
                     isPlaying: false,
-                    tokensToBeCharged: 0,
+                    tokensToBeCharged: 1,
                 };
                 await redis.set(callKey, JSON.stringify(newCall));
             }
