@@ -6,13 +6,10 @@ import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
 import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
-import { getUserModel, getCallHistoryModel } from '#models/singleton';
-import { UserUtils } from '#schemas/user/utils';
-import { CallState, IOnlineUser, getCallElapsedMs, computeTokensToBeCharged } from '@repo/shared-types';
-import { notifyCallCompleted, notifyUserTokenCharged } from 'src/services/realtime';
+import { IOnlineUser } from '@repo/shared-types';
+import { notifyCallCompleted } from 'src/services/realtime';
 import { ICallController } from './params';
 
-const CALLS_KEY = 'calls';
 const ONLINE_USERS_PREFIX = 'online_user:';
 
 type IOutput = ICallController['IComplete']['IOutput'];
@@ -29,11 +26,8 @@ interface Props {
 
 export class Complete {
     public static readonly classId = Symbol.for('Controller > Call > Complete');
-    private readonly userUtils: UserUtils;
 
-    private constructor() {
-        this.userUtils = new UserUtils();
-    }
+    private constructor() {}
 
     static construir(classId: symbol): Complete {
         if (classId !== Symbol.for('Controller > Call')) {
@@ -51,47 +45,6 @@ export class Complete {
 
             const redis = getRedisClient();
 
-            const callKey = `${CALLS_KEY}:${customerId}--${attendantId}`;
-            const callJson = await redis.get(callKey);
-            if (!callJson) throw new BadRequestException('Call não encontrada');
-            const call = JSON.parse(callJson) as CallState;
-
-            const elapsedMs = getCallElapsedMs(call);
-            const tokensToBeCharged = computeTokensToBeCharged(elapsedMs);
-
-            if (tokensToBeCharged > 0) {
-                const user = await getUserModel().findById(customerId);
-                if (!user) throw new BadRequestException('Cliente não encontrado');
-                user.tokens = (user.tokens ?? 0) - tokensToBeCharged;
-                await user.save();
-                notifyUserTokenCharged(traceId, this.userUtils.toObject(user)).catch(() => {});
-            }
-
-            const endedCall: CallState = {
-                ...call,
-                accumulatedMs: elapsedMs,
-                overlapStartedAt: null,
-                isPlaying: false,
-                endedAt: new Date(),
-                tokensToBeCharged,
-            };
-
-            await getCallHistoryModel().create({
-                callId: endedCall.id,
-                customerId: endedCall.customerId,
-                customerName: endedCall.customerName,
-                attendantId: endedCall.attendantId,
-                attendantName: endedCall.attendantName,
-                roomName: endedCall.roomName,
-                meetingId: endedCall.meetingId,
-                accumulatedMs: endedCall.accumulatedMs,
-                startedAt: endedCall.startedAt,
-                endedAt: endedCall.endedAt,
-                tokensToBeCharged: endedCall.tokensToBeCharged,
-            });
-
-            await redis.del(callKey);
-
             const [customerJson, attendantJson] = await Promise.all([
                 redis.get(`${ONLINE_USERS_PREFIX}${customerId}`),
                 redis.get(`${ONLINE_USERS_PREFIX}${attendantId}`),
@@ -106,9 +59,10 @@ export class Complete {
             await redis.set(`${ONLINE_USERS_PREFIX}${customer.id}`, JSON.stringify({ ...customer, status: 'idle' }), 'EX', 90);
             await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'idle' }), 'EX', 90);
 
-            await notifyCallCompleted(traceId, customerId, attendantId);
+            const roomName = `${customer.slug}--${attendant.slug}`;
+            await notifyCallCompleted(traceId, customerId, attendantId, roomName);
 
-            return successData(endedCall);
+            return successData({});
         } catch (error: unknown) {
             return logError(error, '/calls/complete');
         }

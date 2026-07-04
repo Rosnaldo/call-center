@@ -5,7 +5,6 @@ import { MediaSettingsModal } from '../media-settings-modal/MediaSettingsModal.t
 import { BillingCalculationModal } from '../BillingCalculationModal.tsx';
 import { BillingSummaryModal } from '../BillingSummaryModal.tsx';
 import { CallView, CallViewState } from './CallView.tsx';
-import { CallState } from '@/src/states/call/state.ts';
 import { useRebuildOnLeave } from '@/src/hooks/useRebuildOnLeave.ts';
 import { useScreenShare } from '@daily-co/daily-react';
 
@@ -43,7 +42,6 @@ export const CallLobbyView: React.FC = () => {
       const diff = Math.floor((Date.now() - start) / 1000);
       const clamped = diff >= 0 ? diff : 0;
       setSeconds(clamped);
-      secondsRef.current = clamped;
     };
     tick();
     const timer = setInterval(tick, 1000);
@@ -130,55 +128,22 @@ export const CallLobbyView: React.FC = () => {
     }
   };
 
-  // Billing summary
-  const [completedCallSummary, setCompletedCallSummary] = useState<CallState | null>(null);
-  const [isCalculatingTokens, setIsCalculatingTokens] = useState(false);
-  const [callDurationSeconds, setCallDurationSeconds] = useState(0);
-  const secondsRef = useRef(0);
-
+  // Exit fullscreen when the call ends (billing modals are driven by the
+  // callCompleted/meetingEnded store actions in response to their websocket events)
   const isCallActiveRef = useRef(isCallActive);
-  const lastCallRef = useRef<CallState | null>(null);
-
-  const resetSignal = useBillingStore((s) => s.resetSignal);
-  const resetSignalRef = useRef(resetSignal);
-
-  if (currentCall && isCallActive) lastCallRef.current = currentCall;
 
   useEffect(() => {
     const wasActive = isCallActiveRef.current;
     isCallActiveRef.current = isCallActive;
 
-    if (wasActive && !isCallActive && lastCallRef.current) {
-      if (resetSignalRef.current !== resetSignal) {
-        resetSignalRef.current = resetSignal;
-        lastCallRef.current = null;
-        return;
-      }
+    if (wasActive && !isCallActive) {
       exitFullscreen();
-      setCallDurationSeconds(secondsRef.current);
-
-      const endedCallId = lastCallRef.current.id;
-      const endedCall = lastCallRef.current;
-      lastCallRef.current = null;
-
-      setIsCalculatingTokens(true);
-
-      const timeoutId = setTimeout(() => {
-        const storeCall = useCallStore.getState().call;
-        const finalCall = storeCall?.id === endedCallId
-          ? storeCall
-          : null;
-        setCompletedCallSummary(finalCall ?? { ...endedCall });
-        setIsCalculatingTokens(false);
-      }, 5000);
-
-      return () => clearTimeout(timeoutId);
     }
-  }, [isCallActive, resetSignal]);
+  }, [isCallActive]);
 
   useEffect(() => {
-    setCompletedCallSummary(null);
-    setIsCalculatingTokens(false);
+    useBillingStore.getState().closeSummaryModal();
+    useBillingStore.getState().closeCalculationModal();
   }, [currentUser?.id]);
 
   const customerUser = currentCall ? users.find(u => u.id === currentCall.customerId) : null;
@@ -244,15 +209,9 @@ export const CallLobbyView: React.FC = () => {
             onClose={() => setIsSettingsOpen(false)}
           />
 
-          <BillingCalculationModal isOpen={isCalculatingTokens} isAttendant={currentUser?.role === 'attendant'} />
+          <BillingCalculationModal isAttendant={currentUser?.role === 'attendant'} />
 
-          <BillingSummaryModal
-            isOpen={!!completedCallSummary}
-            completedCallSummary={completedCallSummary}
-            currentUser={currentUser}
-            callDurationSeconds={callDurationSeconds}
-            onClose={() => setCompletedCallSummary(null)}
-          />
+          <BillingSummaryModal />
         </div>
 
       </div>

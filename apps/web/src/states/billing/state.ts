@@ -1,9 +1,13 @@
+import { CallState } from '../call/state.ts';
+
 export interface BillingStore {
   initialTokens: number;
-  resetSignal: number;
+  isCalculationModalOpen: boolean;
+  completedCallSummary: CallState | null;
 }
 
 export const initialBillingStore: BillingStore = {
   initialTokens: 1,
-  resetSignal: 0,
+  isCalculationModalOpen: false,
+  completedCallSummary: null,
 };

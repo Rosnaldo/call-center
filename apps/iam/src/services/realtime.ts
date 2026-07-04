@@ -22,10 +22,10 @@ export async function notifyCallAccepted(traceId: string, customerId: string, at
     });
 }
 
-export async function notifyCallCompleted(traceId: string, customerId: string, attendantId: string): Promise<void> {
+export async function notifyCallCompleted(traceId: string, customerId: string, attendantId: string, roomName: string): Promise<void> {
     await createRealtimeClient(traceId).post('/webhooks/iam', {
         event: 'call_completed',
-        payload: { customerId, attendantId },
+        payload: { customerId, attendantId, roomName },
     });
 }
 

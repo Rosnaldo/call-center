@@ -1,17 +1,17 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
+import { useBillingStore } from '../../states/stores.ts';
 
 interface BillingCalculationModalProps {
-  isOpen: boolean;
   isAttendant?: boolean;
 }
 
 export const BillingCalculationModal: React.FC<BillingCalculationModalProps> = ({
-  isOpen,
   isAttendant = false,
 }) => {
   const { t } = useTranslation();
+  const isOpen = useBillingStore((s) => s.isCalculationModalOpen);
   if (!isOpen) return null;
 
   return (

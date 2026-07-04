@@ -16,6 +16,6 @@ export interface ICallController {
         IInput: { customerId: string; attendantId: string };
     };
     IComplete: {
-        IOutput: CallState;
+        IOutput: {};
     };
 }

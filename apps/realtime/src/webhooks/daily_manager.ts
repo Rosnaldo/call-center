@@ -93,15 +93,19 @@ async function createWebhook(url: string): Promise<void> {
     logger.info({ uuid: webhook.uuid, url }, 'daily webhook criado');
 }
 
+export async function deleteDailyRoom(room: string): Promise<void> {
+    await fetch(`${DAILY_API_URL}/rooms/${room}`, {
+        method: 'DELETE',
+        headers: dailyHeaders(),
+    });
+    logger.info({ room }, 'daily room removida');
+}
+
 async function deleteTrackedRooms(): Promise<void> {
     try {
         const { data } = await iamApi.delete<{ rooms: string[] }>('/calls/rooms');
         for (const room of data.rooms) {
-            await fetch(`${DAILY_API_URL}/rooms/${room}`, {
-                method: 'DELETE',
-                headers: dailyHeaders(),
-            })
-            logger.info({ room }, 'daily room removida');
+            await deleteDailyRoom(room);
         }
     } catch {}
 }

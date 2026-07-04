@@ -21,6 +21,7 @@ export interface AcceptCallPayload {
 export interface CallCompletedPayload {
     customerId: string;
     attendantId: string;
+    roomName: string;
 }
 
 export interface UserTokenChargedPayload {

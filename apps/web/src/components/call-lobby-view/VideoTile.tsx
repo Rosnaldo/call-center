@@ -52,7 +52,7 @@ export function VideoTile({ sessionId, partner }: VideoTileProps) {
   }, [audioTrack?.persistentTrack]);
 
   return (
-    <div className="video-tile w-full h-full flex items-center justify-center bg-black">
+    <div className="video-tile w-full h-full flex items-center justify-center">
       {remoteCameraOff ? (
         <PartnerAvatar partner={partner} />
       ) : (

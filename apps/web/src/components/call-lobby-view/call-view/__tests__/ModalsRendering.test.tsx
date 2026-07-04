@@ -5,7 +5,7 @@ import { BillingCalculationModal } from '../../BillingCalculationModal.tsx';
 import { BillingSummaryModal } from '../../BillingSummaryModal.tsx';
 import { MediaSettingsModal } from '../../media-settings-modal/MediaSettingsModal.tsx';
 import { buildCall, buildOnlineUserState } from '../../../../__tests__/builders.ts';
-import { useBillingStore } from '../../../../states/stores.ts';
+import { useBillingStore, useCurrentUserStore } from '../../../../states/stores.ts';
 
 vi.mock('../../../../providers/devices.tsx', () => ({
   useDevicesContext: () => ({
@@ -104,22 +104,25 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
   });
 
   describe('BillingCalculationModal', () => {
-    it('should return null when isOpen is false', () => {
+    it('should return null when isCalculationModalOpen is false', () => {
+      useBillingStore.setState({ isCalculationModalOpen: false });
       const { container } = render(
-        <BillingCalculationModal isOpen={false} />
+        <BillingCalculationModal />
       );
       expect(container.firstChild).toBeNull();
     });
 
     it('should render processing text for normal Customer', () => {
-      render(<BillingCalculationModal isOpen={true} isAttendant={false} />);
+      useBillingStore.setState({ isCalculationModalOpen: true });
+      render(<BillingCalculationModal isAttendant={false} />);
       expect(screen.getByText('Finalizando Atendimento')).toBeDefined();
       expect(screen.getByText('Aguardando cálculo oficial de consumo de tokens...')).toBeDefined();
       expect(screen.getByText('♦ PROCESSANDO VALOR OFICIAL')).toBeDefined();
     });
 
     it('should render processing text for Attendant', () => {
-      render(<BillingCalculationModal isOpen={true} isAttendant={true} />);
+      useBillingStore.setState({ isCalculationModalOpen: true });
+      render(<BillingCalculationModal isAttendant={true} />);
       expect(screen.getByText('Finalizando Atendimento')).toBeDefined();
       expect(screen.getByText('Processando resumo e dados consolidados do atendimento...')).toBeDefined();
       expect(screen.getByText('♦ PROCESSANDO ATENDIMENTO')).toBeDefined();
@@ -127,41 +130,19 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
   });
 
   describe('BillingSummaryModal', () => {
-    it('should not render when isOpen is false or completedCallSummary is null', () => {
-      const { container: container1 } = render(
-        <BillingSummaryModal
-          callDurationSeconds={0}
-          isOpen={false}
-          completedCallSummary={buildCall()}
-          currentUser={buildOnlineUserState({ role: 'customer' })}
-          onClose={vi.fn()}
-        />
+    it('should not render when completedCallSummary is null', () => {
+      useBillingStore.setState({ completedCallSummary: null });
+      const { container } = render(
+        <BillingSummaryModal />
       );
-      expect(container1.firstChild).toBeNull();
-
-      const { container: container2 } = render(
-        <BillingSummaryModal
-          callDurationSeconds={0}
-          isOpen={true}
-          completedCallSummary={null}
-          currentUser={buildOnlineUserState({ role: 'customer' })}
-          onClose={vi.fn()}
-        />
-      );
-      expect(container2.firstChild).toBeNull();
+      expect(container.firstChild).toBeNull();
     });
 
     it('renders customer billed summaries', () => {
-      useBillingStore.setState({ initialTokens: 5 });
-      const onClose = vi.fn();
+      useBillingStore.setState({ initialTokens: 5, completedCallSummary: buildCall({ attendantName: 'Dr. John' }) });
+      useCurrentUserStore.setState({ currentUser: buildOnlineUserState({ role: 'customer' }) });
       const { container } = render(
-        <BillingSummaryModal
-          callDurationSeconds={0}
-          isOpen={true}
-          completedCallSummary={buildCall({ attendantName: 'Dr. John' })}
-          currentUser={buildOnlineUserState({ role: 'customer' })}
-          onClose={onClose}
-        />
+        <BillingSummaryModal />
       );
 
       expect(screen.getByText('Atendimento Finalizado')).toBeDefined();
@@ -177,20 +158,15 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
       expect(okButton).not.toBeNull();
       if (okButton) {
         fireEvent.click(okButton);
-        expect(onClose).toHaveBeenCalledTimes(1);
+        expect(useBillingStore.getState().completedCallSummary).toBeNull();
       }
     });
 
     it('renders singular token word when initialTokens is 1', () => {
-      useBillingStore.setState({ initialTokens: 1 });
+      useBillingStore.setState({ initialTokens: 1, completedCallSummary: buildCall({ attendantName: 'Dr. John' }) });
+      useCurrentUserStore.setState({ currentUser: buildOnlineUserState({ role: 'customer' }) });
       render(
-        <BillingSummaryModal
-          callDurationSeconds={0}
-          isOpen={true}
-          completedCallSummary={buildCall({ attendantName: 'Dr. John' })}
-          currentUser={buildOnlineUserState({ role: 'customer' })}
-          onClose={vi.fn()}
-        />
+        <BillingSummaryModal />
       );
 
       expect(screen.getByText('1')).toBeDefined();
@@ -200,15 +176,10 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
     });
 
     it('renders attendant receive summaries', () => {
-      useBillingStore.setState({ initialTokens: 5 });
+      useBillingStore.setState({ initialTokens: 5, completedCallSummary: buildCall({ customerName: 'Alice Mary' }) });
+      useCurrentUserStore.setState({ currentUser: buildOnlineUserState({ role: 'attendant' }) });
       render(
-        <BillingSummaryModal
-          callDurationSeconds={0}
-          isOpen={true}
-          completedCallSummary={buildCall({ customerName: 'Alice Mary' })}
-          currentUser={buildOnlineUserState({ role: 'attendant' })}
-          onClose={vi.fn()}
-        />
+        <BillingSummaryModal />
       );
 
       expect(screen.getByText(/Seu atendimento com/i)).toBeDefined();

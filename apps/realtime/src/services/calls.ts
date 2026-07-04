@@ -23,3 +23,21 @@ export const deleteCall = async (traceId: string, customerId: string, attendantI
 export const trackRoom = async (traceId: string, roomName: string): Promise<void> => {
     await createIamClient(traceId).post('/calls/track-room', { roomName });
 };
+
+export interface CallHistoryPayload {
+    callId: string;
+    customerId: string;
+    customerName: string;
+    attendantId: string;
+    attendantName: string;
+    roomName: string;
+    meetingId: string;
+    accumulatedMs: number;
+    startedAt: Date | null;
+    endedAt: Date | null;
+    tokensToBeCharged: number;
+}
+
+export const createCallHistory = async (traceId: string, payload: CallHistoryPayload): Promise<void> => {
+    await createIamClient(traceId).post('/call-history/create', payload);
+};

@@ -1,6 +1,7 @@
 import logger from '#logger';
 import { sendToUser, broadcastMessage } from '#websocket/broadcast';
 import { SendIncomingCallPayload, CancelIncomingCallPayload, AcceptCallPayload, CallCompletedPayload, UserTokenChargedPayload } from './iam_types';
+import { deleteDailyRoom } from './daily_manager';
 
 export function onSendIncomingCall(payload: SendIncomingCallPayload): void {
     logger.info({ customerId: payload.customerId, attendantId: payload.attendantId, calledBy: payload.calledBy }, 'iam incoming_call_sent');
@@ -80,6 +81,10 @@ export function onCallCompleted(payload: CallCompletedPayload): void {
     broadcastMessage({
         event: 'online_users_broadcast',
         data: {},
+    });
+
+    deleteDailyRoom(payload.roomName).catch((error) => {
+        logger.error(error, 'iam call_completed: falha ao deletar room do daily');
     });
 }
 

@@ -1,6 +1,6 @@
 import { connectRedis, getRedisClient, disconnectRedis } from 'src/redis/singleton';
 import { CallController } from 'src/controllers/call';
-import { buildOnlineUser, buildCallState } from '../../builders';
+import { buildOnlineUser } from '../../builders';
 
 jest.mock('src/services/realtime', () => ({
     notifyCallCompleted: jest.fn().mockResolvedValue(undefined),
@@ -28,20 +28,6 @@ const seedUsers = async (customer: ReturnType<typeof buildOnlineUser>, attendant
 };
 
 describe('Controller > Call > Complete', () => {
-    it('removes the call from redis', async () => {
-        const customer = buildOnlineUser({ role: 'customer' });
-        const attendant = buildOnlineUser({ role: 'attendant' });
-        const call = buildCallState({ customerId: customer.id, attendantId: attendant.id });
-        const redis = getRedisClient();
-        await redis.set(`calls:${customer.id}--${attendant.id}`, JSON.stringify(call));
-        await seedUsers(customer, attendant);
-
-        const controller = new CallController();
-        await controller.complete.exec({ traceId: TRACE, mapped: { customerId: customer.id, attendantId: attendant.id } });
-
-        expect(await redis.get(`calls:${customer.id}--${attendant.id}`)).toBeNull();
-    });
-
     it('sets customer status to idle', async () => {
         const customer = buildOnlineUser({ role: 'customer', status: 'in-call' });
         const attendant = buildOnlineUser({ role: 'attendant', status: 'in-call' });

@@ -6,6 +6,8 @@ beforeEach(() => {
   useCallStore.setState({ call: null });
   useTimerStore.getState().reset();
   useBillingStore.getState().setInitialTokens(0);
+  useBillingStore.getState().closeCalculationModal();
+  useBillingStore.getState().closeSummaryModal();
   useCallViewStore.getState().setViewState('none');
   useCurrentUserStore.getState().setCurrentUser(null);
   useOnlineUsersStore.setState({ users: [] });
@@ -77,5 +79,15 @@ describe('meeting store — meetingEnded', () => {
     const users = useOnlineUsersStore.getState().users;
     expect(users.find((u) => u.id === customer.id)?.status).toBe('idle');
     expect(users.find((u) => u.id === attendant.id)?.status).toBe('idle');
+  });
+
+  it('closes the billing calculation modal and opens the billing summary modal with the ended call', () => {
+    const call = buildCall({ customerId: customer.id, attendantId: attendant.id });
+    useBillingStore.getState().openCalculationModal();
+
+    useMeetingStore.getState().meetingEnded(call);
+
+    expect(useBillingStore.getState().isCalculationModalOpen).toBe(false);
+    expect(useBillingStore.getState().completedCallSummary).toEqual(call);
   });
 });

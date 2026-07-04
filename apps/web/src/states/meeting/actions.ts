@@ -26,6 +26,22 @@ export const createMeetingActions = (
     meetingStarted: syncCall,
     updateJoinedView: syncCall,
     updateLeftView: syncCall,
-    meetingEnded: () => {},
+    meetingEnded: (call: CallState) => {
+      ref.timer.getState().reset();
+      ref.callView.getState().setViewState('none');
+      ref.callView.getState().setSelectedAttendantId(null);
+      ref.call.setState({ call: null });
+
+      const currentUser = ref.currentUser.getState().currentUser;
+      if (currentUser) {
+        ref.currentUser.getState().setCurrentUser({ ...currentUser, status: 'idle' });
+      }
+
+      ref.onlineUsers.getState().updateUser(call.customerId, { status: 'idle' });
+      ref.onlineUsers.getState().updateUser(call.attendantId, { status: 'idle' });
+
+      ref.billing.getState().closeCalculationModal();
+      ref.billing.getState().openSummaryModal(call);
+    },
   };
 };

@@ -1,31 +1,20 @@
 import React from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { Check } from 'lucide-react';
-import { CallState } from '../../states/call/state.ts';
-import { OnlineUserState } from '../../states/online-users/state';
-import { useBillingStore } from '../../states/stores.ts';
+import { useBillingStore, useCurrentUserStore } from '../../states/stores.ts';
 
-interface BillingSummaryModalProps {
-  isOpen: boolean;
-  completedCallSummary: CallState | null;
-  currentUser: OnlineUserState | null;
-  callDurationSeconds?: number;
-  onClose: () => void;
-}
-
-export const BillingSummaryModal: React.FC<BillingSummaryModalProps> = ({
-  isOpen,
-  completedCallSummary,
-  currentUser,
-  callDurationSeconds = 0,
-  onClose,
-}) => {
+export const BillingSummaryModal: React.FC = () => {
   const { t } = useTranslation();
   const initialTokens = useBillingStore((s) => s.initialTokens);
+  const completedCallSummary = useBillingStore((s) => s.completedCallSummary);
+  const closeSummaryModal = useBillingStore((s) => s.closeSummaryModal);
+  const currentUser = useCurrentUserStore((s) => s.currentUser);
+  if (!completedCallSummary) return null;
+
+  const callDurationSeconds = Math.floor(completedCallSummary.accumulatedMs / 1000);
   const mins = Math.floor(callDurationSeconds / 60);
   const secs = callDurationSeconds % 60;
   const durationText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  if (!isOpen || !completedCallSummary) return null;
 
   const partnerName = currentUser?.role === 'customer'
     ? completedCallSummary.attendantName
@@ -82,7 +71,7 @@ export const BillingSummaryModal: React.FC<BillingSummaryModalProps> = ({
 
         <button
           id="close-summary-btn"
-          onClick={onClose}
+          onClick={closeSummaryModal}
           className="w-full justify-center px-4 py-2.5 bg-brand-ochre hover:bg-brand-ochre-hover text-white transition-all font-mono tracking-wide text-[10px] rounded-full uppercase flex items-center gap-1.5 cursor-pointer shadow-[0_2px_8px_rgba(163,101,0,0.12)] font-extrabold"
         >
           {t('call.okUnderstood')}

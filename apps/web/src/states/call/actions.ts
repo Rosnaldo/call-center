@@ -81,28 +81,7 @@ export const createCallActions = (
     },
 
     callCompleted: async () => {
-      const { call } = get();
-
-      ref.timer.getState().reset();
-      ref.callView.getState().setViewState('none');
-      ref.callView.getState().setSelectedAttendantId(null);
-      set(() => ({ call: null }));
-
-      const currentUser = ref.currentUser.getState().currentUser;
-      if (currentUser) {
-        ref.currentUser.getState().setCurrentUser({ ...currentUser, status: 'idle' });
-      }
-
-      if (call) {
-        ref.onlineUsers.getState().updateUser(call.customerId, { status: 'idle' });
-        ref.onlineUsers.getState().updateUser(call.attendantId, { status: 'idle' });
-      }
-
-      try {
-        await dailyService.leave();
-      } catch (error) {
-        handleRequestError(error);
-      }
+      ref.billing.getState().openCalculationModal();
     },
   };
 };
