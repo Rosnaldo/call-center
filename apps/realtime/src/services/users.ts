@@ -23,8 +23,3 @@ export const findUserBySlug = async (traceId: string, slug: string): Promise<IUs
     const { data } = await createIamClient(traceId).get<IUser>('/users/find-by-slug', { params: { slug } });
     return data;
 };
-
-export const chargeToken = async (traceId: string, customerId: string, tokens: number): Promise<IUser> => {
-    const { data } = await createIamClient(traceId).post<IUser>('/users/charge-token', { customerId, tokens });
-    return data;
-};

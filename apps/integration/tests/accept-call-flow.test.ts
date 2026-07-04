@@ -219,7 +219,7 @@ describe('Accept Call Flow', () => {
         expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('in-call');
     });
 
-    it('after completeCall the attendant clears local state without notifying the customer directly', async () => {
+    it('after completeCall both parties are notified and clear local state', async () => {
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         const { serverWs: attendantWs, webFactory: attendantWebFactory } = createBridgedClient(attendantUser, ATTENDANT_TOKEN);
 
@@ -270,29 +270,26 @@ describe('Accept Call Flow', () => {
         expect(attendantAcceptBroadcast).toBeTruthy();
 
         // ── attendant completes call ──────────────────────────────────
-        // completeCall() only leaves the Daily.co room locally now — freezing
-        // the timer, charging tokens, flipping users idle, and propagating to
-        // the other party is entirely driven by the Daily.co webhook chain
-        // (participant.left → meeting.ended), not this REST/WS round trip.
+        // completeCall() now calls IAM's /calls/complete directly, which
+        // broadcasts call_completed back to both parties — each side then
+        // clears its own local state via callCompleted() on receipt.
         customerMessages.length = 0;
         attendantMessages.length = 0;
 
         attendantStores.call.getState().completeCall();
         await new Promise((r) => setTimeout(r, 100));
 
-        // ── no call_completed is sent anymore from this local action ──
+        // ── both sides receive call_completed ──────────────────────────
         const attendantCompleted = attendantMessages.find((m) => m.event === 'call_completed');
         const customerCompleted = customerMessages.find((m) => m.event === 'call_completed');
-        expect(attendantCompleted).toBeUndefined();
-        expect(customerCompleted).toBeUndefined();
+        expect(attendantCompleted).toBeTruthy();
+        expect(customerCompleted).toBeTruthy();
 
-        // ── attendant state cleared locally ────────────────────────────
+        // ── both sides clear local state ────────────────────────────────
         expect(attendantStores.call.getState().call).toBeNull();
         expect(attendantStores.callView.getState().viewState).toBe('none');
 
-        // ── customer is untouched — they only learn about it via the
-        //    Daily.co webhook chain, which this test doesn't simulate ────
-        expect(customerStores.call.getState().call).not.toBeNull();
-        expect(customerStores.callView.getState().viewState).toBe('in-call');
+        expect(customerStores.call.getState().call).toBeNull();
+        expect(customerStores.callView.getState().viewState).toBe('none');
     });
 });

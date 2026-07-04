@@ -22,7 +22,7 @@ export class WsCallService {
     }
 
     handle(msg: { event: string; data?: any }): boolean {
-        const { incomingCallAccepted, completeCall } = this.stores.call.getState();
+        const { incomingCallAccepted, callCompleted } = this.stores.call.getState();
         const { incomingCallCancelled, incomingCallSent, incomingCallReceived } = this.stores.incomingCall.getState();
 
         switch (msg.event) {
@@ -39,7 +39,7 @@ export class WsCallService {
                 incomingCallAccepted?.(msg.data.incomingCall);
                 break;
             case 'call_completed':
-                completeCall();
+                callCompleted?.();
                 break;
             default:
                 return false;

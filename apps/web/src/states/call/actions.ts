@@ -3,7 +3,7 @@ import type { StoresRef } from '../stores.ts';
 import { CallStore } from './state.ts';
 import type { IDailyService } from '../../services/daily.ts';
 import { fetchOnlineUsers } from '@/src/services/api/online-users.ts';
-import { fetchCall } from '@/src/services/api/calls.ts';
+import { fetchCall, completeCall as completeCallApi } from '@/src/services/api/calls.ts';
 import { acceptIncomingCall as acceptIncomingCallService } from '@/src/services/api/incoming-calls.ts';
 import { handleRequestError } from '@/src/utils/utils.ts';
 import { ApiError } from '../../error/api.ts';
@@ -11,13 +11,14 @@ import i18n from '../../i18n.ts';
 
 export interface CallActions {
   acceptIncomingCall: () => Promise<void> | void;
-  completeCall: () => void;
+  completeCall: () => Promise<void>;
   incomingCallAccepted: (incomingCall: IncomingCallState) => void;
+  callCompleted: () => Promise<void>;
 }
 
 export const createCallActions = (
   set: (fn: (state: any) => any) => void,
-  _get: () => CallStore,
+  get: () => CallStore,
   dailyService: IDailyService,
   ref: StoresRef,
 ): CallActions => {
@@ -69,13 +70,33 @@ export const createCallActions = (
     },
 
     completeCall: async () => {
-      // Only leave the Daily.co room here — the realtime webhook chain
-      // (participant.left → meeting.ended) is the sole source of truth for
-      // freezing the timer, charging tokens, flipping users back to idle,
-      // and tearing down the call record.
+      try {
+        const { call } = get();
+        if (!call) return;
+
+        await completeCallApi(call.customerId, call.attendantId);
+      } catch (error) {
+        handleRequestError(error);
+      }
+    },
+
+    callCompleted: async () => {
+      const { call } = get();
+
+      ref.timer.getState().reset();
       ref.callView.getState().setViewState('none');
       ref.callView.getState().setSelectedAttendantId(null);
       set(() => ({ call: null }));
+
+      const currentUser = ref.currentUser.getState().currentUser;
+      if (currentUser) {
+        ref.currentUser.getState().setCurrentUser({ ...currentUser, status: 'idle' });
+      }
+
+      if (call) {
+        ref.onlineUsers.getState().updateUser(call.customerId, { status: 'idle' });
+        ref.onlineUsers.getState().updateUser(call.attendantId, { status: 'idle' });
+      }
 
       try {
         await dailyService.leave();

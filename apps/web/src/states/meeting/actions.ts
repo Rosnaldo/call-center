@@ -26,18 +26,6 @@ export const createMeetingActions = (
     meetingStarted: syncCall,
     updateJoinedView: syncCall,
     updateLeftView: syncCall,
-    meetingEnded: (call: CallState) => {
-      ref.timer.getState().reset();
-      ref.call.setState({ call: null });
-      ref.callView.getState().setViewState('none');
-
-      const currentUser = ref.currentUser.getState().currentUser;
-      if (currentUser) {
-        ref.currentUser.getState().setCurrentUser({ ...currentUser, status: 'idle' });
-      }
-
-      ref.onlineUsers.getState().updateUser(call.customerId, { status: 'idle' });
-      ref.onlineUsers.getState().updateUser(call.attendantId, { status: 'idle' });
-    },
+    meetingEnded: () => {},
   };
 };

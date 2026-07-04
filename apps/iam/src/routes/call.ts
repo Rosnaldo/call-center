@@ -83,7 +83,7 @@ export default (app: Application) => {
             if (either.isError) {
                 return res.status(either.status).send(either);
             }
-            return res.status(200).send();
+            return res.status(200).send(either.data);
         }
     );
 

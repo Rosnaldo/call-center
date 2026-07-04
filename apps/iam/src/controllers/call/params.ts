@@ -15,4 +15,7 @@ export interface ICallController {
     IDelete: {
         IInput: { customerId: string; attendantId: string };
     };
+    IComplete: {
+        IOutput: CallState;
+    };
 }

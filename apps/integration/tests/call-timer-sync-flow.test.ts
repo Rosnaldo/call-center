@@ -1,4 +1,5 @@
 jest.mock('src/services/users');
+jest.mock('@/src/services/api/calls');
 
 import { EventEmitter } from 'node:events';
 import supertest from 'supertest';
@@ -21,9 +22,11 @@ import { Properties as WebProperties } from '../../web/src/properties';
 import { setBaseURL, setAuthToken } from '../src/mocks/realtime-calls-service';
 
 import * as usersService from 'src/services/users';
+import * as callsApiService from '@/src/services/api/calls';
 
 const findUserBySlugMock = usersService.findUserBySlug as jest.Mock;
 const addToIamMock = usersService.addToIam as jest.Mock;
+const mockCompleteCall = callsApiService.completeCall as jest.Mock;
 
 const pendingCalls: Array<Promise<unknown>> = [];
 
@@ -119,6 +122,11 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
             if (slug === customerUser.slug) return customerUser;
             if (slug === attendantUser.slug) return attendantUser;
             throw new Error(`unexpected slug: ${slug}`);
+        });
+
+        mockCompleteCall.mockImplementation(async (customerId: string, attendantId: string) => {
+            await iamRequest.post('/calls/complete').set('Authorization', CUSTOMER_TOKEN)
+                .send({ customerId, attendantId });
         });
     });
 
@@ -325,9 +333,10 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         expect(call!.accumulatedMs).toBeLessThan(expectedFinal + 700);
 
         // ── customer leaves too — the call record is NOT torn down yet.
-        //    onParticipantLeft only freezes the timer; onMeetingEnded (fired
-        //    once the Daily.co room itself closes) is the sole place that
-        //    finalizes billing, flips users idle, and deletes the record.
+        //    onParticipantLeft only freezes the timer; explicit completion
+        //    (the web completeCall() action, hitting IAM's /calls/complete)
+        //    is the sole place that finalizes billing, flips users idle,
+        //    and deletes the record.
         await postDailyWebhook(leavePayload(customerUser));
 
         const stillThere = await iamRequest
@@ -337,8 +346,9 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         expect(stillThere.body?.isError).toBeFalsy();
         expect(stillThere.body?.accumulatedMs).toBe(call!.accumulatedMs);
 
-        // ── the Daily.co room finally closes — meeting.ended tears it down ──
-        await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: 'm-1', room: roomName, start_ts: Date.now() / 1000 } });
+        // ── the customer hangs up — completeCall() tears the record down ──
+        await customerStores.call.getState().completeCall();
+        await wait(100);
 
         const res = await iamRequest
             .get('/calls/get-by-room')

@@ -1,4 +1,5 @@
 jest.mock('src/services/users');
+jest.mock('@/src/services/api/calls');
 
 import { EventEmitter } from 'node:events';
 import supertest from 'supertest';
@@ -22,10 +23,11 @@ import { Properties as WebProperties } from '../../web/src/properties';
 import { setBaseURL, setAuthToken } from '../src/mocks/realtime-calls-service';
 
 import * as usersService from 'src/services/users';
+import * as callsApiService from '@/src/services/api/calls';
 
 const findUserBySlugMock = usersService.findUserBySlug as jest.Mock;
 const addToIamMock = usersService.addToIam as jest.Mock;
-const chargeTokenMock = usersService.chargeToken as jest.Mock;
+const mockCompleteCall = callsApiService.completeCall as jest.Mock;
 
 const pendingCalls: Array<Promise<unknown>> = [];
 
@@ -126,16 +128,14 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
             throw new Error(`unexpected slug: ${slug}`);
         });
 
-        // route the real charge through IAM so the customer's Mongo balance
-        // actually moves — jest.mock('src/services/users') would otherwise
-        // no-op this call and silently skip billing
-        chargeTokenMock.mockImplementation(async (_traceId: string, customerId: string, tokens: number) => {
-            const res = await iamRequest.post('/users/charge-token').set('Authorization', CUSTOMER_TOKEN).send({ customerId, tokens });
-            return res.body;
+        mockCompleteCall.mockImplementation(async (customerId: string, attendantId: string) => {
+            await iamRequest.post('/calls/complete').set('Authorization', CUSTOMER_TOKEN)
+                .send({ customerId, attendantId });
         });
 
         // both users must exist as online_user Redis entries — /calls/complete
-        // (fired from onMeetingEnded) looks them up to flip their status idle
+        // (fired from the web completeCall() action) looks them up to flip
+        // their status idle
         await iamRequest.post('/online-users/add').set('Authorization', CUSTOMER_TOKEN)
             .send(mapUserToOnlineUser(customerUser, { status: 'in-call' }));
         await iamRequest.post('/online-users/add').set('Authorization', CUSTOMER_TOKEN)
@@ -239,9 +239,10 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         // 10-minute billing interval rounds up to exactly 1 token
         await wait(1100);
 
-        // the Daily.co room closes directly (no explicit participant.left) —
-        // onMeetingEnded must still compute elapsed time off overlapStartedAt
-        await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: 'm-complete-1', room: roomName, start_ts: Date.now() / 1000 } });
+        // the customer hangs up directly (no explicit participant.left) —
+        // IAM's /calls/complete must still compute elapsed time off overlapStartedAt
+        await customerStores.call.getState().completeCall();
+        await wait(100);
 
         const endingTokens = await getCustomerTokens();
         expect(endingTokens).toBe(startingTokens - 1);
@@ -280,7 +281,8 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         expect(call!.overlapStartedAt).toBeNull();
         expect(attendantStores.call.getState().call).toEqual(call);
 
-        await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: 'm-complete-2', room: roomName, start_ts: Date.now() / 1000 } });
+        await customerStores.call.getState().completeCall();
+        await wait(100);
 
         const endingTokens = await getCustomerTokens();
         expect(endingTokens).toBe(startingTokens);

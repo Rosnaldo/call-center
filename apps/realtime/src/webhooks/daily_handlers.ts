@@ -1,8 +1,8 @@
-import { CallState, getCallElapsedMs, computeTokensToBeCharged } from '@repo/shared-types';
+import { CallState, computeTokensToBeCharged } from '@repo/shared-types';
 import { buildLogger } from '#logger';
 import { sendToUser } from '#websocket/broadcast';
-import { findUserBySlug, chargeToken } from 'src/services/users';
-import { createCall, getCallByRoom, updateCall, trackRoom, completeCall, createCallHistory } from 'src/services/calls';
+import { findUserBySlug } from 'src/services/users';
+import { createCall, getCallByRoom, updateCall, trackRoom } from 'src/services/calls';
 import { parseRoomName } from 'src/helpers/parse_room_name';
 import { DailyMeetingPayload, DailyParticipantPayload } from './daily_types';
 
@@ -54,37 +54,6 @@ export async function onMeetingStarted(traceId: string, payload: DailyMeetingPay
 export async function onMeetingEnded(traceId: string, payload: DailyMeetingPayload): Promise<void> {
     const logger = buildLogger(traceId);
     logger.info({ room: payload.room }, 'daily meeting.ended');
-
-    try {
-        const call = await getCallByRoom(traceId, payload.room);
-        if (!call) return;
-
-        const elapsedMs = getCallElapsedMs(call);
-        const tokensToBeCharged = computeTokensToBeCharged(elapsedMs);
-
-        if (tokensToBeCharged > 0) {
-            await chargeToken(traceId, call.customerId, tokensToBeCharged);
-        }
-
-        await completeCall(traceId, call.customerId, call.attendantId);
-
-        const endedCall: CallState = {
-            ...call,
-            accumulatedMs: elapsedMs,
-            overlapStartedAt: null,
-            isPlaying: false,
-            endedAt: new Date(),
-            tokensToBeCharged,
-        };
-
-        await createCallHistory(traceId, endedCall);
-
-        sendToUser(call.customerId, { event: 'meeting_ended', data: { call: endedCall } });
-        sendToUser(call.attendantId, { event: 'meeting_ended', data: { call: endedCall } });
-
-    } catch (error) {
-        logger.error(error, 'daily onMeetingEnded');
-    }
 }
 
 export async function onParticipantJoined(traceId: string, payload: DailyParticipantPayload): Promise<void> {
