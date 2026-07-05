@@ -31,6 +31,20 @@ export default (app: Application) => {
         }
     );
 
+    app.get(
+        '/calls/get-by-user',
+        GetKeycloakUser,
+        async (req, res) => {
+            const controller = new CallController();
+            const params = controller.getByUser.mapper(req.query);
+            const either = await controller.getByUser.exec(params);
+            if (either.isError) {
+                return res.status(either.status).send(either);
+            }
+            return res.status(200).send(either.data);
+        }
+    );
+
     app.post(
         '/calls/create',
         GetKeycloakUser,

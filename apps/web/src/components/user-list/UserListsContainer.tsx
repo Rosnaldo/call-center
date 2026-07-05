@@ -13,12 +13,13 @@ interface Props {
 }
 
 function UserListsFetcher({ currentUser, call, onCompleteCall }: Props) {
-  const { data: users } = useOnlineUsersQuery();
+  const { data: initialUsers } = useOnlineUsersQuery();
   const setUsers = useOnlineUsersStore((s) => s.setUsers);
+  const users = useOnlineUsersStore((s) => s.users);
 
   useEffect(() => {
-    setUsers(users);
-  }, [users]);
+    setUsers(initialUsers);
+  }, [initialUsers]);
 
   return (
     <UserLists
