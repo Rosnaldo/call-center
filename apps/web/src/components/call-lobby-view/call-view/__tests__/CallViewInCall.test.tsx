@@ -26,6 +26,7 @@ vi.mock('@daily-co/daily-react', () => ({
   useVideoTrack: () => ({ track: null, isOff: true }),
   useAudioTrack: () => ({ track: null, isOff: true }),
   useMediaTrack: () => ({ track: null, isOff: true, persistentTrack: null }),
+  useDailyEvent: vi.fn(),
 }));
 
 const defaultProps = (overrides = {}) => ({

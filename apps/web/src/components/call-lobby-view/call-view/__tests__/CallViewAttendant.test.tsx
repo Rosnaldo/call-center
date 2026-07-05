@@ -26,6 +26,7 @@ vi.mock('@daily-co/daily-react', () => ({
   useParticipantIds: () => ['remote-1'],
   useVideoTrack: () => ({ track: null, isOff: true }),
   useAudioTrack: () => ({ track: null, isOff: true }),
+  useDailyEvent: vi.fn(),
 }));
 
 const ATTENDANT_ID = 'att-test-1';
