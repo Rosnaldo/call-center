@@ -1,4 +1,4 @@
-import { getUserModel, getCallHistoryModel } from '#models/singleton';
+import { getUserModel, getCallHistoryModel, getTransactionModel } from '#models/singleton';
 import logger from '#logger';
 
 export class LoadModels {
@@ -6,6 +6,7 @@ export class LoadModels {
         try {
             getUserModel();
             getCallHistoryModel();
+            getTransactionModel();
         } catch (error) {
             logger.error(error, '[LoadModels.loadModels]: Error loading models')
             throw error;

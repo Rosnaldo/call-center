@@ -1,4 +1,7 @@
 {
+  "common": {
+    "backToPanel": "Voltar para o Painel de Atendimento"
+  },
   "header": {
     "customerArea": "Área do Cliente",
     "attendantArea": "Atendimento (Agente)",
@@ -170,13 +173,7 @@
     "title": "Clientes"
   },
   "profile": {
-    "disconnected": "Desconectado",
-    "pleaseConnect": "Por favor, faça login para acessar seu perfil.",
-    "goToLogin": "Ir para Login",
     "changingAvatar": "Alterando avatar...",
-    "backToArea": "Voltar para a área de {{role}}",
-    "roleCustomer": "Cliente",
-    "roleAttendant": "Agente",
     "imageFormatHint": "Qualquer formato de imagem, máx 2 MB · arraste para enviar",
     "dropImageHere": "Solte sua imagem aqui",
     "dropToUpdate": "Solte para atualizar seu avatar",
@@ -197,9 +194,6 @@
     "sectionIdentity": "Identidade"
   },
   "payments": {
-    "loginRequired": "Você precisa estar logado para acessar esta página.",
-    "goToLogin": "Ir para Login",
-    "backToPanel": "Voltar para o Painel de Atendimento",
     "purchaseComplete": "Compra Concluída com Sucesso!",
     "tokensCredited": "+{{amount}} tokens creditados na sua conta",
     "paymentStatus": "Situação de pagamento",
@@ -232,14 +226,16 @@
     "packBusinessDesc": "Mais tempo de consulta sem interrupções por esgotamento.",
     "bestValue": "Melhor Valor",
     "mostAffordable": "Mais em conta",
-    "popular": "Popular"
+    "popular": "Popular",
+    "orderSummary": "Resumo do Pedido",
+    "orderSummaryHint": "Confira os detalhes antes de confirmar sua recarga.",
+    "selectedPackage": "Pacote selecionado",
+    "encryptedEnvironment": "Ambiente Criptografado",
+    "secureTransaction": "Transação Segura"
   },
   "tokenHistory": {
-    "backToPanel": "Voltar para o Painel de Atendimento",
     "title": "Extrato de Adições e Consumos",
     "subtitle": "Acompanhe o fluxo detalhado de compra de créditos via PIX e o uso de tokens cobrados proporcionalmente durante suas chamadas de vídeo.",
-    "loginRequired": "Você precisa estar logado para acessar esta página.",
-    "goToLogin": "Ir para Login",
     "loadError": "Erro ao carregar tabela de transações",
     "loadErrorHint": "Por favor, tente recarregar ou consulte os logs.",
     "reload": "Recarregar",

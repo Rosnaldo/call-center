@@ -1,4 +1,7 @@
 {
+  "common": {
+    "backToPanel": "Back to Service Panel"
+  },
   "header": {
     "customerArea": "Customer Area",
     "attendantArea": "Attendant (Agent)",
@@ -170,13 +173,7 @@
     "title": "Customers"
   },
   "profile": {
-    "disconnected": "Disconnected",
-    "pleaseConnect": "Please log in to view your profile.",
-    "goToLogin": "Go to Login",
     "changingAvatar": "Changing avatar...",
-    "backToArea": "Back to {{role}} area",
-    "roleCustomer": "Customer",
-    "roleAttendant": "Agent",
     "imageFormatHint": "Any image format, max 2 MB · drag to upload",
     "dropImageHere": "Drop your image here",
     "dropToUpdate": "Drop to update your avatar",
@@ -197,9 +194,6 @@
     "sectionIdentity": "Identity"
   },
   "payments": {
-    "loginRequired": "You need to be logged in to access this page.",
-    "goToLogin": "Go to Login",
-    "backToPanel": "Back to Service Panel",
     "purchaseComplete": "Purchase Completed Successfully!",
     "tokensCredited": "+{{amount}} tokens credited to your account",
     "paymentStatus": "Payment status",
@@ -232,14 +226,16 @@
     "packBusinessDesc": "More consultation time without interruptions from depletion.",
     "bestValue": "Best Value",
     "mostAffordable": "Most Affordable",
-    "popular": "Popular"
+    "popular": "Popular",
+    "orderSummary": "Order Summary",
+    "orderSummaryHint": "Review the details before confirming your top-up.",
+    "selectedPackage": "Selected package",
+    "encryptedEnvironment": "Encrypted Environment",
+    "secureTransaction": "Secure Transaction"
   },
   "tokenHistory": {
-    "backToPanel": "Back to Service Panel",
     "title": "Top-ups and Usage History",
     "subtitle": "Track the detailed flow of credit purchases via PIX and token usage charged proportionally during your video calls.",
-    "loginRequired": "You need to be logged in to access this page.",
-    "goToLogin": "Go to Login",
     "loadError": "Error loading transactions table",
     "loadErrorHint": "Please try reloading or check the logs.",
     "reload": "Reload",

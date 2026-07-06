@@ -8,7 +8,8 @@ import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/header/Header.tsx';
 import { Footer } from '../../components/Footer.tsx';
 import { Title } from '../../components/Title.tsx';
-import { Edit2, Check, UploadCloud, ShieldAlert } from 'lucide-react';
+import { BackToPanelButton } from '../../components/BackToPanelButton.tsx';
+import { Edit2, Check, UploadCloud } from 'lucide-react';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
 import { useLogout } from '../../hooks/auth/useLogout.ts';
 import { mytoast } from '@/src/components/toast.tsx';
@@ -35,23 +36,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   const onLogout = useLogout();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-brand-canvas flex flex-col items-center justify-center p-6">
-        <div className="bg-white border border-brand-border rounded-2xl p-8 max-w-md w-full text-center">
-          <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-brand-dark font-display mb-2">{t('profile.disconnected')}</h2>
-          <p className="text-xs text-brand-muted mb-6">{t('profile.pleaseConnect')}</p>
-          <button
-            onClick={() => navigate('login')}
-            className="w-full bg-brand-ochre hover:bg-brand-ochre-hover text-white py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
-          >
-            {t('profile.goToLogin')}
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (!currentUser) return null;
 
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(currentUser.name);
@@ -115,13 +100,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
         {/* Back link */}
         <div className="mb-8">
-          <button
-            onClick={() => navigate(currentUser.role === 'customer' ? 'customer' : 'attendant')}
-            className="flex items-center gap-1 text-xs font-medium text-brand-muted hover:text-brand-ochre transition-colors group cursor-pointer"
-          >
-            <span className="group-hover:-translate-x-0.5 transition-transform">←</span>
-            <span>{t('profile.backToArea', { role: currentUser.role === 'customer' ? t('profile.roleCustomer') : t('profile.roleAttendant') })}</span>
-          </button>
+          <BackToPanelButton />
         </div>
 
         <Title label={t('profile.title')} />

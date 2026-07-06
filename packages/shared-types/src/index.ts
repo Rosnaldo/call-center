@@ -70,6 +70,14 @@ export interface Message {
   };
 }
 
+export interface TokenTransaction {
+  id: string;
+  message: string;
+  date: string;
+  type: 'charge' | 'reload';
+  amount: number;
+}
+
 export interface ChatAttendantment {
   id: string;
   attendatId: string;

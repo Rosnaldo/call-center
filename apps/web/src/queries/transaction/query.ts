@@ -4,9 +4,10 @@
  */
 
 import { useSuspenseQuery } from '@tanstack/react-query';
+import { TokenTransaction } from '@repo/shared-types';
 
 export interface PaginatedTransactionsResponse {
-  transactions: any[];
+  transactions: TokenTransaction[];
   total: number;
   totalPages: number;
   totalCredited: number;

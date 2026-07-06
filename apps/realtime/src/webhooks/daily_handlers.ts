@@ -4,6 +4,7 @@ import { sendToUser, broadcastMessage } from '#websocket/broadcast';
 import { findUserBySlug } from 'src/services/users';
 import { createCall, getCallByRoom, updateCall, trackRoom, deleteCall, createCallHistory } from 'src/services/calls';
 import { deleteChat } from 'src/services/chat';
+import { createIamClient } from 'src/apis/iam';
 import { parseRoomName } from 'src/helpers/parse_room_name';
 import { DailyMeetingPayload, DailyParticipantPayload } from './daily_types';
 
@@ -85,6 +86,18 @@ export async function onMeetingEnded(traceId: string, payload: DailyMeetingPaylo
             endedAt: endedCall.endedAt,
             tokensToBeCharged: endedCall.tokensToBeCharged,
         });
+
+        if (endedCall.tokensToBeCharged > 0) {
+            const { data } = await createIamClient(traceId).post('/transactions/create', {
+                userId: endedCall.customerId,
+                message: `Consumo de chamada de vídeo com ${endedCall.attendantName}`,
+                type: 'charge',
+                amount: endedCall.tokensToBeCharged,
+            });
+            if (data?.isError) {
+                throw new Error(data.message ?? 'Failed to create transaction');
+            }
+        }
 
         await deleteCall(traceId, endedCall.customerId, endedCall.attendantId);
         await deleteChat(traceId, endedCall.customerId, endedCall.attendantId).catch((error) => {
