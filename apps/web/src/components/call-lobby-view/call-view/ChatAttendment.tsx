@@ -67,7 +67,7 @@ export const ChatAttendment: React.FC<ChatAttendmentProps> = ({
   };
 
   return (
-    <div className="absolute top-4 right-4 bottom-4 w-80 sm:w-96 bg-white text-gray-800 rounded-2xl shadow-2xl flex flex-col z-30 border border-gray-200 overflow-hidden animate-fade-in">
+    <div className="absolute bottom-4 right-4 w-80 sm:w-96 h-[26rem] max-h-[70%] bg-white text-gray-800 rounded-2xl shadow-2xl flex flex-col z-30 border border-gray-200 overflow-hidden animate-fade-in">
 
       {/* Chat Header */}
       <div className="border-b border-gray-100 p-4 flex items-center justify-between bg-white">

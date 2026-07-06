@@ -80,7 +80,9 @@
     "manageQueueSection": "Manage your queue and clients.",
     "heroTitle": "Block toxic links ",
     "heroTitleHighlight": "on your device.",
-    "heroDescription": "Call one of our attendants, share your problem, and get personalized help to resolve your issue. We're here to assist you every step of the way!"
+    "heroDescription": "Call one of our attendants, share your problem, and get personalized help to resolve your issue. We're here to assist you every step of the way!",
+    "openChat": "Open Chat",
+    "closeChat": "Close Chat"
   },
   "mediaSettings": {
     "title": "Audio and Video Settings",

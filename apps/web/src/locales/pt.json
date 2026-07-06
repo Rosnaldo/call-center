@@ -80,7 +80,9 @@
     "manageQueueSection": "Gerencie sua fila e clientes.",
     "heroTitle": "Bloqueie links tóxicos ",
     "heroTitleHighlight": "no seu dispositivo.",
-    "heroDescription": "Ligue para um de nossos atendentes, compartilhe seu problema e receba ajuda personalizada para resolver sua questão. Estamos aqui para ajudá-lo em cada etapa!"
+    "heroDescription": "Ligue para um de nossos atendentes, compartilhe seu problema e receba ajuda personalizada para resolver sua questão. Estamos aqui para ajudá-lo em cada etapa!",
+    "openChat": "Abrir Chat",
+    "closeChat": "Fechar Chat"
   },
   "mediaSettings": {
     "title": "Configurações de Áudio e Vídeo",

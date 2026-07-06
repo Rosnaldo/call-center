@@ -1,5 +1,6 @@
 import React from 'react';
 import { useDevicesContext } from '../../../providers/devices.tsx';
+import { useChatStore } from '../../../states/stores.ts';
 import { CallViewState } from '../call-view/CallView.tsx';
 import { MicToggleButton } from './MicToggleButton.tsx';
 import { CamToggleButton } from './CamToggleButton.tsx';
@@ -27,7 +28,17 @@ export const CallFooter: React.FC<CallFooterProps> = ({
   toggleFullscreen,
 }) => {
   const { cameraOn, microphoneOn, toggleCamera, toggleMicrophone } = useDevicesContext();
+  const isChatOpen = useChatStore(s => s.isOpen);
   const showCallControls = state === CallViewState.InCall;
+
+  const handleToggleChat = () => {
+    if (isChatOpen) {
+      useChatStore.getState().closeChat();
+      return;
+    }
+    useChatStore.getState().openChat();
+    useChatStore.getState().fetchChatMessages();
+  };
 
   return (
     <div className="bg-[#17191b] p-4 border-t border-[#222528] flex justify-center items-center gap-4">
@@ -51,7 +62,12 @@ export const CallFooter: React.FC<CallFooterProps> = ({
 
       <SettingsButton onClick={() => setIsSettingsOpen(true)} />
 
-      {showCallControls && <ChatToggleButton />}
+      {showCallControls && (
+        <ChatToggleButton
+          isOpen={isChatOpen}
+          onClick={handleToggleChat}
+        />
+      )}
 
       {showCallControls && (
         <FullscreenToggleButton
