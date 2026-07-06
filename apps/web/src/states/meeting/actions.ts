@@ -42,6 +42,8 @@ export const createMeetingActions = (
 
       ref.billing.getState().closeCalculationModal();
       ref.billing.getState().openSummaryModal(call);
+
+      ref.chat.getState().resetChat();
     },
   };
 };

@@ -50,15 +50,31 @@ export interface CallState {
     meetingId: string;
     activeUserIds: string[];
     accumulatedMs: number;
-    // Timestamp (epoch ms) of when the current "both users present" overlap
-    // segment started. Null when the segment is frozen (not both present).
     overlapStartedAt: number | null;
-    // Wall-clock timestamp of when the Daily.co meeting itself started/ended —
-    // set once each, independent of overlapStartedAt's join/leave toggling.
     startedAt: Date | null;
     endedAt: Date | null;
     isPlaying: boolean;
     tokensToBeCharged: number;
+}
+
+export interface Message {
+  id: string;
+  sender: 'attendant' | 'customer';
+  text?: string;
+  timestamp: string;
+  file?: {
+    name: string;
+    size: string;
+    type: string;
+    url: string;
+  };
+}
+
+export interface ChatAttendantment {
+  id: string;
+  attendatId: string;
+  customerId: string;
+  messages: Message[];
 }
 
 export function getCallElapsedMs(call: Pick<CallState, 'accumulatedMs' | 'overlapStartedAt'>): number {

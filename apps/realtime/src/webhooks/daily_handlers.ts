@@ -3,6 +3,7 @@ import { buildLogger } from '#logger';
 import { sendToUser, broadcastMessage } from '#websocket/broadcast';
 import { findUserBySlug } from 'src/services/users';
 import { createCall, getCallByRoom, updateCall, trackRoom, deleteCall, createCallHistory } from 'src/services/calls';
+import { deleteChat } from 'src/services/chat';
 import { parseRoomName } from 'src/helpers/parse_room_name';
 import { DailyMeetingPayload, DailyParticipantPayload } from './daily_types';
 
@@ -86,6 +87,9 @@ export async function onMeetingEnded(traceId: string, payload: DailyMeetingPaylo
         });
 
         await deleteCall(traceId, endedCall.customerId, endedCall.attendantId);
+        await deleteChat(traceId, endedCall.customerId, endedCall.attendantId).catch((error) => {
+            logger.error(error, 'daily onMeetingEnded: falha ao deletar chat');
+        });
 
         sendToUser(endedCall.customerId, { event: 'meeting_ended', data: { call: endedCall } });
         sendToUser(endedCall.attendantId, { event: 'meeting_ended', data: { call: endedCall } });

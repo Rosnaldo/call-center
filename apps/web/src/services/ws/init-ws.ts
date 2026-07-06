@@ -2,7 +2,8 @@ import { AuthenticatedWebSocket, TransportFactory, TRANSPORT_OPEN, createWsTrans
 import { WsUsersService } from './users';
 import { WsCallService } from './call';
 import { WsMeetingService } from './meeting';
-import type { OnlineUsersStoreInstance, IncomingCallStoreInstance, CallStoreInstance, CallViewStoreInstance, MeetingStoreInstance } from '../../states/stores';
+import { WsChatService } from './chat';
+import type { OnlineUsersStoreInstance, IncomingCallStoreInstance, CallStoreInstance, CallViewStoreInstance, MeetingStoreInstance, ChatStoreInstance } from '../../states/stores';
 import properties from '../../properties';
 import { mytoast } from '../../components/toast';
 import authSession from '../../auth/session';
@@ -18,6 +19,7 @@ interface InitWsStores {
     call: CallStoreInstance;
     callView: CallViewStoreInstance;
     meeting: MeetingStoreInstance;
+    chat: ChatStoreInstance;
 }
 
 export class InitWs {
@@ -35,6 +37,7 @@ export class InitWs {
         usersService: WsUsersService,
         callService: WsCallService,
         meetingService: WsMeetingService,
+        chatService: WsChatService,
     ): void {
         if (!this.running || !WS_URL) return;
         this.activeWs = ws;
@@ -58,7 +61,7 @@ export class InitWs {
                     ws.close();
                     return;
                 }
-                usersService.handle(msg) || callService.handle(msg) || meetingService.handle(msg);
+                usersService.handle(msg) || callService.handle(msg) || meetingService.handle(msg) || chatService.handle(msg);
             } catch {
                 // malformed frame — ignore
             }
@@ -74,7 +77,7 @@ export class InitWs {
             setTimeout(() => {
                 authSession.getToken().then((token) => {
                     if (!token) return;
-                    this.connect(this.createAuthWs(token), usersService, callService, meetingService);
+                    this.connect(this.createAuthWs(token), usersService, callService, meetingService, chatService);
                 });
             }, RECONNECT_DELAY_MS);
         };
@@ -92,8 +95,9 @@ export class InitWs {
             incomingCall: stores.incomingCall,
         });
         const meetingService = new WsMeetingService({ meeting: stores.meeting });
+        const chatService = new WsChatService({ chat: stores.chat });
 
-        this.connect(this.createAuthWs(token), usersService, callService, meetingService);
+        this.connect(this.createAuthWs(token), usersService, callService, meetingService, chatService);
     }
 
     notifyLogout(): void {

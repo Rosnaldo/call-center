@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { Clock, User } from 'lucide-react';
 import { CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
-import { useIncomingCallStore, useCurrentUserStore, useOnlineUsersStore, useCallViewStore, useDevicesStore } from '../../../states/stores.ts';
+import { useIncomingCallStore, useCurrentUserStore, useOnlineUsersStore, useCallViewStore, useDevicesStore, useChatStore } from '../../../states/stores.ts';
 import { IOnlineUser } from '@repo/shared-types';
 import { VideoTile } from '../VideoTile.tsx';
 import { PartnerAvatar } from '../PartnerAvatar.tsx';
 import { ScreenShareTile } from '../ScreenShareTile.tsx';
+import { ChatAttendment } from './ChatAttendment.tsx';
 import { useParticipantIds, useScreenShare } from '@daily-co/daily-react';
 import { useDevicesContext } from '../../../providers/devices.tsx';
 import { useEndCallOnParticipantLeft } from '../../../hooks/useEndCallOnParticipantLeft.ts';
@@ -163,6 +164,8 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   let content: React.ReactNode = null;
   const currentUser = useCurrentUserStore(s => s.currentUser);
   const users = useOnlineUsersStore(s => s.users);
+  const isChatOpen = useChatStore(s => s.isOpen);
+  const chatMessages = useChatStore(s => s.messages);
 
   const isReceiving = incomingCall
     ? currentUser?.id === incomingCall.attendantId
@@ -239,6 +242,18 @@ export const CallViewport: React.FC<CallViewportProps> = ({
         {timerBadge}
         {muteBadge}
       </div>
+      {state === CallViewState.InCall && (
+        <ChatAttendment
+          isOpen={isChatOpen}
+          onClose={() => useChatStore.getState().closeChat()}
+          messages={chatMessages}
+          currentUserRole={currentUser?.role === 'attendant' ? 'attendant' : 'customer'}
+          partnerName={partnerName}
+          partnerAvatarUrl={partner?.avatarUrl}
+          onSendMessage={(text) => useChatStore.getState().sendChatMessage(text)}
+          onSendFile={(file) => useChatStore.getState().sendChatFile(file)}
+        />
+      )}
     </div>
   );
 };

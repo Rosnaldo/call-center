@@ -6,6 +6,7 @@ import { CamToggleButton } from './CamToggleButton.tsx';
 import { ScreenShareToggleButton } from './ScreenShareToggleButton.tsx';
 import { SettingsButton } from './SettingsButton.tsx';
 import { FullscreenToggleButton } from './FullscreenToggleButton.tsx';
+import { ChatToggleButton } from './ChatToggleButton.tsx';
 import { CallFooterActions } from './CallFooterActions/CallFooterActions.tsx';
 
 interface CallFooterProps {
@@ -49,6 +50,8 @@ export const CallFooter: React.FC<CallFooterProps> = ({
       )}
 
       <SettingsButton onClick={() => setIsSettingsOpen(true)} />
+
+      {showCallControls && <ChatToggleButton />}
 
       {showCallControls && (
         <FullscreenToggleButton
