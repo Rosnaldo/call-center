@@ -1,43 +1,31 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import ringtoneUrl from '../assets/ring.mp3';
 
 let ringtoneAudio: HTMLAudioElement | null = null;
 let audioUnlocked = false;
 
-// Browsers block audio.play() unless it happens during (or shortly after) a
-// real user gesture. The ringtone is triggered by an async websocket push, so
-// without this it silently fails the first time — the incoming-call UI shows
-// up but no sound plays, and the only trace is a console.warn nobody sees.
-// Playing (and immediately stopping) a muted clip on the very first
-// click/keypress on the page satisfies the browser's gesture requirement and
-// unlocks autoplay for every subsequent Audio() on this page for its
-// lifetime, so the real ringtone plays normally afterwards.
 export function primeAudioPlayback() {
   if (audioUnlocked) return;
 
   const unlock = () => {
     audioUnlocked = true;
-    document.removeEventListener('pointerdown', unlock);
-    document.removeEventListener('keydown', unlock);
+    document.removeEventListener('pointerdown', unlock, true);
+    document.removeEventListener('keydown', unlock, true);
 
     try {
       const audio = new Audio(ringtoneUrl);
-      audio.muted = true;
+      audio.volume = 0.05;
       void audio.play()
         .then(() => { audio.pause(); audio.currentTime = 0; })
-        .catch(() => {});
-    } catch {}
+        .catch((err) => console.warn('Audio unlock playback was blocked.', err));
+    } catch (err) {
+      console.warn('Audio unlock failed.', err);
+    }
   };
 
-  document.addEventListener('pointerdown', unlock, { once: true });
-  document.addEventListener('keydown', unlock, { once: true });
+  document.addEventListener('pointerdown', unlock, { once: true, capture: true });
+  document.addEventListener('keydown', unlock, { once: true, capture: true });
 }
 
-// Looping mp3 played as background sound while a call is ringing
 export function playRingtone() {
   stopRingtone();
   try {

@@ -49,7 +49,7 @@ export const InfoCard: React.FC = () => {
         </div>
         <div className="text-[10px] font-mono font-bold text-brand-dark flex items-center gap-1 mt-1">
           <span>{t('infoCard.yourBalance')}</span>
-          <span className="bg-[#ebdcb9]/30 text-[#a36500] font-mono font-bold text-[9px] px-2 py-0.5 rounded-md border border-[#ebdcb9]/60">{currentTokens} {currentTokens === 1 ? 'Tk' : 'Tks'}</span>
+          <span className="bg-[#ebdcb9]/30 text-[#a36500] font-mono font-bold text-[9px] px-2 py-0.5 rounded-md border border-[#ebdcb9]/60">{currentTokens} {currentTokens === 1 ? 'tk' : 'tks'}</span>
         </div>
 
         <div className="mt-3 pt-2.5 border-t border-[#ebdcb9]/40 flex items-center justify-between">
@@ -57,7 +57,7 @@ export const InfoCard: React.FC = () => {
             {t('infoCard.contractedRate')}
           </div>
           <span className="font-mono text-[10px] font-bold text-[#a36500]">
-            1 tk / {MINUTES_PER_TOKEN}m
+            1 tk / {MINUTES_PER_TOKEN} min
           </span>
         </div>
       </div>
@@ -69,7 +69,7 @@ export const InfoCard: React.FC = () => {
               {t('infoCard.currentUsage')}
             </span>
             <span className="bg-[#ebdcb9]/30 text-[#a36500] font-mono font-bold text-[9px] px-2 py-0.5 rounded-md border border-[#ebdcb9]/60">
-              {tokensCharged} Tk
+              {tokensCharged} tk
             </span>
           </div>
 

@@ -124,7 +124,7 @@ describe('InfoCard – billing countdown timer (half-cycle rule)', () => {
 
     render(<InfoCard />);
 
-    expect(screen.getByText('3 Tk')).toBeDefined();
+    expect(screen.getByText('3 tk')).toBeDefined();
   });
 
   it('never shows a negative countdown right at call start (0 tokens charged)', () => {
@@ -144,17 +144,17 @@ describe('InfoCard – billing countdown timer (half-cycle rule)', () => {
     render(<InfoCard />);
 
     expect(screen.getByText('SEU SALDO:')).toBeDefined();
-    expect(screen.getByText('7 Tks')).toBeDefined();
+    expect(screen.getByText('7 tks')).toBeDefined();
   });
 
   it('updates Seu Saldo when the customer balance changes in the store', () => {
     const call = setupCall(5);
     const { rerender } = render(<InfoCard />);
-    expect(screen.getByText('5 Tks')).toBeDefined();
+    expect(screen.getByText('5 tks')).toBeDefined();
 
     useOnlineUsersStore.setState({ users: [buildOnlineUserState({ id: call.customerId, tokens: 4 })] });
     rerender(<InfoCard />);
-    expect(screen.getByText('4 Tks')).toBeDefined();
+    expect(screen.getByText('4 tks')).toBeDefined();
   });
 
   it('shows the contracted rate based on MINUTES_PER_TOKEN', () => {
@@ -162,7 +162,7 @@ describe('InfoCard – billing countdown timer (half-cycle rule)', () => {
 
     render(<InfoCard />);
 
-    expect(screen.getByText(`1 tk / ${MINUTES_PER_TOKEN}m`)).toBeDefined();
+    expect(screen.getByText(`1 tk / ${MINUTES_PER_TOKEN} min`)).toBeDefined();
   });
 
   it('hides the usage/countdown card when not in a call view', () => {

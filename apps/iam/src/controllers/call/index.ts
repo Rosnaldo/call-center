@@ -3,6 +3,7 @@ import { Get } from './get';
 import { GetByRoom } from './get_by_room';
 import { GetByUser } from './get_by_user';
 import { Update } from './update';
+import { UpdateParticipant } from './update_participant';
 import { Delete } from './delete';
 import { Complete } from './complete';
 import { TrackRoom, DeleteRooms } from './track_room';
@@ -15,6 +16,7 @@ export class CallController {
     public readonly getByRoom: GetByRoom;
     public readonly getByUser: GetByUser;
     public readonly update: Update;
+    public readonly updateParticipant: UpdateParticipant;
     public readonly delete: Delete;
     public readonly complete: Complete;
     public readonly trackRoom: TrackRoom;
@@ -26,6 +28,7 @@ export class CallController {
         this.getByRoom = GetByRoom.construir(this.classId);
         this.getByUser = GetByUser.construir(this.classId);
         this.update = Update.construir(this.classId);
+        this.updateParticipant = UpdateParticipant.construir(this.classId);
         this.delete = Delete.construir(this.classId);
         this.complete = Complete.construir(this.classId);
         this.trackRoom = TrackRoom.construir(this.classId);

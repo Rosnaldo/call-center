@@ -2,7 +2,7 @@ import { CallState, computeTokensToBeCharged, getCallElapsedMs } from '@repo/sha
 import { buildLogger } from '#logger';
 import { sendToUser, broadcastMessage } from '#websocket/broadcast';
 import { findUserBySlug } from 'src/services/users';
-import { createCall, getCallByRoom, updateCall, trackRoom, deleteCall, createCallHistory } from 'src/services/calls';
+import { createCall, getCallByRoom, updateCall, updateCallParticipant, trackRoom, deleteCall, createCallHistory } from 'src/services/calls';
 import { deleteChat } from 'src/services/chat';
 import { createIamClient } from 'src/apis/iam';
 import { parseRoomName } from 'src/helpers/parse_room_name';
@@ -160,20 +160,7 @@ export async function onParticipantJoined(traceId: string, payload: DailyPartici
         const isCustomer = `${customer.firstName} ${customer.lastName}` === payload.user_name;
         const userId = isCustomer ? customer._id : attendant._id;
 
-        const activeUsers = new Set(call.activeUserIds);
-        activeUsers.add(userId);
-
-        const updates: Partial<CallState> = {
-            activeUserIds: Array.from(activeUsers),
-            tokensToBeCharged: computeTokensToBeCharged(call.accumulatedMs),
-        };
-
-        if (activeUsers.size === 2 && !call.overlapStartedAt) {
-            updates.overlapStartedAt = Date.now();
-            updates.isPlaying = true;
-        }
-
-        call = await updateCall(traceId, call.customerId, call.attendantId, updates);
+        call = await updateCallParticipant(traceId, call.customerId, call.attendantId, userId, true);
 
         sendToUser(call.customerId, { event: 'participant_joined', data: { call } });
         sendToUser(call.attendantId, { event: 'participant_joined', data: { call } });
@@ -202,20 +189,7 @@ export async function onParticipantLeft(traceId: string, payload: DailyParticipa
             const isCustomer = `${customer.firstName} ${customer.lastName}` === payload.user_name;
             const userId = isCustomer ? customer._id : attendant._id;
 
-            const activeUsers = new Set(call.activeUserIds);
-
-            const updates: Partial<CallState> = {};
-
-            if (activeUsers.size === 2 && call.overlapStartedAt) {
-                updates.accumulatedMs = call.accumulatedMs + (Date.now() - call.overlapStartedAt);
-                updates.overlapStartedAt = null;
-                updates.isPlaying = false;
-            }
-
-            activeUsers.delete(userId);
-            updates.activeUserIds = Array.from(activeUsers);
-
-            call = await updateCall(traceId, call.customerId, call.attendantId, updates);
+            call = await updateCallParticipant(traceId, call.customerId, call.attendantId, userId, false);
 
             sendToUser(call.customerId, { event: 'participant_left', data: { call } });
             sendToUser(call.attendantId, { event: 'participant_left', data: { call } });
