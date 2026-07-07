@@ -3,39 +3,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Web Audio API Ding-Dong Chime Generator (No external dependencies)
-// Web Audio API phone-ring generator (No external dependencies)
+import ringtoneUrl from '../assets/ring.mp3';
+
+let ringtoneAudio: HTMLAudioElement | null = null;
+
+// Looping mp3 played as background sound while a call is ringing
 export function playRingtone() {
+  stopRingtone();
   try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
-
-    const now = ctx.currentTime;
-
-    const ring = (start: number) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(440, start);
-      gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.25, start + 0.05);
-      gain.gain.setValueAtTime(0.25, start + 0.35);
-      gain.gain.linearRampToValueAtTime(0, start + 0.4);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(start);
-      osc.stop(start + 0.4);
-    };
-
-    // classic two-pulse ring, repeated twice
-    ring(now);
-    ring(now + 0.5);
-    ring(now + 1.5);
-    ring(now + 2);
+    ringtoneAudio = new Audio(ringtoneUrl);
+    ringtoneAudio.loop = true;
+    void ringtoneAudio.play().catch((err) => console.warn('Ringtone playback was blocked.', err));
   } catch (err) {
-    console.warn('AudioContext playback was blocked or is unsupported.', err);
+    console.warn('Ringtone playback failed.', err);
   }
+}
+
+export function stopRingtone() {
+  if (!ringtoneAudio) return;
+  ringtoneAudio.pause();
+  ringtoneAudio.currentTime = 0;
+  ringtoneAudio = null;
 }
 
 export function playNotificationChime() {

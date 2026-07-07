@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useBillingTimer } from '../useBillingTimer.ts';
-import { useTimerStore, useCallStore } from '../../states/stores.ts';
-import { buildCall } from '../../__tests__/builders.ts';
+import { useTimerStore, useCallStore, useCurrentUserStore, useOnlineUsersStore, useBillingStore } from '../../states/stores.ts';
+import { buildCall, buildOnlineUserState } from '../../__tests__/builders.ts';
 import { CallState } from '../../states/call/state.ts';
 
 const CALL_ID = 'call-timer-test';
@@ -13,6 +13,9 @@ const makeCall = (): CallState =>
 beforeEach(() => {
   useTimerStore.getState().reset();
   useCallStore.setState({ call: null });
+  useBillingStore.getState().setInitialTokens(1);
+  useCurrentUserStore.getState().setCurrentUser(null);
+  useOnlineUsersStore.setState({ users: [] });
   vi.useFakeTimers();
 });
 
@@ -69,6 +72,42 @@ describe('useBillingTimer — timer / call store integration', () => {
       act(() => { vi.advanceTimersByTime(2000); });
 
       expect(useTimerStore.getState().elapsedSeconds).toBe(2);
+    });
+  });
+
+  describe('billing schedule (half-cycle rule)', () => {
+    const setupBillableCall = () => {
+      const call = makeCall();
+      const customer = buildOnlineUserState({ id: call.customerId, tokens: 10 });
+      useCurrentUserStore.getState().setCurrentUser(customer);
+      useOnlineUsersStore.setState({ users: [customer] });
+      renderHook(({ call }) => useBillingTimer(call), { initialProps: { call } });
+    };
+
+    it('does not charge the 1st token before 2.5 minutes', () => {
+      setupBillableCall();
+
+      act(() => { vi.advanceTimersByTime(2.5 * 60 * 1000 - 1000); });
+
+      expect(useBillingStore.getState().initialTokens).toBe(1); // no token charged yet
+    });
+
+    it('charges the 1st token exactly at 2.5 minutes', () => {
+      setupBillableCall();
+
+      act(() => { vi.advanceTimersByTime(2.5 * 60 * 1000); });
+
+      expect(useBillingStore.getState().initialTokens).toBe(2); // 1 token charged
+    });
+
+    it('charges the 2nd token at 7.5 minutes and the 3rd at 12.5 minutes', () => {
+      setupBillableCall();
+
+      act(() => { vi.advanceTimersByTime(7.5 * 60 * 1000); });
+      expect(useBillingStore.getState().initialTokens).toBe(3); // 2 tokens charged
+
+      act(() => { vi.advanceTimersByTime(5 * 60 * 1000); }); // + 5min = 12.5min total
+      expect(useBillingStore.getState().initialTokens).toBe(4); // 3 tokens charged
     });
   });
 });

@@ -4,11 +4,10 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { computeTokensToBeCharged } from '@repo/shared-types';
 import { useOnlineUsersStore, useTimerStore, useCurrentUserStore, useBillingStore } from '../states/stores.ts';
 import { CallState } from '../states/call/state.ts';
 import { OnlineUserState } from '../states/online-users/state.ts';
-
-const BILLING_INTERVAL_SECONDS = 10 * 60; // 600s = 10 minutes per token
 
 export function useBillingTimer(call: CallState | undefined) {
   const currentUser = useCurrentUserStore((s) => s.currentUser);
@@ -47,7 +46,8 @@ export function useBillingTimer(call: CallState | undefined) {
 
       const { initialTokens } = useBillingStore.getState();
       const tokensCount = initialTokens || 1;
-      if (elapsedSeconds >= tokensCount * BILLING_INTERVAL_SECONDS) {
+      const tokensDue = computeTokensToBeCharged(elapsedSeconds * 1000);
+      if (tokensDue >= tokensCount) {
         const customerUser = useOnlineUsersStore.getState().users.find(u => u.id === call.customerId);
         const availableTokens = customerUser?.tokens ?? 5;
 

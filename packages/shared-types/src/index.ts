@@ -92,12 +92,16 @@ export function getCallElapsedMs(call: Pick<CallState, 'accumulatedMs' | 'overla
     return call.accumulatedMs;
 }
 
-// 1 token per commenced 10-minute block of "both users present" call time.
-export const BILLING_INTERVAL_MS = 10 * 60 * 1000;
+// Billing rate: 1 token per block of "both users present" call time, charged
+// once each block is half elapsed — so the 1st token is due at 2.5min, the
+// 2nd at 7.5min, the 3rd at 12.5min, and so on every 5min after that.
+export const MINUTES_PER_TOKEN = 5;
+export const BILLING_INTERVAL_MS = MINUTES_PER_TOKEN * 60 * 1000;
+const HALF_BILLING_INTERVAL_MS = BILLING_INTERVAL_MS / 2;
 
 export function computeTokensToBeCharged(elapsedMs: number): number {
     if (elapsedMs <= 0) return 0;
-    return Math.ceil(elapsedMs / BILLING_INTERVAL_MS);
+    return Math.floor((elapsedMs + HALF_BILLING_INTERVAL_MS) / BILLING_INTERVAL_MS);
 }
 
 export interface Pagination {

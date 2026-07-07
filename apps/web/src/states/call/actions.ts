@@ -8,7 +8,7 @@ import { acceptIncomingCall as acceptIncomingCallService } from '@/src/services/
 import { handleRequestError } from '@/src/utils/utils.ts';
 import { ApiError } from '../../error/api.ts';
 import i18n from '../../i18n.ts';
-import { playNotificationChime } from '../../utils/helpers.ts';
+import { playNotificationChime, stopRingtone } from '../../utils/helpers.ts';
 
 export interface CallActions {
   acceptIncomingCall: () => Promise<void> | void;
@@ -25,6 +25,7 @@ export const createCallActions = (
 ): CallActions => {
   return {
     incomingCallAccepted: async (incomingCall: IncomingCallState) => {
+      stopRingtone();
       ref.incomingCall.setState({ incomingCall: null });
 
       try {
@@ -63,6 +64,7 @@ export const createCallActions = (
         const attendant = users.find(u => u.id === incomingCall.attendantId);
         if (!customer || !attendant) throw new ApiError(i18n.t('error.somethingWentWrong'));
 
+        stopRingtone();
         playNotificationChime();
         await acceptIncomingCallService(attendant.id);
         ref.callView.getState().setViewState('in-call');
