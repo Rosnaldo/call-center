@@ -157,14 +157,14 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                         {!isOffline && (
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-                              (cust.tokens !== undefined ? cust.tokens : 5) <= 0
+                              (cust.tokens ?? 0) <= 0
                                 ? 'bg-red-50 text-red-600 border-red-100'
                                 : 'bg-amber-50 text-amber-700 border-amber-100'
                             }`}
-                            title={(cust.tokens !== undefined ? cust.tokens : 5) <= 0 ? t('customerList.noTokens') : t('customerList.tokenBalance')}
+                            title={(cust.tokens ?? 0) <= 0 ? t('customerList.noTokens') : t('customerList.tokenBalance')}
                           >
                             <Coins className="w-3 h-3 text-amber-500 animate-bounce" />
-                            {cust.tokens !== undefined ? cust.tokens : 5} {cust.tokens === 1 ? t('customerList.token') : t('customerList.tokens')}
+                            {cust.tokens ?? 0} {cust.tokens === 1 ? t('customerList.token') : t('customerList.tokens')}
                           </span>
                         )}
                       </div>

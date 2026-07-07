@@ -217,7 +217,7 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                         ) : (
                           (() => {
                             const customerUserObj = users.find(u => u.id === currentUser.id);
-                            const hasNoTokens = customerUserObj ? (customerUserObj.tokens !== undefined ? customerUserObj.tokens : 5) <= 0 : false;
+                            const hasNoTokens = (customerUserObj?.tokens ?? 0) <= 0;
 
                             if (hasNoTokens) {
                               return (

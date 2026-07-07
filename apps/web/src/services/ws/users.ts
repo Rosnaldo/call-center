@@ -85,9 +85,15 @@ export class WsUsersService {
             case 'user_disconnected':
                 this.warnIfPartOfMyCall(msg.data.id, 'call.participantDisconnected');
                 return true;
-            case 'user_tokens_updated':
+            case 'user_tokens_updated': {
                 updateUser(msg.data.id, { tokens: msg.data.tokens });
+
+                const currentUser = this.stores.currentUser.getState().currentUser;
+                if (currentUser && currentUser.id === msg.data.id) {
+                    this.stores.currentUser.getState().setCurrentUser({ ...currentUser, tokens: msg.data.tokens });
+                }
                 return true;
+            }
             default:
                 return false;
         }
