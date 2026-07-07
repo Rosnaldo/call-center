@@ -106,6 +106,14 @@ export class DailyService implements IDailyService {
     await this.ensureRoom(options.room);
     const token = await this.getMeetingToken(options.room, options.userId);
 
+    if (!token) {
+      // Without a token, Daily never learns this participant's user_id, so
+      // anything keyed on it downstream (eject-by-user-id, analytics) won't
+      // recognize them. Not fatal — the call can proceed unidentified — but
+      // it must be loud since it's otherwise a silent degradation.
+      console.error('[Daily] joining without a meeting token — participant will have no user_id on Daily side', { room: options.room, userId: options.userId });
+    }
+
     await this._callObject.join({
       url: this.roomUrl(options.room),
       token: token ?? undefined,

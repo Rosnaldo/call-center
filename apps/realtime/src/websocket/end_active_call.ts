@@ -7,7 +7,7 @@ export const endActiveCall = async (userId: string): Promise<void> => {
         const call = await getCallByUser(userId);
         if (!call) return;
 
-        await ejectBothParticipantsFromRoom(call.roomName, [call.customerId, call.attendantId]);
+        await ejectBothParticipantsFromRoom(call.roomName);
     } catch (error) {
         logger.error(error, 'ws endActiveCall: falha ao encerrar chamada ativa no daily');
     }

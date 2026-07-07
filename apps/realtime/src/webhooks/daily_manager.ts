@@ -42,17 +42,28 @@ async function startNgrok(): Promise<string> {
 }
 
 async function deleteAllWebhooks(): Promise<void> {
-    const res = await fetch(`${DAILY_API_URL}/webhooks`, {
-        headers: dailyHeaders(),
-    });
-    if (!res.ok) return;
-    const webhooks = await res.json();
-    for (const wh of (webhooks.data ?? webhooks)) {
-        await fetch(`${DAILY_API_URL}/webhooks/${wh.uuid}`, {
-            method: 'DELETE',
+    try {
+        const res = await fetch(`${DAILY_API_URL}/webhooks`, {
             headers: dailyHeaders(),
         });
-        logger.info({ uuid: wh.uuid }, 'daily webhook removido');
+        if (!res.ok) {
+            logger.error({ status: res.status, body: await res.text() }, 'daily erro ao listar webhooks');
+            return;
+        }
+        const webhooks = await res.json();
+        for (const wh of (webhooks.data ?? webhooks)) {
+            const delRes = await fetch(`${DAILY_API_URL}/webhooks/${wh.uuid}`, {
+                method: 'DELETE',
+                headers: dailyHeaders(),
+            });
+            if (!delRes.ok) {
+                logger.error({ uuid: wh.uuid, status: delRes.status, body: await delRes.text() }, 'daily erro ao remover webhook');
+                continue;
+            }
+            logger.info({ uuid: wh.uuid }, 'daily webhook removido');
+        }
+    } catch (error) {
+        logger.error(error, 'daily deleteAllWebhooks: falha ao comunicar com api do daily');
     }
 }
 
@@ -94,20 +105,63 @@ async function createWebhook(url: string): Promise<void> {
 }
 
 export async function deleteDailyRoom(room: string): Promise<void> {
-    await fetch(`${DAILY_API_URL}/rooms/${room}`, {
-        method: 'DELETE',
-        headers: dailyHeaders(),
-    });
-    logger.info({ room }, 'daily room removida');
+    try {
+        const res = await fetch(`${DAILY_API_URL}/rooms/${room}`, {
+            method: 'DELETE',
+            headers: dailyHeaders(),
+        });
+        if (!res.ok) {
+            logger.error({ room, status: res.status, body: await res.text() }, 'daily erro ao remover room');
+            return;
+        }
+        logger.info({ room }, 'daily room removida');
+    } catch (error) {
+        logger.error(error, 'daily deleteDailyRoom: falha ao comunicar com api do daily');
+    }
 }
 
-export async function ejectBothParticipantsFromRoom(room: string, userIds: string[]): Promise<void> {
-    await fetch(`${DAILY_API_URL}/rooms/${room}/eject`, {
-        method: 'POST',
+async function getRoomPresenceIds(room: string): Promise<string[]> {
+    const res = await fetch(`${DAILY_API_URL}/rooms/${room}/presence`, {
         headers: dailyHeaders(),
-        body: JSON.stringify({ user_ids: userIds }),
     });
-    logger.info({ room, userIds }, 'daily participantes ejetados');
+
+    if (!res.ok) {
+        logger.error({ room, status: res.status, body: await res.text() }, 'daily erro ao consultar presence da room');
+        return [];
+    }
+
+    const { data } = await res.json() as { data: { id: string }[] };
+    return data.map((p) => p.id);
+}
+
+export async function ejectBothParticipantsFromRoom(room: string): Promise<void> {
+    try {
+        // The IAM user id isn't necessarily the same id Daily assigns a session
+        // (it only matches if the join token carried `user_id`, which isn't
+        // guaranteed) — ejecting by user_ids can silently match nobody, leaving
+        // the room open and meeting.ended never firing. Presence gives us
+        // Daily's own participant ids, which always match.
+        const ids = await getRoomPresenceIds(room);
+        if (ids.length === 0) {
+            logger.info({ room }, 'daily nenhum participante presente na room, nada a ejetar');
+            return;
+        }
+
+        const res = await fetch(`${DAILY_API_URL}/rooms/${room}/eject`, {
+            method: 'POST',
+            headers: dailyHeaders(),
+            body: JSON.stringify({ ids }),
+        });
+
+        if (!res.ok) {
+            logger.error({ room, ids, status: res.status, body: await res.text() }, 'daily falha ao ejetar participantes');
+            return;
+        }
+
+        logger.info({ room, ids }, 'daily participantes ejetados');
+    } catch (error) {
+        logger.error(error, 'daily ejectBothParticipantsFromRoom: falha ao comunicar com api do daily');
+    }
 }
 
 async function deleteTrackedRooms(): Promise<void> {
@@ -116,7 +170,9 @@ async function deleteTrackedRooms(): Promise<void> {
         for (const room of data.rooms) {
             await deleteDailyRoom(room);
         }
-    } catch {}
+    } catch (error) {
+        logger.error(error, 'daily deleteTrackedRooms: falha ao buscar/remover rooms rastreadas');
+    }
 }
 
 export async function registerDailyWebhooks(): Promise<void> {

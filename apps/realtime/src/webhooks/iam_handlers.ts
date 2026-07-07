@@ -85,7 +85,7 @@ export async function onCallCompleted(payload: CallCompletedPayload): Promise<vo
     });
 
     try {
-        await ejectBothParticipantsFromRoom(payload.roomName, [payload.customerId, payload.attendantId]);
+        await ejectBothParticipantsFromRoom(payload.roomName);
     } catch (error) {
         logger.error(error, 'iam call_completed: falha ao remover participantes do daily');
     }

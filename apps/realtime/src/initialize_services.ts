@@ -121,14 +121,22 @@ async function startAll(properties?: Properties): Promise<WebhookServer> {
         const wsServer = WsServer.getInstance(webhookServer.server!);
         await wsServer.start();
 
-        await registerDailyWebhooks();
+        try {
+            await registerDailyWebhooks();
+        } catch (error) {
+            logger.error(error, 'falha ao registrar webhooks do daily');
+        }
 
         let isShuttingDown = false;
         const gracefulShutdown = async () => {
             if (isShuttingDown) return;
             isShuttingDown = true;
 
-            await cleanupDailyWebhooks()
+            try {
+                await cleanupDailyWebhooks()
+            } catch (error) {
+                logger.error(error, 'falha ao limpar webhooks/rooms do daily');
+            }
 
             webhookServer.server!.close(() => {
                 logger.info('web service closed');
