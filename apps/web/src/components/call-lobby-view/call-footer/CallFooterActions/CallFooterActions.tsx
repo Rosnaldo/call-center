@@ -5,7 +5,6 @@ import { AcceptCallButton } from './AcceptCallButton.tsx';
 import { EndCallButton } from './EndCallButton.tsx';
 import { CancelCallButton } from './CancelCallButton.tsx';
 
-import { ReturnButton } from './ReturnButton.tsx';
 import { ConfirmCloseCallModal } from '../../ConfirmCloseCallModal.tsx';
 
 export const CallFooterActions: React.FC = () => {
@@ -23,10 +22,6 @@ export const CallFooterActions: React.FC = () => {
 
   const handleStartCall = () => {
     sendIncomingCall(currentUser?.id, selectedAttendantId);
-  };
-
-  const handleReturnCall = () => {
-    useCallViewStore.getState().setViewState('in-call');
   };
 
   const handleAcceptCall = () => {
@@ -91,10 +86,6 @@ export const CallFooterActions: React.FC = () => {
         <CancelCallButton onClick={handleCancelCall} />
       </div>
     );
-  }
-
-  if (viewState === 'call-interrupted') {
-    return <ReturnButton onClick={handleReturnCall} />;
   }
 
   return <StartCallButton onClick={handleStartCall} />;

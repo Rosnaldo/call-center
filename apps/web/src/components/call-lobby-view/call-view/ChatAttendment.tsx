@@ -38,11 +38,17 @@ export const ChatAttendment: React.FC<ChatAttendmentProps> = ({
 }) => {
   const [inputText, setInputText] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Scroll chat to bottom
+  // Scroll only the chat's own message list to bottom — scrollIntoView on a
+  // bottom sentinel would also scroll ancestor containers (the whole page)
+  // to bring it into view, since this panel sits absolutely positioned
+  // inside a page that can itself be scrolled.
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
   }, [messages]);
 
   if (!isOpen) return null;
@@ -90,7 +96,7 @@ export const ChatAttendment: React.FC<ChatAttendmentProps> = ({
       </div>
 
       {/* Chat Messages Feed Container */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 bg-white">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 bg-white">
 
         {/* List of Messages */}
         {messages.map((msg) => {
@@ -184,8 +190,6 @@ export const ChatAttendment: React.FC<ChatAttendmentProps> = ({
             );
           }
         })}
-
-        <div ref={chatEndRef} />
       </div>
 
       {/* Input Form to Send Text & Files */}

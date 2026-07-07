@@ -155,7 +155,6 @@ export const CallLobbyView: React.FC = () => {
       case 'awaiting-answer': return CallViewState.AwaitingAnswer;
       case 'awaiting-to-answer': return CallViewState.AwaitingToAnswer;
       case 'in-call': return CallViewState.InCall;
-      case 'call-interrupted': return CallViewState.CallInterrupted;
       case 'none':
       default: return CallViewState.None;
     }
