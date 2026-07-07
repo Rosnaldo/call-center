@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useCallViewStore, useCallStore, useCurrentUserStore, useBillingStore } from '../../../states/stores.ts';
+import { useCallViewStore, useCallStore, useCurrentUserStore, useBillingStore, useTimerStore } from '../../../states/stores.ts';
 import { InfoCard } from '../info-card/InfoCard.tsx';
 import { MediaSettingsModal } from '../media-settings-modal/MediaSettingsModal.tsx';
 import { BillingCalculationModal } from '../BillingCalculationModal.tsx';
@@ -18,26 +18,9 @@ export const CallLobbyView: React.FC = () => {
 
   const { isSharingScreen, startScreenShare, stopScreenShare } = useScreenShare();
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [seconds, setSeconds] = useState(0);
+  const seconds = useTimerStore((s) => s.elapsedSeconds);
 
   const isCallActive = !!call;
-
-  // Elapsed timer
-  useEffect(() => {
-    if (!currentCall) {
-      setSeconds(0);
-      return;
-    }
-    const start = Date.now();
-    const tick = () => {
-      const diff = Math.floor((Date.now() - start) / 1000);
-      const clamped = diff >= 0 ? diff : 0;
-      setSeconds(clamped);
-    };
-    tick();
-    const timer = setInterval(tick, 1000);
-    return () => clearInterval(timer);
-  }, [currentCall?.id, isCallActive]);
 
   // Fullscreen
   const containerRef = useRef<HTMLDivElement>(null);
