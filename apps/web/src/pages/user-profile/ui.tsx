@@ -18,7 +18,6 @@ import { handleRequestError } from '@/src/utils/utils.ts';
 interface UserProfilePageProps {
   fileError: string | null;
   avatarUrl: string | null;
-  users: OnlineUserState[];
   currentUser: OnlineUserState | null;
   navigate: (path: string) => void;
   processFile: (file: File) => Promise<void>;
@@ -27,7 +26,6 @@ interface UserProfilePageProps {
 export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   fileError,
   avatarUrl,
-  users,
   currentUser,
   navigate,
   processFile,
@@ -94,7 +92,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
   return (
     <div id="user-profile-page-view" className="min-h-screen bg-brand-canvas pb-16 font-sans">
-      <Header users={users} onLogout={onLogout} />
+      <Header onLogout={onLogout} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-8">
 

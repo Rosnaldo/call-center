@@ -8,15 +8,12 @@ import { useTranslation } from 'react-i18next';
 import { LogOut, Radio, ChevronDown, Settings, Coins, LayoutDashboard, History } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCurrentUserStore } from '@/src/states/stores.ts';
-import { OnlineUserState } from '@/src/states/online-users/state.ts';
 
 interface UserProfileBadgeProps {
-  users: OnlineUserState[];
   onLogout: () => void;
 }
 
 export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
-  users,
   onLogout,
 }) => {
   const { t } = useTranslation();
@@ -47,8 +44,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
     );
   }
 
-  const updatedUserTokens = users.find(u => u.id === currentUser.id)?.tokens;
-  const tokensCount = updatedUserTokens !== undefined ? updatedUserTokens : 0;
+  const tokensCount = currentUser.tokens ?? 0;
 
   return (
     <div id="header-active-profile-area" className="flex items-center gap-2 relative select-none" ref={dropdownRef}>

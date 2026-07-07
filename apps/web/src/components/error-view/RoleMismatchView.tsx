@@ -12,7 +12,6 @@ import { OnlineUserState } from '@/src/states/online-users/state.ts';
 
 interface RoleMismatchViewProps {
   currentUser: OnlineUserState;
-  users: OnlineUserState[];
   onLogout: () => void;
   navigate: (path: string) => void;
   requiredRole: 'customer' | 'attendant';
@@ -20,7 +19,6 @@ interface RoleMismatchViewProps {
 
 export const RoleMismatchView: React.FC<RoleMismatchViewProps> = ({
   currentUser,
-  users,
   onLogout,
   navigate,
   requiredRole,
@@ -48,7 +46,7 @@ export const RoleMismatchView: React.FC<RoleMismatchViewProps> = ({
 
   return (
     <div className="flex flex-col min-h-screen font-sans">
-      <Header users={users} onLogout={onLogout} />
+      <Header onLogout={onLogout} />
       <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 mt-6 flex-grow">
         <div
           id={`role-mismatch-box-${requiredRole}`}

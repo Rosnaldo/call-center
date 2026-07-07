@@ -16,7 +16,6 @@ import { useLogout } from '../../hooks/auth/useLogout.ts';
 
 interface TokenHistoryPageUIProps {
   currentUser: OnlineUserState;
-  users: OnlineUserState[];
   navigate: (path: string) => void;
   paginatedData: PaginatedTransactionsResponse;
   searchTerm: string;
@@ -30,7 +29,6 @@ interface TokenHistoryPageUIProps {
 
 export const TokenHistoryPageUI: React.FC<TokenHistoryPageUIProps> = ({
   currentUser,
-  users,
   navigate,
   paginatedData,
   searchTerm,
@@ -46,7 +44,7 @@ export const TokenHistoryPageUI: React.FC<TokenHistoryPageUIProps> = ({
 
   return (
     <div id="token-history-page-view" className="flex flex-col min-h-screen font-sans bg-brand-canvas text-brand-dark">
-      <Header users={users} onLogout={handleLogout} />
+      <Header onLogout={handleLogout} />
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Back Link */}

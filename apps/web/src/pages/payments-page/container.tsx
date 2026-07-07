@@ -11,13 +11,11 @@ import { PaymentsPageUI } from './ui.tsx';
 export const PaymentsPageContainer: React.FC = () => {
   const navigate = useNavigate();
   const currentUser = useCurrentUserStore((s) => s.currentUser);
-  const users = useOnlineUsersStore((state) => state.users);
   const addTokens = useOnlineUsersStore((state) => state.addTokens);
 
   return (
     <PaymentsPageUI
       currentUser={currentUser || null}
-      users={users}
       addTokens={addTokens}
       navigate={navigate}
     />

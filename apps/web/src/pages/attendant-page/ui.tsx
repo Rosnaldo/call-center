@@ -18,14 +18,12 @@ import { useLogout } from '../../hooks/auth/useLogout.ts';
 
 interface AttendantPageUIProps {
   currentUser: OnlineUserState | null;
-  users: OnlineUserState[];
   call: CallState | null;
   completeCall: (attendantId: string, callId?: string, byAttendant?: boolean) => void;
 }
 
 export const AttendantPageUI: React.FC<AttendantPageUIProps> = ({
   currentUser,
-  users,
   call,
   completeCall,
 }) => {
@@ -34,7 +32,7 @@ export const AttendantPageUI: React.FC<AttendantPageUIProps> = ({
 
   return (
     <div id="attendant-main-view" className="flex flex-col min-h-screen font-sans bg-slate-50/50">
-      <Header users={users} onLogout={handleLogout} />
+      <Header onLogout={handleLogout} />
       <main className="max-w-[1000px] w-full mx-auto px-4 sm:px-6 lg:px-8 mt-6 flex-grow">
         {/* ATTENDANT DASHBOARD */}
         <div id="attendant-active-dashboard" className="flex flex-col gap-6">

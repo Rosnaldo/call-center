@@ -2,6 +2,7 @@ import logger from '#logger';
 import { sendToUser, broadcastMessage } from '#websocket/broadcast';
 import { SendIncomingCallPayload, CancelIncomingCallPayload, AcceptCallPayload, CallCompletedPayload, UserTokenChargedPayload, ChatMessageSentPayload } from './iam_types';
 import { deleteDailyRoom } from './daily_manager';
+import { updateIamTokens } from 'src/services/users';
 
 export function onSendIncomingCall(payload: SendIncomingCallPayload): void {
     logger.info({ customerId: payload.customerId, attendantId: payload.attendantId, calledBy: payload.calledBy }, 'iam incoming_call_sent');
@@ -90,13 +91,26 @@ export async function onCallCompleted(payload: CallCompletedPayload): Promise<vo
     }
 }
 
-export function onUserTokenCharged(payload: UserTokenChargedPayload): void {
+export async function onUserTokenCharged(payload: UserTokenChargedPayload): Promise<void> {
     logger.info({ userId: payload.user._id, tokens: payload.user.tokens }, 'iam user_token_charged');
 
     sendToUser(payload.user._id, {
         event: 'user_tokens_updated',
         data: { id: payload.user._id, tokens: payload.user.tokens },
     });
+
+    try {
+        // the client above gets patched directly, but the user's cached
+        // presence snapshot in Redis (used to answer full-list refetches
+        // triggered by unrelated online_users_broadcast events) still holds
+        // the pre-charge token count unless we refresh it here too — leaving
+        // it stale would clobber the correct value back onto every other
+        // viewer (and this same client) on the next refetch
+        await updateIamTokens(payload.user._id, payload.user.tokens ?? 0);
+        broadcastMessage({ event: 'online_users_broadcast', data: {} });
+    } catch (error) {
+        logger.error(error, 'onUserTokenCharged: falha ao sincronizar tokens no iam');
+    }
 }
 
 export function onChatMessageSent(payload: ChatMessageSentPayload): void {

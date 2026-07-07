@@ -19,6 +19,10 @@ export const removeFromIam = async (userId: string): Promise<void> => {
     });
 };
 
+export const updateIamTokens = async (userId: string, tokens: number): Promise<void> => {
+    await iamApi.post('/online-users/update-tokens', { id: userId, tokens });
+};
+
 export const findUserBySlug = async (traceId: string, slug: string): Promise<IUser> => {
     const { data } = await createIamClient(traceId).get<IUser>('/users/find-by-slug', { params: { slug } });
     return data;

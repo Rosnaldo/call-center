@@ -5,15 +5,12 @@
 
 import React from 'react';
 import { UserProfileBadge } from './UserProfileBadge.tsx';
-import { OnlineUserState } from '@/src/states/online-users/state.ts';
 
 interface HeaderProps {
-  users: OnlineUserState[];
   onLogout: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  users,
   onLogout,
 }) => {
   return (
@@ -31,7 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Active profile badge actions */}
-        <UserProfileBadge users={users} onLogout={onLogout} />
+        <UserProfileBadge onLogout={onLogout} />
       </div>
     </header>
   );

@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useOnlineUsersStore, useCurrentUserStore } from '../../states/stores.ts';
+import { useCurrentUserStore } from '../../states/stores.ts';
 import { UserProfilePage } from './ui.tsx';
 import { mytoast } from '@/src/components/toast.tsx';
 import { fetchUserUpload } from '@/src/services/api/user.ts';
@@ -16,7 +16,6 @@ export const UserProfileContainer: React.FC = () => {
   const navigate = useNavigate();
   const currentUser = useCurrentUserStore((s) => s.currentUser);
   const setCurrentUser = useCurrentUserStore((s) => s.setCurrentUser);
-  const users = useOnlineUsersStore((state) => state.users);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(currentUser?.avatarUrl || null);
   const [fileError, setFileError] = useState<string | null>(null);
   
@@ -47,7 +46,6 @@ export const UserProfileContainer: React.FC = () => {
 
   return (
     <UserProfilePage
-      users={users}
       currentUser={currentUser || null}
       navigate={navigate}
       processFile={processFile}

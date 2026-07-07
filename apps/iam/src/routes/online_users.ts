@@ -43,4 +43,18 @@ export default (app: Application) => {
             return res.status(200).send();
         }
     );
+
+    app.post(
+        '/online-users/update-tokens',
+        GetKeycloakUser,
+        async (req, res) => {
+            const controller = new OnlineUserController();
+            const mapped = controller.updateTokens.mapper(req.body);
+            const either = await controller.updateTokens.exec({ mapped });
+            if (either.isError) {
+                return res.status(either.status).send(either);
+            }
+            return res.status(200).send(either.data);
+        }
+    );
 };

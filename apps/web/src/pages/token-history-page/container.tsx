@@ -6,7 +6,7 @@
 import React, { useState, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useOnlineUsersStore, useCurrentUserStore } from '../../states/stores.ts';
+import { useCurrentUserStore } from '../../states/stores.ts';
 import { useTransactionsQuery } from '../../queries/transaction/query.ts';
 import { TokenHistoryPageUI } from './ui.tsx';
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
@@ -14,8 +14,7 @@ import { OnlineUserState } from '@/src/states/online-users/state.ts';
 
 const TokenHistoryPageDataLoader: React.FC<{
   currentUser: OnlineUserState;
-  users: OnlineUserState[];
-}> = ({ currentUser, users }) => {
+}> = ({ currentUser }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'reload' | 'charge'>('all');
@@ -33,7 +32,6 @@ const TokenHistoryPageDataLoader: React.FC<{
   return (
     <TokenHistoryPageUI
       currentUser={currentUser}
-      users={users}
       navigate={navigate}
       paginatedData={paginatedData}
       searchTerm={searchTerm}
@@ -49,7 +47,6 @@ const TokenHistoryPageDataLoader: React.FC<{
 
 export const TokenHistoryPageContainer: React.FC = () => {
   const { t } = useTranslation();
-  const users = useOnlineUsersStore((state) => state.users);
   const currentUser = useCurrentUserStore((s) => s.currentUser);
 
   if (!currentUser) return null;
@@ -75,7 +72,6 @@ export const TokenHistoryPageContainer: React.FC = () => {
       }>
         <TokenHistoryPageDataLoader
           currentUser={currentUser}
-          users={users}
         />
       </Suspense>
     </ErrorBoundary>

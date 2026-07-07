@@ -24,14 +24,12 @@ import { useLogout } from '../../hooks/auth/useLogout.ts';
 
 interface PaymentsPageUIProps {
   currentUser: OnlineUserState | null;
-  users: OnlineUserState[];
   addTokens: (userId: string, count: number) => void;
   navigate: (path: string) => void;
 }
 
 export const PaymentsPageUI: React.FC<PaymentsPageUIProps> = ({
   currentUser,
-  users,
   addTokens,
   navigate,
 }) => {
@@ -123,11 +121,11 @@ export const PaymentsPageUI: React.FC<PaymentsPageUIProps> = ({
     }
   };
 
-  const currentTokensFromState = users.find(u => u.id === currentUser.id)?.tokens ?? 0;
+  const currentTokensFromState = currentUser.tokens ?? 0;
 
   return (
     <div id="payments-page-view" className="flex flex-col min-h-screen font-sans bg-brand-canvas text-brand-dark">
-      <Header users={users} onLogout={handleLogout} />
+      <Header onLogout={handleLogout} />
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-8 sm:px-6 lg:px-8">
 

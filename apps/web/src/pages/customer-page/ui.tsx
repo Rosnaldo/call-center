@@ -18,14 +18,12 @@ import { useLogout } from '../../hooks/auth/useLogout.ts';
 
 interface CustomerPageUIProps {
   currentUser: OnlineUserState | null;
-  users: OnlineUserState[];
   call: CallState | null;
   completeCall: (attendantId: string, callId?: string, byAttendant?: boolean) => void;
 }
 
 export const CustomerPageUI: React.FC<CustomerPageUIProps> = ({
   currentUser,
-  users,
   call,
   completeCall,
 }) => {
@@ -34,7 +32,7 @@ export const CustomerPageUI: React.FC<CustomerPageUIProps> = ({
 
   return (
     <div id="customer-main-view" className="flex flex-col min-h-screen font-sans bg-brand-canvas text-brand-dark">
-      <Header users={users} onLogout={handleLogout} />
+      <Header onLogout={handleLogout} />
       <main className="max-w-[1000px] w-full mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-12 flex-grow">
         {/* CUSTOMER DASHBOARD */}
         <div id="customer-active-dashboard" className="flex flex-col gap-8">
