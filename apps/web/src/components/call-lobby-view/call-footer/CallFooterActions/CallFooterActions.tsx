@@ -4,6 +4,7 @@ import { StartCallButton } from './StartCallButton.tsx';
 import { AcceptCallButton } from './AcceptCallButton.tsx';
 import { EndCallButton } from './EndCallButton.tsx';
 import { CancelCallButton } from './CancelCallButton.tsx';
+import { playNotificationChime } from '../../../../utils/helpers.ts';
 
 import { ConfirmCloseCallModal } from '../../ConfirmCloseCallModal.tsx';
 
@@ -21,6 +22,7 @@ export const CallFooterActions: React.FC = () => {
   const isReceiving = currentUser?.id === incomingCall?.attendantId;
 
   const handleStartCall = () => {
+    playNotificationChime();
     sendIncomingCall(currentUser?.id, selectedAttendantId);
   };
 
