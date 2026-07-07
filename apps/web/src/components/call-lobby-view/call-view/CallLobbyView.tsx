@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useCallViewStore, useCallStore, useCurrentUserStore, useOnlineUsersStore, useBillingStore } from '../../../states/stores.ts';
+import { useCallViewStore, useCallStore, useCurrentUserStore, useBillingStore } from '../../../states/stores.ts';
 import { InfoCard } from '../info-card/InfoCard.tsx';
 import { MediaSettingsModal } from '../media-settings-modal/MediaSettingsModal.tsx';
 import { BillingCalculationModal } from '../BillingCalculationModal.tsx';
@@ -11,9 +11,7 @@ import { useScreenShare } from '@daily-co/daily-react';
 export const CallLobbyView: React.FC = () => {
   const call = useCallStore((s) => s.call);
   const currentUser = useCurrentUserStore((s) => s.currentUser);
-  const users = useOnlineUsersStore((s) => s.users);
   const persistedViewState = useCallViewStore((s) => s.viewState);
-  const initialTokens = useBillingStore((s) => s.initialTokens);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const currentCall = call;
@@ -21,10 +19,6 @@ export const CallLobbyView: React.FC = () => {
   const { isSharingScreen, startScreenShare, stopScreenShare } = useScreenShare();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [seconds, setSeconds] = useState(0);
-  const [billingCountdown, setBillingCountdown] = useState(10);
-
-  const fastBilling = false;
-  const blockDurationSeconds = fastBilling ? 10 : 600;
 
   const isCallActive = !!call;
 
@@ -44,26 +38,6 @@ export const CallLobbyView: React.FC = () => {
     const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
   }, [currentCall?.id, isCallActive]);
-
-  // Billing countdown
-  useEffect(() => {
-    if (!currentCall) {
-      setBillingCountdown(blockDurationSeconds);
-      return;
-    }
-    const start = Date.now();
-    const tickBilling = () => {
-      const elapsedSinceStart = Date.now() - start;
-      const tokensCount = initialTokens || 1;
-      const nextChargeDelay = tokensCount * blockDurationSeconds * 1000;
-      const remainingMs = nextChargeDelay - elapsedSinceStart;
-      const remaining = Math.ceil(remainingMs / 1000);
-      setBillingCountdown(remaining >= 0 ? remaining : 0);
-    };
-    tickBilling();
-    const interval = setInterval(tickBilling, 1000);
-    return () => clearInterval(interval);
-  }, [currentCall?.id, isCallActive, initialTokens, blockDurationSeconds]);
 
   // Fullscreen
   const containerRef = useRef<HTMLDivElement>(null);
@@ -143,9 +117,6 @@ export const CallLobbyView: React.FC = () => {
     useBillingStore.getState().closeCalculationModal();
   }, [currentUser?.id]);
 
-  const customerUser = currentCall ? users.find(u => u.id === currentCall.customerId) : null;
-  const currentTokens = customerUser?.tokens ?? 0;
-
   const getCallViewState = (): CallViewState => {
     switch (persistedViewState) {
       case 'lobby': return CallViewState.Lobby;
@@ -179,13 +150,7 @@ export const CallLobbyView: React.FC = () => {
       </div>
       <div className="relative z-10 flex flex-col gap-5 mt-6">
 
-        <InfoCard
-          currentCall={currentCall}
-          currentTokens={currentTokens}
-          blockDurationSeconds={blockDurationSeconds}
-          billingCountdown={billingCountdown}
-          isInCall={viewState === CallViewState.InCall}
-        />
+        <InfoCard />
 
         <div ref={containerRef} className={isFullscreen ? 'fixed inset-0 z-[100] w-screen h-screen bg-[#0c0d0e]' : 'relative'}>
           <CallView

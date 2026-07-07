@@ -1,15 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { CallState } from '../../../states/call/state.ts';
-import { useBillingStore } from '../../../states/stores.ts';
+import { MINUTES_PER_TOKEN } from '@repo/shared-types';
+import { useBillingStore, useCallStore, useCallViewStore, useOnlineUsersStore, useTimerStore } from '../../../states/stores.ts';
 
-interface InfoCardProps {
-  currentCall?: CallState | null;
-  currentTokens: number;
-  blockDurationSeconds: number;
-  billingCountdown?: number;
-  isInCall?: boolean;
-}
+const BLOCK_DURATION_SECONDS = MINUTES_PER_TOKEN * 60;
+const HALF_BLOCK_DURATION_SECONDS = BLOCK_DURATION_SECONDS / 2;
 
 const formatTime = (seconds: number) => {
   const mins = Math.floor(seconds / 60);
@@ -17,21 +12,29 @@ const formatTime = (seconds: number) => {
   return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 };
 
-export const InfoCard: React.FC<InfoCardProps> = ({
-  currentCall,
-  currentTokens,
-  blockDurationSeconds,
-  billingCountdown,
-  isInCall,
-}) => {
+export const InfoCard: React.FC = () => {
   const { t } = useTranslation();
+  const currentCall = useCallStore((s) => s.call);
+  const viewState = useCallViewStore((s) => s.viewState);
+  const users = useOnlineUsersStore((s) => s.users);
   const initialTokens = useBillingStore((s) => s.initialTokens);
+  const elapsedSeconds = useTimerStore((s) => s.elapsedSeconds);
 
   if (!currentCall) return null;
 
-  const pct = blockDurationSeconds > 0 && billingCountdown !== undefined
-    ? (billingCountdown / blockDurationSeconds) * 100
-    : 0;
+  const isInCall = viewState === 'in-call';
+  const currentTokens = users.find((u) => u.id === currentCall.customerId)?.tokens ?? 0;
+
+  // Mirrors computeTokensToBeCharged's half-cycle rule: the Nth token is due
+  // at N*BLOCK - BLOCK/2 elapsed seconds (1st at 2.5min, 2nd at 7.5min, ...).
+  // initialTokens (from useBillingStore, driven by useBillingTimer) is always
+  // "the next token we're waiting on", so its threshold is the next charge.
+  const nextChargeAtSeconds = initialTokens * BLOCK_DURATION_SECONDS - HALF_BLOCK_DURATION_SECONDS;
+  const previousChargeAtSeconds = Math.max(0, (initialTokens - 1) * BLOCK_DURATION_SECONDS - HALF_BLOCK_DURATION_SECONDS);
+  const windowSeconds = nextChargeAtSeconds - previousChargeAtSeconds;
+  const billingCountdown = Math.max(0, Math.ceil(nextChargeAtSeconds - elapsedSeconds));
+
+  const pct = windowSeconds > 0 ? (billingCountdown / windowSeconds) * 100 : 0;
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-stretch gap-4 mb-2 select-none font-sans mr-auto w-full sm:w-auto">
@@ -52,12 +55,12 @@ export const InfoCard: React.FC<InfoCardProps> = ({
             {t('infoCard.contractedRate')}
           </div>
           <span className="font-mono text-[10px] font-bold text-[#a36500]">
-            {blockDurationSeconds === 10 ? '1 tk / 10s' : '1 tk / 10m'}
+            1 tk / {MINUTES_PER_TOKEN}m
           </span>
         </div>
       </div>
 
-      {isInCall && billingCountdown !== undefined && (
+      {isInCall && (
         <div className="bg-[#f2efe7] rounded-xl px-6 py-4 flex-1 sm:flex-initial sm:min-w-[320px] flex flex-col justify-center shadow-none border-0">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#ebdcb9]/40 font-mono">
             <span className="text-[10px] font-mono tracking-wider text-brand-dark uppercase font-bold flex items-center gap-1.5">
@@ -73,7 +76,7 @@ export const InfoCard: React.FC<InfoCardProps> = ({
               {t('infoCard.nextCharge')}
             </span>
             <span className="font-mono text-[10px] font-bold text-[#a36500]">
-              {formatTime(billingCountdown)} / {formatTime(blockDurationSeconds)}
+              {formatTime(billingCountdown)} / {formatTime(windowSeconds)}
             </span>
           </div>
 

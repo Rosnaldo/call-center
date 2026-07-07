@@ -6,7 +6,7 @@ import { fetchOnlineUsers } from '../../services/api/online-users.ts';
 import { handleRequestError } from '../../utils/utils.ts';
 import { ApiError } from '../../error/api.ts';
 import i18n from '../../i18n.ts';
-import { playRingtone } from '../../utils/helpers.ts';
+import { playRingtone, stopRingtone } from '../../utils/helpers.ts';
 
 export interface IncomingCallActions {
   cancel: () => void;
@@ -82,6 +82,7 @@ export const createIncomingCallActions = (
     }
   },
   incomingCallCancelled: async () => {
+    stopRingtone();
     set({ incomingCall: null });
     ref.callView.getState().setViewState('none');
     ref.callView.getState().setSelectedAttendantId(null);

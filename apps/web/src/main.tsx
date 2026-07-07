@@ -9,6 +9,7 @@ import { DailyService } from './services/daily.ts';
 import { DevicesProvider } from './providers/devices.tsx';
 import App from './App.tsx';
 import properties from './properties';
+import { primeAudioPlayback } from './utils/helpers.ts';
 import './index.css';
 
 const dailyService = DailyService.getInstance({
@@ -17,6 +18,7 @@ const dailyService = DailyService.getInstance({
 });
 const stores = createStores(dailyService);
 
+primeAudioPlayback();
 bootstrap(stores);
 
 createRoot(document.getElementById('root')!).render(
