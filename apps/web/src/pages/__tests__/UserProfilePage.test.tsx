@@ -4,6 +4,11 @@ import { UserProfilePage } from '../user-profile/ui.tsx';
 import { buildOnlineUserState } from '../../__tests__/builders.ts';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
 
+const mockBackToPanelNavigate = vi.fn();
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => mockBackToPanelNavigate,
+}));
+
 vi.mock('../../components/header/Header.tsx', () => {
   return {
     Header: () => <div data-testid="mock-header">Mock Header</div>,
@@ -56,16 +61,13 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
     vi.clearAllMocks();
   });
 
-  it('renders a warning if currentUser is not logged in', () => {
-    render(<UserProfilePage {...defaultProps} currentUser={null} />);
+  it('renders nothing if currentUser is not logged in', () => {
+    // protected-route.tsx already guarantees a currentUser before this page
+    // mounts (falling back to UnauthorizedView otherwise), so this is just a
+    // defensive null-render, not a dedicated login-required screen
+    const { container } = render(<UserProfilePage {...defaultProps} currentUser={null} />);
 
-    expect(screen.getByText('Por favor, faça login para acessar seu perfil.')).toBeDefined();
-
-    const loginButton = screen.getByText('Ir para Login');
-    expect(loginButton).toBeDefined();
-
-    fireEvent.click(loginButton);
-    expect(defaultProps.navigate).toHaveBeenCalledWith('login');
+    expect(container.firstChild).toBeNull();
   });
 
   it('renders the configuration form correctly with initialized values when the customer user is logged in', () => {
@@ -73,15 +75,9 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
 
     expect(screen.getByTestId('mock-header')).toBeDefined();
     expect(screen.getByText('Perfil')).toBeDefined();
-    expect(screen.getByText('Voltar para a área de Cliente')).toBeDefined();
+    expect(screen.getByText('Voltar para o Painel de Atendimento')).toBeDefined();
     expect(screen.getByText('John Customer')).toBeDefined();
     expect(screen.getByText('Editar')).toBeDefined();
-  });
-
-  it('renders correct labels when the attendant user is logged in', () => {
-    render(<UserProfilePage {...defaultProps} currentUser={buildOnlineUserState({ role: 'attendant' })} />);
-
-    expect(screen.getByText('Voltar para a área de Agente')).toBeDefined();
   });
 
   it('updates name input state as values are typed', () => {
@@ -129,20 +125,12 @@ describe('UserProfilePage Class and Interactions Unit Tests', () => {
     vi.useRealTimers();
   });
 
-  it('navigates back on clicking Voltar helper', () => {
-    const { unmount } = render(<UserProfilePage {...defaultProps} />);
+  it('navigates back to the panel on clicking the back helper', () => {
+    render(<UserProfilePage {...defaultProps} />);
 
-    const backBtn = screen.getByText('Voltar para a área de Cliente');
+    const backBtn = screen.getByText('Voltar para o Painel de Atendimento');
     fireEvent.click(backBtn);
-    expect(defaultProps.navigate).toHaveBeenLastCalledWith('customer');
-
-    unmount();
-
-    render(<UserProfilePage {...defaultProps} currentUser={buildOnlineUserState({ role: 'attendant' })} />);
-
-    const backBtnAttendant = screen.getByText('Voltar para a área de Agente');
-    fireEvent.click(backBtnAttendant);
-    expect(defaultProps.navigate).toHaveBeenLastCalledWith('attendant');
+    expect(mockBackToPanelNavigate).toHaveBeenCalledWith('/painel');
   });
 
   it('Cancel button resets editing state without navigating', () => {
