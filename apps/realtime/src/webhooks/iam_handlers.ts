@@ -1,7 +1,7 @@
 import logger from '#logger';
 import { sendToUser, broadcastMessage } from '#websocket/broadcast';
 import { SendIncomingCallPayload, CancelIncomingCallPayload, AcceptCallPayload, CallCompletedPayload, UserTokenChargedPayload, ChatMessageSentPayload } from './iam_types';
-import { deleteDailyRoom } from './daily_manager';
+import { ejectBothParticipantsFromRoom } from './daily_manager';
 import { updateIamTokens } from 'src/services/users';
 
 export function onSendIncomingCall(payload: SendIncomingCallPayload): void {
@@ -85,9 +85,9 @@ export async function onCallCompleted(payload: CallCompletedPayload): Promise<vo
     });
 
     try {
-        await deleteDailyRoom(payload.roomName);
+        await ejectBothParticipantsFromRoom(payload.roomName, [payload.customerId, payload.attendantId]);
     } catch (error) {
-        logger.error(error, 'iam call_completed: falha ao deletar room do daily');
+        logger.error(error, 'iam call_completed: falha ao remover participantes do daily');
     }
 }
 

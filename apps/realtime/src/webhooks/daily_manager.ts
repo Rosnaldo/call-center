@@ -101,6 +101,15 @@ export async function deleteDailyRoom(room: string): Promise<void> {
     logger.info({ room }, 'daily room removida');
 }
 
+export async function ejectBothParticipantsFromRoom(room: string, userIds: string[]): Promise<void> {
+    await fetch(`${DAILY_API_URL}/rooms/${room}/eject`, {
+        method: 'POST',
+        headers: dailyHeaders(),
+        body: JSON.stringify({ user_ids: userIds }),
+    });
+    logger.info({ room, userIds }, 'daily participantes ejetados');
+}
+
 async function deleteTrackedRooms(): Promise<void> {
     try {
         const { data } = await iamApi.delete<{ rooms: string[] }>('/calls/rooms');

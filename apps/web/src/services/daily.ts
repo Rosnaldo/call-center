@@ -3,8 +3,8 @@ import { useDevicesStore } from "../states/stores.ts";
 
 export interface JoinOptions {
   room: string;
+  userId: string;
   userName: string;
-  userData: Record<string, unknown>;
 }
 
 export interface IDailyService {
@@ -60,7 +60,7 @@ export class DailyService implements IDailyService {
     return `https://${this.config.domain}.daily.co/${roomName}`;
   }
 
-  async getMeetingToken(roomName: string): Promise<string | undefined> {
+  async getMeetingToken(roomName: string, userId: string): Promise<string | undefined> {
     if (!this.config.apiKey) return undefined;
 
     const res = await fetch('https://api.daily.co/v1/meeting-tokens', {
@@ -69,7 +69,7 @@ export class DailyService implements IDailyService {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.config.apiKey}`,
       },
-      body: JSON.stringify({ properties: { room_name: roomName } }),
+      body: JSON.stringify({ properties: { room_name: roomName, user_id: userId } }),
     });
 
     if (!res.ok) {
@@ -104,13 +104,12 @@ export class DailyService implements IDailyService {
 
   async join(options: JoinOptions) {
     await this.ensureRoom(options.room);
-    const token = await this.getMeetingToken(options.room);
+    const token = await this.getMeetingToken(options.room, options.userId);
 
     await this._callObject.join({
       url: this.roomUrl(options.room),
       token: token ?? undefined,
       userName: options.userName,
-      userData: options.userData,
       startAudioOff: !useDevicesStore.getState().microphoneDailycoOn,
       startVideoOff: !useDevicesStore.getState().cameraDailycoOn,
     });

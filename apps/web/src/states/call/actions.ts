@@ -43,8 +43,8 @@ export const createCallActions = (
 
         dailyService.join({
           room: `${customer.slug}--${attendant.slug}`,
+          userId: currentUser.id,
           userName: currentUser.name,
-          userData: { id: currentUser.id, role: currentUser.role },
         });
 
         ref.callView.getState().setViewState('in-call');
@@ -97,8 +97,8 @@ export const createCallActions = (
 
         dailyService.join({
           room: call.roomName,
+          userId: currentUser.id,
           userName: currentUser.name,
-          userData: { id: currentUser.id, role: currentUser.role },
         });
 
         ref.callView.getState().setViewState('in-call');
