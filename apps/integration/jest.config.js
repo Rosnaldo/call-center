@@ -31,9 +31,12 @@ module.exports = {
         // realtime service layer
         '^src/services/users$': '<rootDir>/src/mocks/realtime-users-service.ts',
         '^src/services/calls$': '<rootDir>/src/mocks/realtime-calls-service.ts',
+        '^src/services/chat$': '<rootDir>/src/mocks/realtime-chat-service.ts',
+        '^src/webhooks/daily_manager$': '<rootDir>/src/mocks/realtime-daily-manager.ts',
         '^src/helpers/(.*)$': '<rootDir>/../realtime/src/helpers/$1',
+        '^src/apis/iam$': '<rootDir>/src/mocks/realtime-apis-iam.ts',
         '^src/apis/(.*)$': '<rootDir>/../realtime/src/apis/$1',
-        '^#apis/iam$': '<rootDir>/../realtime/src/apis/iam',
+        '^#apis/iam$': '<rootDir>/src/mocks/realtime-apis-iam.ts',
 
         // IAM alias paths
         '^#logger$': '<rootDir>/../iam/src/logger',

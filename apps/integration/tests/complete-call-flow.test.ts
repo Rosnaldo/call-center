@@ -244,6 +244,12 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         await customerStores.call.getState().completeCall();
         await wait(100);
 
+        // /calls/complete only flips presence + notifies — charging, call
+        // history, and the final store clear happen off Daily's own
+        // meeting.ended webhook, which in production fires once deleteDailyRoom
+        // (triggered by the call_completed webhook) tears the room down
+        await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: 'm-complete-1', room: roomName, start_ts: Date.now() / 1000 } });
+
         const endingTokens = await getCustomerTokens();
         expect(endingTokens).toBe(startingTokens - 1);
 
@@ -283,6 +289,8 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
 
         await customerStores.call.getState().completeCall();
         await wait(100);
+
+        await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: 'm-complete-2', room: roomName, start_ts: Date.now() / 1000 } });
 
         const endingTokens = await getCustomerTokens();
         expect(endingTokens).toBe(startingTokens);

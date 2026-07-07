@@ -14,7 +14,7 @@ export const createGracePeriod = (
             addToIam(transitionUser)
         },
         () => {
-            broadcastMessage({ event: 'user_logout', data: { id: user.id } });
+            broadcastMessage({ event: 'remove_from_online_users', data: user });
             removeFromIam(user.id)
         },
     );

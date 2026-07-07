@@ -1,15 +1,22 @@
 import { IOnlineUser } from '@repo/shared-types';
-import type { OnlineUsersStoreInstance } from '../../states/stores';
+import type { OnlineUsersStoreInstance, CallStoreInstance, CurrentUserStoreInstance } from '../../states/stores';
+import { fetchCallByUser } from '../api/calls.ts';
+import { mytoast } from '../../components/toast';
+import i18n from '../../i18n.ts';
 
 export type WsUsersMessage =
     | { event: 'add_to_online_users'; data: IOnlineUser }
+    | { event: 'remove_from_online_users'; data: IOnlineUser }
     | { event: 'online_users_broadcast' }
     | { event: 'heartbeat_ack' }
-    | { event: 'user_logout'; data: { id: string } }
+    | { event: 'user_logouted'; data: { id: string } }
+    | { event: 'user_disconnected'; data: { id: string } }
     | { event: 'user_tokens_updated'; data: { id: string; tokens?: number } };
 
 export interface WsUsersStores {
     onlineUsers: OnlineUsersStoreInstance;
+    call: CallStoreInstance;
+    currentUser: CurrentUserStoreInstance;
 }
 
 export class WsUsersService {
@@ -45,6 +52,17 @@ export class WsUsersService {
         this.ackRef = null;
     }
 
+    private warnIfPartOfMyCall(departedUserId: string, messageKey: 'call.participantLoggedOut' | 'call.participantDisconnected'): void {
+        const currentUser = this.stores.currentUser.getState().currentUser;
+        if (!currentUser || departedUserId === currentUser.id) return;
+
+        fetchCallByUser(currentUser.id).then((call) => {
+            if (call && (call.customerId === departedUserId || call.attendantId === departedUserId)) {
+                mytoast.warn(i18n.t(messageKey));
+            }
+        });
+    }
+
     handle(msg: { event: string; data?: any }): boolean {
         const { addToOnlineUsers, refreshUsers, removeFromOnlineUsers, updateUser } = this.stores.onlineUsers.getState();
 
@@ -52,14 +70,20 @@ export class WsUsersService {
             case 'add_to_online_users':
                 addToOnlineUsers(msg.data);
                 return true;
+            case 'remove_from_online_users':
+                removeFromOnlineUsers(msg.data.id);
+                return true;
             case 'online_users_broadcast':
                 refreshUsers();
                 return true;
             case 'heartbeat_ack':
                 this.cancelAck();
                 return true;
-            case 'user_logout':
-                removeFromOnlineUsers(msg.data.id);
+            case 'user_logouted':
+                this.warnIfPartOfMyCall(msg.data.id, 'call.participantLoggedOut');
+                return true;
+            case 'user_disconnected':
+                this.warnIfPartOfMyCall(msg.data.id, 'call.participantDisconnected');
                 return true;
             case 'user_tokens_updated':
                 updateUser(msg.data.id, { tokens: msg.data.tokens });

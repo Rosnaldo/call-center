@@ -3,7 +3,7 @@ import { WsUsersService } from './users';
 import { WsCallService } from './call';
 import { WsMeetingService } from './meeting';
 import { WsChatService } from './chat';
-import type { OnlineUsersStoreInstance, IncomingCallStoreInstance, CallStoreInstance, CallViewStoreInstance, MeetingStoreInstance, ChatStoreInstance } from '../../states/stores';
+import type { OnlineUsersStoreInstance, IncomingCallStoreInstance, CallStoreInstance, CallViewStoreInstance, MeetingStoreInstance, ChatStoreInstance, CurrentUserStoreInstance } from '../../states/stores';
 import properties from '../../properties';
 import { mytoast } from '../../components/toast';
 import authSession from '../../auth/session';
@@ -20,6 +20,7 @@ interface InitWsStores {
     callView: CallViewStoreInstance;
     meeting: MeetingStoreInstance;
     chat: ChatStoreInstance;
+    currentUser: CurrentUserStoreInstance;
 }
 
 export class InitWs {
@@ -88,7 +89,7 @@ export class InitWs {
         this.running = true;
         this.factory = factory;
 
-        const usersService = new WsUsersService({ onlineUsers: stores.onlineUsers });
+        const usersService = new WsUsersService({ onlineUsers: stores.onlineUsers, call: stores.call, currentUser: stores.currentUser });
         const callService = new WsCallService({
             call: stores.call,
             callView: stores.callView,

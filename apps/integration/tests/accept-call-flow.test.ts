@@ -15,6 +15,7 @@ jest.mock('@/src/services/api/calls', () => ({
 }));
 
 import { EventEmitter } from 'node:events';
+import supertest from 'supertest';
 import { IOnlineUser, IUser, mapUserToOnlineUser } from '@repo/shared-types';
 
 import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
@@ -31,6 +32,9 @@ import { createStores, Stores } from '../../web/src/states/stores';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
+import { Properties as WebProperties } from '../../web/src/properties';
+
+import { setBaseURL, setAuthToken } from '../src/mocks/realtime-calls-service';
 
 import * as usersService from 'src/services/users';
 import * as onlineUsersService from '@/src/services/api/online-users';
@@ -80,18 +84,25 @@ function createBridgedClient(user: IUser, token: string) {
 
 describe('Accept Call Flow', () => {
     let iamRequest: IamAgent;
+    let realtimeRequest: ReturnType<typeof supertest>;
     let customerUser: IUser;
     let attendantUser: IUser;
     let customerStores: Stores;
     let attendantStores: Stores;
+    let roomName: string;
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
-        await startRealtimeServer();
+        const webhookServer = await startRealtimeServer();
+        realtimeRequest = supertest(webhookServer.app);
 
         const users = await createMockUsers();
         customerUser = { ...users.customer, tokens: 10 };
         attendantUser = users.attendant;
+        roomName = `${customerUser.slug}--${attendantUser.slug}`;
+
+        setBaseURL(WebProperties.getInstance().backendUrl);
+        setAuthToken(CUSTOMER_TOKEN);
     });
 
     afterAll(async () => {
@@ -148,6 +159,11 @@ describe('Accept Call Flow', () => {
                 .send({ customerId, attendantId });
         });
     });
+
+    const postDailyWebhook = async (body: Record<string, unknown>): Promise<void> => {
+        await realtimeRequest.post('/webhooks/daily').send(body);
+        await new Promise((r) => setTimeout(r, 100));
+    };
 
     it('after accept both users are in-call', async () => {
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
@@ -270,9 +286,11 @@ describe('Accept Call Flow', () => {
         expect(attendantAcceptBroadcast).toBeTruthy();
 
         // ── attendant completes call ──────────────────────────────────
-        // completeCall() now calls IAM's /calls/complete directly, which
-        // broadcasts call_completed back to both parties — each side then
-        // clears its own local state via callCompleted() on receipt.
+        // completeCall() calls IAM's /calls/complete, which broadcasts
+        // call_completed back to both parties (each opens the calculation
+        // modal on receipt) — the actual state clear only happens once
+        // Daily's own meeting.ended webhook arrives and onMeetingEnded
+        // broadcasts meeting_ended.
         customerMessages.length = 0;
         attendantMessages.length = 0;
 
@@ -284,6 +302,8 @@ describe('Accept Call Flow', () => {
         const customerCompleted = customerMessages.find((m) => m.event === 'call_completed');
         expect(attendantCompleted).toBeTruthy();
         expect(customerCompleted).toBeTruthy();
+
+        await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: 'm-accept-1', room: roomName, start_ts: Date.now() / 1000 } });
 
         // ── both sides clear local state ────────────────────────────────
         expect(attendantStores.call.getState().call).toBeNull();

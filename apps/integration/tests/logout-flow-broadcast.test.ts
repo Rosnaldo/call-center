@@ -160,6 +160,13 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         simulateMessage(adminWs, { event: 'user_logout' });
         await flushPendingCalls();
 
+        // ── both receive user_logouted broadcast immediately on logout ───
+        const adminLogoutMsg = adminMessages.find((m) => m.event === 'user_logouted');
+        const customerLogoutMsg = customerMessages.find((m) => m.event === 'user_logouted');
+        expect(adminLogoutMsg).toBeTruthy();
+        expect(customerLogoutMsg).toBeTruthy();
+        expect(customerLogoutMsg.data).toEqual({ id: adminUser._id });
+
         // ── both receive add_to_online_users after logout ──────────────
         const adminBroadcast = adminMessages.find((m) => m.event === 'add_to_online_users');
         const customerBroadcast = customerMessages.find((m) => m.event === 'add_to_online_users');
@@ -182,9 +189,61 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         expect(adminInRedis!.status).toBe('offline');
     });
 
+    it('raw disconnect (no explicit logout) broadcasts user_disconnected', async () => {
+        const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
+
+        const adminMessages: any[] = [];
+        const customerMessages: any[] = [];
+        (adminWs as unknown as EventEmitter).on('sent', (data: string) => {
+            adminMessages.push(JSON.parse(data));
+        });
+        (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
+            customerMessages.push(JSON.parse(data));
+        });
+
+        clientRegistry.add(adminWs);
+        clientRegistry.add(customerWs);
+
+        initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
+        onConnection()(adminWs);
+        await flushPendingCalls();
+
+        onConnection()(customerWs);
+        await flushPendingCalls();
+
+        expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
+
+        // ── admin's connection drops abruptly — no user_logout message sent ──
+        adminMessages.length = 0;
+        customerMessages.length = 0;
+
+        adminWs.terminate();
+        await flushPendingCalls();
+
+        // ── customer receives user_disconnected, not user_logouted ──────────
+        const customerDisconnectMsg = customerMessages.find((m) => m.event === 'user_disconnected');
+        expect(customerDisconnectMsg).toBeTruthy();
+        expect(customerDisconnectMsg.data).toEqual({ id: adminUser._id });
+        expect(customerMessages.find((m) => m.event === 'user_logouted')).toBeUndefined();
+
+        // customer's web store shows admin as disconnecting (broadcast)
+        const adminInCustomerStore = customerStores.onlineUsers.getState().users
+            .find(u => u.id === adminUser._id);
+        expect(adminInCustomerStore).toBeDefined();
+        expect(adminInCustomerStore!.status).toBe('disconnecting');
+    });
+
     it('grace period expiry removes user and broadcasts removal', async () => {
         const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
+
+        const customerMessages: any[] = [];
+        (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
+            customerMessages.push(JSON.parse(data));
+        });
 
         clientRegistry.add(adminWs);
         clientRegistry.add(customerWs);
@@ -201,8 +260,14 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
 
         // ── admin logs out — status transitions to offline ───────────────
+        customerMessages.length = 0;
         simulateMessage(adminWs, { event: 'user_logout' });
         await flushPendingCalls();
+
+        // customer receives the user_logouted broadcast immediately on logout
+        const customerLogoutMsg = customerMessages.find((m) => m.event === 'user_logouted');
+        expect(customerLogoutMsg).toBeTruthy();
+        expect(customerLogoutMsg.data).toEqual({ id: adminUser._id });
 
         expect(
             customerStores.onlineUsers.getState().users
@@ -212,6 +277,11 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         // ── advance past grace period (2min) ──────────────────────────────
         jest.advanceTimersByTime(120_001);
         await flushPendingCalls();
+
+        // customer receives the remove_from_online_users broadcast on grace period expiry
+        const customerRemovalMsg = customerMessages.find((m) => m.event === 'remove_from_online_users');
+        expect(customerRemovalMsg).toBeTruthy();
+        expect(customerRemovalMsg.data.id).toBe(adminUser._id);
 
         // customer's store no longer contains admin (broadcast removal)
         const adminAfterExpiry = customerStores.onlineUsers.getState().users

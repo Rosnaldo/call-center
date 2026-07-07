@@ -46,6 +46,6 @@ export const onConnection = () => (ws: AuthenticatedWebSocket): void => {
     ws.on('close', () => {
         logger.info({ userId: ws.user._id, email: ws.user.email }, 'ws client disconnected');
         clientRegistry.remove(ws);
-        handleClose(hb, startGracePeriod);
+        handleClose(ws.user._id, hb, startGracePeriod);
     });
 };

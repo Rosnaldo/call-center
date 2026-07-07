@@ -346,9 +346,13 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         expect(stillThere.body?.isError).toBeFalsy();
         expect(stillThere.body?.accumulatedMs).toBe(call!.accumulatedMs);
 
-        // ── the customer hangs up — completeCall() tears the record down ──
+        // ── the customer hangs up — /calls/complete only flips presence;
+        //    Daily's own meeting.ended webhook is what actually tears the
+        //    record down (via onMeetingEnded's deleteCall)
         await customerStores.call.getState().completeCall();
         await wait(100);
+
+        await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: 'm-1', room: roomName, start_ts: Date.now() / 1000 } });
 
         const res = await iamRequest
             .get('/calls/get-by-room')

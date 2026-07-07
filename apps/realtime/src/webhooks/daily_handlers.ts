@@ -97,6 +97,14 @@ export async function onMeetingEnded(traceId: string, payload: DailyMeetingPaylo
             if (data?.isError) {
                 throw new Error(data.message ?? 'Failed to create transaction');
             }
+
+            const { data: chargeData } = await createIamClient(traceId).post('/users/charge-token', {
+                customerId: endedCall.customerId,
+                tokens: endedCall.tokensToBeCharged,
+            });
+            if (chargeData?.isError) {
+                throw new Error(chargeData.message ?? 'Failed to charge token');
+            }
         }
 
         await deleteCall(traceId, endedCall.customerId, endedCall.attendantId);

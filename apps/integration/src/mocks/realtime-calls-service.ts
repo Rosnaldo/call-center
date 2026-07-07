@@ -1,15 +1,7 @@
-import axios from 'axios';
 import { CallState } from '@repo/shared-types';
+import { api, setBaseURL, setAuthToken } from './shared-iam-api';
 
-const api = axios.create();
-
-export function setBaseURL(url: string): void {
-    api.defaults.baseURL = url;
-}
-
-export function setAuthToken(token: string): void {
-    api.defaults.headers.common['Authorization'] = token;
-}
+export { setBaseURL, setAuthToken };
 
 export const createCall = async (_traceId: string, call: CallState): Promise<CallState> => {
     const { data } = await api.post<CallState>('/calls/create', call);
@@ -37,4 +29,31 @@ export const trackRoom = async (_traceId: string, roomName: string): Promise<voi
 export const getAndDeleteRooms = async (_traceId: string): Promise<string[]> => {
     const { data } = await api.delete<{ rooms: string[] }>('/calls/rooms');
     return data.rooms;
+};
+
+export const getCallByUser = async (userId: string): Promise<CallState | null> => {
+    try {
+        const { data } = await api.get<CallState>('/calls/get-by-user', { params: { userId } });
+        return data;
+    } catch {
+        return null;
+    }
+};
+
+export interface CallHistoryPayload {
+    callId: string;
+    customerId: string;
+    customerName: string;
+    attendantId: string;
+    attendantName: string;
+    roomName: string;
+    meetingId: string;
+    accumulatedMs: number;
+    startedAt: Date | null;
+    endedAt: Date | null;
+    tokensToBeCharged: number;
+}
+
+export const createCallHistory = async (_traceId: string, payload: CallHistoryPayload): Promise<void> => {
+    await api.post('/call-history/create', payload);
 };

@@ -1,5 +1,5 @@
 import { toast as sonnerToast } from 'sonner';
-import { AlertCircleIcon, CheckCircleIcon } from "lucide-react"
+import { AlertCircleIcon, AlertTriangleIcon, CheckCircleIcon } from "lucide-react"
 
 export const mytoast = Object.assign(
   (message: string, options?: Parameters<typeof sonnerToast>[1]) => {
@@ -32,6 +32,19 @@ export const mytoast = Object.assign(
         description: message,
         classNames: {
             title: '!text-red-600',
+        },
+        cancel: {
+            label: 'Cancel',
+            onClick: () => {},
+        },
+      }),
+    warn: (message: string, options?: Parameters<typeof sonnerToast>[1]) =>
+      sonnerToast.warning('Warning:', {
+        ...options,
+        icon: <AlertTriangleIcon className="w-5 h-5 text-amber-500" />,
+        description: message,
+        classNames: {
+            title: '!text-amber-500',
         },
         cancel: {
             label: 'Cancel',

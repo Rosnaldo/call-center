@@ -11,7 +11,6 @@ import { ScreenShareTile } from '../ScreenShareTile.tsx';
 import { ChatAttendment } from './ChatAttendment.tsx';
 import { useParticipantIds, useScreenShare } from '@daily-co/daily-react';
 import { useDevicesContext } from '../../../providers/devices.tsx';
-import { useEndCallOnParticipantLeft } from '../../../hooks/useEndCallOnParticipantLeft.ts';
 import i18n from '../../../i18n.ts';
 
 
@@ -158,8 +157,6 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   timerText,
   currentCall,
 }) => {
-  useEndCallOnParticipantLeft();
-
   const incomingCall = useIncomingCallStore(s => s.incomingCall);
   let content: React.ReactNode = null;
   const currentUser = useCurrentUserStore(s => s.currentUser);
