@@ -29,7 +29,7 @@ async function verifyToken(traceId: string, token: string): Promise<IamValidateR
 export function createWebSocketServer(server: Server): ISocketServer {
     const wss = new WebSocketServer({ noServer: true });
 
-    server.on('upgrade', (req, socket, head) => {
+    server.on('upgrade', async (req, socket, head) => {
         const parsedUrl = url.parse(req.url ?? '', true);
         if (parsedUrl.pathname === '/logs') return;
 
@@ -44,27 +44,27 @@ export function createWebSocketServer(server: Server): ISocketServer {
         const traceId = (req.headers['x-trace-id'] as string) || randomUUID();
         const logger = buildLogger(traceId);
 
-        verifyToken(traceId, token)
-            .then((tokenUser) => userExists(traceId, tokenUser.email, token))
-            .then((fullUser: IUser) => {
-                wss.handleUpgrade(req, socket, head, (ws) => {
-                    logger.info({ userId: fullUser._id, email: fullUser.email, role: fullUser.role }, 'ws upgrade successful');
-                    const transport = new WsTransport(ws);
-                    const authWs = transport as unknown as AuthenticatedWebSocket;
-                    authWs.user = fullUser;
-                    authWs.token = token;
-                    authWs.traceId = traceId;
-                    authWs.isAlive = false;
-                    wss.emit('connection', authWs, req);
-                });
-            })
-            .catch((err: unknown) => {
-                const message = err instanceof Error ? err.message : 'Authentication failed';
-                logger.error({ err: message }, 'ws auth failed');
-                wss.handleUpgrade(req, socket, head, (ws) => {
-                    ws.send(JSON.stringify({ isError: true, message }), () => ws.close());
-                });
+        try {
+            const tokenUser = await verifyToken(traceId, token);
+            const fullUser: IUser = await userExists(traceId, tokenUser.email, token);
+
+            wss.handleUpgrade(req, socket, head, (ws) => {
+                logger.info({ userId: fullUser._id, email: fullUser.email, role: fullUser.role }, 'ws upgrade successful');
+                const transport = new WsTransport(ws);
+                const authWs = transport as unknown as AuthenticatedWebSocket;
+                authWs.user = fullUser;
+                authWs.token = token;
+                authWs.traceId = traceId;
+                authWs.isAlive = false;
+                wss.emit('connection', authWs, req);
             });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Authentication failed';
+            logger.error({ err: message }, 'ws auth failed');
+            wss.handleUpgrade(req, socket, head, (ws) => {
+                ws.send(JSON.stringify({ isError: true, message }), () => ws.close());
+            });
+        }
     });
 
     wss.on('connection', onConnection() as unknown as (ws: WebSocket) => void);

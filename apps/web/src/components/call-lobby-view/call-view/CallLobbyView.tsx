@@ -5,7 +5,6 @@ import { MediaSettingsModal } from '../media-settings-modal/MediaSettingsModal.t
 import { BillingCalculationModal } from '../BillingCalculationModal.tsx';
 import { BillingSummaryModal } from '../BillingSummaryModal.tsx';
 import { CallView, CallViewState } from './CallView.tsx';
-import { useRebuildOnLeave } from '@/src/hooks/useRebuildOnLeave.ts';
 import { useScreenShare } from '@daily-co/daily-react';
 
 
@@ -15,8 +14,6 @@ export const CallLobbyView: React.FC = () => {
   const users = useOnlineUsersStore((s) => s.users);
   const persistedViewState = useCallViewStore((s) => s.viewState);
   const initialTokens = useBillingStore((s) => s.initialTokens);
-
-  useRebuildOnLeave();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const currentCall = call;

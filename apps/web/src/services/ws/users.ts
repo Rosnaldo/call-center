@@ -1,12 +1,9 @@
-import { IOnlineUser } from '@repo/shared-types';
 import type { OnlineUsersStoreInstance, CallStoreInstance, CurrentUserStoreInstance } from '../../states/stores';
 import { fetchCallByUser } from '../api/calls.ts';
 import { mytoast } from '../../components/toast';
 import i18n from '../../i18n.ts';
 
 export type WsUsersMessage =
-    | { event: 'add_to_online_users'; data: IOnlineUser }
-    | { event: 'remove_from_online_users'; data: IOnlineUser }
     | { event: 'online_users_broadcast' }
     | { event: 'heartbeat_ack' }
     | { event: 'user_logouted'; data: { id: string } }
@@ -64,15 +61,9 @@ export class WsUsersService {
     }
 
     handle(msg: { event: string; data?: any }): boolean {
-        const { addToOnlineUsers, refreshUsers, removeFromOnlineUsers, updateUser } = this.stores.onlineUsers.getState();
+        const { refreshUsers, updateUser } = this.stores.onlineUsers.getState();
 
         switch (msg.event) {
-            case 'add_to_online_users':
-                addToOnlineUsers(msg.data);
-                return true;
-            case 'remove_from_online_users':
-                removeFromOnlineUsers(msg.data.id);
-                return true;
             case 'online_users_broadcast':
                 refreshUsers();
                 return true;

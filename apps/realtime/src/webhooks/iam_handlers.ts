@@ -65,7 +65,7 @@ export function onCallAccepted(payload: AcceptCallPayload): void {
     });
 }
 
-export function onCallCompleted(payload: CallCompletedPayload): void {
+export async function onCallCompleted(payload: CallCompletedPayload): Promise<void> {
     logger.info({ customerId: payload.customerId, attendantId: payload.attendantId }, 'iam call_completed');
 
     sendToUser(payload.customerId, {
@@ -83,9 +83,11 @@ export function onCallCompleted(payload: CallCompletedPayload): void {
         data: {},
     });
 
-    deleteDailyRoom(payload.roomName).catch((error) => {
+    try {
+        await deleteDailyRoom(payload.roomName);
+    } catch (error) {
         logger.error(error, 'iam call_completed: falha ao deletar room do daily');
-    });
+    }
 }
 
 export function onUserTokenCharged(payload: UserTokenChargedPayload): void {

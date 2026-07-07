@@ -108,9 +108,11 @@ export async function onMeetingEnded(traceId: string, payload: DailyMeetingPaylo
         }
 
         await deleteCall(traceId, endedCall.customerId, endedCall.attendantId);
-        await deleteChat(traceId, endedCall.customerId, endedCall.attendantId).catch((error) => {
+        try {
+            await deleteChat(traceId, endedCall.customerId, endedCall.attendantId);
+        } catch (error) {
             logger.error(error, 'daily onMeetingEnded: falha ao deletar chat');
-        });
+        }
 
         sendToUser(endedCall.customerId, { event: 'meeting_ended', data: { call: endedCall } });
         sendToUser(endedCall.attendantId, { event: 'meeting_ended', data: { call: endedCall } });

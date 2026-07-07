@@ -1,4 +1,7 @@
 jest.mock('src/services/users');
+jest.mock('@/src/services/api/online-users', () => ({
+    fetchOnlineUsers: jest.fn(),
+}));
 
 import { EventEmitter } from 'node:events';
 import { IOnlineUser, IUser } from '@repo/shared-types';
@@ -16,15 +19,22 @@ import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 import * as usersService from 'src/services/users';
+import * as onlineUsersService from '@/src/services/api/online-users';
 
 const addToIamMock = usersService.addToIam as jest.Mock;
+const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
 
 const pendingCalls: Array<Promise<unknown>> = [];
 
 async function flushPendingCalls(): Promise<void> {
-    const snapshot = [...pendingCalls];
-    pendingCalls.length = 0;
-    await Promise.all(snapshot);
+    // drain in waves — online_users_broadcast triggers refreshUsers(), which
+    // itself pushes a new pendingCalls entry, so a single snapshot can miss
+    // calls pushed while we're awaiting the previous batch
+    while (pendingCalls.length > 0) {
+        const snapshot = [...pendingCalls];
+        pendingCalls.length = 0;
+        await Promise.all(snapshot);
+    }
 }
 
 // ─── bridge helpers ─────────────────────────────────────────────────────────
@@ -94,6 +104,20 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
                 .post('/online-users/add')
                 .set('Authorization', CUSTOMER_TOKEN)
                 .send(user);
+            pendingCalls.push(op);
+            return op;
+        });
+
+        fetchOnlineUsersMock.mockImplementation(() => {
+            // triggered internally off the online_users_broadcast websocket
+            // handler (not called directly by the test), so track it in
+            // pendingCalls too or flushPendingCalls() won't wait for it
+            const op = (async () => {
+                const res = await iamRequest
+                    .get('/online-users/list')
+                    .set('Authorization', CUSTOMER_TOKEN);
+                return res.body.users ?? [];
+            })();
             pendingCalls.push(op);
             return op;
         });

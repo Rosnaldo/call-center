@@ -17,7 +17,7 @@ export const onConnection = () => (ws: AuthenticatedWebSocket): void => {
     clientRegistry.add(ws);
 
     const user: IOnlineUser = mapUserToOnlineUser(ws.user);
-    const startGracePeriod = createGracePeriod(user);
+    const startGracePeriod = createGracePeriod(user, ws.traceId);
 
     const hb = createHeartbeat(ws, () => {
         ws.terminate();

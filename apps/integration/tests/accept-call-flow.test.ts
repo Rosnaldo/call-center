@@ -45,9 +45,14 @@ const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
 const pendingCalls: Array<Promise<unknown>> = [];
 
 async function flushPendingCalls(): Promise<void> {
-    const snapshot = [...pendingCalls];
-    pendingCalls.length = 0;
-    await Promise.all(snapshot);
+    // drain in waves — online_users_broadcast triggers refreshUsers(), which
+    // itself pushes a new pendingCalls entry, so a single snapshot can miss
+    // calls pushed while we're awaiting the previous batch
+    while (pendingCalls.length > 0) {
+        const snapshot = [...pendingCalls];
+        pendingCalls.length = 0;
+        await Promise.all(snapshot);
+    }
 }
 
 // ─── bridge helpers ─────────────────────────────────────────────────────────
@@ -133,9 +138,16 @@ describe('Accept Call Flow', () => {
             return op;
         });
 
-        fetchOnlineUsersMock.mockImplementation(async () => {
-            const res = await iamRequest.get('/online-users/list').set('Authorization', CUSTOMER_TOKEN);
-            return res.body.users ?? [];
+        fetchOnlineUsersMock.mockImplementation(() => {
+            // triggered internally off the online_users_broadcast websocket
+            // handler (not called directly by the test), so track it in
+            // pendingCalls too or flushPendingCalls() won't wait for it
+            const op = (async () => {
+                const res = await iamRequest.get('/online-users/list').set('Authorization', CUSTOMER_TOKEN);
+                return res.body.users ?? [];
+            })();
+            pendingCalls.push(op);
+            return op;
         });
 
         mockSendIncomingCall.mockImplementation(async (customerId: string, attendantId: string) => {
