@@ -13,7 +13,7 @@ const makeCall = (): CallState =>
 beforeEach(() => {
   useTimerStore.getState().reset();
   useCallStore.setState({ call: null });
-  useBillingStore.getState().setInitialTokens(1);
+  useBillingStore.getState().setInitialTokens(0);
   useCurrentUserStore.getState().setCurrentUser(null);
   useOnlineUsersStore.setState({ users: [] });
   vi.useFakeTimers();
@@ -89,7 +89,7 @@ describe('useBillingTimer — timer / call store integration', () => {
 
       act(() => { vi.advanceTimersByTime(2.5 * 60 * 1000 - 1000); });
 
-      expect(useBillingStore.getState().initialTokens).toBe(1); // no token charged yet
+      expect(useBillingStore.getState().initialTokens).toBe(0); // no token charged yet
     });
 
     it('charges the 1st token exactly at 2.5 minutes', () => {
@@ -97,17 +97,27 @@ describe('useBillingTimer — timer / call store integration', () => {
 
       act(() => { vi.advanceTimersByTime(2.5 * 60 * 1000); });
 
-      expect(useBillingStore.getState().initialTokens).toBe(2); // 1 token charged
+      expect(useBillingStore.getState().initialTokens).toBe(1); // 1 token charged
     });
 
     it('charges the 2nd token at 7.5 minutes and the 3rd at 12.5 minutes', () => {
       setupBillableCall();
 
       act(() => { vi.advanceTimersByTime(7.5 * 60 * 1000); });
-      expect(useBillingStore.getState().initialTokens).toBe(3); // 2 tokens charged
+      expect(useBillingStore.getState().initialTokens).toBe(2); // 2 tokens charged
 
       act(() => { vi.advanceTimersByTime(5 * 60 * 1000); }); // + 5min = 12.5min total
-      expect(useBillingStore.getState().initialTokens).toBe(4); // 3 tokens charged
+      expect(useBillingStore.getState().initialTokens).toBe(3); // 3 tokens charged
+    });
+
+    it('does not double-charge on the tick right after crossing a threshold', () => {
+      setupBillableCall();
+
+      act(() => { vi.advanceTimersByTime(2.5 * 60 * 1000); });
+      expect(useBillingStore.getState().initialTokens).toBe(1);
+
+      act(() => { vi.advanceTimersByTime(1000); }); // one more tick, still within the same window
+      expect(useBillingStore.getState().initialTokens).toBe(1);
     });
   });
 });

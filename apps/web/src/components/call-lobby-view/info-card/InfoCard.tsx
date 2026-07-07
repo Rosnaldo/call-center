@@ -7,8 +7,9 @@ const BLOCK_DURATION_SECONDS = MINUTES_PER_TOKEN * 60;
 const HALF_BLOCK_DURATION_SECONDS = BLOCK_DURATION_SECONDS / 2;
 
 const formatTime = (seconds: number) => {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
+  const clamped = Math.max(0, seconds);
+  const mins = Math.floor(clamped / 60);
+  const secs = clamped % 60;
   return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 };
 
@@ -17,7 +18,7 @@ export const InfoCard: React.FC = () => {
   const currentCall = useCallStore((s) => s.call);
   const viewState = useCallViewStore((s) => s.viewState);
   const users = useOnlineUsersStore((s) => s.users);
-  const initialTokens = useBillingStore((s) => s.initialTokens);
+  const tokensCharged = useBillingStore((s) => s.initialTokens);
   const elapsedSeconds = useTimerStore((s) => s.elapsedSeconds);
 
   if (!currentCall) return null;
@@ -27,10 +28,11 @@ export const InfoCard: React.FC = () => {
 
   // Mirrors computeTokensToBeCharged's half-cycle rule: the Nth token is due
   // at N*BLOCK - BLOCK/2 elapsed seconds (1st at 2.5min, 2nd at 7.5min, ...).
-  // initialTokens (from useBillingStore, driven by useBillingTimer) is always
-  // "the next token we're waiting on", so its threshold is the next charge.
-  const nextChargeAtSeconds = initialTokens * BLOCK_DURATION_SECONDS - HALF_BLOCK_DURATION_SECONDS;
-  const previousChargeAtSeconds = Math.max(0, (initialTokens - 1) * BLOCK_DURATION_SECONDS - HALF_BLOCK_DURATION_SECONDS);
+  // tokensCharged (from useBillingStore, driven by useBillingTimer) counts
+  // tokens already charged (0-based, same as CallState.tokensToBeCharged), so
+  // the next charge is the (tokensCharged+1)-th token.
+  const nextChargeAtSeconds = (tokensCharged + 1) * BLOCK_DURATION_SECONDS - HALF_BLOCK_DURATION_SECONDS;
+  const previousChargeAtSeconds = Math.max(0, tokensCharged * BLOCK_DURATION_SECONDS - HALF_BLOCK_DURATION_SECONDS);
   const windowSeconds = nextChargeAtSeconds - previousChargeAtSeconds;
   const billingCountdown = Math.max(0, Math.ceil(nextChargeAtSeconds - elapsedSeconds));
 
@@ -67,7 +69,7 @@ export const InfoCard: React.FC = () => {
               {t('infoCard.currentUsage')}
             </span>
             <span className="bg-[#ebdcb9]/30 text-[#a36500] font-mono font-bold text-[9px] px-2 py-0.5 rounded-md border border-[#ebdcb9]/60">
-              {initialTokens} Tk
+              {tokensCharged} Tk
             </span>
           </div>
 

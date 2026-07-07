@@ -44,14 +44,13 @@ export function useBillingTimer(call: CallState | undefined) {
       const isMyCall = user.id === call.customerId || user.id === call.attendantId;
       if (!isMyCall) return;
 
-      const { initialTokens } = useBillingStore.getState();
-      const tokensCount = initialTokens || 1;
+      const { initialTokens: tokensCharged } = useBillingStore.getState();
       const tokensDue = computeTokensToBeCharged(elapsedSeconds * 1000);
-      if (tokensDue >= tokensCount) {
+      if (tokensDue > tokensCharged) {
         const customerUser = useOnlineUsersStore.getState().users.find(u => u.id === call.customerId);
         const availableTokens = customerUser?.tokens ?? 5;
 
-        if (tokensCount >= availableTokens) {
+        if (tokensDue > availableTokens) {
           // useCallStore.getState().billingOutOfTokens(call.id);
         } else {
           useBillingStore.getState().addOneToken();

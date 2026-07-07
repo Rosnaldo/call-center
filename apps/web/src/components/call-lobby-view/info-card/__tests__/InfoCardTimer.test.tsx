@@ -21,7 +21,7 @@ beforeEach(() => {
   useCallStore.setState({ call: null });
   useOnlineUsersStore.setState({ users: [] });
   useCallViewStore.setState({ viewState: 'none', selectedAttendantId: null });
-  useBillingStore.getState().setInitialTokens(1);
+  useBillingStore.getState().setInitialTokens(0);
   useTimerStore.setState({ status: 'stopped', elapsedSeconds: 0 });
 });
 
@@ -80,7 +80,7 @@ describe('InfoCard – billing countdown timer (half-cycle rule)', () => {
 
   it('switches to a full 5min window for the 2nd token, starting right after the 1st', () => {
     setupCall();
-    useBillingStore.getState().setInitialTokens(2); // waiting on the 2nd token
+    useBillingStore.getState().setInitialTokens(1); // 1 token charged, waiting on the 2nd
     useTimerStore.setState({ elapsedSeconds: HALF_BLOCK }); // 2.5min in, right when the 2nd window opens
 
     render(<InfoCard />);
@@ -90,7 +90,7 @@ describe('InfoCard – billing countdown timer (half-cycle rule)', () => {
 
   it('counts down correctly within the 2nd window and charges at 7.5min', () => {
     setupCall();
-    useBillingStore.getState().setInitialTokens(2);
+    useBillingStore.getState().setInitialTokens(1);
     useTimerStore.setState({ elapsedSeconds: HALF_BLOCK + BLOCK / 2 }); // 5min elapsed = halfway through 2nd window
 
     render(<InfoCard />);
@@ -100,7 +100,7 @@ describe('InfoCard – billing countdown timer (half-cycle rule)', () => {
 
   it('reaches 0:00 exactly at 7.5 minutes (2nd token due)', () => {
     setupCall();
-    useBillingStore.getState().setInitialTokens(2);
+    useBillingStore.getState().setInitialTokens(1);
     useTimerStore.setState({ elapsedSeconds: HALF_BLOCK + BLOCK });
 
     render(<InfoCard />);
@@ -110,7 +110,7 @@ describe('InfoCard – billing countdown timer (half-cycle rule)', () => {
 
   it('opens a fresh full 5min window for the 3rd token at 12.5min', () => {
     setupCall();
-    useBillingStore.getState().setInitialTokens(3);
+    useBillingStore.getState().setInitialTokens(2); // 2 tokens charged, waiting on the 3rd
     useTimerStore.setState({ elapsedSeconds: HALF_BLOCK + BLOCK }); // 7.5min in, right when the 3rd window opens
 
     render(<InfoCard />);
@@ -118,13 +118,24 @@ describe('InfoCard – billing countdown timer (half-cycle rule)', () => {
     expect(screen.getByText('5:00 / 5:00')).toBeDefined();
   });
 
-  it('displays the correct initialTokens count in "CONSUMO ATUAL"', () => {
+  it('displays the correct tokensCharged count in "CONSUMO ATUAL"', () => {
     setupCall(10);
     useBillingStore.getState().setInitialTokens(3);
 
     render(<InfoCard />);
 
     expect(screen.getByText('3 Tk')).toBeDefined();
+  });
+
+  it('never shows a negative countdown right at call start (0 tokens charged)', () => {
+    setupCall();
+    useBillingStore.getState().setInitialTokens(0);
+    useTimerStore.setState({ elapsedSeconds: 0 });
+
+    render(<InfoCard />);
+
+    expect(screen.getByText('2:30 / 2:30')).toBeDefined();
+    expect(screen.queryByText(/-/)).toBeNull();
   });
 
   it('displays the customer balance in "Seu Saldo"', () => {
