@@ -80,8 +80,8 @@
     "heroDescription": "Ligue para um de nossos atendentes, compartilhe seu problema e receba ajuda personalizada para resolver sua questão. Estamos aqui para ajudá-lo em cada etapa!",
     "openChat": "Abrir Chat",
     "closeChat": "Fechar Chat",
-    "participantLoggedOut": "O outro participante da chamada fez logout.",
-    "participantDisconnected": "O outro participante da chamada desconectou."
+    "participantLoggedOut": "{{name}} fez logout da chamada.",
+    "participantDisconnected": "{{name}} desconectou da chamada."
   },
   "mediaSettings": {
     "title": "Configurações de Áudio e Vídeo",

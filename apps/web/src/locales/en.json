@@ -80,8 +80,8 @@
     "heroDescription": "Call one of our attendants, share your problem, and get personalized help to resolve your issue. We're here to assist you every step of the way!",
     "openChat": "Open Chat",
     "closeChat": "Close Chat",
-    "participantLoggedOut": "The other call participant has logged out.",
-    "participantDisconnected": "The other call participant has disconnected."
+    "participantLoggedOut": "{{name}} has logged out of the call.",
+    "participantDisconnected": "{{name}} has disconnected from the call."
   },
   "mediaSettings": {
     "title": "Audio and Video Settings",

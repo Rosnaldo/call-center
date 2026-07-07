@@ -49,15 +49,25 @@ export class WsUsersService {
         this.ackRef = null;
     }
 
-    private warnIfPartOfMyCall(departedUserId: string, messageKey: 'call.participantLoggedOut' | 'call.participantDisconnected'): void {
+    private async warnIfPartOfMyCall(departedUserId: string, messageKey: 'call.participantLoggedOut' | 'call.participantDisconnected'): Promise<void> {
         const currentUser = this.stores.currentUser.getState().currentUser;
         if (!currentUser || departedUserId === currentUser.id) return;
 
-        fetchCallByUser(currentUser.id).then((call) => {
-            if (call && (call.customerId === departedUserId || call.attendantId === departedUserId)) {
-                mytoast.warn(i18n.t(messageKey));
-            }
-        });
+        try {
+            const call = await fetchCallByUser(currentUser.id);
+            if (!call) return;
+
+            const name = call.customerId === departedUserId
+                ? call.customerName
+                : call.attendantId === departedUserId
+                    ? call.attendantName
+                    : undefined;
+            if (!name) return;
+
+            mytoast.warn(i18n.t(messageKey, { name }));
+        } catch (error) {
+            console.error(error);
+        }
     }
 
     handle(msg: { event: string; data?: any }): boolean {
