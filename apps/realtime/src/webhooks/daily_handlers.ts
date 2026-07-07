@@ -39,7 +39,7 @@ export async function onMeetingStarted(traceId: string, payload: DailyMeetingPay
                 startedAt: new Date(),
                 endedAt: null,
                 isPlaying: false,
-                tokensToBeCharged: 1,
+                tokensToBeCharged: 0,
             });
         } else {
             await updateCall(traceId, call.customerId, call.attendantId, {
@@ -153,7 +153,7 @@ export async function onParticipantJoined(traceId: string, payload: DailyPartici
                 startedAt: null,
                 endedAt: null,
                 isPlaying: false,
-                tokensToBeCharged: 1,
+                tokensToBeCharged: 0,
             });
         }
 
