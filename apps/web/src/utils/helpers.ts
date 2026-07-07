@@ -4,6 +4,40 @@
  */
 
 // Web Audio API Ding-Dong Chime Generator (No external dependencies)
+// Web Audio API phone-ring generator (No external dependencies)
+export function playRingtone() {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+
+    const now = ctx.currentTime;
+
+    const ring = (start: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, start);
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.25, start + 0.05);
+      gain.gain.setValueAtTime(0.25, start + 0.35);
+      gain.gain.linearRampToValueAtTime(0, start + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.4);
+    };
+
+    // classic two-pulse ring, repeated twice
+    ring(now);
+    ring(now + 0.5);
+    ring(now + 1.5);
+    ring(now + 2);
+  } catch (err) {
+    console.warn('AudioContext playback was blocked or is unsupported.', err);
+  }
+}
+
 export function playNotificationChime() {
   try {
     const AudioContext = window.AudioContext || (window as any).webkitAudioContext;

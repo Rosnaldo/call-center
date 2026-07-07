@@ -6,7 +6,7 @@ import { fetchOnlineUsers } from '../../services/api/online-users.ts';
 import { handleRequestError } from '../../utils/utils.ts';
 import { ApiError } from '../../error/api.ts';
 import i18n from '../../i18n.ts';
-import { playNotificationChime } from '../../utils/helpers.ts';
+import { playRingtone } from '../../utils/helpers.ts';
 
 export interface IncomingCallActions {
   cancel: () => void;
@@ -73,7 +73,7 @@ export const createIncomingCallActions = (
   incomingCallReceived: async (incomingCall: IncomingCallState) => {
     set({ incomingCall });
     ref.callView.getState().setViewState('awaiting-to-answer');
-    playNotificationChime();
+    playRingtone();
     try {
       const users = await fetchOnlineUsers();
       ref.onlineUsers.setState({ users });

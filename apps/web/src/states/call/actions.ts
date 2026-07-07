@@ -3,18 +3,18 @@ import type { StoresRef } from '../stores.ts';
 import { CallStore } from './state.ts';
 import type { IDailyService } from '../../services/daily.ts';
 import { fetchOnlineUsers } from '@/src/services/api/online-users.ts';
-import { fetchCall, fetchCallByUser, completeCall as completeCallApi } from '@/src/services/api/calls.ts';
+import { fetchCall, completeCall as completeCallApi } from '@/src/services/api/calls.ts';
 import { acceptIncomingCall as acceptIncomingCallService } from '@/src/services/api/incoming-calls.ts';
 import { handleRequestError } from '@/src/utils/utils.ts';
 import { ApiError } from '../../error/api.ts';
 import i18n from '../../i18n.ts';
+import { playNotificationChime } from '../../utils/helpers.ts';
 
 export interface CallActions {
   acceptIncomingCall: () => Promise<void> | void;
   completeCall: () => Promise<void>;
   incomingCallAccepted: (incomingCall: IncomingCallState) => void;
   callCompleted: () => Promise<void>;
-  rejoinActiveCall: () => Promise<void>;
 }
 
 export const createCallActions = (
@@ -63,6 +63,7 @@ export const createCallActions = (
         const attendant = users.find(u => u.id === incomingCall.attendantId);
         if (!customer || !attendant) throw new ApiError(i18n.t('error.somethingWentWrong'));
 
+        playNotificationChime();
         await acceptIncomingCallService(attendant.id);
         ref.callView.getState().setViewState('in-call');
       } catch (error) {
@@ -83,28 +84,6 @@ export const createCallActions = (
 
     callCompleted: async () => {
       ref.billing.getState().openCalculationModal();
-    },
-
-    rejoinActiveCall: async () => {
-      try {
-        const currentUser = ref.currentUser.getState().currentUser;
-        if (!currentUser) return;
-
-        const call = await fetchCallByUser(currentUser.id);
-        if (!call) return;
-
-        set(() => ({ call }));
-
-        dailyService.join({
-          room: call.roomName,
-          userId: currentUser.id,
-          userName: currentUser.name,
-        });
-
-        ref.callView.getState().setViewState('in-call');
-      } catch (error) {
-        handleRequestError(error);
-      }
     },
   };
 };
