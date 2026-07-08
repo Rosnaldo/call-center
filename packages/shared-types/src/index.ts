@@ -127,7 +127,7 @@ export interface IOnlineUser extends Omit<IUser, '_id' | 'firstName' | 'lastName
     id: string;
     name: string;
     avatarUrl?: string;
-    status: 'idle' | 'occupied' | 'in-call' | 'disconnecting' | 'offline';
+    status: 'idle' | 'occupied' | 'in-call' | 'disconnecting';
 }
 
 type _t = [

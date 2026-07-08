@@ -33,18 +33,14 @@ export const onConnection = () => async (ws: AuthenticatedWebSocket): Promise<vo
     ws.on('pong', () => handlePong(hb));
 
     ws.on('message', (raw) => {
-        try {
-            const msg = JSON.parse(raw.toString()) as WsClientMessage;
-            switch (msg.event) {
-                case 'heartbeat':
-                    handleMessageHeartbeat(ws, hb, user);
-                    break;
-                case 'user_logout':
-                    handleMessageLogout(ws, hb);
-                    break;
-            }
-        } catch {
-            // malformed message — ignore
+        const msg = JSON.parse(raw.toString()) as WsClientMessage;
+        switch (msg.event) {
+            case 'heartbeat':
+                handleMessageHeartbeat(ws, hb, user);
+                break;
+            case 'user_logout':
+                handleMessageLogout(ws, hb);
+                break;
         }
     });
 

@@ -80,7 +80,7 @@ describe('Validations > OnlineUser > Add', () => {
     });
 
     it('accepts all valid statuses', () => {
-        for (const status of ['idle', 'occupied', 'in-call', 'disconnecting', 'offline'] as const) {
+        for (const status of ['idle', 'occupied', 'in-call', 'disconnecting'] as const) {
             const result = inputSchema.safeParse({
                 id: '1',
                 name: 'João',

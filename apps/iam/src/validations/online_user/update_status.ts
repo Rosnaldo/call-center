@@ -4,7 +4,7 @@ import { makeSmallStringSchema } from '#utils/zod/valid_small_string';
 
 export const inputSchema = z.object({
     id: makeSmallStringSchema('id'),
-    status: z.enum(['idle', 'occupied', 'in-call', 'disconnecting', 'offline']),
+    status: z.enum(['idle', 'occupied', 'in-call', 'disconnecting']),
 });
 
 export type IUpdateStatusInput = z.infer<typeof inputSchema>;

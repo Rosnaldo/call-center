@@ -33,7 +33,6 @@ export const CustomerList: React.FC<CustomerListProps> = ({
   };
 
   const getSortScore = (cust: OnlineUserState) => {
-    if (cust.status === 'offline') return 4;
     if (cust.status === 'disconnecting') return 3;
     const busyCall = getCustomerCall(cust.id);
     if (busyCall) return 2;
@@ -71,16 +70,13 @@ export const CustomerList: React.FC<CustomerListProps> = ({
           sortedCustomers.map((cust) => {
             const isSelf = currentUser?.id === cust.id;
             const talkingCall = getCustomerCall(cust.id);
-            const isOffline = cust.status === 'offline';
             const isDisconnecting = cust.status === 'disconnecting';
 
             return (
               <div
                 key={cust.id}
                 className={`border rounded-xl p-4 transition-all duration-200 group ${
-                  isOffline
-                    ? 'bg-brand-card/45 border-brand-border/40 opacity-70'
-                    : isDisconnecting
+                  isDisconnecting
                     ? 'bg-amber-50/40 border-amber-200/60 opacity-80'
                     : isSelf
                     ? 'bg-brand-panel border-brand-border-dark shadow-xs'
@@ -102,9 +98,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                           }}
                         />
                       </div>
-                      {isOffline ? (
-                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-slate-400 rounded-full border-2 border-white" title={t('customerList.offline')} />
-                      ) : isDisconnecting ? (
+                      {isDisconnecting ? (
                         <span className="absolute bottom-0 right-0 w-3 h-3 bg-amber-400 rounded-full border-2 border-white animate-pulse" title={t('customerList.reconnecting')} />
                       ) : talkingCall ? (
                         <span className="absolute bottom-0 right-0 w-3 h-3 bg-amber-500 rounded-full border-2 border-white" title={t('customerList.inCall')} />
@@ -121,11 +115,6 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                             {t('customerList.you')}
                           </span>
                         )}
-                        {isOffline && (
-                          <span className="text-[9px] font-semibold tracking-wide px-1.5 py-0.5 bg-brand-panel border border-brand-border text-brand-muted rounded">
-                            {t('customerList.offline')}
-                          </span>
-                        )}
                         {isDisconnecting && (
                           <span className="text-[9px] font-semibold tracking-wide px-1.5 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded animate-pulse">
                             {t('customerList.reconnecting')}
@@ -135,11 +124,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
 
                       <div className="flex flex-wrap items-center gap-2 mt-2">
                         {/* STATUS BADGE */}
-                        {isOffline ? (
-                          <span className="text-[10px] bg-slate-50 border border-slate-200 text-slate-500 px-2 py-0.5 rounded font-medium flex items-center gap-1">
-                            <strong>{t('customerList.statusOffline')}</strong> · {t('customerList.statusOfflineDesc')}
-                          </span>
-                        ) : isDisconnecting ? (
+                        {isDisconnecting ? (
                           <span className="text-[10px] bg-amber-50 border border-amber-200 text-amber-700 px-2 py-0.5 rounded font-medium flex items-center gap-1 animate-pulse">
                             <strong>{t('customerList.statusReconnecting')}</strong> · {t('customerList.statusReconnectingDesc')}
                           </span>
@@ -154,30 +139,23 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                         )}
 
                         {/* TOKEN BADGE */}
-                        {!isOffline && (
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-                              (cust.tokens ?? 0) <= 0
-                                ? 'bg-red-50 text-red-600 border-red-100'
-                                : 'bg-amber-50 text-amber-700 border-amber-100'
-                            }`}
-                            title={(cust.tokens ?? 0) <= 0 ? t('customerList.noTokens') : t('customerList.tokenBalance')}
-                          >
-                            <Coins className="w-3 h-3 text-amber-500 animate-bounce" />
-                            {cust.tokens ?? 0} {cust.tokens === 1 ? t('customerList.token') : t('customerList.tokens')}
-                          </span>
-                        )}
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                            (cust.tokens ?? 0) <= 0
+                              ? 'bg-red-50 text-red-600 border-red-100'
+                              : 'bg-amber-50 text-amber-700 border-amber-100'
+                          }`}
+                          title={(cust.tokens ?? 0) <= 0 ? t('customerList.noTokens') : t('customerList.tokenBalance')}
+                        >
+                          <Coins className="w-3 h-3 text-amber-500 animate-bounce" />
+                          {cust.tokens ?? 0} {cust.tokens === 1 ? t('customerList.token') : t('customerList.tokens')}
+                        </span>
                       </div>
                     </div>
                   </div>
 
                   <div className="shrink-0 flex items-center self-center">
-                    {isOffline ? (
-                      <div className="text-xs font-semibold text-slate-400 bg-slate-50 px-2.5 py-1 border border-slate-200 rounded-lg flex items-center gap-1 select-none">
-                        <Clock className="w-3.5 h-3.5" />
-                        {t('customerList.offline')}
-                      </div>
-                    ) : talkingCall ? (
+                    {talkingCall ? (
                       <div className="text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 border border-amber-100 rounded-lg flex items-center gap-1 select-none">
                         <Video className="w-3.5 h-3.5" />
                         {t('customerList.inCall')}
