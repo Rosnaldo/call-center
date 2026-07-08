@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { CallState } from '@repo/shared-types';
 import type { StoresRef } from '../stores.ts';
 import { mytoast } from '../../components/toast';
@@ -25,17 +20,11 @@ export const createMeetingActions = (
     ref.call.setState({ call: newCall });
     ref.timer.getState().syncFromCall(newCall);
     ref.billing.getState().setInitialTokens(newCall.tokensToBeCharged);
-    // `call` is authoritative now — drop the incomingCall bridge CallViewport
-    // was using as a partner-lookup fallback while it hadn't loaded yet.
     ref.incomingCall.setState({ incomingCall: null });
   };
 
   return {
     meetingStarted: syncCall,
-    // A real Daily rejoin is the actual signal the call is back, not just the
-    // websocket reconnecting — so this is also what takes the view out of
-    // 'call-interrupted' (set by the user_disconnecting handler) once the
-    // partner is really back in the room.
     updateJoinedView: (call: CallState) => {
       syncCall(call);
       if (ref.callView.getState().viewState === 'call-interrupted') {
@@ -62,8 +51,6 @@ export const createMeetingActions = (
 
       ref.chat.getState().resetChat();
     },
-    // realtime only sends this to me and my call partner, so if it's not
-    // about my own session, it's my partner's.
     userDisconnecting: () => {
       ref.callView.getState().setViewState('call-interrupted');
     },

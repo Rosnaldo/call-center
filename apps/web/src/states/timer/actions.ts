@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { CallState, getCallElapsedMs } from '@repo/shared-types';
 
 export interface TimerActions {

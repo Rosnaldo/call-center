@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { OnlineUserState } from './state.ts';
 import { fetchOnlineUsers } from '@/src/services/api/online-users.ts';
 

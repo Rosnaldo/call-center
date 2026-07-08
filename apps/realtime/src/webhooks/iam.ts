@@ -10,6 +10,7 @@ export default (app: Application) => {
 
     app.post('/webhooks/iam', (req: Request, res: Response) => {
         const body = req.body as IamWebhookBody;
+        const { traceId } = req;
 
         logger.info({ type: body.event }, 'iam webhook received');
 
@@ -21,7 +22,7 @@ export default (app: Application) => {
                 onCancelIncomingCall(body.payload);
                 break;
             case 'call_accepted':
-                onCallAccepted(body.payload);
+                onCallAccepted(traceId, body.payload);
                 break;
             case 'call_completed':
                 onCallCompleted(body.payload);

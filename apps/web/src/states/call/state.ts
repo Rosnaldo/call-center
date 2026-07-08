@@ -1,7 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
 import { CallState } from '@repo/shared-types';
 
 export type { CallState };

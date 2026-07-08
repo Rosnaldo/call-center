@@ -1,7 +1,9 @@
 import logger from '#logger';
 import { sendToUser, broadcastMessage } from '#websocket/broadcast';
 import { SendIncomingCallPayload, CancelIncomingCallPayload, AcceptCallPayload, CallCompletedPayload, UserTokenChargedPayload, ChatMessageSentPayload } from './iam_types';
-import { updateIamTokens } from 'src/services/users';
+import { updateIamTokens, findUserBySlug } from 'src/services/users';
+import { getCallByRoom, createCall } from 'src/services/calls';
+import { parseRoomName } from 'src/helpers/parse_room_name';
 
 export function onSendIncomingCall(payload: SendIncomingCallPayload): void {
     logger.info({ customerId: payload.customerId, attendantId: payload.attendantId, calledBy: payload.calledBy }, 'iam incoming_call_sent');
@@ -46,8 +48,51 @@ export function onCancelIncomingCall(payload: CancelIncomingCallPayload): void {
     });
 }
 
-export function onCallAccepted(payload: AcceptCallPayload): void {
+// The web client fetches the call straight from iam's /calls/get right after
+// joining the Daily room (see web's incomingCallAccepted action) — but that
+// row is otherwise only created reactively once Daily's meeting.started /
+// participant.joined webhooks reach onMeetingStarted/onParticipantJoined,
+// which can lag behind the client's own join and surface "Call não
+// encontrada" as a user-facing error. Creating it here first, before the
+// client is even told the call was accepted, closes that race.
+const ensureCallExists = async (traceId: string, payload: AcceptCallPayload): Promise<void> => {
+    const existing = await getCallByRoom(traceId, payload.roomName);
+    if (existing) return;
+
+    const parsed = parseRoomName(payload.roomName);
+    if (!parsed) return;
+
+    const [customer, attendant] = await Promise.all([
+        findUserBySlug(traceId, parsed.customerSlug),
+        findUserBySlug(traceId, parsed.attendantSlug),
+    ]);
+    if (!customer || !attendant) return;
+
+    await createCall(traceId, {
+        id: `${customer._id}--${attendant._id}`,
+        customerId: customer._id,
+        customerName: `${customer.firstName} ${customer.lastName}`,
+        attendantId: attendant._id,
+        attendantName: `${attendant.firstName} ${attendant.lastName}`,
+        roomName: payload.roomName,
+        activeUserIds: [],
+        accumulatedMs: 0,
+        overlapStartedAt: null,
+        startedAt: null,
+        endedAt: null,
+        isPlaying: false,
+        tokensToBeCharged: 0,
+    });
+};
+
+export async function onCallAccepted(traceId: string, payload: AcceptCallPayload): Promise<void> {
     logger.info({ customerId: payload.customerId, attendantId: payload.attendantId }, 'iam call_accepted');
+
+    try {
+        await ensureCallExists(traceId, payload);
+    } catch (error) {
+        logger.error(error, 'onCallAccepted: falha ao garantir criação antecipada da call');
+    }
 
     sendToUser(payload.customerId, {
         event: 'call_accepted',
@@ -93,12 +138,6 @@ export async function onUserTokenCharged(payload: UserTokenChargedPayload): Prom
     });
 
     try {
-        // the client above gets patched directly, but the user's cached
-        // presence snapshot in Redis (used to answer full-list refetches
-        // triggered by unrelated online_users_broadcast events) still holds
-        // the pre-charge token count unless we refresh it here too — leaving
-        // it stale would clobber the correct value back onto every other
-        // viewer (and this same client) on the next refetch
         await updateIamTokens(payload.user._id, payload.user.tokens ?? 0);
         broadcastMessage({ event: 'online_users_broadcast', data: {} });
     } catch (error) {
