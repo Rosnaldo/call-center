@@ -4,17 +4,14 @@ import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
-import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { mapArray } from '#utils/mapper/array';
-import { CALL_TTL_SECONDS } from '#const/redis_ttl';
+import { CallStateBuilder } from '#schemas/call/utils';
 import { validateInput } from 'src/validations/call/create';
 import { ICallController } from './params';
 
 type IInput = ICallController['ICreate']['IInput'];
 type IOutput = ICallController['ICreate']['IOutput'];
-
-const CALLS_KEY = 'calls';
 
 interface Props {
     mapped: IInput;
@@ -36,10 +33,8 @@ export class Create {
         try {
             logger.info({ customerId: props.mapped.customerId, attendantId: props.mapped.attendantId }, 'call create');
             const params = this.transform(props.mapped);
-            const redis = getRedisClient();
-            const key = `${CALLS_KEY}:${params.customerId}--${params.attendantId}`;
-            await redis.set(key, JSON.stringify(params), 'EX', CALL_TTL_SECONDS);
-            return successData(params);
+            const saved = await new CallStateBuilder().create(params).save();
+            return successData(saved);
         } catch (error: unknown) {
             return logError(error, '/calls/create');
         }

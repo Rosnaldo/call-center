@@ -2,7 +2,7 @@ import { CallState, IUser, computeTokensToBeCharged, getCallElapsedMs } from '@r
 import { buildLogger } from '#logger';
 import { sendToUser, broadcastMessage } from '#websocket/broadcast';
 import { findUserBySlug, updateOnlineUserStatus } from 'src/services/users';
-import { createCall, getCallByRoom, updateCall, updateCallParticipant, trackRoom, deleteCall, createCallHistory } from 'src/services/calls';
+import { createCall, getCallByRoom, updateCall, addParticipant, removeParticipant, trackRoom, deleteCall, createCallHistory } from 'src/services/calls';
 import { deleteChat } from 'src/services/chat';
 import { createIamClient } from 'src/apis/iam';
 import { parseRoomName } from 'src/helpers/parse_room_name';
@@ -247,7 +247,7 @@ export async function onParticipantJoined(traceId: string, payload: DailyPartici
 
         const userId = resolveParticipantId(payload, customer, attendant);
 
-        call = await updateCallParticipant(traceId, call.customerId, call.attendantId, userId, true);
+        call = await addParticipant(traceId, call.customerId, call.attendantId, userId);
 
         sendToUser(call.customerId, { event: 'participant_joined', data: { call } });
         sendToUser(call.attendantId, { event: 'participant_joined', data: { call } });
@@ -275,7 +275,7 @@ export async function onParticipantLeft(traceId: string, payload: DailyParticipa
         if (call) {
             const userId = resolveParticipantId(payload, customer, attendant);
 
-            call = await updateCallParticipant(traceId, call.customerId, call.attendantId, userId, false);
+            call = await removeParticipant(traceId, call.customerId, call.attendantId, userId);
 
             sendToUser(call.customerId, { event: 'participant_left', data: { call } });
             sendToUser(call.attendantId, { event: 'participant_left', data: { call } });

@@ -62,11 +62,12 @@ async function getRoomPresenceIds(room: string): Promise<string[]> {
 }
 
 // `presence[].userId` is the app's own user_id, set explicitly when joining
-// (see web's DailyService.join) — matching against it tells us "is this
-// specific app user actually connected to this room right now".
-export async function isUserPresentInRoom(room: string, userId: string): Promise<boolean> {
+// (see web's DailyService.join) — this is what tells us which app users are
+// actually connected to a room right now, as opposed to Daily's own session
+// ids (`.id`, used for ejection instead — see getRoomPresenceIds below).
+export async function getRoomPresenceUserIds(room: string): Promise<string[]> {
     const presence = await getRoomPresence(room);
-    return presence.some((p) => p.userId === userId);
+    return presence.map((p) => p.userId);
 }
 
 export async function ejectBothParticipantsFromRoom(room: string): Promise<void> {

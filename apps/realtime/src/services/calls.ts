@@ -34,8 +34,13 @@ export const updateCall = async (traceId: string, customerId: string, attendantI
     return data;
 };
 
-export const updateCallParticipant = async (traceId: string, customerId: string, attendantId: string, userId: string, joined: boolean): Promise<CallState> => {
-    const { data } = await createIamClient(traceId).put<CallState>('/calls/update-participant', { customerId, attendantId, userId, joined });
+export const addParticipant = async (traceId: string, customerId: string, attendantId: string, userId: string): Promise<CallState> => {
+    const { data } = await createIamClient(traceId).put<CallState>('/calls/add-participant', { customerId, attendantId, userId });
+    return data;
+};
+
+export const removeParticipant = async (traceId: string, customerId: string, attendantId: string, userId: string): Promise<CallState> => {
+    const { data } = await createIamClient(traceId).put<CallState>('/calls/remove-participant', { customerId, attendantId, userId });
     return data;
 };
 

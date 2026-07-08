@@ -8,9 +8,10 @@ import { BadRequestException } from '#exceptions/bad_request';
 import { getRedisClient } from '#redis/singleton';
 import { getUserDao } from '#daos/singleton';
 import { mapString } from '#utils/mapper/string';
-import { isUserPresentInRoom } from 'src/services/daily';
-import { Touch } from './touch';
+import { getRoomPresenceUserIds, ejectBothParticipantsFromRoom } from 'src/services/daily';
+import { AddParticipant } from './add_participant';
 import { Create } from './create';
+import { Delete } from './delete';
 import { ICallController } from './params';
 
 type IOutput = ICallController['ISyncActiveCall']['IOutput'];
@@ -29,29 +30,17 @@ function parseRoomName(room: string): { customerSlug: string; attendantSlug: str
     return { customerSlug: parts[0], attendantSlug: parts[1] };
 }
 
-// Called by realtime whenever a user's websocket connects — reconciles
-// redis's call state against real Daily meeting presence, for the case
-// where a page refresh, a redis restart, or any other gap left the two
-// sides disagreeing about whether a call is still going on. Unlike the old
-// client-driven version this replaces, there's no roomName hint from the
-// browser (realtime only knows the user just connected, not what Daily room
-// their page has open) — so "is this user in a meeting" is answered by
-// checking presence across every currently-tracked room instead.
-//
-// - call exists -> refresh its TTL; if the user isn't present in its room,
-//   shouldJoin: true so the client rejoins.
-// - no call, but presence shows the user is in one of the tracked rooms ->
-//   self-heal by creating the call record for that room, same recovery path
-//   as onMeetingStarted.
 export class SyncActiveCall {
     public static readonly classId = Symbol.for('Controller > Call > SyncActiveCall');
 
-    private readonly touch: Touch;
+    private readonly addParticipant: AddParticipant;
     private readonly create: Create;
+    private readonly delete: Delete;
 
     private constructor(classId: symbol) {
-        this.touch = Touch.construir(classId);
+        this.addParticipant = AddParticipant.construir(classId);
         this.create = Create.construir(classId);
+        this.delete = Delete.construir(classId);
     }
 
     static construir(classId: symbol): SyncActiveCall {
@@ -71,18 +60,32 @@ export class SyncActiveCall {
             const call = await this.findCallByUser(redis, userId);
 
             if (call) {
-                // One of the two designated TTL touchpoints (the other is
-                // onMeetingStarted) — a call that's only ever being synced,
-                // with no participant join/leave in between, would otherwise
-                // never get its expiry pushed out.
-                await this.touch.exec({ mapped: { customerId: call.customerId, attendantId: call.attendantId } });
+                const presentUserIds = await getRoomPresenceUserIds(call.roomName);
+                const hasOtherParticipant = presentUserIds.some((id) => id !== userId);
 
-                const present = await isUserPresentInRoom(call.roomName, userId);
-                return successData({ call, shouldJoin: !present });
+                // Nobody's actually in the Daily room, or the only one there
+                // is this same connecting user — there's no real call
+                // happening, so tear down the stale record and the meeting
+                // itself instead of keeping either alive.
+                if (!hasOtherParticipant) {
+                    await this.delete.exec({ mapped: { customerId: call.customerId, attendantId: call.attendantId } });
+                    await ejectBothParticipantsFromRoom(call.roomName);
+                    return successData({ call: null, shouldJoin: false });
+                }
+
+                // Marks this user active on the call (instead of a plain TTL
+                // touch) — same effect add-participant's own join path has,
+                // refreshing the TTL as a side effect of the write.
+                const updated = await this.addParticipant.exec({
+                    mapped: { customerId: call.customerId, attendantId: call.attendantId, userId },
+                });
+                const currentCall = updated.isError ? call : updated.data;
+
+                return successData({ call: currentCall, shouldJoin: true });
             }
 
             const created = await this.selfHealFromPresence(redis, userId);
-            return successData({ call: created, shouldJoin: false });
+            return successData({ call: created, shouldJoin: created !== null });
         } catch (error: unknown) {
             return logError(error, '/calls/sync-active-call');
         }
@@ -99,15 +102,12 @@ export class SyncActiveCall {
             .find((c) => c.customerId === userId || c.attendantId === userId) ?? null;
     };
 
-    // `daily_rooms` is a redis SET of every currently-tracked (active) Daily
-    // room — a non-destructive peek, unlike DeleteRooms's smembers+del sweep
-    // used at server startup cleanup.
     private readonly selfHealFromPresence = async (redis: Redis, userId: string): Promise<CallState | null> => {
         const rooms = await redis.smembers(ROOMS_KEY);
 
         for (const room of rooms) {
-            const present = await isUserPresentInRoom(room, userId);
-            if (!present) continue;
+            const presentUserIds = await getRoomPresenceUserIds(room);
+            if (!presentUserIds.includes(userId)) continue;
 
             const parsed = parseRoomName(room);
             if (!parsed) continue;
@@ -118,6 +118,9 @@ export class SyncActiveCall {
             ]);
             if (!customer || !attendant) continue;
 
+            const counterpartId = String(customer._id) === userId ? String(attendant._id) : String(customer._id);
+            const activeUserIds = presentUserIds.includes(counterpartId) ? [userId, counterpartId] : [userId];
+
             const either = await this.create.exec({
                 mapped: {
                     id: `${customer._id}--${attendant._id}`,
@@ -126,7 +129,7 @@ export class SyncActiveCall {
                     attendantId: String(attendant._id),
                     attendantName: `${attendant.firstName} ${attendant.lastName}`,
                     roomName: room,
-                    activeUserIds: [],
+                    activeUserIds,
                     accumulatedMs: 0,
                     overlapStartedAt: null,
                     startedAt: new Date(),
@@ -142,10 +145,6 @@ export class SyncActiveCall {
         return null;
     };
 
-    // Called server-to-server by realtime (authenticated as a service
-    // account, not the end user) on behalf of whichever user just connected
-    // — so unlike routes that resolve GetUser off the caller's own token,
-    // userId has to travel explicitly in the body.
     public readonly mapper = (body: Request['body']): Props => ({
         userId: mapString(body.userId),
     });

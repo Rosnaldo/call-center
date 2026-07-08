@@ -74,12 +74,26 @@ export default (app: Application) => {
     );
 
     app.put(
-        '/calls/update-participant',
+        '/calls/add-participant',
         GetKeycloakUser,
         async (req, res) => {
             const controller = new CallController();
-            const mapped = controller.updateParticipant.mapper(req.body);
-            const either = await controller.updateParticipant.exec({ mapped });
+            const mapped = controller.addParticipant.mapper(req.body);
+            const either = await controller.addParticipant.exec({ mapped });
+            if (either.isError) {
+                return res.status(either.status).send(either);
+            }
+            return res.status(200).send(either.data);
+        }
+    );
+
+    app.put(
+        '/calls/remove-participant',
+        GetKeycloakUser,
+        async (req, res) => {
+            const controller = new CallController();
+            const mapped = controller.removeParticipant.mapper(req.body);
+            const either = await controller.removeParticipant.exec({ mapped });
             if (either.isError) {
                 return res.status(either.status).send(either);
             }

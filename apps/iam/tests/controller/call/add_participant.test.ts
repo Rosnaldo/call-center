@@ -15,7 +15,7 @@ beforeEach(async () => {
     await getRedisClient().flushall();
 });
 
-describe('Controller > Call > UpdateParticipant', () => {
+describe('Controller > Call > AddParticipant', () => {
     it('adds the joining participant to activeUserIds', async () => {
         const call = buildCallState({ activeUserIds: [] });
         const key = `calls:${call.customerId}--${call.attendantId}`;
@@ -23,8 +23,8 @@ describe('Controller > Call > UpdateParticipant', () => {
         await redis.set(key, JSON.stringify(call));
 
         const controller = new CallController();
-        const mapped = controller.updateParticipant.mapper({ customerId: call.customerId, attendantId: call.attendantId, userId: call.customerId, joined: true });
-        const either = await controller.updateParticipant.exec({ mapped });
+        const mapped = controller.addParticipant.mapper({ customerId: call.customerId, attendantId: call.attendantId, userId: call.customerId });
+        const either = await controller.addParticipant.exec({ mapped });
 
         if (!isSuccess(either)) throw new Error(`Expected success, got: ${either.message}`);
         expect(either.data.activeUserIds).toEqual([call.customerId]);
@@ -40,14 +40,14 @@ describe('Controller > Call > UpdateParticipant', () => {
 
         const controller = new CallController();
 
-        const firstJoin = await controller.updateParticipant.exec({
-            mapped: controller.updateParticipant.mapper({ customerId: call.customerId, attendantId: call.attendantId, userId: call.customerId, joined: true }),
+        const firstJoin = await controller.addParticipant.exec({
+            mapped: controller.addParticipant.mapper({ customerId: call.customerId, attendantId: call.attendantId, userId: call.customerId }),
         });
         if (!isSuccess(firstJoin)) throw new Error('Expected success');
         expect(firstJoin.data.isPlaying).toBe(false);
 
-        const secondJoin = await controller.updateParticipant.exec({
-            mapped: controller.updateParticipant.mapper({ customerId: call.customerId, attendantId: call.attendantId, userId: call.attendantId, joined: true }),
+        const secondJoin = await controller.addParticipant.exec({
+            mapped: controller.addParticipant.mapper({ customerId: call.customerId, attendantId: call.attendantId, userId: call.attendantId }),
         });
         if (!isSuccess(secondJoin)) throw new Error('Expected success');
 
@@ -56,7 +56,7 @@ describe('Controller > Call > UpdateParticipant', () => {
         expect(secondJoin.data.overlapStartedAt).not.toBeNull();
     });
 
-    it('does not lose a concurrent join — both participants joining at the same time still starts the timer', async () => {
+    it('does not lose a concurrent add — both participants joining at the same time still starts the timer', async () => {
         const call = buildCallState({ activeUserIds: [] });
         const key = `calls:${call.customerId}--${call.attendantId}`;
         const redis = getRedisClient();
@@ -65,11 +65,11 @@ describe('Controller > Call > UpdateParticipant', () => {
         const controller = new CallController();
 
         const [customerResult, attendantResult] = await Promise.all([
-            controller.updateParticipant.exec({
-                mapped: controller.updateParticipant.mapper({ customerId: call.customerId, attendantId: call.attendantId, userId: call.customerId, joined: true }),
+            controller.addParticipant.exec({
+                mapped: controller.addParticipant.mapper({ customerId: call.customerId, attendantId: call.attendantId, userId: call.customerId }),
             }),
-            controller.updateParticipant.exec({
-                mapped: controller.updateParticipant.mapper({ customerId: call.customerId, attendantId: call.attendantId, userId: call.attendantId, joined: true }),
+            controller.addParticipant.exec({
+                mapped: controller.addParticipant.mapper({ customerId: call.customerId, attendantId: call.attendantId, userId: call.attendantId }),
             }),
         ]);
 
@@ -82,34 +82,10 @@ describe('Controller > Call > UpdateParticipant', () => {
         expect(stored.overlapStartedAt).not.toBeNull();
     });
 
-    it('finalizes accumulatedMs and stops the timer when a participant leaves while both were present', async () => {
-        const overlapStartedAt = Date.now() - 5000;
-        const call = buildCallState({
-            activeUserIds: ['customer-1', 'attendant-1'],
-            customerId: 'customer-1',
-            attendantId: 'attendant-1',
-            overlapStartedAt,
-            isPlaying: true,
-        });
-        const key = `calls:${call.customerId}--${call.attendantId}`;
-        const redis = getRedisClient();
-        await redis.set(key, JSON.stringify(call));
-
-        const controller = new CallController();
-        const mapped = controller.updateParticipant.mapper({ customerId: call.customerId, attendantId: call.attendantId, userId: 'customer-1', joined: false });
-        const either = await controller.updateParticipant.exec({ mapped });
-
-        if (!isSuccess(either)) throw new Error(`Expected success, got: ${either.message}`);
-        expect(either.data.activeUserIds).toEqual(['attendant-1']);
-        expect(either.data.isPlaying).toBe(false);
-        expect(either.data.overlapStartedAt).toBeNull();
-        expect(either.data.accumulatedMs).toBeGreaterThanOrEqual(5000);
-    });
-
     it('returns 400 when call does not exist', async () => {
         const controller = new CallController();
-        const mapped = controller.updateParticipant.mapper({ customerId: 'nonexistent', attendantId: 'nonexistent', userId: 'someone', joined: true });
-        const either = await controller.updateParticipant.exec({ mapped });
+        const mapped = controller.addParticipant.mapper({ customerId: 'nonexistent', attendantId: 'nonexistent', userId: 'someone' });
+        const either = await controller.addParticipant.exec({ mapped });
 
         expect(either.isError).toBe(true);
         expect(either.status).toBe(400);
@@ -117,8 +93,8 @@ describe('Controller > Call > UpdateParticipant', () => {
 
     it('returns 400 when customerId, attendantId or userId is missing', async () => {
         const controller = new CallController();
-        const mapped = controller.updateParticipant.mapper({ customerId: 'a', attendantId: 'b' });
-        const either = await controller.updateParticipant.exec({ mapped });
+        const mapped = controller.addParticipant.mapper({ customerId: 'a', attendantId: 'b' });
+        const either = await controller.addParticipant.exec({ mapped });
 
         expect(either.isError).toBe(true);
         expect(either.status).toBe(400);

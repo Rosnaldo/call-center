@@ -12,8 +12,12 @@ export interface ICallController {
         IInput: { customerId: string; attendantId: string; updates: Partial<CallState> };
         IOutput: CallState;
     };
-    IUpdateParticipant: {
-        IInput: { customerId: string; attendantId: string; userId: string; joined: boolean };
+    IAddParticipant: {
+        IInput: { customerId: string; attendantId: string; userId: string };
+        IOutput: CallState;
+    };
+    IRemoveParticipant: {
+        IInput: { customerId: string; attendantId: string; userId: string };
         IOutput: CallState;
     };
     IDelete: {
