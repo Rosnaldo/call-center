@@ -17,31 +17,46 @@ export const CallFooterActions: React.FC = () => {
   const currentUser = useCurrentUserStore(s => s.currentUser);
 
   const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
-  const currentCall = call;
   const isReceiving = currentUser?.id === incomingCall?.attendantId;
 
-  const handleStartCall = () => {
-    playNotificationChime();
-    sendIncomingCall(currentUser?.id, selectedAttendantId);
+  const handleStartCall = async () => {
+    setIsStarting(true);
+    try {
+      playNotificationChime();
+      await sendIncomingCall(currentUser?.id, selectedAttendantId);
+    } finally {
+      setIsStarting(false);
+    }
   };
 
-  const handleAcceptCall = () => {
-    useCallStore.getState().acceptIncomingCall();
+  const handleAcceptCall = async () => {
+    setIsAccepting(true);
+    try {
+      await useCallStore.getState().acceptIncomingCall();
+    } finally {
+      setIsAccepting(false);
+    }
   };
 
-  const handleCancelCall = () => {
-    useIncomingCallStore.getState().cancelIncomingCall();
+  const handleCancelCall = async () => {
+    setIsCancelling(true);
+    try {
+      await useIncomingCallStore.getState().cancelIncomingCall();
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   const handleHangUp = () => {
     setIsConfirmCloseOpen(true);
   };
 
-  const handleConfirmClose = () => {
-    if (currentCall) {
-      useCallStore.getState().completeCall();
-    }
+  const handleConfirmClose = async () => {
+    await useCallStore.getState().completeCall();
     setIsConfirmCloseOpen(false);
   };
 
@@ -59,9 +74,8 @@ export const CallFooterActions: React.FC = () => {
       <>
         <EndCallButton
           label="Finish"
-          onClick={() => {
-            if (currentCall) handleHangUp();
-          }}
+          onClick={handleHangUp}
+          disabled={!call}
         />
         <ConfirmCloseCallModal
           isOpen={isConfirmCloseOpen}
@@ -73,13 +87,13 @@ export const CallFooterActions: React.FC = () => {
   }
 
   if (viewState === 'awaiting-answer') {
-    return <CancelCallButton onClick={handleCancelCall} />;
+    return <CancelCallButton onClick={handleCancelCall} isLoading={isCancelling} />;
   }
 
   if (viewState === 'awaiting-to-answer' && !isReceiving) {
     return (
       <div className="flex gap-2.5 items-center">
-        <CancelCallButton onClick={handleCancelCall} />
+        <CancelCallButton onClick={handleCancelCall} isLoading={isCancelling} />
       </div>
     );
   }
@@ -87,11 +101,11 @@ export const CallFooterActions: React.FC = () => {
   if (viewState === 'awaiting-to-answer' && isReceiving) {
     return (
       <div className="flex gap-2.5 items-center">
-        <AcceptCallButton onClick={handleAcceptCall} />
-        <CancelCallButton onClick={handleCancelCall} />
+        <AcceptCallButton onClick={handleAcceptCall} isLoading={isAccepting} />
+        <CancelCallButton onClick={handleCancelCall} isLoading={isCancelling} />
       </div>
     );
   }
 
-  return <StartCallButton onClick={handleStartCall} />;
+  return <StartCallButton onClick={handleStartCall} isLoading={isStarting} />;
 };

@@ -26,7 +26,14 @@
     "unknownError": "Unknown error",
     "somethingWentWrong": "Oops! Something went wrong",
     "unexpectedRenderError": "An unexpected error occurred during rendering. Our team has been notified.",
-    "reloadPage": "Reload Page"
+    "reloadPage": "Reload Page",
+    "customerNotFound": "Customer user not found",
+    "attendantNotFound": "Attendant user not found",
+    "currentUserNotFound": "Current user not found",
+    "incomingCallNotFound": "Incoming call not found",
+    "callNotFound": "Call not found",
+    "attendantNotSelected": "No attendant selected",
+    "customerMismatch": "Current user does not match the informed customer"
   },
   "roleMismatch": {
     "customerAreaExclusive": "Exclusive Customer Area",

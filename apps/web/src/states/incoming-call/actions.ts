@@ -10,8 +10,8 @@ import { playRingtone, stopRingtone } from '../../utils/helpers.ts';
 
 export interface IncomingCallActions {
   cancel: () => void;
-  cancelIncomingCall: () => void;
-  sendIncomingCall: (customerId?: string, attendantId?: string | null) => void;
+  cancelIncomingCall: () => Promise<void>;
+  sendIncomingCall: (customerId?: string, attendantId?: string | null) => Promise<void>;
   incomingCallSent: (incomingCall: IncomingCallState) => void;
   incomingCallReceived: (incomingCall: IncomingCallState) => void;
   incomingCallCancelled: () => void;
@@ -27,7 +27,7 @@ export const createIncomingCallActions = (
   cancelIncomingCall: async () => {
     try {
       const incomingCall = get().incomingCall;
-      if (!incomingCall) throw new ApiError(i18n.t('error.somethingWentWrong'));
+      if (!incomingCall) throw new ApiError(i18n.t('error.incomingCallNotFound'));
 
       set({ incomingCall: null });
       ref.callView.getState().setViewState('none');
@@ -41,16 +41,18 @@ export const createIncomingCallActions = (
 
   sendIncomingCall: async (customerId, attendantId) => {
     try {
-      if (!customerId || !attendantId) throw new ApiError(i18n.t('error.somethingWentWrong'));
+      if (!customerId) throw new ApiError(i18n.t('error.currentUserNotFound'));
+      if (!attendantId) throw new ApiError(i18n.t('error.attendantNotSelected'));
 
       const currentUser = ref.currentUser.getState().currentUser;
-      if (!currentUser || currentUser.id !== customerId) throw new ApiError(i18n.t('error.somethingWentWrong'));
+      if (!currentUser) throw new ApiError(i18n.t('error.currentUserNotFound'));
+      if (currentUser.id !== customerId) throw new ApiError(i18n.t('error.customerMismatch'));
 
       if ((currentUser.tokens ?? 0) <= 0) throw new ApiError(i18n.t('attendantList.noTokensHint'));
 
       const { users } = ref.onlineUsers.getState();
       const attendant = users.find(u => u.id === attendantId);
-      if (!attendant) throw new ApiError(i18n.t('error.somethingWentWrong'));
+      if (!attendant) throw new ApiError(i18n.t('error.attendantNotFound'));
 
       if (attendant.status !== 'idle') throw new ApiError(i18n.t('attendantList.attendantBusy'));
 

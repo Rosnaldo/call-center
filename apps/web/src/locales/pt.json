@@ -26,7 +26,14 @@
     "unknownError": "Erro desconhecido",
     "somethingWentWrong": "Ops! Algo deu errado",
     "unexpectedRenderError": "Ocorreu um erro inesperado durante a renderização. Nossa equipe já foi notificada.",
-    "reloadPage": "Recarregar Página"
+    "reloadPage": "Recarregar Página",
+    "customerNotFound": "Usuário Cliente não encontrado",
+    "attendantNotFound": "Usuário Atendente não encontrado",
+    "currentUserNotFound": "Usuário atual não encontrado",
+    "incomingCallNotFound": "Chamada recebida não encontrada",
+    "callNotFound": "Chamada não encontrada",
+    "attendantNotSelected": "Nenhum atendente selecionado",
+    "customerMismatch": "Usuário atual não corresponde ao cliente informado"
   },
   "roleMismatch": {
     "customerAreaExclusive": "Área de Clientes Exclusiva",

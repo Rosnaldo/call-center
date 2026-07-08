@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Loader2 } from 'lucide-react';
 
 interface ConfirmCloseCallModalProps {
   isOpen: boolean;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -13,7 +14,18 @@ export const ConfirmCloseCallModal: React.FC<ConfirmCloseCallModalProps> = ({
   onCancel,
 }) => {
   const { t } = useTranslation();
+  const [isConfirming, setIsConfirming] = useState(false);
+
   if (!isOpen) return null;
+
+  const handleConfirm = async () => {
+    setIsConfirming(true);
+    try {
+      await onConfirm();
+    } finally {
+      setIsConfirming(false);
+    }
+  };
 
   return (
     <div
@@ -36,16 +48,19 @@ export const ConfirmCloseCallModal: React.FC<ConfirmCloseCallModalProps> = ({
           <button
             id="cancel-close-call-btn"
             onClick={onCancel}
-            className="px-4 py-2 bg-white hover:bg-brand-canvas border border-[#ebdcb9] text-brand-muted hover:text-brand-dark transition-all font-mono tracking-wide text-[10px] rounded-full uppercase cursor-pointer font-semibold"
+            disabled={isConfirming}
+            className="px-4 py-2 bg-white hover:bg-brand-canvas border border-[#ebdcb9] text-brand-muted hover:text-brand-dark transition-all font-mono tracking-wide text-[10px] rounded-full uppercase cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 font-semibold"
           >
             {t('call.cancel')}
           </button>
 
           <button
             id="confirm-close-call-btn"
-            onClick={onConfirm}
-            className="px-4 py-2 bg-brand-ochre hover:bg-brand-ochre-hover text-white transition-all font-mono tracking-wide text-[10px] rounded-full uppercase flex items-center gap-1.5 cursor-pointer shadow-[0_2px_8px_rgba(163,101,0,0.12)] font-extrabold"
+            onClick={handleConfirm}
+            disabled={isConfirming}
+            className="px-4 py-2 bg-brand-ochre hover:bg-brand-ochre-hover text-white transition-all font-mono tracking-wide text-[10px] rounded-full uppercase flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 shadow-[0_2px_8px_rgba(163,101,0,0.12)] font-extrabold"
           >
+            {isConfirming && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             {t('call.endCallConfirm')}
           </button>
         </div>

@@ -29,17 +29,10 @@ export const createCallActions = (
     set(() => ({ call }));
     ref.timer.getState().syncFromCall(call);
     ref.billing.getState().setInitialTokens(call.tokensToBeCharged);
-    // `call` is real now, so anything still leaning on `incomingCall` as a
-    // stand-in (CallViewport's partner lookup) can drop it.
     ref.incomingCall.setState({ incomingCall: null });
   };
 
   return {
-    // `incomingCall` is intentionally left populated here (not cleared until
-    // `call` is actually set, in syncCallWithBillingAndTimer below) — it's
-    // CallViewport's only source for the partner's identity while `call`
-    // hasn't loaded yet, and clearing it early blanks the partner avatar for
-    // the whole "waiting to join" window.
     incomingCallAccepted: async (incomingCall: IncomingCallState) => {
       stopRingtone();
 
@@ -49,12 +42,13 @@ export const createCallActions = (
 
         const customer = updatedUsers.find(u => u.id === incomingCall.customerId);
         const attendant = updatedUsers.find(u => u.id === incomingCall.attendantId);
-        if (!customer || !attendant) throw new ApiError(i18n.t('error.somethingWentWrong'));
+        if (!customer) throw new ApiError(i18n.t('error.customerNotFound'));
+        if (!attendant) throw new ApiError(i18n.t('error.attendantNotFound'));
 
         const currentUser = ref.currentUser.getState().currentUser;
-        if (!currentUser) throw new ApiError(i18n.t('error.somethingWentWrong'));
+        if (!currentUser) throw new ApiError(i18n.t('error.currentUserNotFound'));
 
-        dailyService.join({
+        await dailyService.join({
           room: `${customer.slug}--${attendant.slug}`,
           userId: currentUser.id,
           userName: currentUser.name,
@@ -62,16 +56,9 @@ export const createCallActions = (
 
         ref.callView.getState().setViewState('in-call');
 
-        // Best-effort: the call record isn't guaranteed to exist yet — it's
-        // only created once this join actually lands and onMeetingStarted
-        // runs — so a miss here isn't fatal, meeting_started/participant_joined
-        // populate `call` moments later regardless.
-        try {
-          const call = await fetchCall(incomingCall.customerId, incomingCall.attendantId);
-          syncCallWithBillingAndTimer(call);
-        } catch {
-          // not created yet, WS events will fill it in shortly
-        }
+        const call = await fetchCall(incomingCall.customerId, incomingCall.attendantId);
+        syncCallWithBillingAndTimer(call);
+
       } catch (error) {
         handleRequestError(error);
       }
@@ -80,12 +67,13 @@ export const createCallActions = (
     acceptIncomingCall: async () => {
       try {
         const incomingCall = ref.incomingCall.getState().incomingCall;
-        if (!incomingCall) throw new ApiError(i18n.t('error.somethingWentWrong'));
+        if (!incomingCall) throw new ApiError(i18n.t('error.incomingCallNotFound'));
 
         const { users } = ref.onlineUsers.getState();
         const customer = users.find(u => u.id === incomingCall.customerId);
         const attendant = users.find(u => u.id === incomingCall.attendantId);
-        if (!customer || !attendant) throw new ApiError(i18n.t('error.somethingWentWrong'));
+        if (!customer) throw new ApiError(i18n.t('error.customerNotFound'));
+        if (!attendant) throw new ApiError(i18n.t('error.attendantNotFound'));
 
         stopRingtone();
         playNotificationChime();
@@ -99,7 +87,7 @@ export const createCallActions = (
     completeCall: async () => {
       try {
         const { call } = get();
-        if (!call) return;
+        if (!call) throw new ApiError(i18n.t('error.callNotFound'));
 
         await completeCallApi(call.customerId, call.attendantId);
       } catch (error) {
@@ -111,29 +99,27 @@ export const createCallActions = (
       ref.billing.getState().openCalculationModal();
     },
 
-    // Applies the result realtime pushes as `user_connected` on every
-    // websocket (re)connect — this never calls out to the server itself,
-    // it just reacts to what already arrived.
     syncActiveCall: async (call: CallState | null, shouldJoin: boolean) => {
-      const currentUser = ref.currentUser.getState().currentUser;
-      if (!currentUser || !call) return;
-
-      syncCallWithBillingAndTimer(call);
-      ref.callView.getState().setViewState('in-call');
-
-      if (shouldJoin) {
-        dailyService.join({
-          room: call.roomName,
-          userId: currentUser.id,
-          userName: currentUser.name,
-        });
+      try {
+        const currentUser = ref.currentUser.getState().currentUser;
+        if (!currentUser) throw new ApiError(i18n.t('error.currentUserNotFound'));
+        if (!call) throw new ApiError(i18n.t('error.callNotFound'));
+  
+        syncCallWithBillingAndTimer(call);
+        ref.callView.getState().setViewState('in-call');
+  
+        if (shouldJoin) {
+          await dailyService.join({
+            room: call.roomName,
+            userId: currentUser.id,
+            userName: currentUser.name,
+          });
+        }
+      } catch (error) {
+        handleRequestError(error);
       }
     },
 
-    // The partner's websocket reconnected within its grace period (see
-    // partner_reconnected in realtime) — take the view back out of
-    // 'call-interrupted' now rather than waiting for their Daily rejoin,
-    // which updateJoinedView also covers if this fires first.
     partnerReconnected: (call: CallState) => {
       syncCallWithBillingAndTimer(call);
       ref.callView.getState().setViewState('in-call');
