@@ -5,8 +5,4 @@ export async function bootstrap(stores: Stores): Promise<void> {
     await stores.auth.getState().bootstrap();
     const token = stores.auth.getState().token;
     initWs.init(token, stores);
-
-    if (token) {
-        stores.call.getState().syncActiveCall();
-    }
 }

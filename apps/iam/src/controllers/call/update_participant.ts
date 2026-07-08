@@ -92,7 +92,7 @@ export class UpdateParticipant {
                 // Any call update refreshes the TTL — participant join/leave
                 // included — so a call can never expire while it's actually
                 // ongoing, regardless of how long it's been since
-                // onMeetingStarted or the last /calls/sync.
+                // onMeetingStarted or the last sync-active-call.
                 const result = await conn.multi().set(key, JSON.stringify(updated), 'EX', CALL_TTL_SECONDS).exec();
                 if (result) return successData(updated);
             }

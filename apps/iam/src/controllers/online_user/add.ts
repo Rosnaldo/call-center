@@ -37,8 +37,22 @@ export class Add {
             logger.info({ id: props.mapped.id }, 'online user add');
             const params = this.transform(props.mapped);
             const redis = getRedisClient();
-            await redis.set(`${ONLINE_USERS_PREFIX}${params.id}`, JSON.stringify(params), 'EX', TTL_SECONDS);
-            return successData(params);
+
+            const key = `${ONLINE_USERS_PREFIX}${params.id}`;
+            // A reconnect (page reload, network blip) always calls this with
+            // whatever status the client had cached at connect time — which
+            // defaults to 'idle', since the client has no way to know it's
+            // mid-call at that point. This is a full upsert, so without this
+            // check every reconnect would clobber a real 'in-call' status
+            // back to idle. Anything else (idle/disconnecting/offline) still
+            // gets overwritten by the incoming value as before, since only
+            // 'in-call' reflects state the caller couldn't have known about.
+            const existingRaw = await redis.get(key);
+            const existingStatus = existingRaw ? (JSON.parse(existingRaw) as IOutput).status : undefined;
+            const toStore: IOutput = { ...params, status: existingStatus === 'in-call' ? existingStatus : params.status };
+
+            await redis.set(key, JSON.stringify(toStore), 'EX', TTL_SECONDS);
+            return successData(toStore);
         } catch (error: unknown) {
             return logError(error, '/online-users/add');
         }

@@ -47,9 +47,7 @@ class WebhookServer {
 
     setupRoutes(): void {
         const health = require('./routes/health').default;
-        const calls = require('./routes/calls').default;
         health(this.app);
-        calls(this.app);
     }
 
     setupWebhooks(): void {

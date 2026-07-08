@@ -26,4 +26,7 @@ export interface ICallController {
         IInput: { customerId: string; attendantId: string };
         IOutput: {};
     };
+    ISyncActiveCall: {
+        IOutput: { call: CallState | null; shouldJoin: boolean };
+    };
 }

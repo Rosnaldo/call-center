@@ -3,7 +3,7 @@ import type { StoresRef } from '../stores.ts';
 import { CallStore } from './state.ts';
 import type { IDailyService } from '../../services/daily.ts';
 import { fetchOnlineUsers } from '@/src/services/api/online-users.ts';
-import { fetchCall, completeCall as completeCallApi, syncCall } from '@/src/services/api/calls.ts';
+import { fetchCall, completeCall as completeCallApi } from '@/src/services/api/calls.ts';
 import { acceptIncomingCall as acceptIncomingCallService } from '@/src/services/api/incoming-calls.ts';
 import { handleRequestError } from '@/src/utils/utils.ts';
 import { ApiError } from '../../error/api.ts';
@@ -15,7 +15,7 @@ export interface CallActions {
   completeCall: () => Promise<void>;
   incomingCallAccepted: (incomingCall: IncomingCallState) => void;
   callCompleted: () => Promise<void>;
-  syncActiveCall: () => Promise<void>;
+  syncActiveCall: (call: CallState | null, shouldJoin: boolean) => Promise<void>;
   partnerReconnected: (call: CallState) => void;
 }
 
@@ -111,17 +111,13 @@ export const createCallActions = (
       ref.billing.getState().openCalculationModal();
     },
 
-    // Called on app entry to reconcile IAM's call state against the real
-    // Daily meeting — covers refreshes/redis hiccups where the two disagree
-    // about whether a call is still going on (see /calls/sync in realtime).
-    syncActiveCall: async () => {
+    // Applies the result realtime pushes as `user_connected` on every
+    // websocket (re)connect — this never calls out to the server itself,
+    // it just reacts to what already arrived.
+    syncActiveCall: async (call: CallState | null, shouldJoin: boolean) => {
       const currentUser = ref.currentUser.getState().currentUser;
-      if (!currentUser) return;
+      if (!currentUser || !call) return;
 
-      const result = await syncCall();
-      if (!result?.call) return;
-
-      const { call, shouldJoin } = result;
       syncCallWithBillingAndTimer(call);
       ref.callView.getState().setViewState('in-call');
 

@@ -42,7 +42,7 @@ interface DailyRoomPresenceEntry {
     userName: string;
 }
 
-async function getRoomPresenceIds(room: string): Promise<string[]> {
+async function getRoomPresence(room: string): Promise<DailyRoomPresenceEntry[]> {
     const res = await fetch(`${DAILY_API_URL}/rooms/${room}/presence`, {
         headers: dailyHeaders(),
     });
@@ -53,7 +53,20 @@ async function getRoomPresenceIds(room: string): Promise<string[]> {
     }
 
     const { data } = await res.json() as { data: DailyRoomPresenceEntry[] };
-    return data.map((p) => p.id);
+    return data;
+}
+
+async function getRoomPresenceIds(room: string): Promise<string[]> {
+    const presence = await getRoomPresence(room);
+    return presence.map((p) => p.id);
+}
+
+// `presence[].userId` is the app's own user_id, set explicitly when joining
+// (see web's DailyService.join) — matching against it tells us "is this
+// specific app user actually connected to this room right now".
+export async function isUserPresentInRoom(room: string, userId: string): Promise<boolean> {
+    const presence = await getRoomPresence(room);
+    return presence.some((p) => p.userId === userId);
 }
 
 export async function ejectBothParticipantsFromRoom(room: string): Promise<void> {

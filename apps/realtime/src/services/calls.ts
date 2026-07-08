@@ -1,41 +1,10 @@
 import axios from "axios";
 import { CallState } from "@repo/shared-types";
 import { createIamClient, iamApi } from "src/apis/iam";
-import { parseRoomName } from "src/helpers/parse_room_name";
-import { findUserBySlug } from "src/services/users";
 
 export const createCall = async (traceId: string, call: CallState): Promise<CallState> => {
     const { data } = await createIamClient(traceId).post<CallState>('/calls/create', call);
     return data;
-};
-
-// Builds a fresh CallState for a room from scratch — used to self-heal when
-// a user is confirmed present in a Daily room but redis has no record of it.
-export const createCallForRoom = async (traceId: string, roomName: string): Promise<CallState | null> => {
-    const parsed = parseRoomName(roomName);
-    if (!parsed) return null;
-
-    const [customer, attendant] = await Promise.all([
-        findUserBySlug(traceId, parsed.customerSlug),
-        findUserBySlug(traceId, parsed.attendantSlug),
-    ]);
-    if (!customer || !attendant) return null;
-
-    return createCall(traceId, {
-        id: `${customer._id}--${attendant._id}`,
-        customerId: customer._id,
-        customerName: `${customer.firstName} ${customer.lastName}`,
-        attendantId: attendant._id,
-        attendantName: `${attendant.firstName} ${attendant.lastName}`,
-        roomName,
-        activeUserIds: [],
-        accumulatedMs: 0,
-        overlapStartedAt: null,
-        startedAt: new Date(),
-        endedAt: null,
-        isPlaying: false,
-        tokensToBeCharged: 0,
-    });
 };
 
 export const getCallByRoom = async (traceId: string, roomName: string): Promise<CallState | null> => {
@@ -82,14 +51,23 @@ export const completeCall = async (traceId: string, customerId: string, attendan
     await createIamClient(traceId).post('/calls/complete', { customerId, attendantId });
 };
 
-// Refreshes the call's redis TTL without rewriting it — onMeetingStarted and
-// /calls/sync are the only two touchpoints; participant join/leave don't.
-export const touchCall = async (traceId: string, customerId: string, attendantId: string): Promise<void> => {
-    await createIamClient(traceId).put('/calls/touch', { customerId, attendantId });
-};
-
 export const trackRoom = async (traceId: string, roomName: string): Promise<void> => {
     await createIamClient(traceId).post('/calls/track-room', { roomName });
+};
+
+export interface SyncActiveCallResult {
+    call: CallState | null;
+    shouldJoin: boolean;
+}
+
+// Called once per websocket connect (see connection.ts) — iam reconciles its
+// own redis call state against real Daily presence and tells us whether the
+// connecting user needs to (re)join their Daily room. The result is pushed
+// to that user as a `user_connected` event; nothing on the client calls this
+// directly.
+export const syncActiveCall = async (traceId: string, userId: string): Promise<SyncActiveCallResult> => {
+    const { data } = await createIamClient(traceId).post<SyncActiveCallResult>('/calls/sync-active-call', { userId });
+    return data;
 };
 
 export interface CallHistoryPayload {

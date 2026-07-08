@@ -27,6 +27,7 @@ import * as onlineUsersService from '@/src/services/api/online-users';
 const addToIamMock = usersService.addToIam as jest.Mock;
 const removeFromIamMock = usersService.removeFromIam as jest.Mock;
 const findUserBySlugMock = usersService.findUserBySlug as jest.Mock;
+const updateOnlineUserStatusMock = usersService.updateOnlineUserStatus as jest.Mock;
 const getCallByUserMock = callsService.getCallByUser as jest.Mock;
 const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
 
@@ -129,15 +130,24 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         });
 
         findUserBySlugMock.mockImplementation((_traceId: string, slug: string) => {
-            // often the first async step of a grace-period transition chain
-            // (called synchronously, before addToIam), so it must be tracked
-            // in pendingCalls too or flushPendingCalls() sees an empty queue
-            // and returns before addToIam ever gets pushed
             const op = (async () => {
                 if (slug === adminUser.slug) return adminUser;
                 if (slug === customerUser.slug) return customerUser;
                 throw new Error(`unexpected slug: ${slug}`);
             })();
+            pendingCalls.push(op);
+            return op;
+        });
+
+        updateOnlineUserStatusMock.mockImplementation((_traceId: string, userId: string, status: IOnlineUser['status']) => {
+            // the first (and often only) async step of a grace-period
+            // transition chain, so it must be tracked in pendingCalls too or
+            // flushPendingCalls() sees an empty queue and returns before the
+            // broadcast that follows it ever gets pushed
+            const op = iamRequest
+                .put('/online-users/update-status')
+                .set('Authorization', CUSTOMER_TOKEN)
+                .send({ id: userId, status });
             pendingCalls.push(op);
             return op;
         });

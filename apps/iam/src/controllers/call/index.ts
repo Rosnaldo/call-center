@@ -8,6 +8,7 @@ import { Delete } from './delete';
 import { Complete } from './complete';
 import { Touch } from './touch';
 import { TrackRoom, DeleteRooms } from './track_room';
+import { SyncActiveCall } from './sync_active_call';
 
 export class CallController {
     public readonly classId = Symbol.for('Controller > Call');
@@ -23,6 +24,7 @@ export class CallController {
     public readonly touch: Touch;
     public readonly trackRoom: TrackRoom;
     public readonly deleteRooms: DeleteRooms;
+    public readonly syncActiveCall: SyncActiveCall;
 
     constructor() {
         this.create = Create.construir(this.classId);
@@ -36,5 +38,6 @@ export class CallController {
         this.touch = Touch.construir(this.classId);
         this.trackRoom = TrackRoom.construir(this.classId);
         this.deleteRooms = DeleteRooms.construir(this.classId);
+        this.syncActiveCall = SyncActiveCall.construir(this.classId);
     }
 }

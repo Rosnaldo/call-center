@@ -18,7 +18,7 @@ interface Props {
 }
 
 // Refreshes the TTL on an existing call without a read-modify-write. Used by
-// /calls/sync, which (unlike onMeetingStarted/update_participant) has no
+// SyncActiveCall, which (unlike onMeetingStarted/update_participant) has no
 // other reason to write the record when it's just confirming presence.
 export class Touch {
     public static readonly classId = Symbol.for('Controller > Call > Touch');

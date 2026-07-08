@@ -155,4 +155,21 @@ export default (app: Application) => {
             return res.status(200).send(either.data);
         }
     );
+
+    // Only ever called server-to-server by realtime when a user's websocket
+    // connects — not exposed to the browser (see web's syncActiveCall, which
+    // just applies whatever realtime pushes over the socket instead).
+    app.post(
+        '/calls/sync-active-call',
+        GetKeycloakUser,
+        async (req, res) => {
+            const controller = new CallController();
+            const mapped = controller.syncActiveCall.mapper(req.body);
+            const either = await controller.syncActiveCall.exec(mapped);
+            if (either.isError) {
+                return res.status(either.status).send(either);
+            }
+            return res.status(200).send(either.data);
+        }
+    );
 };

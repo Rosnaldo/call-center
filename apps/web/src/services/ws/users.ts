@@ -6,6 +6,7 @@ import i18n from '../../i18n.ts';
 
 export type WsUsersMessage =
     | { event: 'online_users_broadcast' }
+    | { event: 'user_connected'; data: { call: CallState | null; shouldJoin: boolean } }
     | { event: 'heartbeat_ack' }
     | { event: 'user_logouted'; data: { id: string } }
     | { event: 'user_disconnecting'; data: { id: string; call?: CallState } }
@@ -85,6 +86,9 @@ export class WsUsersService {
         switch (msg.event) {
             case 'online_users_broadcast':
                 refreshUsers();
+                return true;
+            case 'user_connected':
+                this.stores.call.getState().syncActiveCall(msg.data.call, msg.data.shouldJoin);
                 return true;
             case 'heartbeat_ack':
                 this.cancelAck();

@@ -1,6 +1,6 @@
 import { connectRedis, getRedisClient, disconnectRedis } from 'src/redis/singleton';
 import { CallController } from 'src/controllers/call';
-import { buildOnlineUser } from '../../builders';
+import { buildOnlineUser, buildCallState } from '../../builders';
 
 jest.mock('src/services/realtime', () => ({
     notifyCallCompleted: jest.fn().mockResolvedValue(undefined),
@@ -31,11 +31,18 @@ const seedUsers = async (customer: ReturnType<typeof buildOnlineUser>, attendant
     await redis.set(`online_user:${attendant.id}`, JSON.stringify(attendant));
 };
 
+const seedCall = async (customerId: string, attendantId: string) => {
+    const call = buildCallState({ customerId, attendantId });
+    await getRedisClient().set(`calls:${customerId}--${attendantId}`, JSON.stringify(call));
+    return call;
+};
+
 describe('Controller > Call > Complete', () => {
     it('sets customer status to idle', async () => {
         const customer = buildOnlineUser({ role: 'customer', status: 'in-call' });
         const attendant = buildOnlineUser({ role: 'attendant', status: 'in-call' });
         await seedUsers(customer, attendant);
+        await seedCall(customer.id, attendant.id);
 
         const controller = new CallController();
         await controller.complete.exec({ traceId: TRACE, mapped: { customerId: customer.id, attendantId: attendant.id } });
@@ -48,6 +55,7 @@ describe('Controller > Call > Complete', () => {
         const customer = buildOnlineUser({ role: 'customer', status: 'in-call' });
         const attendant = buildOnlineUser({ role: 'attendant', status: 'in-call' });
         await seedUsers(customer, attendant);
+        await seedCall(customer.id, attendant.id);
 
         const controller = new CallController();
         await controller.complete.exec({ traceId: TRACE, mapped: { customerId: customer.id, attendantId: attendant.id } });
@@ -56,28 +64,39 @@ describe('Controller > Call > Complete', () => {
         expect(stored.status).toBe('idle');
     });
 
-    it('returns 400 when customer not found', async () => {
+    // A disconnected user's presence entry (90s TTL) can legitimately expire
+    // before the 2-minute grace period that forces this completion even
+    // finishes counting down — that must not block ending the call, since
+    // this is exactly the recovery path meant to close it out.
+    it('still completes the call when the customer presence entry is already gone', async () => {
         const customer = buildOnlineUser({ role: 'customer' });
-        const attendant = buildOnlineUser({ role: 'attendant' });
+        const attendant = buildOnlineUser({ role: 'attendant', status: 'in-call' });
         await getRedisClient().set(`online_user:${attendant.id}`, JSON.stringify(attendant));
+        await seedCall(customer.id, attendant.id);
 
         const controller = new CallController();
         const either = await controller.complete.exec({ traceId: TRACE, mapped: { customerId: customer.id, attendantId: attendant.id } });
 
-        expect(either.isError).toBe(true);
-        expect(either.status).toBe(400);
+        expect(either.isError).toBe(false);
+
+        const attendantStored = JSON.parse((await getRedisClient().get(`online_user:${attendant.id}`))!);
+        expect(attendantStored.status).toBe('idle');
+        expect(await getRedisClient().get(`online_user:${customer.id}`)).toBeNull();
     });
 
-    it('returns 400 when attendant not found', async () => {
+    it('no-ops successfully when the call record no longer exists', async () => {
         const customer = buildOnlineUser({ role: 'customer' });
         const attendant = buildOnlineUser({ role: 'attendant' });
-        await getRedisClient().set(`online_user:${customer.id}`, JSON.stringify(customer));
+        await seedUsers(customer, attendant);
 
         const controller = new CallController();
         const either = await controller.complete.exec({ traceId: TRACE, mapped: { customerId: customer.id, attendantId: attendant.id } });
 
-        expect(either.isError).toBe(true);
-        expect(either.status).toBe(400);
+        expect(either.isError).toBe(false);
+
+        // nothing to complete — presence untouched
+        const customerStored = JSON.parse((await getRedisClient().get(`online_user:${customer.id}`))!);
+        expect(customerStored.status).toBe(customer.status);
     });
 
     it('returns 400 when customerId is missing', async () => {
@@ -92,6 +111,7 @@ describe('Controller > Call > Complete', () => {
         const customer = buildOnlineUser({ role: 'customer' });
         const attendant = buildOnlineUser({ role: 'attendant' });
         await seedUsers(customer, attendant);
+        await seedCall(customer.id, attendant.id);
 
         const controller = new CallController();
         const either = await controller.complete.exec({ traceId: TRACE, mapped: { customerId: customer.id, attendantId: attendant.id } });

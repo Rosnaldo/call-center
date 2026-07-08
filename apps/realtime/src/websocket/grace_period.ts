@@ -25,7 +25,7 @@ export const createGracePeriod = (
         async () => {
             try {
                 const call = await getCallByUser(user.id);
-                if (!call) {
+                if (call) {
                     await updateOnlineUserStatus(traceId, user.id, 'disconnecting');
                 }
                 notifyDisconnectEvent('user_disconnecting', user.id, call);
@@ -37,23 +37,11 @@ export const createGracePeriod = (
         async () => {
             try {
                 const call = await getCallByUser(user.id);
-                if (!call) {
-                    await removeFromIam(user.id);
-                }
+                await removeFromIam(user.id);
 
                 notifyDisconnectEvent('user_disconnected', user.id, call);
                 await endActiveCall(traceId, user.id);
 
-                // endActiveCall now calls iam's /calls/complete (presence
-                // reset + Daily room ejection) — but if that call fails, is
-                // slow, or the eject itself no-ops (nobody left in the room),
-                // presence would otherwise stay stuck on 'in-call' forever
-                // since grace_period deliberately never touches status while
-                // a call is active. The grace period expiring is exactly the
-                // point where we've committed to ending the call regardless,
-                // so reset both participants directly here too — repeating
-                // the same reset that /calls/complete (or onMeetingEnded
-                // later) already did is a harmless no-op.
                 broadcastMessage({ event: 'online_users_broadcast', data: {} });
             } catch (error) {
                 logger.error(error, 'grace period: falha ao remover usuário do iam');

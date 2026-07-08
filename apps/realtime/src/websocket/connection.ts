@@ -4,24 +4,22 @@ import { graceTimer } from '#websocket/grace_timer';
 import { createHeartbeat } from '#websocket/heartbeat';
 import { createGracePeriod } from '#websocket/grace_period';
 import { notifyPartnerReconnected } from '#websocket/end_active_call';
-import { handleOpen } from '#websocket/handler/on_open';
 import { handleClose } from '#websocket/handler/on_close';
 import { handlePong } from '#websocket/handler/on_pong';
 import { handleMessageHeartbeat } from '#websocket/handler/message/heartbeat';
 import { handleMessageLogout } from '#websocket/handler/message/logout';
 import { clientRegistry } from '#websocket/client_registry';
+import { broadcastMessage, sendToUser } from '#websocket/broadcast';
+import { syncActiveCall } from 'src/services/calls';
+import { addToIam } from 'src/services/users';
 import logger from '#logger';
 
-export const onConnection = () => (ws: AuthenticatedWebSocket): void => {
+export const onConnection = () => async (ws: AuthenticatedWebSocket): Promise<void> => {
     logger.info({ userId: ws.user._id, email: ws.user.email, role: ws.user.role }, 'ws authenticated client connected');
-    // Cancels any pending "disconnecting" grace period for this user — since
-    // that timer is what would otherwise end their active call, reconnecting
-    // in time both keeps their presence and saves the call. Only the call
-    // partner is told directly (not a broadcast) — handleOpen below still
-    // covers the generic online-users-list refresh for everyone else.
+
     const wasDisconnecting = graceTimer.cancel(ws.user._id);
     if (wasDisconnecting) {
-        notifyPartnerReconnected(ws.user._id);
+        await notifyPartnerReconnected(ws.user._id);
     }
     clientRegistry.add(ws);
 
@@ -50,11 +48,20 @@ export const onConnection = () => (ws: AuthenticatedWebSocket): void => {
         }
     });
 
-    handleOpen(user);
-
     ws.on('close', () => {
         logger.info({ userId: ws.user._id, email: ws.user.email }, 'ws client disconnected');
         clientRegistry.remove(ws);
         handleClose(hb, startGracePeriod);
     });
+
+    try {
+        logger.info({ userId: user.id, name: user.name }, 'user connected');
+        await addToIam(user);
+        const { call, shouldJoin } = await syncActiveCall(ws.traceId, user.id);
+
+        sendToUser(user.id, { event: 'user_connected', data: { call, shouldJoin } });
+        broadcastMessage({ event: 'online_users_broadcast', data: {} });
+    } catch (error) {
+        logger.error(error, 'ws onConnection: falha ao sincronizar call ativa do usuário');
+    }
 };

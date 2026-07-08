@@ -64,11 +64,8 @@ export const createMeetingActions = (
     },
     // realtime only sends this to me and my call partner, so if it's not
     // about my own session, it's my partner's.
-    userDisconnecting: (data) => {
-      const currentUser = ref.currentUser.getState().currentUser;
-      if (currentUser && data.id !== currentUser.id) {
-        ref.callView.getState().setViewState('call-interrupted');
-      }
+    userDisconnecting: () => {
+      ref.callView.getState().setViewState('call-interrupted');
     },
     userDisconnected: (data) => {
       const currentUser = ref.currentUser.getState().currentUser;

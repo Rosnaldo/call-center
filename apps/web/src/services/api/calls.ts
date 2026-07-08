@@ -1,5 +1,4 @@
 import { apiBack } from '../../api/backend';
-import { apiRealtime } from '../../api/realtime';
 import { CallState } from '@repo/shared-types';
 import { ApiError } from '../../error/api';
 
@@ -28,21 +27,4 @@ export async function fetchCallByUser(userId: string): Promise<CallState | null>
     }
 }
 
-export interface SyncCallResult {
-    call: CallState | null;
-    shouldJoin: boolean;
-}
 
-// roomName: the Daily room the client's own daily-js object is currently
-// connected to, if any — lets the server self-heal a call record that's
-// missing in redis but genuinely ongoing. Omit it when there's nothing
-// connected yet (e.g. right on app boot).
-export async function syncCall(roomName?: string): Promise<SyncCallResult | null> {
-    try {
-        const res = await apiRealtime.post('/calls/sync', { roomName });
-        if (res.data?.isError) return null;
-        return res.data as SyncCallResult;
-    } catch {
-        return null;
-    }
-}
