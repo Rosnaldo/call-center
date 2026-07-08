@@ -201,9 +201,9 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
-        onConnection()(customerWs);
+        await onConnection()(customerWs);
         await flushPendingCalls();
-        onConnection()(attendantWs);
+        await onConnection()(attendantWs);
         await flushPendingCalls();
 
         // ── call already exists in IAM, same as after an incoming-call accept ──

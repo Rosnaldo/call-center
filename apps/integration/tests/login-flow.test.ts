@@ -1,4 +1,5 @@
 jest.mock('src/services/users');
+jest.mock('src/services/calls');
 jest.mock('@/src/services/api/online-users', () => ({
     fetchOnlineUsers: jest.fn(),
 }));
@@ -19,9 +20,11 @@ import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 import * as usersService from 'src/services/users';
+import * as callsService from 'src/services/calls';
 import * as onlineUsersService from '@/src/services/api/online-users';
 
 const addToIamMock = usersService.addToIam as jest.Mock;
+const syncActiveCallMock = callsService.syncActiveCall as jest.Mock;
 const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
 
 const pendingCalls: Array<Promise<unknown>> = [];
@@ -104,6 +107,16 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
                 .post('/online-users/add')
                 .set('Authorization', CUSTOMER_TOKEN)
                 .send(user);
+            pendingCalls.push(op);
+            return op;
+        });
+
+        // called once per onConnection — must resolve (not just return
+        // undefined, the jest.mock() default) or onConnection's try/catch
+        // swallows the error and the online_users_broadcast right after it
+        // never fires
+        syncActiveCallMock.mockImplementation(() => {
+            const op = Promise.resolve({ call: null, shouldJoin: false });
             pendingCalls.push(op);
             return op;
         });

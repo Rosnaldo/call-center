@@ -40,6 +40,7 @@ import * as usersService from 'src/services/users';
 import * as onlineUsersService from '@/src/services/api/online-users';
 
 const addToIamMock = usersService.addToIam as jest.Mock;
+const findUserBySlugMock = usersService.findUserBySlug as jest.Mock;
 const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
 
 const pendingCalls: Array<Promise<unknown>> = [];
@@ -121,6 +122,12 @@ describe('Accept Call Flow', () => {
         if (icKeys.length) await redis.del(...icKeys);
         const callKeys = await redis.keys('calls:*');
         if (callKeys.length) await redis.del(...callKeys);
+        // /online-users/add preserves an existing 'in-call' status across a
+        // reconnect (see add.ts) — without clearing this, a call left
+        // in-call at the end of one test leaks into the next test's guards
+        // (e.g. sendIncomingCall's "attendant busy" check)
+        const onlineKeys = await redis.keys('online_user:*');
+        if (onlineKeys.length) await redis.del(...onlineKeys);
 
         clientRegistry.clear();
         pendingCalls.length = 0;
@@ -136,6 +143,15 @@ describe('Accept Call Flow', () => {
             const op = iamRequest.post('/online-users/add').set('Authorization', CUSTOMER_TOKEN).send(user);
             pendingCalls.push(op);
             return op;
+        });
+
+        // onCallAccepted's ensureCallExists resolves both slugs before it will
+        // create the call record — left unmocked, findUserBySlug resolves to
+        // undefined and the call is silently never created
+        findUserBySlugMock.mockImplementation(async (_traceId: string, slug: string) => {
+            if (slug === customerUser.slug) return customerUser;
+            if (slug === attendantUser.slug) return attendantUser;
+            throw new Error(`unexpected slug: ${slug}`);
         });
 
         fetchOnlineUsersMock.mockImplementation(() => {
@@ -174,7 +190,7 @@ describe('Accept Call Flow', () => {
 
     const postDailyWebhook = async (body: Record<string, unknown>): Promise<void> => {
         await realtimeRequest.post('/webhooks/daily').send(body);
-        await new Promise((r) => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 500));
     };
 
     it('after accept both users are in-call', async () => {
@@ -205,14 +221,14 @@ describe('Accept Call Flow', () => {
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
-        onConnection()(customerWs);
+        await onConnection()(customerWs);
         await flushPendingCalls();
-        onConnection()(attendantWs);
+        await onConnection()(attendantWs);
         await flushPendingCalls();
 
         // ── send incoming call ────────────────────────────────────────
         customerStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
-        await new Promise((r) => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 500));
 
         // ── accept call ───────────────────────────────────────────────
         const acceptMsg = attendantMessages.find((m) => m.event === 'incoming_call_received');
@@ -222,7 +238,7 @@ describe('Accept Call Flow', () => {
         attendantMessages.length = 0;
 
         await attendantStores.call.getState().acceptIncomingCall();
-        await new Promise((r) => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 500));
 
         // ── both users receive call_accepted ──────────────────────────
         const customerAccepted = customerMessages.find((m) => m.event === 'call_accepted');
@@ -275,17 +291,17 @@ describe('Accept Call Flow', () => {
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
-        onConnection()(customerWs);
+        await onConnection()(customerWs);
         await flushPendingCalls();
-        onConnection()(attendantWs);
+        await onConnection()(attendantWs);
         await flushPendingCalls();
 
         // ── send + accept ─────────────────────────────────────────────
         customerStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
-        await new Promise((r) => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 500));
 
         await attendantStores.call.getState().acceptIncomingCall();
-        await new Promise((r) => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 500));
 
         // ── both in-call (auto-processed via call_accepted) ───────────
         expect(attendantStores.callView.getState().viewState).toBe('in-call');
@@ -307,7 +323,7 @@ describe('Accept Call Flow', () => {
         attendantMessages.length = 0;
 
         attendantStores.call.getState().completeCall();
-        await new Promise((r) => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 500));
 
         // ── both sides receive call_completed ──────────────────────────
         const attendantCompleted = attendantMessages.find((m) => m.event === 'call_completed');

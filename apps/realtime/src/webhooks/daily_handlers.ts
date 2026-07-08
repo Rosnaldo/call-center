@@ -6,7 +6,7 @@ import { createCall, getCallByRoom, updateCall, addParticipant, removeParticipan
 import { deleteChat } from 'src/services/chat';
 import { createIamClient } from 'src/apis/iam';
 import { parseRoomName } from 'src/helpers/parse_room_name';
-import { getMeetingParticipants, deleteDailyRoom, DailyMeetingParticipant } from './daily_manager';
+import { getMeetingParticipants, deleteDailyRoom, DailyMeetingParticipant } from 'src/webhooks/daily_manager';
 import { DailyMeetingPayload, DailyParticipantPayload } from './daily_types';
 
 

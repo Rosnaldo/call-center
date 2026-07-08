@@ -28,6 +28,7 @@ const addToIamMock = usersService.addToIam as jest.Mock;
 const removeFromIamMock = usersService.removeFromIam as jest.Mock;
 const findUserBySlugMock = usersService.findUserBySlug as jest.Mock;
 const getCallByUserMock = callsService.getCallByUser as jest.Mock;
+const syncActiveCallMock = callsService.syncActiveCall as jest.Mock;
 const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
 
 const pendingCalls: Array<Promise<unknown>> = [];
@@ -165,6 +166,16 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
             pendingCalls.push(op);
             return op;
         });
+
+        // called once per onConnection — must resolve (not just return
+        // undefined, the jest.mock() default) or onConnection's try/catch
+        // swallows the error and the online_users_broadcast right after it
+        // never fires
+        syncActiveCallMock.mockImplementation(() => {
+            const op = Promise.resolve({ call: null, shouldJoin: false });
+            pendingCalls.push(op);
+            return op;
+        });
     });
 
     afterEach(() => {
@@ -173,7 +184,7 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         jest.useRealTimers();
     });
 
-    it('logout removes the user immediately — no grace period involved', async () => {
+    it('logout notifies the user directly and falls back to the normal disconnect grace period', async () => {
         const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
@@ -216,30 +227,47 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         simulateMessage(adminWs, { event: 'user_logout' });
         await flushPendingCalls();
 
-        // ── both receive user_logouted broadcast immediately on logout ───
+        // handleMessageLogout only sendToUser's the logging-out client itself
+        // (unlike a full broadcast) — the payload carries the full user record
         const adminLogoutMsg = adminMessages.find((m) => m.event === 'user_logouted');
-        const customerLogoutMsg = customerMessages.find((m) => m.event === 'user_logouted');
         expect(adminLogoutMsg).toBeTruthy();
-        expect(customerLogoutMsg).toBeTruthy();
-        expect(customerLogoutMsg.data).toEqual({ id: adminUser._id });
+        expect(adminLogoutMsg.data.user._id).toBe(adminUser._id);
 
-        // ── other clients receive online_users_broadcast after logout ───
-        // (admin's own socket is already terminated by handleMessageLogout
-        // by the time this fires, so admin itself won't see it, only others)
+        // customer never receives user_logouted — it's targeted at admin only
+        expect(customerMessages.find((m) => m.event === 'user_logouted')).toBeUndefined();
+
+        // handleMessageLogout terminates the socket, which fires the same
+        // 'close' handler as a raw disconnect — that's what starts the grace
+        // period and fires this broadcast, not the logout handler itself
         const customerBroadcast = customerMessages.find((m) => m.event === 'online_users_broadcast');
         expect(customerBroadcast).toBeTruthy();
 
-        // logout doesn't touch the grace period at all — admin is just gone
-        expect(graceTimer.has(adminUser._id)).toBe(false);
+        // logout no longer skips the grace period — ws.terminate() re-enters
+        // the normal disconnect flow, same as any other closed connection
+        expect(graceTimer.has(adminUser._id)).toBe(true);
 
-        // customer's web store no longer shows admin at all (removed, not
-        // just marked offline)
+        // no active call, so grace_period doesn't touch status — admin still
+        // shows up as idle immediately after logout
         const adminInCustomerStore = customerStores.onlineUsers.getState().users
             .find(u => u.id === adminUser._id);
-        expect(adminInCustomerStore).toBeUndefined();
-        expect(customerStores.onlineUsers.getState().users).toHaveLength(1);
+        expect(adminInCustomerStore).toBeDefined();
+        expect(adminInCustomerStore!.status).toBe('idle');
 
-        // IAM Redis no longer contains admin either (sync)
+        // ── advance past the grace period (2min), keeping customer's own
+        // Redis presence entry alive via heartbeats ───────────────────────
+        for (let i = 0; i < 4; i++) {
+            jest.advanceTimersByTime(30_000);
+            simulateMessage(customerWs, { event: 'heartbeat' });
+            await flushPendingCalls();
+        }
+        jest.advanceTimersByTime(1);
+        await flushPendingCalls();
+
+        // once the grace period expires, admin is finally removed
+        expect(
+            customerStores.onlineUsers.getState().users.find(u => u.id === adminUser._id),
+        ).toBeUndefined();
+
         const logoutRes = await iamRequest
             .get('/online-users/list')
             .set('Authorization', ADMIN_TOKEN);
@@ -248,7 +276,7 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         expect(adminInRedis).toBeUndefined();
     });
 
-    it('raw disconnect (no explicit logout) transitions status via online_users_broadcast, without targeting an unrelated user', async () => {
+    it('raw disconnect (no explicit logout) broadcasts online_users_broadcast, without targeting an unrelated user', async () => {
         const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
@@ -291,11 +319,13 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         expect(customerMessages.find((m) => m.event === 'user_logouted')).toBeUndefined();
         expect(customerMessages.find((m) => m.event === 'user_disconnected')).toBeUndefined();
 
-        // customer's web store shows admin as disconnecting (broadcast)
+        // customer's web store still shows admin as idle — grace_period only
+        // flips status to 'disconnecting' when there's an active call, and
+        // admin isn't in one here — but the broadcast itself still fires
         const adminInCustomerStore = customerStores.onlineUsers.getState().users
             .find(u => u.id === adminUser._id);
         expect(adminInCustomerStore).toBeDefined();
-        expect(adminInCustomerStore!.status).toBe('disconnecting');
+        expect(adminInCustomerStore!.status).toBe('idle');
 
         // ── advance past the grace period (2min) without admin reconnecting,
         // keeping customer's own Redis presence entry alive via heartbeats ──
@@ -334,14 +364,16 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
 
         expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
 
-        // ── admin logs out — removed immediately, no grace period ────────
+        // ── admin logs out — ws.terminate() re-enters the normal disconnect
+        // flow, so admin isn't removed immediately, just grace-timered like
+        // any other disconnect ────────────────────────────────────────────
         simulateMessage(adminWs, { event: 'user_logout' });
         await flushPendingCalls();
 
         expect(
             customerStores.onlineUsers.getState().users.find(u => u.id === adminUser._id),
-        ).toBeUndefined();
-        expect(graceTimer.has(adminUser._id)).toBe(false);
+        ).toBeDefined();
+        expect(graceTimer.has(adminUser._id)).toBe(true);
 
         // ── admin logs back in ────────────────────────────────────────────
         const { serverWs: adminWs2, webFactory: adminWebFactory2 } = createBridgedClient(adminUser, ADMIN_TOKEN);

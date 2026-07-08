@@ -144,7 +144,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
 
     const postDailyWebhook = async (body: Record<string, unknown>): Promise<void> => {
         await realtimeRequest.post('/webhooks/daily').send(body);
-        await wait(100);
+        await wait(300);
     };
 
     const joinPayload = (user: IUser) => ({
@@ -211,9 +211,9 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
     it('charges exactly one token and syncs both stores to null after a real overlap', async () => {
         const { customerWs, attendantWs } = bridgeBothUsers();
 
-        onConnection()(customerWs);
+        await onConnection()(customerWs);
         await flushPendingCalls();
-        onConnection()(attendantWs);
+        await onConnection()(attendantWs);
         await flushPendingCalls();
 
         const startingTokens = await getCustomerTokens();
@@ -234,14 +234,20 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         expect(call!.overlapStartedAt).not.toBeNull();
         expect(attendantStores.call.getState().call).toEqual(call);
 
-        // stay overlapped for a bit — any nonzero elapsed time under the
-        // 10-minute billing interval rounds up to exactly 1 token
-        await wait(1100);
+        // Billing charges 1 token once a 5-minute block is half elapsed (see
+        // computeTokensToBeCharged) — waiting 2.5min in real time isn't
+        // practical here, so backdate overlapStartedAt past that threshold
+        // instead of actually waiting for it.
+        await iamRequest.put('/calls/update').set('Authorization', CUSTOMER_TOKEN).send({
+            customerId: customerUser._id,
+            attendantId: attendantUser._id,
+            updates: { overlapStartedAt: Date.now() - 200_000 },
+        });
 
         // the customer hangs up directly (no explicit participant.left) —
         // IAM's /calls/complete must still compute elapsed time off overlapStartedAt
         await customerStores.call.getState().completeCall();
-        await wait(100);
+        await wait(300);
 
         // /calls/complete only flips presence + notifies (which, in production,
         // ejects both participants from the Daily room) — charging, call
@@ -271,9 +277,9 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
     it('charges zero tokens when the attendant never joins (no overlap)', async () => {
         const { customerWs, attendantWs } = bridgeBothUsers();
 
-        onConnection()(customerWs);
+        await onConnection()(customerWs);
         await flushPendingCalls();
-        onConnection()(attendantWs);
+        await onConnection()(attendantWs);
         await flushPendingCalls();
 
         const startingTokens = await getCustomerTokens();
@@ -287,7 +293,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         expect(attendantStores.call.getState().call).toEqual(call);
 
         await customerStores.call.getState().completeCall();
-        await wait(100);
+        await wait(300);
 
         await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: 'm-complete-2', room: roomName, start_ts: Date.now() / 1000 } });
 
@@ -300,8 +306,9 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         const res = await getCallRecordFromRedis();
         expect(res.body?.message).toBe('Call não encontrada');
 
+        // history is only recorded for charged calls — a zero-token call
+        // (no overlap) leaves no history record
         const history = await getCallHistoryRecord();
-        expect(history).not.toBeNull();
-        expect(history!.tokensToBeCharged).toBe(0);
+        expect(history).toBeNull();
     });
 });

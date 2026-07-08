@@ -29,6 +29,7 @@ const removeFromIamMock = usersService.removeFromIam as jest.Mock;
 const findUserBySlugMock = usersService.findUserBySlug as jest.Mock;
 const updateOnlineUserStatusMock = usersService.updateOnlineUserStatus as jest.Mock;
 const getCallByUserMock = callsService.getCallByUser as jest.Mock;
+const syncActiveCallMock = callsService.syncActiveCall as jest.Mock;
 const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
 
 const pendingCalls: Array<Promise<unknown>> = [];
@@ -175,6 +176,16 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
             pendingCalls.push(op);
             return op;
         });
+
+        // called once per onConnection — must resolve (not just return
+        // undefined, the jest.mock() default) or onConnection's try/catch
+        // swallows the error and the online_users_broadcast right after it
+        // never fires
+        syncActiveCallMock.mockImplementation(() => {
+            const op = Promise.resolve({ call: null, shouldJoin: false });
+            pendingCalls.push(op);
+            return op;
+        });
     });
 
     afterEach(() => {
@@ -183,7 +194,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         jest.useRealTimers();
     });
 
-    it('other web clients receive disconnecting status via broadcast', async () => {
+    it('other web clients still see idle status via broadcast when there is no active call', async () => {
         const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
@@ -206,20 +217,23 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         adminWs.terminate();
         await flushPendingCalls();
 
-        // customer's store shows admin as disconnecting (broadcast)
+        // grace_period only flips status to 'disconnecting' when the user
+        // has an active call — admin isn't in one here, so status stays
+        // 'idle', but the broadcast still fires and customer's store still
+        // reflects admin's (unchanged) presence entry
         const adminInStore = customerStores.onlineUsers.getState().users
             .find(u => u.id === adminUser._id);
         expect(adminInStore).toBeDefined();
-        expect(adminInStore!.status).toBe('disconnecting');
+        expect(adminInStore!.status).toBe('idle');
 
-        // IAM Redis shows admin as disconnecting (sync)
+        // IAM Redis still shows admin as idle (no active call)
         const res = await iamRequest
             .get('/online-users/list')
             .set('Authorization', CUSTOMER_TOKEN);
         const adminInRedis = res.body.users
             .find((u: IOnlineUser) => u.id === adminUser._id);
         expect(adminInRedis).toBeDefined();
-        expect(adminInRedis!.status).toBe('disconnecting');
+        expect(adminInRedis!.status).toBe('idle');
     });
 
     it('grace period expiry removes user and broadcasts removal', async () => {
@@ -238,14 +252,14 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         onConnection()(customerWs);
         await flushPendingCalls();
 
-        // ── admin disconnects ────────────────────────────────────────────
+        // ── admin disconnects — no active call, so status stays idle ─────
         adminWs.terminate();
         await flushPendingCalls();
 
         expect(
             customerStores.onlineUsers.getState().users
                 .find(u => u.id === adminUser._id)?.status,
-        ).toBe('disconnecting');
+        ).toBe('idle');
 
         // ── advance past grace period (2min), keeping customer's own Redis
         // presence entry alive via periodic heartbeats along the way (a real
@@ -298,14 +312,15 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         onConnection()(customerWs);
         await flushPendingCalls();
 
-        // ── admin disconnects — status transitions to disconnecting ──────
+        // ── admin disconnects — grace timer starts, but status stays idle
+        //    since there's no active call to flip it to disconnecting ────
         adminWs.terminate();
         await flushPendingCalls();
 
         expect(
             customerStores.onlineUsers.getState().users
                 .find(u => u.id === adminUser._id)?.status,
-        ).toBe('disconnecting');
+        ).toBe('idle');
         expect(graceTimer.has(adminUser._id)).toBe(true);
 
         // ── admin reconnects within grace period ─────────────────────────

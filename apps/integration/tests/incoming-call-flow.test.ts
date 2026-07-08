@@ -1,4 +1,5 @@
 jest.mock('src/services/users');
+jest.mock('src/services/calls');
 jest.mock('@/src/services/api/online-users', () => ({
     fetchOnlineUsers: jest.fn(),
 }));
@@ -29,9 +30,11 @@ import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 import * as usersService from 'src/services/users';
+import * as callsService from 'src/services/calls';
 import * as onlineUsersService from '@/src/services/api/online-users';
 
 const addToIamMock = usersService.addToIam as jest.Mock;
+const syncActiveCallMock = callsService.syncActiveCall as jest.Mock;
 const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
 
 const pendingCalls: Array<Promise<unknown>> = [];
@@ -103,6 +106,12 @@ describe('Incoming Call Flow', () => {
         const redis = getRedisClient();
         const icKeys = await redis.keys('incoming_call:*');
         if (icKeys.length) await redis.del(...icKeys);
+        // /online-users/add preserves an existing 'in-call'/'occupied' status
+        // across a reconnect (see add.ts) — without clearing this, status
+        // left by one test leaks into the next test's guards (e.g.
+        // sendIncomingCall's "attendant busy" check)
+        const onlineKeys = await redis.keys('online_user:*');
+        if (onlineKeys.length) await redis.del(...onlineKeys);
 
         clientRegistry.clear();
         pendingCalls.length = 0;
@@ -121,6 +130,16 @@ describe('Incoming Call Flow', () => {
                 .post('/online-users/add')
                 .set('Authorization', CUSTOMER_TOKEN)
                 .send(user);
+            pendingCalls.push(op);
+            return op;
+        });
+
+        // called once per onConnection — must resolve (not just return
+        // undefined, the jest.mock() default) or onConnection's try/catch
+        // swallows the error and the online_users_broadcast right after it
+        // never fires
+        syncActiveCallMock.mockImplementation(() => {
+            const op = Promise.resolve({ call: null, shouldJoin: false });
             pendingCalls.push(op);
             return op;
         });
@@ -180,9 +199,9 @@ describe('Incoming Call Flow', () => {
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
-        onConnection()(customerWs);
+        await onConnection()(customerWs);
         await flushPendingCalls();
-        onConnection()(attendantWs);
+        await onConnection()(attendantWs);
         await flushPendingCalls();
 
         // ── customer triggers sendIncomingCall ────────────────────────
@@ -190,7 +209,7 @@ describe('Incoming Call Flow', () => {
             customerUser._id,
             attendantUser._id,
         );
-        await new Promise((r) => setTimeout(r, 50));
+        await new Promise((r) => setTimeout(r, 250));
 
         // ── both receive events ──────────────────────────────────────
         const sentMsg = customerMessages.find((m) => m.event === 'incoming_call_sent');
@@ -247,9 +266,9 @@ describe('Incoming Call Flow', () => {
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
-        onConnection()(customerWs);
+        await onConnection()(customerWs);
         await flushPendingCalls();
-        onConnection()(attendantWs);
+        await onConnection()(attendantWs);
         await flushPendingCalls();
 
         // ── send incoming call ────────────────────────────────────────
@@ -257,7 +276,7 @@ describe('Incoming Call Flow', () => {
             customerUser._id,
             attendantUser._id,
         );
-        await new Promise((r) => setTimeout(r, 50));
+        await new Promise((r) => setTimeout(r, 250));
 
         expect(customerStores.callView.getState().viewState).toBe('awaiting-answer');
 
@@ -266,7 +285,7 @@ describe('Incoming Call Flow', () => {
         attendantMessages.length = 0;
 
         customerStores.incomingCall.getState().cancelIncomingCall();
-        await new Promise((r) => setTimeout(r, 50));
+        await new Promise((r) => setTimeout(r, 250));
 
         const customerCancelMsg = customerMessages.find((m) => m.event === 'incoming_call_cancelled');
         const attendantCancelMsg = attendantMessages.find((m) => m.event === 'incoming_call_cancelled');
@@ -318,9 +337,9 @@ describe('Incoming Call Flow', () => {
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
-        onConnection()(customerWs);
+        await onConnection()(customerWs);
         await flushPendingCalls();
-        onConnection()(attendantWs);
+        await onConnection()(attendantWs);
         await flushPendingCalls();
 
         // ── send incoming call ────────────────────────────────────────
@@ -328,7 +347,7 @@ describe('Incoming Call Flow', () => {
             customerUser._id,
             attendantUser._id,
         );
-        await new Promise((r) => setTimeout(r, 50));
+        await new Promise((r) => setTimeout(r, 250));
 
         expect(attendantStores.callView.getState().viewState).toBe('awaiting-to-answer');
 
@@ -337,7 +356,7 @@ describe('Incoming Call Flow', () => {
         attendantMessages.length = 0;
 
         attendantStores.incomingCall.getState().cancelIncomingCall();
-        await new Promise((r) => setTimeout(r, 50));
+        await new Promise((r) => setTimeout(r, 250));
 
         const attendantCancelMsg = attendantMessages.find((m) => m.event === 'incoming_call_cancelled');
         const customerCancelMsg = customerMessages.find((m) => m.event === 'incoming_call_cancelled');
