@@ -214,7 +214,6 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
             attendantId: attendantUser._id,
             attendantName: `${attendantUser.firstName} ${attendantUser.lastName}`,
             roomName,
-            meetingId: '',
             activeUserIds: [],
             accumulatedMs: 0,
             overlapStartedAt: null,

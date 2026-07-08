@@ -45,7 +45,7 @@ export class Create {
     };
 
     public readonly mapper = (body: Request['body']): IInput => {
-        const { id, customerId, customerName, attendantId, attendantName, roomName, meetingId, activeUserIds, accumulatedMs, overlapStartedAt, startedAt, endedAt, isPlaying, tokensToBeCharged } = body;
+        const { id, customerId, customerName, attendantId, attendantName, roomName, activeUserIds, accumulatedMs, overlapStartedAt, startedAt, endedAt, isPlaying, tokensToBeCharged } = body;
         return {
             id: mapString(id),
             customerId: mapString(customerId),
@@ -53,7 +53,6 @@ export class Create {
             attendantId: mapString(attendantId),
             attendantName: mapString(attendantName),
             roomName: mapString(roomName),
-            meetingId: mapString(meetingId),
             activeUserIds: mapArray(activeUserIds, []),
             accumulatedMs: typeof accumulatedMs === 'number' ? accumulatedMs : 0,
             overlapStartedAt: typeof overlapStartedAt === 'number' ? overlapStartedAt : null,

@@ -40,5 +40,5 @@ export class DailyCoService implements IDailyService {
 
     destroy(): void {}
 
-    rebuild(): void {}
+    async rebuild(): Promise<void> {}
 }

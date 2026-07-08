@@ -47,7 +47,6 @@ export interface CallState {
     attendantId: string;
     attendantName: string;
     roomName: string;
-    meetingId: string;
     activeUserIds: string[];
     accumulatedMs: number;
     overlapStartedAt: number | null;

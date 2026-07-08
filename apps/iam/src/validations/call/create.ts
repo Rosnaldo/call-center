@@ -12,7 +12,6 @@ export const inputSchema = z.object({
     attendantId: makeSmallStringSchema('attendantId'),
     attendantName: makeSmallStringSchema('attendantName'),
     roomName: makeSmallStringSchema('roomName'),
-    meetingId: makeSmallStringSchema('meetingId').or(z.literal('')),
     activeUserIds: z.array(z.string()),
     accumulatedMs: z.number(),
     overlapStartedAt: z.number().nullable(),

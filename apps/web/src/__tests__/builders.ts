@@ -24,7 +24,6 @@ export const buildCall = (d?: Partial<CallState>): CallState => ({
   attendantId: d?.attendantId ?? nextId(),
   attendantName: d?.attendantName ?? 'Test Attendant',
   roomName: d?.roomName ?? 'test-room',
-  meetingId: d?.meetingId ?? 'test-meeting',
   activeUserIds: d?.activeUserIds ?? [],
   accumulatedMs: d?.accumulatedMs ?? 0,
   overlapStartedAt: d?.overlapStartedAt !== undefined ? d.overlapStartedAt : Date.now(),

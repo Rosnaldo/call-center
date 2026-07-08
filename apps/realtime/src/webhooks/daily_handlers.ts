@@ -41,7 +41,6 @@ export async function onMeetingStarted(traceId: string, payload: DailyMeetingPay
                 attendantId: attendant._id,
                 attendantName: `${attendant.firstName} ${attendant.lastName}`,
                 roomName: payload.room,
-                meetingId: payload.meeting_id,
                 activeUserIds: [],
                 accumulatedMs: 0,
                 overlapStartedAt: null,
@@ -52,7 +51,6 @@ export async function onMeetingStarted(traceId: string, payload: DailyMeetingPay
             });
         } else {
             await updateCall(traceId, call.customerId, call.attendantId, {
-                meetingId: payload.meeting_id,
                 startedAt: new Date(),
             });
         }
@@ -89,7 +87,7 @@ export async function onMeetingEnded(traceId: string, payload: DailyMeetingPaylo
             attendantId: endedCall.attendantId,
             attendantName: endedCall.attendantName,
             roomName: endedCall.roomName,
-            meetingId: endedCall.meetingId,
+            meetingId: payload.meeting_id,
             accumulatedMs: endedCall.accumulatedMs,
             startedAt: endedCall.startedAt,
             endedAt: endedCall.endedAt,
@@ -155,7 +153,6 @@ export async function onParticipantJoined(traceId: string, payload: DailyPartici
                 attendantId: attendant._id,
                 attendantName: `${attendant.firstName} ${attendant.lastName}`,
                 roomName: payload.room,
-                meetingId: '',
                 activeUserIds: [],
                 accumulatedMs: 0,
                 overlapStartedAt: null,
