@@ -1,4 +1,4 @@
-import { CallState, computeTokensToBeCharged, getCallElapsedMs } from '@repo/shared-types';
+import { CallState, IUser, computeTokensToBeCharged, getCallElapsedMs } from '@repo/shared-types';
 import { buildLogger } from '#logger';
 import { sendToUser, broadcastMessage } from '#websocket/broadcast';
 import { findUserBySlug } from 'src/services/users';
@@ -7,6 +7,15 @@ import { deleteChat } from 'src/services/chat';
 import { createIamClient } from 'src/apis/iam';
 import { parseRoomName } from 'src/helpers/parse_room_name';
 import { DailyMeetingPayload, DailyParticipantPayload } from './daily_types';
+
+
+const resolveParticipantId = (payload: DailyParticipantPayload, customer: IUser, attendant: IUser): string => {
+    if (payload.user_id === customer._id || payload.user_id === attendant._id) return payload.user_id;
+
+    const decodedName = decodeURIComponent(payload.user_name);
+    const isCustomer = `${customer.firstName} ${customer.lastName}` === decodedName;
+    return isCustomer ? customer._id : attendant._id;
+};
 
 export async function onMeetingStarted(traceId: string, payload: DailyMeetingPayload): Promise<void> {
     const logger = buildLogger(traceId);
@@ -157,8 +166,7 @@ export async function onParticipantJoined(traceId: string, payload: DailyPartici
             });
         }
 
-        const isCustomer = `${customer.firstName} ${customer.lastName}` === payload.user_name;
-        const userId = isCustomer ? customer._id : attendant._id;
+        const userId = resolveParticipantId(payload, customer, attendant);
 
         call = await updateCallParticipant(traceId, call.customerId, call.attendantId, userId, true);
 
@@ -186,8 +194,7 @@ export async function onParticipantLeft(traceId: string, payload: DailyParticipa
 
         let call = await getCallByRoom(traceId, payload.room);
         if (call) {
-            const isCustomer = `${customer.firstName} ${customer.lastName}` === payload.user_name;
-            const userId = isCustomer ? customer._id : attendant._id;
+            const userId = resolveParticipantId(payload, customer, attendant);
 
             call = await updateCallParticipant(traceId, call.customerId, call.attendantId, userId, false);
 

@@ -42,13 +42,6 @@ export const createTimerActions = (
       });
     },
 
-    // Called whenever the customer or attendant browser receives a fresh
-    // CallState (meeting started / participant joined / participant left).
-    // The backend owns call.isPlaying and is the single source of truth for
-    // whether the shared timer should be running — the web side just mirrors
-    // it, rather than re-deriving it locally, so both users' stores.timer
-    // stay in lockstep regardless of component mount timing. elapsedSeconds
-    // still comes from call.accumulatedMs/startedAt via getCallElapsedMs.
     syncFromCall: (call: CallState | null) => {
       if (!call) {
         set(() => ({ status: 'stopped', elapsedSeconds: 0 }));
