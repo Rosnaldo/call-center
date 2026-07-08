@@ -38,7 +38,7 @@ const renderNoneViewport = () => (
 const renderAwaitingAttendant = (partner: IOnlineUser | undefined) => (
   <div id="viewport-awaiting-attendant" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
     <PartnerAvatar partner={partner} size="md" pulse />
-    <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1">
+    <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase  mt-2.5 mb-1">
       {i18n.t('call.incomingCall')}
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">
@@ -53,7 +53,7 @@ const renderAwaitingAttendant = (partner: IOnlineUser | undefined) => (
 const renderAwaitingClient = (partner: IOnlineUser | undefined) => (
   <div id="viewport-awaiting-client" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
     <PartnerAvatar partner={partner} size="md" pulse />
-    <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1">
+    <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mt-2.5 mb-1">
       {i18n.t('call.callStarted')}
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">
@@ -65,7 +65,7 @@ const renderAwaitingClient = (partner: IOnlineUser | undefined) => (
 const renderInterruptedAttendant = (partner: IOnlineUser | undefined) => (
   <div id="viewport-interrupted-attendant" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
     <PartnerAvatar partner={partner} size="md" pulse />
-    <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mb-1">
+    <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mt-2.5 mb-1">
       {i18n.t('call.connectionInterrupted')}
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">
@@ -80,7 +80,7 @@ const renderInterruptedAttendant = (partner: IOnlineUser | undefined) => (
 const renderInterruptedClient = (partner: IOnlineUser | undefined) => (
   <div id="viewport-interrupted-client" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
     <PartnerAvatar partner={partner} size="md" pulse />
-    <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mb-1">
+    <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mt-2.5">
       {i18n.t('call.connectionInterrupted')}
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">
@@ -95,7 +95,7 @@ const renderInterruptedClient = (partner: IOnlineUser | undefined) => (
 const renderLobbyViewport = (attendant: IOnlineUser) => (
   <div id="viewport-lobby" className="flex flex-col items-center justify-center gap-3 p-8 text-center max-w-sm font-sans">
     <PartnerAvatar partner={attendant} size="md" fadeIn />
-    <h3 className="text-sm font-semibold text-slate-100 tracking-wide">
+    <h3 className="text-sm font-semibold text-slate-100 tracking-wide mt-2.5">
       {attendant.name}
     </h3>
   </div>
@@ -104,7 +104,7 @@ const renderLobbyViewport = (attendant: IOnlineUser) => (
 const renderAwaitingAnswer = (attendant: IOnlineUser | null) => (
   <div id="viewport-awaiting-answer" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
     <PartnerAvatar partner={attendant} size="md" pulse />
-    <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mb-1">
+    <h3 className="text-sm font-bold text-brand-ochre tracking-wide uppercase mt-2.5 mb-1">
       {i18n.t('call.callStarted')}
     </h3>
     <p className="text-xs text-slate-300 font-medium select-text">

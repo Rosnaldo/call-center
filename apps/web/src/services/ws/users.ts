@@ -1,6 +1,5 @@
-import { CallState } from '@repo/shared-types';
+import { CallState, IUser } from '@repo/shared-types';
 import type { OnlineUsersStoreInstance, CallStoreInstance, CallViewStoreInstance, CurrentUserStoreInstance, MeetingStoreInstance } from '../../states/stores';
-import { fetchCallByUser } from '../api/calls.ts';
 import { mytoast } from '../../components/toast';
 import i18n from '../../i18n.ts';
 
@@ -8,7 +7,7 @@ export type WsUsersMessage =
     | { event: 'online_users_broadcast' }
     | { event: 'user_connected'; data: { call: CallState | null; shouldJoin: boolean } }
     | { event: 'heartbeat_ack' }
-    | { event: 'user_logouted'; data: { id: string } }
+    | { event: 'user_logouted'; data: { user: IUser } }
     | { event: 'user_disconnecting'; data: { id: string; call?: CallState } }
     | { event: 'user_disconnected'; data: { id: string; call?: CallState } }
     | { event: 'partner_reconnected'; data: { call: CallState } }
@@ -55,26 +54,9 @@ export class WsUsersService {
         this.ackRef = null;
     }
 
-    // user_logouted is still a broadcast to everyone (unlike the disconnect
-    // events below, which realtime now targets directly), so this is the
-    // only case left that has to look up the call itself to decide if it's
-    // relevant to me.
-    private async warnIfPartOfMyCall(departedUserId: string, messageKey: 'call.participantLoggedOut' | 'call.participantDisconnected'): Promise<void> {
-        const currentUser = this.stores.currentUser.getState().currentUser;
-        if (!currentUser || departedUserId === currentUser.id) return;
-
+    private async warnIfPartOfMyCall(user: IUser, messageKey: 'call.participantLoggedOut' | 'call.participantDisconnected'): Promise<void> {
         try {
-            const call = await fetchCallByUser(currentUser.id);
-            if (!call) return;
-
-            const name = call.customerId === departedUserId
-                ? call.customerName
-                : call.attendantId === departedUserId
-                    ? call.attendantName
-                    : undefined;
-            if (!name) return;
-
-            mytoast.warn(i18n.t(messageKey, { name }));
+            mytoast.warn(i18n.t(messageKey, { name: `${user.firstName} ${user.lastName}` }));
         } catch (error) {
             console.error(error);
         }
@@ -94,7 +76,7 @@ export class WsUsersService {
                 this.cancelAck();
                 return true;
             case 'user_logouted':
-                this.warnIfPartOfMyCall(msg.data.id, 'call.participantLoggedOut');
+                this.warnIfPartOfMyCall(msg.data.user, 'call.participantLoggedOut');
                 return true;
             case 'user_disconnecting':
                 this.stores.meeting.getState().userDisconnecting(msg.data);

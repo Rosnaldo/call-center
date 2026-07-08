@@ -18,9 +18,15 @@ export const getCallByRoom = async (_traceId: string, roomName: string): Promise
     }
 };
 
-export const createCallForRoom = async (_traceId: string, _roomName: string): Promise<CallState | null> => null;
+export interface SyncActiveCallResult {
+    call: CallState | null;
+    shouldJoin: boolean;
+}
 
-export const touchCall = async (_traceId: string, _customerId: string, _attendantId: string): Promise<void> => {};
+export const syncActiveCall = async (_traceId: string, userId: string): Promise<SyncActiveCallResult> => {
+    const { data } = await api.post<SyncActiveCallResult>('/calls/sync-active-call', { userId });
+    return data;
+};
 
 export const updateCall = async (_traceId: string, customerId: string, attendantId: string, updates: Partial<CallState>): Promise<CallState> => {
     const { data } = await api.put<CallState>('/calls/update', { customerId, attendantId, updates });
