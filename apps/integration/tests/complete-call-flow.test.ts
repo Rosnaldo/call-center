@@ -158,10 +158,10 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         },
     });
 
-    // meeting.started only creates a call record when one doesn't already
-    // exist for the room, but onMeetingStarted's getCallByRoom lookup throws
-    // (rather than returning null) on a 400 "not found" — so, matching the
-    // accept-call flow, the call must already exist before the webhook fires.
+    // mirrors the accept-call flow, which creates the redis record before the
+    // Daily room is ever joined — onMeetingStarted would self-heal via
+    // createCall if this were skipped, but pre-creating it here keeps the test
+    // focused on the billing/sync behavior rather than the recovery path.
     const createCallRecord = async (): Promise<void> => {
         await iamRequest.post('/calls/create').set('Authorization', CUSTOMER_TOKEN).send({
             id: `${customerUser._id}--${attendantUser._id}`,
@@ -243,10 +243,10 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         await customerStores.call.getState().completeCall();
         await wait(100);
 
-        // /calls/complete only flips presence + notifies — charging, call
+        // /calls/complete only flips presence + notifies (which, in production,
+        // ejects both participants from the Daily room) — charging, call
         // history, and the final store clear happen off Daily's own
-        // meeting.ended webhook, which in production fires once deleteDailyRoom
-        // (triggered by the call_completed webhook) tears the room down
+        // meeting.ended webhook, which is also what triggers deleteDailyRoom
         await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: 'm-complete-1', room: roomName, start_ts: Date.now() / 1000 } });
 
         const endingTokens = await getCustomerTokens();

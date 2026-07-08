@@ -51,11 +51,10 @@ export const CallFooterActions: React.FC = () => {
 
   if (viewState === 'none') return null;
 
-  if (viewState === 'awaiting-answer') {
-    return <CancelCallButton onClick={handleCancelCall} />;
-  }
-
-  if (viewState === 'in-call') {
+  // No manual "return" control while interrupted — that resolves on its own,
+  // either via the partner's real rejoin or their websocket reconnecting.
+  // Ending the call outright is still available, same as a normal in-call.
+  if (viewState === 'in-call' || viewState === 'call-interrupted') {
     return (
       <>
         <EndCallButton
@@ -71,6 +70,10 @@ export const CallFooterActions: React.FC = () => {
         />
       </>
     );
+  }
+
+  if (viewState === 'awaiting-answer') {
+    return <CancelCallButton onClick={handleCancelCall} />;
   }
 
   if (viewState === 'awaiting-to-answer' && !isReceiving) {

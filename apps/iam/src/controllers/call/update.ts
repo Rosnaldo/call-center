@@ -6,6 +6,7 @@ import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
 import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
+import { CALL_TTL_SECONDS } from '#const/redis_ttl';
 import { CallState } from '@repo/shared-types';
 import { ICallController } from './params';
 
@@ -43,7 +44,7 @@ export class Update {
 
             const call = JSON.parse(existing) as CallState;
             const updated = { ...call, ...updates };
-            await redis.set(key, JSON.stringify(updated));
+            await redis.set(key, JSON.stringify(updated), 'EX', CALL_TTL_SECONDS);
 
             return successData(updated);
         } catch (error: unknown) {

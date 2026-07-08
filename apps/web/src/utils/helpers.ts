@@ -1,6 +1,7 @@
 import ringtoneUrl from '../assets/ring.mp3';
 
 let ringtoneAudio: HTMLAudioElement | null = null;
+let ringtoneUnlockCleanup: (() => void) | null = null;
 let audioUnlocked = false;
 
 export function primeAudioPlayback() {
@@ -29,15 +30,41 @@ export function primeAudioPlayback() {
 export function playRingtone() {
   stopRingtone();
   try {
-    ringtoneAudio = new Audio(ringtoneUrl);
-    ringtoneAudio.loop = true;
-    void ringtoneAudio.play().catch((err) => console.warn('Ringtone playback was blocked.', err));
+    const audio = new Audio(ringtoneUrl);
+    audio.loop = true;
+    ringtoneAudio = audio;
+
+    audio.play().catch((err) => {
+      // Browsers block audio.play() before the page has ever seen a user
+      // gesture — primeAudioPlayback() only unlocks future calls, it can't
+      // retroactively resume this one, so this call's ring would otherwise
+      // just stay silent (a real bug we saw: ring only worked from the
+      // *second* incoming call onward). Retry once the user interacts at all.
+      console.warn('Ringtone playback was blocked, will retry on next interaction.', err);
+
+      const retry = () => {
+        ringtoneUnlockCleanup = null;
+        if (ringtoneAudio === audio) {
+          void audio.play().catch((e) => console.warn('Ringtone retry playback was blocked.', e));
+        }
+      };
+      document.addEventListener('pointerdown', retry, { once: true, capture: true });
+      document.addEventListener('keydown', retry, { once: true, capture: true });
+      ringtoneUnlockCleanup = () => {
+        document.removeEventListener('pointerdown', retry, true);
+        document.removeEventListener('keydown', retry, true);
+      };
+    });
   } catch (err) {
     console.warn('Ringtone playback failed.', err);
   }
 }
 
 export function stopRingtone() {
+  if (ringtoneUnlockCleanup) {
+    ringtoneUnlockCleanup();
+    ringtoneUnlockCleanup = null;
+  }
   if (!ringtoneAudio) return;
   ringtoneAudio.pause();
   ringtoneAudio.currentTime = 0;

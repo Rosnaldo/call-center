@@ -7,15 +7,15 @@ import { BadRequestException } from '#exceptions/bad_request';
 import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { IIncomingCallController } from './params';
-import { IncomingCallState, CallState, IOnlineUser } from '@repo/shared-types';
+import { IncomingCallState, IOnlineUser } from '@repo/shared-types';
 import { notifyCallAccepted } from 'src/services/realtime';
+import { ensureDailyRoom } from 'src/services/daily';
 import { validateInput } from 'src/validations/incoming_call/accept';
 
 type IInput = IIncomingCallController['IAccept']['IInput'];
 type IOutput = IIncomingCallController['IAccept']['IOutput'];
 
 const INCOMING_CALL_PREFIX = 'incoming_call:';
-const CALLS_KEY = 'calls';
 const ONLINE_USERS_PREFIX = 'online_user:';
 
 interface Props {
@@ -51,12 +51,9 @@ export class Accept {
                 throw new BadRequestException('Customer não deve atender ligação');
             }
 
-            const callKey = `${CALLS_KEY}:${incomingCall.customerId}--${incomingCall.attendantId}`;
-
-            const [customerJson, attendantJson, existingCall] = await Promise.all([
+            const [customerJson, attendantJson] = await Promise.all([
                 redis.get(`${ONLINE_USERS_PREFIX}${incomingCall.customerId}`),
                 redis.get(`${ONLINE_USERS_PREFIX}${incomingCall.attendantId}`),
-                redis.get(callKey),
             ]);
 
             if (!customerJson) throw new BadRequestException('Cliente não encontrado.');
@@ -64,32 +61,18 @@ export class Accept {
 
             const customer = JSON.parse(customerJson) as IOnlineUser;
             const attendant = JSON.parse(attendantJson) as IOnlineUser;
-
-            if (!existingCall) {
-                const newCall: CallState = {
-                    id: `${incomingCall.customerId}--${incomingCall.attendantId}`,
-                    customerId: incomingCall.customerId,
-                    customerName: customer.name,
-                    attendantId: incomingCall.attendantId,
-                    attendantName: attendant.name,
-                    roomName: `${customer.slug}--${attendant.slug}`,
-                    activeUserIds: [],
-                    accumulatedMs: 0,
-                    overlapStartedAt: null,
-                    startedAt: null,
-                    endedAt: null,
-                    isPlaying: false,
-                    tokensToBeCharged: 0,
-                };
-                await redis.set(callKey, JSON.stringify(newCall));
-            }
+            const roomName = `${customer.slug}--${attendant.slug}`;
 
             await redis.del(`${INCOMING_CALL_PREFIX}${attendantId}`);
 
             await redis.set(`${ONLINE_USERS_PREFIX}${customer.id}`, JSON.stringify({ ...customer, status: 'in-call' }), 'EX', 90);
             await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'in-call' }), 'EX', 90);
 
-            notifyCallAccepted(traceId, incomingCall.customerId, incomingCall.attendantId, incomingCall.calledBy, incomingCall).catch(() => {});
+            // Awaited: the room must exist before the client is told the call
+            // was accepted, or it can try to join before it's there.
+            await ensureDailyRoom(roomName);
+
+            notifyCallAccepted(traceId, incomingCall.customerId, incomingCall.attendantId, incomingCall.calledBy, roomName, incomingCall).catch(() => {});
 
             return successData(incomingCall);
         } catch (error: unknown) {

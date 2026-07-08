@@ -1,4 +1,5 @@
 import DailyIframe, { type DailyCall } from "@daily-co/daily-js";
+import { MAX_CALL_DURATION_SECONDS } from "@repo/shared-types";
 import { useDevicesStore } from "../states/stores.ts";
 
 export interface JoinOptions {
@@ -79,7 +80,16 @@ export class DailyService implements IDailyService {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.config.apiKey}`,
       },
-      body: JSON.stringify({ properties: { room_name: roomName, user_id: userId } }),
+      body: JSON.stringify({
+        properties: {
+          room_name: roomName,
+          user_id: userId,
+          // Belt-and-suspenders alongside IAM's calls:* redis TTL: even if
+          // our own eject/cleanup path never runs, Daily force-ends the
+          // meeting on its own after the same ceiling.
+          eject_after_elapsed: MAX_CALL_DURATION_SECONDS,
+        },
+      }),
     });
 
     if (!res.ok) {
@@ -91,29 +101,7 @@ export class DailyService implements IDailyService {
     return data.token;
   }
 
-  private async ensureRoom(roomName: string): Promise<void> {
-    const res = await fetch(`https://api.daily.co/v1/rooms/${roomName}`, {
-      headers: { Authorization: `Bearer ${this.config.apiKey}` },
-    });
-
-    if (res.ok) return;
-
-    const createRes = await fetch('https://api.daily.co/v1/rooms', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.config.apiKey}`,
-      },
-      body: JSON.stringify({ name: roomName }),
-    });
-
-    if (!createRes.ok) {
-      console.error('[Daily] failed to create room:', createRes.status);
-    }
-  }
-
   async join(options: JoinOptions) {
-    await this.ensureRoom(options.room);
     const token = await this.getMeetingToken(options.room, options.userId);
 
     if (!token) {

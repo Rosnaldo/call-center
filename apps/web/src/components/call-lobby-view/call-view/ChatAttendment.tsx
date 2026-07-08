@@ -13,6 +13,8 @@ interface ChatAttendmentProps {
   isOpen: boolean;
   onClose: () => void;
   messages: Message[];
+  hasUnreadMessage?: boolean;
+  onMessagesSeen?: () => void;
   currentUserRole: 'attendant' | 'customer';
   partnerName: string;
   partnerAvatarUrl?: string;
@@ -30,6 +32,8 @@ export const ChatAttendment: React.FC<ChatAttendmentProps> = ({
   isOpen,
   onClose,
   messages,
+  hasUnreadMessage = false,
+  onMessagesSeen,
   currentUserRole,
   partnerName,
   partnerAvatarUrl,
@@ -50,6 +54,13 @@ export const ChatAttendment: React.FC<ChatAttendmentProps> = ({
       container.scrollTop = container.scrollHeight;
     }
   }, [messages]);
+
+  // The unread dot is only ever meant to be seen while the box is closed
+  // (on the toggle button) — the moment the user opens it, it's considered
+  // seen, so clear it here rather than in the toggle handler itself.
+  useEffect(() => {
+    if (isOpen) onMessagesSeen?.();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -82,7 +93,12 @@ export const ChatAttendment: React.FC<ChatAttendmentProps> = ({
             <MessageSquare className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-xs font-bold text-gray-900 tracking-tight font-display">Chat de Atendimento</h3>
+            <h3 className="text-xs font-bold text-gray-900 tracking-tight font-display flex items-center gap-1.5">
+              Chat de Atendimento
+              {hasUnreadMessage && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#c9a86a]" />
+              )}
+            </h3>
             <p className="text-[9px] text-gray-400 font-mono mt-0.5">{partnerName || 'Atendimento'} • Online</p>
           </div>
         </div>

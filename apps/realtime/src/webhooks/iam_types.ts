@@ -15,6 +15,7 @@ export interface AcceptCallPayload {
     customerId: string;
     attendantId: string;
     calledBy: string;
+    roomName: string;
     incomingCall: { customerId: string; attendantId: string; calledBy: string };
 }
 

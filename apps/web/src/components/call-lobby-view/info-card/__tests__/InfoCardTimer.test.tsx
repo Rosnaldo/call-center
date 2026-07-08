@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { MINUTES_PER_TOKEN } from '@repo/shared-types';
 import { InfoCard } from '../InfoCard.tsx';
 import { buildCall, buildOnlineUserState } from '../../../../__tests__/builders.ts';
-import { useBillingStore, useCallStore, useCallViewStore, useOnlineUsersStore, useTimerStore } from '../../../../states/stores.ts';
+import { useBillingStore, useCallStore, useCallViewStore, useCurrentUserStore, useOnlineUsersStore, useTimerStore } from '../../../../states/stores.ts';
 
 const BLOCK = MINUTES_PER_TOKEN * 60; // 300s
 const HALF_BLOCK = BLOCK / 2; // 150s
@@ -23,7 +23,14 @@ beforeEach(() => {
   useCallViewStore.setState({ viewState: 'none', selectedAttendantId: null });
   useBillingStore.getState().setInitialTokens(0);
   useTimerStore.setState({ status: 'stopped', elapsedSeconds: 0 });
+  useCurrentUserStore.setState({ currentUser: null });
 });
+
+const setupCustomerViewer = () => {
+  useCurrentUserStore.setState({
+    currentUser: { id: 'viewer-customer', name: 'Cliente', slug: 'cliente', email: 'cliente@example.com', role: 'customer', avatarUrl: '', status: 'in-call' },
+  });
+};
 
 describe('InfoCard – billing countdown timer (half-cycle rule)', () => {
   it('renders nothing when there is no active call', () => {
@@ -139,6 +146,7 @@ describe('InfoCard – billing countdown timer (half-cycle rule)', () => {
   });
 
   it('displays the customer balance in "Seu Saldo"', () => {
+    setupCustomerViewer();
     setupCall(7);
 
     render(<InfoCard />);
@@ -148,6 +156,7 @@ describe('InfoCard – billing countdown timer (half-cycle rule)', () => {
   });
 
   it('updates Seu Saldo when the customer balance changes in the store', () => {
+    setupCustomerViewer();
     const call = setupCall(5);
     const { rerender } = render(<InfoCard />);
     expect(screen.getByText('5 tks')).toBeDefined();
@@ -155,6 +164,18 @@ describe('InfoCard – billing countdown timer (half-cycle rule)', () => {
     useOnlineUsersStore.setState({ users: [buildOnlineUserState({ id: call.customerId, tokens: 4 })] });
     rerender(<InfoCard />);
     expect(screen.getByText('4 tks')).toBeDefined();
+  });
+
+  it('hides "Seu Saldo" for attendant/admin viewers', () => {
+    setupCall(7);
+    useCurrentUserStore.setState({
+      currentUser: { id: 'viewer-attendant', name: 'Atendente', slug: 'atendente', email: 'atendente@example.com', role: 'attendant', avatarUrl: '', status: 'in-call' },
+    });
+
+    render(<InfoCard />);
+
+    expect(screen.queryByText('SEU SALDO:')).toBeNull();
+    expect(screen.queryByText('7 tks')).toBeNull();
   });
 
   it('shows the contracted rate based on MINUTES_PER_TOKEN', () => {

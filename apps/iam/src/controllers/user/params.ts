@@ -38,7 +38,6 @@ interface IEditInput {
     lastName?: IUser['IParams']['lastName'];
     email?: IUser['IParams']['email'];
     role?: IUser['IParams']['role'];
-    addTokens?: number;
 }
 
 type IEditOutput = IUser['IParams'];
@@ -58,9 +57,20 @@ type IFindBySlugOutput = IUser['IParams'];
 interface IChargeTokenInput {
     customerId: string;
     tokens: number;
+    attendantName: string;
+    durationMs: number;
+    endedAt: Date;
 }
 
 type IChargeTokenOutput = IUser['IParams'];
+
+interface IGiveTokenInput {
+    customerId: string;
+    tokens: number;
+    message: string;
+}
+
+type IGiveTokenOutput = IUser['IParams'];
 
 export interface IUserController {
     IPaginacao: {
@@ -93,5 +103,9 @@ export interface IUserController {
     IChargeToken: {
         IInput: IChargeTokenInput;
         IOutput: IChargeTokenOutput;
+    };
+    IGiveToken: {
+        IInput: IGiveTokenInput;
+        IOutput: IGiveTokenOutput;
     };
 }

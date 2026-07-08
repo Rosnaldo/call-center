@@ -44,6 +44,34 @@ export default (app: Application) => {
         }
     );
 
+    app.put(
+        '/online-users/touch',
+        GetKeycloakUser,
+        async (req, res) => {
+            const controller = new OnlineUserController();
+            const mapped = controller.touch.mapper(req.body);
+            const either = await controller.touch.exec({ mapped });
+            if (either.isError) {
+                return res.status(either.status).send(either);
+            }
+            return res.status(200).send(either.data);
+        }
+    );
+
+    app.put(
+        '/online-users/update-status',
+        GetKeycloakUser,
+        async (req, res) => {
+            const controller = new OnlineUserController();
+            const mapped = controller.updateStatus.mapper(req.body);
+            const either = await controller.updateStatus.exec({ mapped });
+            if (either.isError) {
+                return res.status(either.status).send(either);
+            }
+            return res.status(200).send(either.data);
+        }
+    );
+
     app.post(
         '/online-users/update-tokens',
         GetKeycloakUser,

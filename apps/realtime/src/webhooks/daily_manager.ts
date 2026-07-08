@@ -120,7 +120,58 @@ export async function deleteDailyRoom(room: string): Promise<void> {
     }
 }
 
-async function getRoomPresenceIds(room: string): Promise<string[]> {
+export interface DailyMeetingParticipant {
+    user_id: string | null;
+    participant_id: string;
+    user_name: string | null;
+    join_time: number;
+    duration: number;
+}
+
+const PARTICIPANTS_PAGE_SIZE = 100;
+
+// A user who leaves and rejoins the same meeting gets a new participant_id per
+// join (Daily's default: it only merges same-user_id sessions if the room is
+// configured to eject on reconnect) — so this can legitimately return several
+// entries for the same user_id, each its own join_time/duration interval.
+//
+// Throws instead of returning [] on failure: this is the sole source of truth
+// for billing in onMeetingEnded, so silently returning "no participants" here
+// would get recorded as a legitimate zero-charge call instead of surfacing
+// that we actually failed to read Daily's records.
+export async function getMeetingParticipants(meetingId: string): Promise<DailyMeetingParticipant[]> {
+    const participants: DailyMeetingParticipant[] = [];
+    let joinedAfter: string | undefined;
+
+    for (;;) {
+        const params = new URLSearchParams({ limit: String(PARTICIPANTS_PAGE_SIZE) });
+        if (joinedAfter) params.set('joined_after', joinedAfter);
+
+        const res = await fetch(`${DAILY_API_URL}/meetings/${meetingId}/participants?${params}`, {
+            headers: dailyHeaders(),
+        });
+
+        if (!res.ok) {
+            throw new Error(`daily erro ao consultar participants da meeting ${meetingId}: ${res.status} ${await res.text()}`);
+        }
+
+        const { data } = await res.json() as { data: DailyMeetingParticipant[] };
+        participants.push(...data);
+
+        if (data.length < PARTICIPANTS_PAGE_SIZE) break;
+        joinedAfter = data[data.length - 1].participant_id;
+    }
+
+    return participants;
+}
+
+interface DailyRoomPresenceEntry {
+    id: string;
+    userId: string;
+    userName: string;
+}
+
+async function getRoomPresence(room: string): Promise<DailyRoomPresenceEntry[]> {
     const res = await fetch(`${DAILY_API_URL}/rooms/${room}/presence`, {
         headers: dailyHeaders(),
     });
@@ -130,38 +181,17 @@ async function getRoomPresenceIds(room: string): Promise<string[]> {
         return [];
     }
 
-    const { data } = await res.json() as { data: { id: string }[] };
-    return data.map((p) => p.id);
+    const { data } = await res.json() as { data: DailyRoomPresenceEntry[] };
+    return data;
 }
 
-export async function ejectBothParticipantsFromRoom(room: string): Promise<void> {
-    try {
-        // The IAM user id isn't necessarily the same id Daily assigns a session
-        // (it only matches if the join token carried `user_id`, which isn't
-        // guaranteed) — ejecting by user_ids can silently match nobody, leaving
-        // the room open and meeting.ended never firing. Presence gives us
-        // Daily's own participant ids, which always match.
-        const ids = await getRoomPresenceIds(room);
-        if (ids.length === 0) {
-            logger.info({ room }, 'daily nenhum participante presente na room, nada a ejetar');
-            return;
-        }
-
-        const res = await fetch(`${DAILY_API_URL}/rooms/${room}/eject`, {
-            method: 'POST',
-            headers: dailyHeaders(),
-            body: JSON.stringify({ ids }),
-        });
-
-        if (!res.ok) {
-            logger.error({ room, ids, status: res.status, body: await res.text() }, 'daily falha ao ejetar participantes');
-            return;
-        }
-
-        logger.info({ room, ids }, 'daily participantes ejetados');
-    } catch (error) {
-        logger.error(error, 'daily ejectBothParticipantsFromRoom: falha ao comunicar com api do daily');
-    }
+// `presence[].id` is Daily's own session id, not our app's user_id — the
+// join call always sets `userId` explicitly (see web's DailyService.join),
+// so matching against that field is what tells us "is this specific app
+// user actually connected to this room right now".
+export async function isUserPresentInRoom(room: string, userId: string): Promise<boolean> {
+    const presence = await getRoomPresence(room);
+    return presence.some((p) => p.userId === userId);
 }
 
 async function deleteTrackedRooms(): Promise<void> {

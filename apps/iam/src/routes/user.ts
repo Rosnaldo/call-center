@@ -131,6 +131,21 @@ export default (app: Application) => {
         }
     );
     app.post(
+        '/users/give-token',
+        GetKeycloakUser,
+        GetUser,
+        authorizeMiddleware([UserRole.admin]),
+        async (req, res) => {
+            const controller = new UserController();
+            const mapped = controller.giveToken.mapper(req.body);
+            const either = await controller.giveToken.exec({ traceId: req.traceId, mapped });
+            if (either.isError) {
+                return res.status(either.status).send(either);
+            }
+            return res.status(200).send(either.data);
+        }
+    );
+    app.post(
         '/users/upload-avatar',
         GetKeycloakUser,
         GetUser,

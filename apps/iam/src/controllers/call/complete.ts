@@ -8,6 +8,7 @@ import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { IOnlineUser } from '@repo/shared-types';
 import { notifyCallCompleted } from 'src/services/realtime';
+import { ejectBothParticipantsFromRoom } from 'src/services/daily';
 import { ICallController } from './params';
 
 const ONLINE_USERS_PREFIX = 'online_user:';
@@ -61,6 +62,12 @@ export class Complete {
 
             const roomName = `${customer.slug}--${attendant.slug}`;
             await notifyCallCompleted(traceId, customerId, attendantId, roomName);
+
+            try {
+                await ejectBothParticipantsFromRoom(roomName);
+            } catch (error) {
+                logger.error(error, 'call complete: falha ao remover participantes do daily');
+            }
 
             return successData({});
         } catch (error: unknown) {

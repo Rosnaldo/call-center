@@ -22,4 +22,8 @@ export interface ICallController {
     IComplete: {
         IOutput: {};
     };
+    ITouch: {
+        IInput: { customerId: string; attendantId: string };
+        IOutput: {};
+    };
 }

@@ -34,6 +34,8 @@ module.exports = {
         '^src/services/chat$': '<rootDir>/src/mocks/realtime-chat-service.ts',
         '^src/webhooks/daily_manager$': '<rootDir>/src/mocks/realtime-daily-manager.ts',
         '^src/helpers/(.*)$': '<rootDir>/../realtime/src/helpers/$1',
+        '^src/auth/(.*)$': '<rootDir>/../realtime/src/auth/$1',
+        '^src/middleware/(.*)$': '<rootDir>/../realtime/src/middleware/$1',
         '^src/apis/iam$': '<rootDir>/src/mocks/realtime-apis-iam.ts',
         '^src/apis/(.*)$': '<rootDir>/../realtime/src/apis/$1',
         '^#apis/iam$': '<rootDir>/src/mocks/realtime-apis-iam.ts',
@@ -67,6 +69,7 @@ module.exports = {
 
         // web component stubs (not available in Node test env)
         '.*/components/toast$': '<rootDir>/src/mocks/toast.ts',
+        '\\.(mp3|wav|ogg)$': '<rootDir>/src/mocks/asset-stub.ts',
 
         // web path aliases
         '^@/(.*)$': '<rootDir>/../web/$1',

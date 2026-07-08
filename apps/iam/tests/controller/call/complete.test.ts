@@ -6,6 +6,10 @@ jest.mock('src/services/realtime', () => ({
     notifyCallCompleted: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('src/services/daily', () => ({
+    ejectBothParticipantsFromRoom: jest.fn().mockResolvedValue(undefined),
+}));
+
 beforeAll(async () => {
     await connectRedis();
 });

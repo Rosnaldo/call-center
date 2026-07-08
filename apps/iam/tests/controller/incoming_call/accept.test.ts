@@ -7,6 +7,10 @@ jest.mock('src/services/realtime', () => ({
     notifyCallAccepted: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('src/services/daily', () => ({
+    ensureDailyRoom: jest.fn().mockResolvedValue(undefined),
+}));
+
 beforeAll(async () => {
     await connectRedis();
 });

@@ -15,10 +15,10 @@ export async function notifyIncomingCallCancelled(traceId: string, customerId: s
     });
 }
 
-export async function notifyCallAccepted(traceId: string, customerId: string, attendantId: string, calledBy: string, incomingCall: IncomingCallState): Promise<void> {
+export async function notifyCallAccepted(traceId: string, customerId: string, attendantId: string, calledBy: string, roomName: string, incomingCall: IncomingCallState): Promise<void> {
     await createRealtimeClient(traceId).post('/webhooks/iam', {
         event: 'call_accepted',
-        payload: { customerId, attendantId, calledBy, incomingCall },
+        payload: { customerId, attendantId, calledBy, roomName, incomingCall },
     });
 }
 

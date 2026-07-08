@@ -1,4 +1,5 @@
 jest.mock('src/services/users');
+jest.mock('src/services/calls');
 jest.mock('@/src/services/api/online-users', () => ({
     fetchOnlineUsers: jest.fn(),
 }));
@@ -20,11 +21,13 @@ import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 import * as usersService from 'src/services/users';
+import * as callsService from 'src/services/calls';
 import * as onlineUsersService from '@/src/services/api/online-users';
 
 const addToIamMock = usersService.addToIam as jest.Mock;
 const removeFromIamMock = usersService.removeFromIam as jest.Mock;
 const findUserBySlugMock = usersService.findUserBySlug as jest.Mock;
+const getCallByUserMock = callsService.getCallByUser as jest.Mock;
 const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
 
 const pendingCalls: Array<Promise<unknown>> = [];
@@ -152,6 +155,16 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
             pendingCalls.push(op);
             return op;
         });
+
+        // grace-period expiry calls endActiveCall, which checks for an
+        // active call before doing anything else — none of these tests put
+        // a user in a call, so this always resolves to null, but it must
+        // still be tracked in pendingCalls or flushPendingCalls() races past it
+        getCallByUserMock.mockImplementation(() => {
+            const op = Promise.resolve(null);
+            pendingCalls.push(op);
+            return op;
+        });
     });
 
     afterEach(() => {
@@ -258,6 +271,11 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
+        const customerMessages: any[] = [];
+        (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
+            customerMessages.push(JSON.parse(data));
+        });
+
         clientRegistry.add(adminWs);
         clientRegistry.add(customerWs);
 
@@ -281,6 +299,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         expect(graceTimer.has(adminUser._id)).toBe(true);
 
         // ── admin reconnects within grace period ─────────────────────────
+        customerMessages.length = 0;
         const { serverWs: adminWs2, webFactory: adminWebFactory2 } = createBridgedClient(adminUser, ADMIN_TOKEN);
         clientRegistry.add(adminWs2);
 
@@ -292,6 +311,11 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
 
         // grace timer cancelled on reconnect
         expect(graceTimer.has(adminUser._id)).toBe(false);
+
+        // admin and customer aren't in a call together here, so reconnecting
+        // targets no one — partner_reconnected is sendToUser'd only to an
+        // actual call partner, never broadcast
+        expect(customerMessages.find((m) => m.event === 'partner_reconnected')).toBeUndefined();
 
         // customer's store shows admin back as idle (broadcast)
         const adminAfterReconnect = customerStores.onlineUsers.getState().users

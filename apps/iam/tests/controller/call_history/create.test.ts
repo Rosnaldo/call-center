@@ -12,6 +12,13 @@ afterAll(async () => {
     await disconnectMain();
 });
 
+beforeEach(async () => {
+    // meetingId has a unique partial index (see entities/indexes/entities/
+    // call_history.ts) — buildBody() reuses the same one across tests, so
+    // this must be cleared or later inserts collide with earlier ones.
+    await getCallHistoryModel().deleteMany({});
+});
+
 const buildBody = (overrides: Record<string, unknown> = {}) => ({
     callId: 'cust-1--att-1',
     customerId: 'cust-1',

@@ -6,6 +6,7 @@ import { Update } from './update';
 import { UpdateParticipant } from './update_participant';
 import { Delete } from './delete';
 import { Complete } from './complete';
+import { Touch } from './touch';
 import { TrackRoom, DeleteRooms } from './track_room';
 
 export class CallController {
@@ -19,6 +20,7 @@ export class CallController {
     public readonly updateParticipant: UpdateParticipant;
     public readonly delete: Delete;
     public readonly complete: Complete;
+    public readonly touch: Touch;
     public readonly trackRoom: TrackRoom;
     public readonly deleteRooms: DeleteRooms;
 
@@ -31,6 +33,7 @@ export class CallController {
         this.updateParticipant = UpdateParticipant.construir(this.classId);
         this.delete = Delete.construir(this.classId);
         this.complete = Complete.construir(this.classId);
+        this.touch = Touch.construir(this.classId);
         this.trackRoom = TrackRoom.construir(this.classId);
         this.deleteRooms = DeleteRooms.construir(this.classId);
     }

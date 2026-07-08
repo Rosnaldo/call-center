@@ -17,6 +17,7 @@ class Properties {
     cdnHost: string;
     realtimeUri: string;
     corsOrigins: string[];
+    dailyApiKey: string;
 
     private constructor() {
         this.nodeEnv = process.env.NODE_ENV || '';
@@ -35,6 +36,7 @@ class Properties {
         this.cdnHost = process.env.CDN_HOST || 'cdnHost';
         this.realtimeUri = process.env.REALTIME_URI || '';
         this.corsOrigins = (process.env.CORS_ORIGINS || '').split(',').filter(Boolean);
+        this.dailyApiKey = process.env.DAILY_API_KEY || '';
     }
 
     static getInstance(): Properties {

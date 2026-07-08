@@ -7,6 +7,7 @@ import { BadRequestException } from '#exceptions/bad_request';
 import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { mapArray } from '#utils/mapper/array';
+import { CALL_TTL_SECONDS } from '#const/redis_ttl';
 import { validateInput } from 'src/validations/call/create';
 import { ICallController } from './params';
 
@@ -37,7 +38,7 @@ export class Create {
             const params = this.transform(props.mapped);
             const redis = getRedisClient();
             const key = `${CALLS_KEY}:${params.customerId}--${params.attendantId}`;
-            await redis.set(key, JSON.stringify(params));
+            await redis.set(key, JSON.stringify(params), 'EX', CALL_TTL_SECONDS);
             return successData(params);
         } catch (error: unknown) {
             return logError(error, '/calls/create');

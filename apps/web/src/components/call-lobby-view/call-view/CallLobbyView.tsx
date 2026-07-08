@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useCallViewStore, useCallStore, useCurrentUserStore, useBillingStore, useTimerStore } from '../../../states/stores.ts';
 import { InfoCard } from '../info-card/InfoCard.tsx';
 import { MediaSettingsModal } from '../media-settings-modal/MediaSettingsModal.tsx';
 import { BillingCalculationModal } from '../BillingCalculationModal.tsx';
 import { BillingSummaryModal } from '../BillingSummaryModal.tsx';
 import { CallView, CallViewState } from './CallView.tsx';
-import { useScreenShare } from '@daily-co/daily-react';
+import { useScreenShare, useDailyEvent } from '@daily-co/daily-react';
+import type { DailyEventObjectFatalError } from '@daily-co/daily-js';
 
 
 export const CallLobbyView: React.FC = () => {
@@ -21,6 +22,20 @@ export const CallLobbyView: React.FC = () => {
   const seconds = useTimerStore((s) => s.elapsedSeconds);
 
   const isCallActive = !!call;
+
+  // daily-js can't tell us why a session was ejected — the same 'ejected'
+  // fatal error also fires today for the normal disconnect-based hangup flow
+  // (endActiveCall ejects both participants when either side's socket closes),
+  // so we can't show a distinct "kicked by another session" message here
+  // without false-positiving on that far more common case. Just fall back to
+  // the idle view; the backend's own meeting_ended push still does the full
+  // call/billing/chat cleanup shortly after via the normal websocket flow.
+  const handleFatalError = useCallback((event: DailyEventObjectFatalError) => {
+    if (event.error?.type === 'ejected') {
+      useCallViewStore.getState().resetCallViewState();
+    }
+  }, []);
+  useDailyEvent('error', handleFatalError);
 
   // Fullscreen
   const containerRef = useRef<HTMLDivElement>(null);
@@ -106,6 +121,7 @@ export const CallLobbyView: React.FC = () => {
       case 'awaiting-answer': return CallViewState.AwaitingAnswer;
       case 'awaiting-to-answer': return CallViewState.AwaitingToAnswer;
       case 'in-call': return CallViewState.InCall;
+      case 'call-interrupted': return CallViewState.CallInterrupted;
       case 'none':
       default: return CallViewState.None;
     }

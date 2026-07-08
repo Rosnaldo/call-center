@@ -4,7 +4,7 @@ import { disconnectMain } from 'src/db/singleton';
 import { UserController } from 'src/controllers/user';
 import { isSuccess } from 'src/utils/either';
 import { IUser } from 'src/entities/schemas/user/types';
-import { getUserModel } from 'src/entities/models/singleton';
+import { getUserModel, getTransactionModel } from 'src/entities/models/singleton';
 
 jest.mock('src/keycloak/singleton', () => ({
     getKcMain: jest.fn().mockReturnValue({
@@ -50,7 +50,7 @@ beforeEach(async () => {
 describe('Controller > User > ChargeToken', () => {
     it('subtracts the charged tokens and saves the user', async () => {
         const controller = new UserController();
-        const mapped = controller.chargeToken.mapper({ customerId: user._id, tokens: 3 });
+        const mapped = controller.chargeToken.mapper({ customerId: user._id, tokens: 3, attendantName: 'Test Attendant', durationMs: 65_000, endedAt: new Date('2026-01-01T10:01:05Z') });
         const either = await controller.chargeToken.exec({ traceId: TRACE, mapped });
 
         if (!isSuccess(either)) throw new Error(`Expected success, got: ${either.message}`);
@@ -61,9 +61,26 @@ describe('Controller > User > ChargeToken', () => {
         expect(saved!.tokens).toBe(7);
     });
 
+    it('records a transaction message with the attendant name, date/time, and duration', async () => {
+        const controller = new UserController();
+        const mapped = controller.chargeToken.mapper({
+            customerId: user._id,
+            tokens: 3,
+            attendantName: 'Dra. Ana Souza',
+            durationMs: 5 * 60_000 + 32_000,
+            endedAt: new Date('2026-01-01T10:01:05Z'),
+        });
+        await controller.chargeToken.exec({ traceId: TRACE, mapped });
+
+        const transaction = await getTransactionModel().findOne({ userId: user._id }).lean();
+        expect(transaction!.message).toContain('Dra. Ana Souza');
+        expect(transaction!.message).toContain('5min 32s');
+        expect(transaction!.message).toMatch(/\d{2}\/\d{2}\/\d{4}/);
+    });
+
     it('allows the balance to go negative (charge exceeds balance)', async () => {
         const controller = new UserController();
-        const mapped = controller.chargeToken.mapper({ customerId: user._id, tokens: 15 });
+        const mapped = controller.chargeToken.mapper({ customerId: user._id, tokens: 15, attendantName: 'Test Attendant', durationMs: 65_000, endedAt: new Date('2026-01-01T10:01:05Z') });
         const either = await controller.chargeToken.exec({ traceId: TRACE, mapped });
 
         if (!isSuccess(either)) throw new Error('Expected success');
@@ -73,7 +90,7 @@ describe('Controller > User > ChargeToken', () => {
 
     it('notifies realtime with the updated user', async () => {
         const controller = new UserController();
-        const mapped = controller.chargeToken.mapper({ customerId: user._id, tokens: 2 });
+        const mapped = controller.chargeToken.mapper({ customerId: user._id, tokens: 2, attendantName: 'Test Attendant', durationMs: 65_000, endedAt: new Date('2026-01-01T10:01:05Z') });
         await controller.chargeToken.exec({ traceId: TRACE, mapped });
 
         expect(notifyUserTokenChargedMock).toHaveBeenCalledWith(
@@ -84,7 +101,7 @@ describe('Controller > User > ChargeToken', () => {
 
     it('returns 400 when the customer does not exist', async () => {
         const controller = new UserController();
-        const mapped = controller.chargeToken.mapper({ customerId: '000000000000000000000000', tokens: 1 });
+        const mapped = controller.chargeToken.mapper({ customerId: '000000000000000000000000', tokens: 1, attendantName: 'Test Attendant', durationMs: 65_000, endedAt: new Date('2026-01-01T10:01:05Z') });
         const either = await controller.chargeToken.exec({ traceId: TRACE, mapped });
 
         expect(either.isError).toBe(true);
@@ -93,7 +110,7 @@ describe('Controller > User > ChargeToken', () => {
 
     it('returns 400 when customerId is not a valid id', async () => {
         const controller = new UserController();
-        const mapped = controller.chargeToken.mapper({ customerId: 'not-an-id', tokens: 1 });
+        const mapped = controller.chargeToken.mapper({ customerId: 'not-an-id', tokens: 1, attendantName: 'Test Attendant', durationMs: 65_000, endedAt: new Date('2026-01-01T10:01:05Z') });
         const either = await controller.chargeToken.exec({ traceId: TRACE, mapped });
 
         expect(either.isError).toBe(true);
@@ -102,7 +119,7 @@ describe('Controller > User > ChargeToken', () => {
 
     it('returns isError false and status 200 on success', async () => {
         const controller = new UserController();
-        const mapped = controller.chargeToken.mapper({ customerId: user._id, tokens: 1 });
+        const mapped = controller.chargeToken.mapper({ customerId: user._id, tokens: 1, attendantName: 'Test Attendant', durationMs: 65_000, endedAt: new Date('2026-01-01T10:01:05Z') });
         const either = await controller.chargeToken.exec({ traceId: TRACE, mapped });
 
         expect(either.isError).toBe(false);

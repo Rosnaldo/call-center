@@ -49,11 +49,13 @@ export function UserFormDialog({
     const [email, setEmail] = useState("")
     const [avatarUrl, setAvatarUrl] = useState("")
     const [role, setRole] = useState<keyof typeof UserRole>("customer")
-    const [addTokens, setAddTokens] = useState("")
+    const [giveTokensAmount, setGiveTokensAmount] = useState("")
+    const [giveTokensMessage, setGiveTokensMessage] = useState("")
+    const [isGivingTokens, setIsGivingTokens] = useState(false)
     const [errors, setErrors] = useState<Record<string, string>>({})
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    async function handleSaveUser(userData: Partial<IUser> & { addTokens?: number }) {
+    async function handleSaveUser(userData: Partial<IUser>) {
         try {
             let res;
             if (userData._id) {
@@ -84,6 +86,36 @@ export function UserFormDialog({
         }
     }
 
+    async function handleGiveTokens() {
+        if (!editingUser || !giveTokensAmount || !giveTokensMessage.trim()) return
+
+        setIsGivingTokens(true)
+        try {
+            const res = await apiBack.post("/users/give-token", {
+                customerId: editingUser._id,
+                tokens: Number(giveTokensAmount),
+                message: giveTokensMessage.trim(),
+            })
+
+            if (res.data.isError) {
+                throw new ApiError(res.data.message);
+            }
+
+            setGiveTokensAmount("")
+            setGiveTokensMessage("")
+            refetchUsersList()
+            mytoast.success("Tokens adicionados com sucesso!");
+        } catch (error: unknown) {
+            if (checkErrorByField(error, 'message')) {
+                mytoast.error(error.message);
+                return;
+            }
+            throw error;
+        } finally {
+            setIsGivingTokens(false)
+        }
+    }
+
     useEffect(() => {
         if (open) {
             if (editingUser) {
@@ -99,7 +131,8 @@ export function UserFormDialog({
                 setRole("customer")
                 setAvatarUrl('')
             }
-            setAddTokens("")
+            setGiveTokensAmount("")
+            setGiveTokensMessage("")
             setErrors({})
         }
     }, [open, editingUser])
@@ -125,7 +158,6 @@ export function UserFormDialog({
             lastName: lastName.trim(),
             email: email.trim(),
             role,
-            ...(editingUser && addTokens.trim() ? { addTokens: Number(addTokens) } : {}),
         })
         onOpenChange(false)
         refetchUsersList()
@@ -297,13 +329,16 @@ export function UserFormDialog({
                 </Select>
             </div>
 
-            {/* Tokens */}
+            {/* Give Tokens */}
             {editingUser && role === "customer" && (
-                <div className="flex flex-col gap-1.5">
-                <Label htmlFor="addTokens">Add Tokens</Label>
-                <Select value={addTokens} onValueChange={setAddTokens}>
-                    <SelectTrigger id="addTokens">
-                        <SelectValue placeholder="Select an amount" />
+                <div className="flex flex-col gap-2 rounded-md border p-3">
+                <Label htmlFor="giveTokensAmount">Dar Tokens</Label>
+                <p className="text-xs text-muted-foreground -mt-1">
+                    Saldo atual: {editingUser.tokens ?? 0}
+                </p>
+                <Select value={giveTokensAmount} onValueChange={setGiveTokensAmount}>
+                    <SelectTrigger id="giveTokensAmount">
+                        <SelectValue placeholder="Selecione uma quantidade" />
                     </SelectTrigger>
                     <SelectContent>
                         {TOKEN_AMOUNT_OPTIONS.map((amount) => (
@@ -313,9 +348,22 @@ export function UserFormDialog({
                         ))}
                     </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                    Current balance: {editingUser.tokens ?? 0}
-                </p>
+                <Input
+                    id="giveTokensMessage"
+                    value={giveTokensMessage}
+                    onChange={(e) => setGiveTokensMessage(e.target.value)}
+                    placeholder="Motivo (ex: bônus de boas-vindas)"
+                />
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="self-end"
+                    disabled={!giveTokensAmount || !giveTokensMessage.trim() || isGivingTokens}
+                    onClick={handleGiveTokens}
+                >
+                    Dar Tokens
+                </Button>
                 </div>
             )}
 

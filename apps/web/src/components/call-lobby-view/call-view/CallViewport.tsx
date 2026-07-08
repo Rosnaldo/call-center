@@ -62,6 +62,36 @@ const renderAwaitingClient = (partner: IOnlineUser | undefined) => (
   </div>
 );
 
+const renderInterruptedAttendant = (partner: IOnlineUser | undefined) => (
+  <div id="viewport-interrupted-attendant" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
+    <PartnerAvatar partner={partner} size="md" pulse />
+    <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mb-1">
+      {i18n.t('call.connectionInterrupted')}
+    </h3>
+    <p className="text-xs text-slate-300 font-medium select-text">
+      {i18n.t('call.awaitingClientReturn', { name: partner?.name ?? '' })}
+    </p>
+    <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
+      {i18n.t('call.timerPausedClient')}
+    </p>
+  </div>
+);
+
+const renderInterruptedClient = (partner: IOnlineUser | undefined) => (
+  <div id="viewport-interrupted-client" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
+    <PartnerAvatar partner={partner} size="md" pulse />
+    <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mb-1">
+      {i18n.t('call.connectionInterrupted')}
+    </h3>
+    <p className="text-xs text-slate-300 font-medium select-text">
+      {i18n.t('call.awaitingAttendantReturn', { name: partner?.name ?? '' })}
+    </p>
+    <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
+      {i18n.t('call.timerPausedAttendant')}
+    </p>
+  </div>
+);
+
 const renderLobbyViewport = (attendant: IOnlineUser) => (
   <div id="viewport-lobby" className="flex flex-col items-center justify-center gap-3 p-8 text-center max-w-sm font-sans">
     <PartnerAvatar partner={attendant} size="md" fadeIn />
@@ -133,6 +163,7 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   const users = useOnlineUsersStore(s => s.users);
   const isChatOpen = useChatStore(s => s.isOpen);
   const chatMessages = useChatStore(s => s.messages);
+  const hasUnreadMessage = useChatStore(s => s.hasUnreadMessage);
 
   const isReceiving = incomingCall
     ? currentUser?.id === incomingCall.attendantId
@@ -156,6 +187,10 @@ export const CallViewport: React.FC<CallViewportProps> = ({
     content = renderAwaitingAttendant(partner);
   } else if (state === CallViewState.AwaitingToAnswer && !isReceiving) {
     content = renderAwaitingClient(partner);
+  } else if (state === CallViewState.CallInterrupted && isReceiving) {
+    content = renderInterruptedAttendant(partner);
+  } else if (state === CallViewState.CallInterrupted && !isReceiving) {
+    content = renderInterruptedClient(partner);
   } else if (state === CallViewState.Lobby) {
     content = attendant ? renderLobbyViewport(attendant) : renderNoneViewport();
   } else if (state === CallViewState.InCall) {
@@ -210,6 +245,8 @@ export const CallViewport: React.FC<CallViewportProps> = ({
           isOpen={isChatOpen}
           onClose={() => useChatStore.getState().closeChat()}
           messages={chatMessages}
+          hasUnreadMessage={hasUnreadMessage}
+          onMessagesSeen={() => useChatStore.getState().markMessagesRead()}
           currentUserRole={currentUser?.role === 'attendant' ? 'attendant' : 'customer'}
           partnerName={partnerName}
           partnerAvatarUrl={partner?.avatarUrl}

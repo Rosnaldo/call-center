@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MINUTES_PER_TOKEN } from '@repo/shared-types';
-import { useBillingStore, useCallStore, useCallViewStore, useOnlineUsersStore, useTimerStore } from '../../../states/stores.ts';
+import { useBillingStore, useCallStore, useCallViewStore, useCurrentUserStore, useOnlineUsersStore, useTimerStore } from '../../../states/stores.ts';
 
 const BLOCK_DURATION_SECONDS = MINUTES_PER_TOKEN * 60;
 const HALF_BLOCK_DURATION_SECONDS = BLOCK_DURATION_SECONDS / 2;
@@ -20,10 +20,15 @@ export const InfoCard: React.FC = () => {
   const users = useOnlineUsersStore((s) => s.users);
   const tokensCharged = useBillingStore((s) => s.initialTokens);
   const elapsedSeconds = useTimerStore((s) => s.elapsedSeconds);
+  const currentUser = useCurrentUserStore((s) => s.currentUser);
 
   if (!currentCall) return null;
 
   const isInCall = viewState === 'in-call';
+  // The lookup is always the customer's balance — showing it as "SEU SALDO"
+  // (your balance) is only correct for the customer themselves, never for
+  // the attendant/admin viewing the same call.
+  const showBalance = currentUser?.role === 'customer';
   const currentTokens = users.find((u) => u.id === currentCall.customerId)?.tokens ?? 0;
 
   // Mirrors computeTokensToBeCharged's half-cycle rule: the Nth token is due
@@ -47,10 +52,12 @@ export const InfoCard: React.FC = () => {
         <div className="text-[12px] font-mono tracking-widest text-[#a36500] uppercase font-bold mb-1">
           {t('infoCard.session')}
         </div>
-        <div className="text-[10px] font-mono font-bold text-brand-dark flex items-center gap-1 mt-1">
-          <span>{t('infoCard.yourBalance')}</span>
-          <span className="bg-[#ebdcb9]/30 text-[#a36500] font-mono font-bold text-[9px] px-2 py-0.5 rounded-md border border-[#ebdcb9]/60">{currentTokens} {currentTokens === 1 ? 'tk' : 'tks'}</span>
-        </div>
+        {showBalance && (
+          <div className="text-[10px] font-mono font-bold text-brand-dark flex items-center gap-1 mt-1">
+            <span>{t('infoCard.yourBalance')}</span>
+            <span className="bg-[#ebdcb9]/30 text-[#a36500] font-mono font-bold text-[9px] px-2 py-0.5 rounded-md border border-[#ebdcb9]/60">{currentTokens} {currentTokens === 1 ? 'tk' : 'tks'}</span>
+          </div>
+        )}
 
         <div className="mt-3 pt-2.5 border-t border-[#ebdcb9]/40 flex items-center justify-between">
           <div className="flex items-center gap-1 bg-[#ebdcb9]/20 border border-[#ebdcb9]/50 px-2 py-0.5 rounded text-[8px] text-brand-muted font-mono uppercase font-semibold">

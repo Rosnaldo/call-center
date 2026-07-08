@@ -103,6 +103,16 @@ export function computeTokensToBeCharged(elapsedMs: number): number {
     return Math.floor((elapsedMs + HALF_BILLING_INTERVAL_MS) / BILLING_INTERVAL_MS);
 }
 
+// Ceiling shared by two independent safety nets: IAM's calls:* redis TTL
+// (so an orphaned record can't block a pair from starting a new call) and
+// Daily's own eject_after_elapsed on the meeting token (so a stuck call gets
+// force-ended by Daily itself even if our own cleanup path never runs). Every
+// call write (create, startedAt bump, participant join/leave, /calls/sync's
+// touch) refreshes the redis TTL, so in practice a genuinely ongoing call
+// never gets anywhere near this — it's a backstop for an orphaned row, not a
+// real ceiling on call length.
+export const MAX_CALL_DURATION_SECONDS = 60 * 60 * 2;
+
 export interface Pagination {
     currentPage: number;
     totalPages: number;

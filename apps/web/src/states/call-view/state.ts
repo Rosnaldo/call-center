@@ -8,7 +8,8 @@ export type ViewState =
   | 'lobby'
   | 'awaiting-answer'
   | 'awaiting-to-answer'
-  | 'in-call';
+  | 'in-call'
+  | 'call-interrupted';
 
 export interface CallViewStateData {
   viewState: ViewState;

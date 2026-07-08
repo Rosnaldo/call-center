@@ -5,9 +5,11 @@ import { logError } from '#utils/log_error';
 import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
 import { mapString } from '#utils/mapper/string';
-import { getUserModel } from '#models/singleton';
+import { getUserModel, getTransactionModel } from '#models/singleton';
 import { UserUtils } from '#schemas/user/utils';
 import { notifyUserTokenCharged } from 'src/services/realtime';
+import { formatDatePtBr } from '#utils/format_date_ptbr';
+import { formatDurationPtBr } from '#utils/format_duration_ptbr';
 import { IUserController } from './params';
 import { validateInput } from 'src/validations/user/charge_token';
 
@@ -38,7 +40,7 @@ export class ChargeToken {
         try {
             const { traceId } = props;
             const params = this.transform(props.mapped);
-            const { customerId, tokens } = params;
+            const { customerId, tokens, attendantName, durationMs, endedAt } = params;
             logger.info({ customerId, tokens }, 'user charge-token');
 
             const user = await getUserModel().findById(customerId);
@@ -46,6 +48,15 @@ export class ChargeToken {
 
             user.tokens = (user.tokens ?? 0) - tokens;
             await user.save();
+
+            const message = `Consumo de chamada de vídeo com ${attendantName} em ${formatDatePtBr(endedAt)} — duração de ${formatDurationPtBr(durationMs)}`;
+
+            await getTransactionModel().create({
+                userId: customerId,
+                message,
+                type: 'charge',
+                amount: tokens,
+            });
 
             const updated = this.utils.toObject(user);
 
@@ -60,6 +71,9 @@ export class ChargeToken {
     public readonly mapper = (body: Request['body']): IInput => ({
         customerId: mapString(body.customerId),
         tokens: typeof body.tokens === 'number' ? body.tokens : Number(body.tokens),
+        attendantName: mapString(body.attendantName),
+        durationMs: typeof body.durationMs === 'number' ? body.durationMs : Number(body.durationMs),
+        endedAt: body.endedAt,
     });
 
     private readonly transform = (mapped: IInput): IInput => {

@@ -6,6 +6,7 @@ import { Delete } from './delete';
 import { Edit } from './edit';
 import { Exists } from './exists';
 import { FindBySlug } from './find_by_slug';
+import { GiveToken } from './give_token';
 import { Paginacao } from './paginacao';
 
 export class UserController {
@@ -20,6 +21,7 @@ export class UserController {
     public readonly avatar: Avatar;
     public readonly count: Count;
     public readonly chargeToken: ChargeToken;
+    public readonly giveToken: GiveToken;
 
     constructor() {
         this.count = Count.construir(this.classId);
@@ -31,5 +33,6 @@ export class UserController {
         this.edit = Edit.construir(this.classId);
         this.avatar = Avatar.construir(this.classId);
         this.chargeToken = ChargeToken.construir(this.classId);
+        this.giveToken = GiveToken.construir(this.classId);
     }
 }

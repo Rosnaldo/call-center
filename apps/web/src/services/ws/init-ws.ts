@@ -39,6 +39,7 @@ export class InitWs {
         callService: WsCallService,
         meetingService: WsMeetingService,
         chatService: WsChatService,
+        callStore: CallStoreInstance,
     ): void {
         if (!this.running || !WS_URL) return;
         this.activeWs = ws;
@@ -51,6 +52,11 @@ export class InitWs {
                 HEARTBEAT_INTERVAL_MS,
                 HEARTBEAT_ACK_TIMEOUT_MS,
             );
+            // Re-syncs on every (re)connect, not just the first one — a
+            // reconnect after our *own* socket dropped otherwise has nothing
+            // telling this client to recheck its call state or rejoin Daily,
+            // so it would sit in 'in-call' waiting forever with no video.
+            callStore.getState().syncActiveCall();
         };
 
         ws.onmessage = (event) => {
@@ -78,7 +84,7 @@ export class InitWs {
             setTimeout(() => {
                 authSession.getToken().then((token) => {
                     if (!token) return;
-                    this.connect(this.createAuthWs(token), usersService, callService, meetingService, chatService);
+                    this.connect(this.createAuthWs(token), usersService, callService, meetingService, chatService, callStore);
                 });
             }, RECONNECT_DELAY_MS);
         };
@@ -89,7 +95,7 @@ export class InitWs {
         this.running = true;
         this.factory = factory;
 
-        const usersService = new WsUsersService({ onlineUsers: stores.onlineUsers, call: stores.call, currentUser: stores.currentUser });
+        const usersService = new WsUsersService({ onlineUsers: stores.onlineUsers, call: stores.call, callView: stores.callView, currentUser: stores.currentUser, meeting: stores.meeting });
         const callService = new WsCallService({
             call: stores.call,
             callView: stores.callView,
@@ -98,7 +104,7 @@ export class InitWs {
         const meetingService = new WsMeetingService({ meeting: stores.meeting });
         const chatService = new WsChatService({ chat: stores.chat });
 
-        this.connect(this.createAuthWs(token), usersService, callService, meetingService, chatService);
+        this.connect(this.createAuthWs(token), usersService, callService, meetingService, chatService, stores.call);
     }
 
     notifyLogout(): void {

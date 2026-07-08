@@ -2,6 +2,7 @@ import { Request } from 'express';
 
 import logger from '#logger';
 import { logError } from '#utils/log_error';
+import { isMongoError } from '#utils/is_mongo_error';
 import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
 import { mapString } from '#utils/mapper/string';
@@ -15,6 +16,12 @@ type IOutput = ICallHistoryController['ICreate']['IOutput'];
 interface Props {
     mapped: IInput;
 }
+
+// meetingId has a partial unique index (see entities/indexes/entities/call_history.ts) —
+// a duplicate here means onMeetingEnded already recorded this meeting (e.g. Daily
+// redelivered the meeting.ended webhook), not a real error.
+const isDuplicateMeetingIdError = (error: unknown): boolean =>
+    isMongoError(error as Error) && (error as unknown as { code?: number }).code === 11000;
 
 export class Create {
     public static readonly classId = Symbol.for('Controller > CallHistory > Create');
@@ -53,6 +60,10 @@ export class Create {
 
             return successData(output);
         } catch (error: unknown) {
+            if (isDuplicateMeetingIdError(error)) {
+                logger.warn({ meetingId: props.mapped.meetingId }, 'call history já existe para este meetingId (webhook duplicado)');
+                return { isError: true, status: 409, message: 'Call history já existe para este meetingId' };
+            }
             return logError(error, '/call-history/create');
         }
     };

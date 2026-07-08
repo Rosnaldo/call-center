@@ -29,6 +29,7 @@ export const CallFooter: React.FC<CallFooterProps> = ({
 }) => {
   const { cameraOn, microphoneOn, toggleCamera, toggleMicrophone } = useDevicesContext();
   const isChatOpen = useChatStore(s => s.isOpen);
+  const hasUnreadMessage = useChatStore(s => s.hasUnreadMessage);
   const showCallControls = state === CallViewState.InCall;
 
   const handleToggleChat = () => {
@@ -65,6 +66,7 @@ export const CallFooter: React.FC<CallFooterProps> = ({
       {showCallControls && (
         <ChatToggleButton
           isOpen={isChatOpen}
+          hasUnreadMessage={hasUnreadMessage}
           onClick={handleToggleChat}
         />
       )}

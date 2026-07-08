@@ -1,7 +1,6 @@
 import logger from '#logger';
 import { sendToUser, broadcastMessage } from '#websocket/broadcast';
 import { SendIncomingCallPayload, CancelIncomingCallPayload, AcceptCallPayload, CallCompletedPayload, UserTokenChargedPayload, ChatMessageSentPayload } from './iam_types';
-import { ejectBothParticipantsFromRoom } from './daily_manager';
 import { updateIamTokens } from 'src/services/users';
 
 export function onSendIncomingCall(payload: SendIncomingCallPayload): void {
@@ -66,7 +65,7 @@ export function onCallAccepted(payload: AcceptCallPayload): void {
     });
 }
 
-export async function onCallCompleted(payload: CallCompletedPayload): Promise<void> {
+export function onCallCompleted(payload: CallCompletedPayload): void {
     logger.info({ customerId: payload.customerId, attendantId: payload.attendantId }, 'iam call_completed');
 
     sendToUser(payload.customerId, {
@@ -83,12 +82,6 @@ export async function onCallCompleted(payload: CallCompletedPayload): Promise<vo
         event: 'online_users_broadcast',
         data: {},
     });
-
-    try {
-        await ejectBothParticipantsFromRoom(payload.roomName);
-    } catch (error) {
-        logger.error(error, 'iam call_completed: falha ao remover participantes do daily');
-    }
 }
 
 export async function onUserTokenCharged(payload: UserTokenChargedPayload): Promise<void> {

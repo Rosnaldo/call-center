@@ -8,6 +8,7 @@ export interface ChatActions {
   openChat: () => void;
   closeChat: () => void;
   addMessage: (message: Message) => void;
+  markMessagesRead: () => void;
   fetchChatMessages: () => Promise<void>;
   sendChatMessage: (text: string) => Promise<void>;
   sendChatFile: (file: File) => Promise<void>;
@@ -22,7 +23,15 @@ export const createChatActions = (
     openChat: () => set(() => ({ isOpen: true })),
     closeChat: () => set(() => ({ isOpen: false })),
 
-    addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
+    // Only flag unread if the box was closed when it arrived — if it was
+    // already open the user is presumably watching the feed live, so there's
+    // nothing to discreetly signal.
+    addMessage: (message) => set((state) => ({
+      messages: [...state.messages, message],
+      hasUnreadMessage: state.isOpen ? state.hasUnreadMessage : true,
+    })),
+
+    markMessagesRead: () => set(() => ({ hasUnreadMessage: false })),
 
     fetchChatMessages: async () => {
       try {
@@ -60,6 +69,6 @@ export const createChatActions = (
       }
     },
 
-    resetChat: () => set(() => ({ isOpen: false, messages: [] })),
+    resetChat: () => set(() => ({ isOpen: false, messages: [], hasUnreadMessage: false })),
   };
 };

@@ -1,39 +1,24 @@
 import WebSocket, { WebSocketServer } from 'ws';
 import { Server } from 'http';
-import url from 'url';
 import { iamApi } from '#apis/iam';
 import { AuthenticatedWebSocket } from './types';
 import { ISocketServer } from './socket';
 import { WsTransport } from './transport';
 import { onConnection } from './connection';
 import { userExists } from 'src/services/users';
+import { verifyToken } from 'src/auth/verify_token';
 import { IUser } from '@repo/shared-types';
 import { buildLogger } from '#logger';
 import { randomUUID } from 'crypto';
-
-interface IamValidateResponse {
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-}
-
-async function verifyToken(traceId: string, token: string): Promise<IamValidateResponse> {
-    const { createIamClient } = await import('src/apis/iam');
-    const response = await createIamClient(traceId).post<IamValidateResponse>('/auth/validate-token', {}, {
-        headers: { Authorization: token },
-    });
-    return response.data;
-}
 
 export function createWebSocketServer(server: Server): ISocketServer {
     const wss = new WebSocketServer({ noServer: true });
 
     server.on('upgrade', async (req, socket, head) => {
-        const parsedUrl = url.parse(req.url ?? '', true);
+        const parsedUrl = new URL(req.url ?? '', 'http://localhost');
         if (parsedUrl.pathname === '/logs') return;
 
-        const token = parsedUrl.query['token'] as string | undefined;
+        const token = parsedUrl.searchParams.get('token') ?? undefined;
 
         if (!token) {
             socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');

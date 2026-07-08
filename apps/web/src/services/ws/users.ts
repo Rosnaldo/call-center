@@ -1,4 +1,5 @@
-import type { OnlineUsersStoreInstance, CallStoreInstance, CurrentUserStoreInstance } from '../../states/stores';
+import { CallState } from '@repo/shared-types';
+import type { OnlineUsersStoreInstance, CallStoreInstance, CallViewStoreInstance, CurrentUserStoreInstance, MeetingStoreInstance } from '../../states/stores';
 import { fetchCallByUser } from '../api/calls.ts';
 import { mytoast } from '../../components/toast';
 import i18n from '../../i18n.ts';
@@ -7,13 +8,17 @@ export type WsUsersMessage =
     | { event: 'online_users_broadcast' }
     | { event: 'heartbeat_ack' }
     | { event: 'user_logouted'; data: { id: string } }
-    | { event: 'user_disconnected'; data: { id: string } }
+    | { event: 'user_disconnecting'; data: { id: string; call?: CallState } }
+    | { event: 'user_disconnected'; data: { id: string; call?: CallState } }
+    | { event: 'partner_reconnected'; data: { call: CallState } }
     | { event: 'user_tokens_updated'; data: { id: string; tokens?: number } };
 
 export interface WsUsersStores {
     onlineUsers: OnlineUsersStoreInstance;
     call: CallStoreInstance;
+    callView: CallViewStoreInstance;
     currentUser: CurrentUserStoreInstance;
+    meeting: MeetingStoreInstance;
 }
 
 export class WsUsersService {
@@ -49,6 +54,10 @@ export class WsUsersService {
         this.ackRef = null;
     }
 
+    // user_logouted is still a broadcast to everyone (unlike the disconnect
+    // events below, which realtime now targets directly), so this is the
+    // only case left that has to look up the call itself to decide if it's
+    // relevant to me.
     private async warnIfPartOfMyCall(departedUserId: string, messageKey: 'call.participantLoggedOut' | 'call.participantDisconnected'): Promise<void> {
         const currentUser = this.stores.currentUser.getState().currentUser;
         if (!currentUser || departedUserId === currentUser.id) return;
@@ -71,7 +80,7 @@ export class WsUsersService {
     }
 
     handle(msg: { event: string; data?: any }): boolean {
-        const { refreshUsers, updateUser } = this.stores.onlineUsers.getState();
+        const { refreshUsers } = this.stores.onlineUsers.getState();
 
         switch (msg.event) {
             case 'online_users_broadcast':
@@ -83,18 +92,18 @@ export class WsUsersService {
             case 'user_logouted':
                 this.warnIfPartOfMyCall(msg.data.id, 'call.participantLoggedOut');
                 return true;
+            case 'user_disconnecting':
+                this.stores.meeting.getState().userDisconnecting(msg.data);
+                return true;
             case 'user_disconnected':
-                this.warnIfPartOfMyCall(msg.data.id, 'call.participantDisconnected');
+                this.stores.meeting.getState().userDisconnected(msg.data);
                 return true;
-            case 'user_tokens_updated': {
-                updateUser(msg.data.id, { tokens: msg.data.tokens });
-
-                const currentUser = this.stores.currentUser.getState().currentUser;
-                if (currentUser && currentUser.id === msg.data.id) {
-                    this.stores.currentUser.getState().setCurrentUser({ ...currentUser, tokens: msg.data.tokens });
-                }
+            case 'partner_reconnected':
+                this.stores.call.getState().partnerReconnected(msg.data.call);
                 return true;
-            }
+            case 'user_tokens_updated':
+                this.stores.meeting.getState().userTokensUpdated(msg.data);
+                return true;
             default:
                 return false;
         }

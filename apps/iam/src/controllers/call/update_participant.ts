@@ -7,6 +7,7 @@ import { BadRequestException } from '#exceptions/bad_request';
 import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { mapBoolean } from '#utils/mapper/boolean';
+import { CALL_TTL_SECONDS } from '#const/redis_ttl';
 import { CallState, computeTokensToBeCharged } from '@repo/shared-types';
 import { ICallController } from './params';
 
@@ -88,7 +89,11 @@ export class UpdateParticipant {
                 const updates = applyParticipantChange(call, userId, joined);
                 const updated: CallState = { ...call, ...updates };
 
-                const result = await conn.multi().set(key, JSON.stringify(updated)).exec();
+                // Any call update refreshes the TTL — participant join/leave
+                // included — so a call can never expire while it's actually
+                // ongoing, regardless of how long it's been since
+                // onMeetingStarted or the last /calls/sync.
+                const result = await conn.multi().set(key, JSON.stringify(updated), 'EX', CALL_TTL_SECONDS).exec();
                 if (result) return successData(updated);
             }
 

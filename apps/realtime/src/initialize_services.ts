@@ -6,6 +6,7 @@ import { traceMiddleware } from './middleware/trace';
 import { Properties } from './properties';
 import { buildKcMain } from './keycloak/singleton';
 import { registerDailyWebhooks, cleanupDailyWebhooks } from './webhooks/daily_manager';
+import { clientRegistry } from '#websocket/client_registry';
 
 class WebhookServer {
     private static instance: WebhookServer;
@@ -46,7 +47,9 @@ class WebhookServer {
 
     setupRoutes(): void {
         const health = require('./routes/health').default;
+        const calls = require('./routes/calls').default;
         health(this.app);
+        calls(this.app);
     }
 
     setupWebhooks(): void {
@@ -128,9 +131,20 @@ async function startAll(properties?: Properties): Promise<WebhookServer> {
         }
 
         let isShuttingDown = false;
-        const gracefulShutdown = async () => {
+        const gracefulShutdown = async (onClosed: () => void) => {
             if (isShuttingDown) return;
             isShuttingDown = true;
+
+            const forceExitTimer = setTimeout(() => {
+                console.error('Forçando shutdown após timeout');
+                process.exit(1);
+            }, 10_000);
+
+            for (const client of clientRegistry) {
+                client.terminate();
+            }
+            await new Promise<void>((resolve) => webhookServer.server!.close(() => resolve()));
+            logger.info('web service closed');
 
             try {
                 await cleanupDailyWebhooks()
@@ -138,19 +152,13 @@ async function startAll(properties?: Properties): Promise<WebhookServer> {
                 logger.error(error, 'falha ao limpar webhooks/rooms do daily');
             }
 
-            webhookServer.server!.close(() => {
-                logger.info('web service closed');
-                process.exit(0);
-            });
-
-            setTimeout(() => {
-                console.error('Forçando shutdown após timeout');
-                process.exit(1);
-            }, 10_000);
+            clearTimeout(forceExitTimer);
+            onClosed();
         };
 
-        process.on('SIGINT', gracefulShutdown);
-        process.on('SIGTERM', gracefulShutdown);
+        process.on('SIGINT', () => gracefulShutdown(() => process.exit(0)));
+        process.on('SIGTERM', () => gracefulShutdown(() => process.exit(0)));
+        process.once('SIGUSR2', () => gracefulShutdown(() => process.exit(0)));
     }
 
     return webhookServer;
