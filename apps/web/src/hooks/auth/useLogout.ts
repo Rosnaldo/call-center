@@ -13,7 +13,9 @@ export function useLogout() {
   const { logout } = useAuthentication();
 
   return () => {
-    DailyService.getInstance().destroy();
+    // rebuild, not destroy: App stays mounted across logout, so a future
+    // login in the same tab needs a live call object, not a dead one.
+    DailyService.getInstance().rebuild();
     initWs.notifyLogout();
 
     logout();

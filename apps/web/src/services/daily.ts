@@ -11,7 +11,7 @@ export interface IDailyService {
   join(options: JoinOptions): Promise<void>;
   leave(): Promise<void>;
   destroy(): void;
-  rebuild(): void;
+  rebuild(): Promise<void>;
 }
 
 interface DailyServiceConfig {
@@ -50,8 +50,18 @@ export class DailyService implements IDailyService {
     this._callObject.destroy();
   }
 
-  rebuild(): void {
-    this._callObject.destroy();
+  async rebuild(): Promise<void> {
+    // daily-js only allows one live instance per page at a time, and
+    // destroy() is async — creating the replacement before the old one
+    // has actually torn down throws "Duplicate DailyIframe instances".
+    // Callers fire-and-forget this (React effect cleanups and logout can't
+    // await), so swallow destroy() failures rather than leaving an
+    // unhandled rejection and no working call object.
+    try {
+      await this._callObject.destroy();
+    } catch (err) {
+      console.error('[Daily] failed to destroy call object during rebuild:', err);
+    }
     this._callObject = DailyIframe.createCallObject();
     this._onCallObjectChanged?.(this._callObject);
   }

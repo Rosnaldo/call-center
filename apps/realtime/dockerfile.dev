@@ -1,27 +1,5 @@
 ARG NODE_VERSION=24.13.0
-FROM node:${NODE_VERSION}-slim AS base
-
-WORKDIR /app
-
-
-FROM base AS prepare
-
-RUN npm install -g turbo
-COPY ./apps/realtime/out ./out
-
-
-FROM base AS builder
-
-# copy package*.json struture
-COPY --from=prepare /app/out/json/ .
-RUN npm ci
-
-# copy all files except node_module and builds
-COPY --from=prepare /app/out/full/ .
-RUN npm run build --filter=@repo/shared-types
-
-
-FROM base AS runner
+FROM node:${NODE_VERSION}-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
     && curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/ngrok.gpg \
@@ -29,6 +7,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
     && apt-get update && apt-get install -y ngrok \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app .
+WORKDIR /app/apps/realtime
 
-CMD ["npm", "run", "dev", "--workspace", "apps/realtime"]
+CMD ["npm", "run", "dev"]

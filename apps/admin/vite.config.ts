@@ -6,7 +6,12 @@ import { defineConfig, loadEnv } from "vite"
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
-  console.log("Backend:", env.VITE_BACKEND_URL)
+  console.log(
+    "VITE_ envs:",
+    Object.fromEntries(
+      Object.entries(env).filter(([key]) => key.startsWith("VITE_"))
+    )
+  )
 
   const basePath = env.VITE_BASE_PATH || '/'
 
@@ -41,7 +46,13 @@ export default defineConfig(({ mode }) => {
         "free-porn-block.com",
         "localhost",
         "127.0.0.1"
-      ]
+      ],
+      // VITE_HMR_CLIENT_PORT (only set inside the dev docker container) tells
+      // the HMR client to open its WebSocket on nginx's public port instead of
+      // Vite's internal container port, which the browser can't reach directly.
+      hmr: env.VITE_HMR_CLIENT_PORT
+        ? { clientPort: Number(env.VITE_HMR_CLIENT_PORT) }
+        : undefined,
     }
   }
 })

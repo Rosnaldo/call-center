@@ -4,10 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port 5173",
+    "dev": "vite --port 5173 --mode development",
     "dev:local": "node --env-file=.env.local ../../node_modules/.bin/vite -- --port 5173",
     "build": "vite build --mode production",
-    "build-dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "tsc",
     "test": "vitest run"

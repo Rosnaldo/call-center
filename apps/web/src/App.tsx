@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "sonner";
@@ -28,10 +28,25 @@ export default function App() {
   const { t } = useTranslation();
   const ready = useAuthStore((s) => s.ready);
   const error = useAuthStore((s) => s.error);
+  const [callObject, setCallObject] = useState(() => DailyService.getInstance().callObject);
 
   useEffect(() => {
+    const dailyService = DailyService.getInstance();
+    dailyService.onCallObjectChanged(setCallObject);
+
+    // Real tab close/refresh: release camera/mic and tear down the call for good.
+    const handleBeforeUnload = () => {
+      dailyService.destroy();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
-      DailyService.getInstance().destroy();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // App re-mounting without the page actually unloading (StrictMode's
+      // dev double-invoke, Vite HMR) leaves the old call object destroyed —
+      // rebuild so the singleton stays usable and push the new object
+      // through onCallObjectChanged so DailyProvider re-renders with it.
+      dailyService.rebuild();
     };
   }, []);
 
@@ -53,7 +68,7 @@ export default function App() {
   if (!ready) return <div>{t('call.loadingSession')}</div>;
 
   return (
-    <DailyProvider callObject={DailyService.getInstance().callObject}>
+    <DailyProvider callObject={callObject}>
       <QueryClientProvider client={queryClient}>
         <Toaster />
         <Routes>

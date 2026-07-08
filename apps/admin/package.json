@@ -3,9 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "vite --port 5174",
+    "dev": "vite --port 5174 --mode development",
     "dev:local": "node --env-file=.env.local ../../node_modules/.bin/vite -- --port 5174",
-    "build-dev": "tsc -b && vite build --mode dev",
     "build": "tsc -b && vite build --mode production",
     "lint": "eslint .",
     "preview": "vite preview --host 0.0.0.0 --port 5174"

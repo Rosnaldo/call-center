@@ -1,6 +1,6 @@
 ARG NODE_VERSION=24.13.0
 FROM node:${NODE_VERSION}-slim
 
-WORKDIR /app/apps/iam
+WORKDIR /app/apps/admin
 
 CMD ["npm", "run", "dev"]

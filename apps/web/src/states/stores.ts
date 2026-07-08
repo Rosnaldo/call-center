@@ -64,7 +64,7 @@ const noopDailyService: IDailyService = {
     join: async () => {},
     leave: async () => {},
     destroy: () => {},
-    rebuild: () => {},
+    rebuild: async () => {},
 };
 
 export function createStores(dailyService: IDailyService = noopDailyService): Stores {
