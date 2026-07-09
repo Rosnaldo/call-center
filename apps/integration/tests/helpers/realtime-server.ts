@@ -18,6 +18,13 @@ export async function startRealtimeServer(): Promise<WebhookServer> {
     const port = webhookServer.properties.port;
     IamProperties.override({ realtimeUri: `http://localhost:${port}` });
 
+    // Mirrors the IAM helper's WebProperties.override — points realtime's own
+    // createIamClient() at the ephemeral test IAM server instead of the real
+    // properties.iamUri, so services/calls|users|chat make real HTTP calls
+    // against it with no per-function mocking needed.
+    const iamPort = IamProperties.getInstance().port;
+    Properties.override({ iamUri: `http://localhost:${iamPort}` });
+
     return webhookServer;
 }
 

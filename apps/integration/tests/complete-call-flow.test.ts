@@ -1,6 +1,3 @@
-jest.mock('src/services/users');
-jest.mock('@/src/services/api/calls');
-
 import { EventEmitter } from 'node:events';
 import supertest from 'supertest';
 import { IUser, mapUserToOnlineUser } from '@repo/shared-types';
@@ -14,31 +11,35 @@ import { createWsClient } from './helpers/mock-wss';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
+import { deleteDailyRoom } from '../../realtime/src/webhooks/daily_manager';
 
 import { createStores, Stores } from '../../web/src/states/stores';
+import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
-import { Properties as WebProperties } from '../../web/src/properties';
 
-import { setBaseURL, setAuthToken } from '../src/mocks/realtime-calls-service';
-
-import * as usersService from 'src/services/users';
-import * as callsApiService from '@/src/services/api/calls';
-
-const findUserBySlugMock = usersService.findUserBySlug as jest.Mock;
-const addToIamMock = usersService.addToIam as jest.Mock;
-const mockCompleteCall = callsApiService.completeCall as jest.Mock;
-
-const pendingCalls: Array<Promise<unknown>> = [];
-
-async function flushPendingCalls(): Promise<void> {
-    const snapshot = [...pendingCalls];
-    pendingCalls.length = 0;
-    await Promise.all(snapshot);
-}
+// src/services/users|calls (realtime) and @/src/services/api/calls (web) are
+// all real here — apiBack resolves baseURL/auth fresh per request (see
+// apps/web/src/api/backend.ts), so WebProperties.override (already set by
+// startIamServer()) + AuthSession.override below are enough, no mocking
+// needed. Daily.co calls (webhooks/daily_manager) are real too, against a
+// dedicated test account — deleteDailyRoom in afterEach below cleans up the
+// room this suite creates.
 
 async function wait(ms: number): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// onMeetingEnded's chain includes a real Daily.co deleteDailyRoom call
+// (network-bound, variable latency) — a fixed wait after posting the
+// meeting.ended webhook isn't reliable, so poll for the actual end state
+// instead of guessing a duration.
+async function waitFor(condition: () => boolean, maxWaitMs = 10_000, stepMs = 100): Promise<void> {
+    const deadline = Date.now() + maxWaitMs;
+    while (Date.now() < deadline) {
+        if (condition()) return;
+        await wait(stepMs);
+    }
 }
 
 // ─── bridge helpers ─────────────────────────────────────────────────────────
@@ -91,14 +92,15 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         customerUser = users.customer;
         attendantUser = users.attendant;
         roomName = `${customerUser.slug}--${attendantUser.slug}`;
-
-        setBaseURL(WebProperties.getInstance().backendUrl);
-        setAuthToken(CUSTOMER_TOKEN);
     });
 
     afterAll(async () => {
         stopRealtimeServer();
         await stopIamServer();
+    });
+
+    afterEach(async () => {
+        await deleteDailyRoom(roomName);
     });
 
     beforeEach(async () => {
@@ -110,28 +112,11 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         await getCallHistoryModel().deleteMany({});
 
         clientRegistry.clear();
-        pendingCalls.length = 0;
         jest.clearAllMocks();
+        AuthSession.override({ token: CUSTOMER_TOKEN });
 
         customerStores = createStores();
         attendantStores = createStores();
-
-        addToIamMock.mockImplementation((user) => {
-            const op = iamRequest.post('/online-users/add').set('Authorization', CUSTOMER_TOKEN).send(user);
-            pendingCalls.push(op);
-            return op;
-        });
-
-        findUserBySlugMock.mockImplementation(async (_traceId: string, slug: string) => {
-            if (slug === customerUser.slug) return customerUser;
-            if (slug === attendantUser.slug) return attendantUser;
-            throw new Error(`unexpected slug: ${slug}`);
-        });
-
-        mockCompleteCall.mockImplementation(async (customerId: string, attendantId: string) => {
-            await iamRequest.post('/calls/complete').set('Authorization', CUSTOMER_TOKEN)
-                .send({ customerId, attendantId });
-        });
 
         // both users must exist as online_user Redis entries — /calls/complete
         // (fired from the web completeCall() action) looks them up to flip
@@ -212,9 +197,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         const { customerWs, attendantWs } = bridgeBothUsers();
 
         await onConnection()(customerWs);
-        await flushPendingCalls();
         await onConnection()(attendantWs);
-        await flushPendingCalls();
 
         const startingTokens = await getCustomerTokens();
         expect(startingTokens).toBe(10);
@@ -254,6 +237,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         // history, and the final store clear happen off Daily's own
         // meeting.ended webhook, which is also what triggers deleteDailyRoom
         await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: 'm-complete-1', room: roomName, start_ts: Date.now() / 1000 } });
+        await waitFor(() => customerStores.call.getState().call === null);
 
         const endingTokens = await getCustomerTokens();
         expect(endingTokens).toBe(startingTokens - 1);
@@ -278,9 +262,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         const { customerWs, attendantWs } = bridgeBothUsers();
 
         await onConnection()(customerWs);
-        await flushPendingCalls();
         await onConnection()(attendantWs);
-        await flushPendingCalls();
 
         const startingTokens = await getCustomerTokens();
 
@@ -296,6 +278,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         await wait(300);
 
         await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: 'm-complete-2', room: roomName, start_ts: Date.now() / 1000 } });
+        await waitFor(() => customerStores.call.getState().call === null);
 
         const endingTokens = await getCustomerTokens();
         expect(endingTokens).toBe(startingTokens);

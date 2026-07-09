@@ -1,9 +1,3 @@
-jest.mock('src/services/users');
-jest.mock('src/services/calls');
-jest.mock('@/src/services/api/online-users', () => ({
-    fetchOnlineUsers: jest.fn(),
-}));
-
 import { EventEmitter } from 'node:events';
 import { IOnlineUser, IUser } from '@repo/shared-types';
 
@@ -17,35 +11,27 @@ import { graceTimer } from '../../realtime/src/websocket/grace_timer';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 
 import { createStores, Stores } from '../../web/src/states/stores';
+import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
-import * as usersService from 'src/services/users';
-import * as callsService from 'src/services/calls';
-import * as onlineUsersService from '@/src/services/api/online-users';
-
-const addToIamMock = usersService.addToIam as jest.Mock;
-const removeFromIamMock = usersService.removeFromIam as jest.Mock;
-const findUserBySlugMock = usersService.findUserBySlug as jest.Mock;
-const updateOnlineUserStatusMock = usersService.updateOnlineUserStatus as jest.Mock;
-const getCallByUserMock = callsService.getCallByUser as jest.Mock;
-const syncActiveCallMock = callsService.syncActiveCall as jest.Mock;
-const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
-
-const pendingCalls: Array<Promise<unknown>> = [];
-
-async function flushPendingCalls(): Promise<void> {
-    // drain in waves — grace_period.ts chains findUserBySlug -> addToIam ->
-    // broadcastMessage across several .then() hops, and online_users_broadcast
-    // triggers a client-side refetch too, so a single snapshot can miss calls
-    // pushed while awaiting a prior batch. The extra microtask ticks give each
-    // wave's cascading .then() chain room to enqueue further pendingCalls
-    // entries before we re-check the loop condition.
-    while (pendingCalls.length > 0) {
-        const snapshot = [...pendingCalls];
-        pendingCalls.length = 0;
-        await Promise.all(snapshot);
-        for (let i = 0; i < 5; i++) await Promise.resolve();
+// src/services/users|calls (realtime) and @/src/services/api/online-users
+// (web) are all real here — apiBack resolves baseURL/auth fresh per request,
+// so WebProperties.override (already set by startIamServer()) +
+// AuthSession.override below are enough, no mocking needed. But grace_period's
+// disconnect chain (getCallByUser -> updateOnlineUserStatus -> broadcast) is
+// kicked off fire-and-forget from a synchronous 'close' EventEmitter
+// listener, so the test has no promise to await directly. jest.useFakeTimers()
+// is also active in this suite (to fast-forward the 2min grace window) — real
+// setTimeout-based waits would never fire under it, and by default jest's
+// fake timers also replace process.nextTick, so looping on that hangs
+// forever (it queues into jest's fake, never-drained queue instead of the
+// real one — confirmed by hand). setImmediate, explicitly excluded from
+// faking below, does yield to the real event loop's poll phase, so looping
+// on that reliably lets an in-process, localhost-fast HTTP round trip settle.
+async function flushRealIO(ticks = 50): Promise<void> {
+    for (let i = 0; i < ticks; i++) {
+        await new Promise<void>((resolve) => setImmediate(resolve));
     }
 }
 
@@ -102,90 +88,15 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
     });
 
     beforeEach(async () => {
-        jest.useFakeTimers();
+        jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
         await getRedisClient().del('online_users');
 
         clientRegistry.clear();
-        pendingCalls.length = 0;
         jest.clearAllMocks();
+        AuthSession.override({ token: CUSTOMER_TOKEN });
 
         customerStores = createStores();
         adminStores = createStores();
-
-        addToIamMock.mockImplementation((user: IOnlineUser) => {
-            const op = iamRequest
-                .post('/online-users/add')
-                .set('Authorization', CUSTOMER_TOKEN)
-                .send(user);
-            pendingCalls.push(op);
-            return op;
-        });
-
-        removeFromIamMock.mockImplementation((userId: string) => {
-            const op = iamRequest
-                .delete('/online-users/remove')
-                .set('Authorization', CUSTOMER_TOKEN)
-                .send({ id: userId });
-            pendingCalls.push(op);
-            return op;
-        });
-
-        findUserBySlugMock.mockImplementation((_traceId: string, slug: string) => {
-            const op = (async () => {
-                if (slug === adminUser.slug) return adminUser;
-                if (slug === customerUser.slug) return customerUser;
-                throw new Error(`unexpected slug: ${slug}`);
-            })();
-            pendingCalls.push(op);
-            return op;
-        });
-
-        updateOnlineUserStatusMock.mockImplementation((_traceId: string, userId: string, status: IOnlineUser['status']) => {
-            // the first (and often only) async step of a grace-period
-            // transition chain, so it must be tracked in pendingCalls too or
-            // flushPendingCalls() sees an empty queue and returns before the
-            // broadcast that follows it ever gets pushed
-            const op = iamRequest
-                .put('/online-users/update-status')
-                .set('Authorization', CUSTOMER_TOKEN)
-                .send({ id: userId, status });
-            pendingCalls.push(op);
-            return op;
-        });
-
-        fetchOnlineUsersMock.mockImplementation(() => {
-            // triggered internally off the online_users_broadcast websocket
-            // handler (not called directly by the test), so track it in
-            // pendingCalls too or flushPendingCalls() won't wait for it
-            const op = (async () => {
-                const res = await iamRequest
-                    .get('/online-users/list')
-                    .set('Authorization', CUSTOMER_TOKEN);
-                return res.body.users ?? [];
-            })();
-            pendingCalls.push(op);
-            return op;
-        });
-
-        // grace-period expiry calls endActiveCall, which checks for an
-        // active call before doing anything else — none of these tests put
-        // a user in a call, so this always resolves to null, but it must
-        // still be tracked in pendingCalls or flushPendingCalls() races past it
-        getCallByUserMock.mockImplementation(() => {
-            const op = Promise.resolve(null);
-            pendingCalls.push(op);
-            return op;
-        });
-
-        // called once per onConnection — must resolve (not just return
-        // undefined, the jest.mock() default) or onConnection's try/catch
-        // swallows the error and the online_users_broadcast right after it
-        // never fires
-        syncActiveCallMock.mockImplementation(() => {
-            const op = Promise.resolve({ call: null, shouldJoin: false });
-            pendingCalls.push(op);
-            return op;
-        });
     });
 
     afterEach(() => {
@@ -204,18 +115,16 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
-        onConnection()(adminWs);
-        await flushPendingCalls();
-
-        onConnection()(customerWs);
-        await flushPendingCalls();
+        await onConnection()(adminWs);
+        await onConnection()(customerWs);
+        await flushRealIO();
 
         expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
 
         // ── admin disconnects — terminate() sets readyState=CLOSED before
         //    the broadcast, so admin itself won't receive it ──────────────
         adminWs.terminate();
-        await flushPendingCalls();
+        await flushRealIO();
 
         // grace_period only flips status to 'disconnecting' when the user
         // has an active call — admin isn't in one here, so status stays
@@ -246,15 +155,13 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
-        onConnection()(adminWs);
-        await flushPendingCalls();
-
-        onConnection()(customerWs);
-        await flushPendingCalls();
+        await onConnection()(adminWs);
+        await onConnection()(customerWs);
+        await flushRealIO();
 
         // ── admin disconnects — no active call, so status stays idle ─────
         adminWs.terminate();
-        await flushPendingCalls();
+        await flushRealIO();
 
         expect(
             customerStores.onlineUsers.getState().users
@@ -269,10 +176,10 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         for (let i = 0; i < 4; i++) {
             jest.advanceTimersByTime(30_000);
             simulateMessage(customerWs, { event: 'heartbeat' });
-            await flushPendingCalls();
+            await flushRealIO();
         }
         jest.advanceTimersByTime(1);
-        await flushPendingCalls();
+        await flushRealIO();
 
         // customer's store no longer contains admin (broadcast removal)
         expect(
@@ -306,16 +213,14 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
-        onConnection()(adminWs);
-        await flushPendingCalls();
-
-        onConnection()(customerWs);
-        await flushPendingCalls();
+        await onConnection()(adminWs);
+        await onConnection()(customerWs);
+        await flushRealIO();
 
         // ── admin disconnects — grace timer starts, but status stays idle
         //    since there's no active call to flip it to disconnecting ────
         adminWs.terminate();
-        await flushPendingCalls();
+        await flushRealIO();
 
         expect(
             customerStores.onlineUsers.getState().users
@@ -331,8 +236,8 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory2);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
-        onConnection()(adminWs2);
-        await flushPendingCalls();
+        await onConnection()(adminWs2);
+        await flushRealIO();
 
         // grace timer cancelled on reconnect
         expect(graceTimer.has(adminUser._id)).toBe(false);
@@ -359,9 +264,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
 
         // ── advance past original grace window — nothing fires ───────────
         jest.advanceTimersByTime(120_001);
-        await flushPendingCalls();
-
-        expect(removeFromIamMock).not.toHaveBeenCalled();
+        await flushRealIO();
 
         expect(
             customerStores.onlineUsers.getState().users

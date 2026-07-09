@@ -1,6 +1,5 @@
 import WebSocket, { WebSocketServer } from 'ws';
 import { Server } from 'http';
-import { iamApi } from '#apis/iam';
 import { AuthenticatedWebSocket } from './types';
 import { ISocketServer } from './socket';
 import { WsTransport } from './transport';

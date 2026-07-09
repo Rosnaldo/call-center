@@ -1,6 +1,6 @@
 import axios from "axios";
 import { CallState } from "@repo/shared-types";
-import { createIamClient, iamApi } from "src/apis/iam";
+import { createIamClient } from "src/apis/iam";
 
 export const createCall = async (traceId: string, call: CallState): Promise<CallState> => {
     const { data } = await createIamClient(traceId).post<CallState>('/calls/create', call);
@@ -22,7 +22,7 @@ export const getCallByRoom = async (traceId: string, roomName: string): Promise<
 
 export const getCallByUser = async (userId: string): Promise<CallState | null> => {
     try {
-        const { data } = await iamApi.get<CallState>('/calls/get-by-user', { params: { userId } });
+        const { data } = await createIamClient().get<CallState>('/calls/get-by-user', { params: { userId } });
         return data;
     } catch {
         return null;

@@ -1,9 +1,3 @@
-jest.mock('src/services/users');
-jest.mock('src/services/calls');
-jest.mock('@/src/services/api/online-users', () => ({
-    fetchOnlineUsers: jest.fn(),
-}));
-
 import { EventEmitter } from 'node:events';
 import { IOnlineUser, IUser } from '@repo/shared-types';
 
@@ -16,27 +10,23 @@ import { onConnection } from '../../realtime/src/websocket/connection';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 
 import { createStores, Stores } from '../../web/src/states/stores';
+import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
-import * as usersService from 'src/services/users';
-import * as callsService from 'src/services/calls';
-import * as onlineUsersService from '@/src/services/api/online-users';
-
-const addToIamMock = usersService.addToIam as jest.Mock;
-const syncActiveCallMock = callsService.syncActiveCall as jest.Mock;
-const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
-
-const pendingCalls: Array<Promise<unknown>> = [];
-
-async function flushPendingCalls(): Promise<void> {
-    // drain in waves — online_users_broadcast triggers refreshUsers(), which
-    // itself pushes a new pendingCalls entry, so a single snapshot can miss
-    // calls pushed while we're awaiting the previous batch
-    while (pendingCalls.length > 0) {
-        const snapshot = [...pendingCalls];
-        pendingCalls.length = 0;
-        await Promise.all(snapshot);
+// src/services/users|calls (realtime) and @/src/services/api/online-users
+// (web) are all real here — apiBack resolves baseURL/auth fresh per request,
+// so WebProperties.override (already set by startIamServer()) +
+// AuthSession.override below are enough, no mocking needed. Awaiting
+// onConnection() directly waits for its own HTTP calls to settle, but
+// broadcastMessage() (fired synchronously inside onConnection, once addToIam
+// + syncActiveCall resolve) triggers each connected client's refreshUsers()
+// fire-and-forget — that's a *client-side* async chain with no promise
+// onConnection() itself awaits, so a few real event-loop turns are needed
+// for it to settle too.
+async function flushRealIO(ticks = 20): Promise<void> {
+    for (let i = 0; i < ticks; i++) {
+        await new Promise<void>((resolve) => setImmediate(resolve));
     }
 }
 
@@ -96,44 +86,11 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
         await getRedisClient().del('online_users');
 
         clientRegistry.clear();
-        pendingCalls.length = 0;
         jest.clearAllMocks();
+        AuthSession.override({ token: CUSTOMER_TOKEN });
 
         customerStores = createStores();
         adminStores = createStores();
-
-        addToIamMock.mockImplementation((user: IOnlineUser) => {
-            const op = iamRequest
-                .post('/online-users/add')
-                .set('Authorization', CUSTOMER_TOKEN)
-                .send(user);
-            pendingCalls.push(op);
-            return op;
-        });
-
-        // called once per onConnection — must resolve (not just return
-        // undefined, the jest.mock() default) or onConnection's try/catch
-        // swallows the error and the online_users_broadcast right after it
-        // never fires
-        syncActiveCallMock.mockImplementation(() => {
-            const op = Promise.resolve({ call: null, shouldJoin: false });
-            pendingCalls.push(op);
-            return op;
-        });
-
-        fetchOnlineUsersMock.mockImplementation(() => {
-            // triggered internally off the online_users_broadcast websocket
-            // handler (not called directly by the test), so track it in
-            // pendingCalls too or flushPendingCalls() won't wait for it
-            const op = (async () => {
-                const res = await iamRequest
-                    .get('/online-users/list')
-                    .set('Authorization', CUSTOMER_TOKEN);
-                return res.body.users ?? [];
-            })();
-            pendingCalls.push(op);
-            return op;
-        });
     });
 
     it('admin login broadcasts to web store and syncs IAM Redis', async () => {
@@ -147,8 +104,8 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
         // ── admin connects ───────────────────────────────────────────────
-        onConnection()(adminWs);
-        await flushPendingCalls();
+        await onConnection()(adminWs);
+        await flushRealIO();
 
         // customer's store receives admin via broadcast
         const adminInStore = customerStores.onlineUsers.getState().users
@@ -178,12 +135,12 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
         // ── admin connects ───────────────────────────────────────────────
-        onConnection()(adminWs);
-        await flushPendingCalls();
+        await onConnection()(adminWs);
+        await flushRealIO();
 
         // ── customer connects ────────────────────────────────────────────
-        onConnection()(customerWs);
-        await flushPendingCalls();
+        await onConnection()(customerWs);
+        await flushRealIO();
 
         // customer's store has both users as idle
         const users = customerStores.onlineUsers.getState().users;

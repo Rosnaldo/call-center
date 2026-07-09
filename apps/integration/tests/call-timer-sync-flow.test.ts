@@ -1,9 +1,6 @@
-jest.mock('src/services/users');
-jest.mock('@/src/services/api/calls');
-
 import { EventEmitter } from 'node:events';
 import supertest from 'supertest';
-import { IUser, IOnlineUser, getCallElapsedMs } from '@repo/shared-types';
+import { IUser, getCallElapsedMs } from '@repo/shared-types';
 
 import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
@@ -13,28 +10,20 @@ import { createWsClient } from './helpers/mock-wss';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
+import { deleteDailyRoom } from '../../realtime/src/webhooks/daily_manager';
 
 import { createStores, Stores } from '../../web/src/states/stores';
+import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
-import { Properties as WebProperties } from '../../web/src/properties';
 
-import { setBaseURL, setAuthToken } from '../src/mocks/realtime-calls-service';
-
-import * as usersService from 'src/services/users';
-import * as callsApiService from '@/src/services/api/calls';
-
-const findUserBySlugMock = usersService.findUserBySlug as jest.Mock;
-const addToIamMock = usersService.addToIam as jest.Mock;
-const mockCompleteCall = callsApiService.completeCall as jest.Mock;
-
-const pendingCalls: Array<Promise<unknown>> = [];
-
-async function flushPendingCalls(): Promise<void> {
-    const snapshot = [...pendingCalls];
-    pendingCalls.length = 0;
-    await Promise.all(snapshot);
-}
+// src/services/users|calls (realtime) and @/src/services/api/calls (web) are
+// all real here — apiBack resolves baseURL/auth fresh per request (see
+// apps/web/src/api/backend.ts), so WebProperties.override (already set by
+// startIamServer()) + AuthSession.override below are enough, no mocking
+// needed. Daily.co calls (webhooks/daily_manager) are real too, against a
+// dedicated test account — deleteDailyRoom in afterEach below cleans up the
+// room this suite creates.
 
 async function wait(ms: number): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, ms));
@@ -90,14 +79,15 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         customerUser = users.customer;
         attendantUser = users.attendant;
         roomName = `${customerUser.slug}--${attendantUser.slug}`;
-
-        setBaseURL(WebProperties.getInstance().backendUrl);
-        setAuthToken(CUSTOMER_TOKEN);
     });
 
     afterAll(async () => {
         stopRealtimeServer();
         await stopIamServer();
+    });
+
+    afterEach(async () => {
+        await deleteDailyRoom(roomName);
     });
 
     beforeEach(async () => {
@@ -106,28 +96,11 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         if (callKeys.length) await redis.del(...callKeys);
 
         clientRegistry.clear();
-        pendingCalls.length = 0;
         jest.clearAllMocks();
+        AuthSession.override({ token: CUSTOMER_TOKEN });
 
         customerStores = createStores();
         attendantStores = createStores();
-
-        addToIamMock.mockImplementation((user: IOnlineUser) => {
-            const op = iamRequest.post('/online-users/add').set('Authorization', CUSTOMER_TOKEN).send(user);
-            pendingCalls.push(op);
-            return op;
-        });
-
-        findUserBySlugMock.mockImplementation(async (_traceId: string, slug: string) => {
-            if (slug === customerUser.slug) return customerUser;
-            if (slug === attendantUser.slug) return attendantUser;
-            throw new Error(`unexpected slug: ${slug}`);
-        });
-
-        mockCompleteCall.mockImplementation(async (customerId: string, attendantId: string) => {
-            await iamRequest.post('/calls/complete').set('Authorization', CUSTOMER_TOKEN)
-                .send({ customerId, attendantId });
-        });
     });
 
     const postDailyWebhook = async (body: Record<string, unknown>): Promise<void> => {
@@ -202,9 +175,7 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
         await onConnection()(customerWs);
-        await flushPendingCalls();
         await onConnection()(attendantWs);
-        await flushPendingCalls();
 
         // ── call already exists in IAM, same as after an incoming-call accept ──
         await iamRequest.post('/calls/create').set('Authorization', CUSTOMER_TOKEN).send({
@@ -347,16 +318,27 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
 
         // ── the customer hangs up — /calls/complete only flips presence;
         //    Daily's own meeting.ended webhook is what actually tears the
-        //    record down (via onMeetingEnded's deleteCall)
+        //    record down (via onMeetingEnded's deleteCall). deleteCall runs
+        //    early in that chain, before the real (network-bound)
+        //    deleteDailyRoom call, but poll rather than guess a fixed delay
+        //    for it, since a real Daily.co call precedes it in the same
+        //    fire-and-forget handler.
         await customerStores.call.getState().completeCall();
         await wait(100);
 
         await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: 'm-1', room: roomName, start_ts: Date.now() / 1000 } });
 
-        const res = await iamRequest
-            .get('/calls/get-by-room')
-            .query({ roomName })
-            .set('Authorization', CUSTOMER_TOKEN);
+        const deadline = Date.now() + 10_000;
+        let res: Awaited<ReturnType<typeof iamRequest.get>>;
+        do {
+            res = await iamRequest
+                .get('/calls/get-by-room')
+                .query({ roomName })
+                .set('Authorization', CUSTOMER_TOKEN);
+            if (res.body?.isError === true) break;
+            await wait(100);
+        } while (Date.now() < deadline);
+
         expect(res.body?.isError).toBe(true);
     });
 });

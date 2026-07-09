@@ -1,9 +1,3 @@
-jest.mock('src/services/users');
-jest.mock('src/services/calls');
-jest.mock('@/src/services/api/online-users', () => ({
-    fetchOnlineUsers: jest.fn(),
-}));
-
 import { EventEmitter } from 'node:events';
 import { IOnlineUser, IUser } from '@repo/shared-types';
 
@@ -17,34 +11,27 @@ import { graceTimer } from '../../realtime/src/websocket/grace_timer';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 
 import { createStores, Stores } from '../../web/src/states/stores';
+import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
-import * as usersService from 'src/services/users';
-import * as callsService from 'src/services/calls';
-import * as onlineUsersService from '@/src/services/api/online-users';
-
-const addToIamMock = usersService.addToIam as jest.Mock;
-const removeFromIamMock = usersService.removeFromIam as jest.Mock;
-const findUserBySlugMock = usersService.findUserBySlug as jest.Mock;
-const getCallByUserMock = callsService.getCallByUser as jest.Mock;
-const syncActiveCallMock = callsService.syncActiveCall as jest.Mock;
-const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
-
-const pendingCalls: Array<Promise<unknown>> = [];
-
-async function flushPendingCalls(): Promise<void> {
-    // drain in waves — grace_period.ts chains findUserBySlug -> addToIam ->
-    // broadcastMessage across several .then() hops, and online_users_broadcast
-    // triggers a client-side refetch too, so a single snapshot can miss calls
-    // pushed while awaiting a prior batch. The extra microtask ticks give each
-    // wave's cascading .then() chain room to enqueue further pendingCalls
-    // entries before we re-check the loop condition.
-    while (pendingCalls.length > 0) {
-        const snapshot = [...pendingCalls];
-        pendingCalls.length = 0;
-        await Promise.all(snapshot);
-        for (let i = 0; i < 5; i++) await Promise.resolve();
+// src/services/users|calls (realtime) and @/src/services/api/online-users
+// (web) are all real here — apiBack resolves baseURL/auth fresh per request,
+// so WebProperties.override (already set by startIamServer()) +
+// AuthSession.override below are enough, no mocking needed. The grace-period /
+// logout disconnect chain is kicked off fire-and-forget from a synchronous
+// 'close' EventEmitter listener though, so there's no promise for the test
+// to await directly, and jest.useFakeTimers() is active (to fast-forward the
+// 2min grace window) — real setTimeout-based waits never fire under it, and
+// by default jest's fake timers also replace process.nextTick, so looping on
+// that hangs forever (it queues into jest's fake, never-drained queue
+// instead of the real one — confirmed by hand). setImmediate, explicitly
+// excluded from faking below, does yield to the real event loop's poll
+// phase, so looping on that reliably lets an in-process, localhost-fast HTTP
+// round trip settle.
+async function flushRealIO(ticks = 50): Promise<void> {
+    for (let i = 0; i < ticks; i++) {
+        await new Promise<void>((resolve) => setImmediate(resolve));
     }
 }
 
@@ -101,81 +88,15 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
     });
 
     beforeEach(async () => {
-        jest.useFakeTimers();
+        jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
         await getRedisClient().del('online_users');
 
         clientRegistry.clear();
-        pendingCalls.length = 0;
         jest.clearAllMocks();
+        AuthSession.override({ token: CUSTOMER_TOKEN });
 
         customerStores = createStores();
         adminStores = createStores();
-
-        addToIamMock.mockImplementation((user: IOnlineUser) => {
-            const op = iamRequest
-                .post('/online-users/add')
-                .set('Authorization', CUSTOMER_TOKEN)
-                .send(user);
-            pendingCalls.push(op);
-            return op;
-        });
-
-        removeFromIamMock.mockImplementation((userId: string) => {
-            const op = iamRequest
-                .delete('/online-users/remove')
-                .set('Authorization', CUSTOMER_TOKEN)
-                .send({ id: userId });
-            pendingCalls.push(op);
-            return op;
-        });
-
-        findUserBySlugMock.mockImplementation((_traceId: string, slug: string) => {
-            // often the first async step of a grace-period transition chain
-            // (called synchronously, before addToIam), so it must be tracked
-            // in pendingCalls too or flushPendingCalls() sees an empty queue
-            // and returns before addToIam ever gets pushed
-            const op = (async () => {
-                if (slug === adminUser.slug) return adminUser;
-                if (slug === customerUser.slug) return customerUser;
-                throw new Error(`unexpected slug: ${slug}`);
-            })();
-            pendingCalls.push(op);
-            return op;
-        });
-
-        fetchOnlineUsersMock.mockImplementation(() => {
-            // triggered internally off the online_users_broadcast websocket
-            // handler (not called directly by the test), so track it in
-            // pendingCalls too or flushPendingCalls() won't wait for it
-            const op = (async () => {
-                const res = await iamRequest
-                    .get('/online-users/list')
-                    .set('Authorization', CUSTOMER_TOKEN);
-                return res.body.users ?? [];
-            })();
-            pendingCalls.push(op);
-            return op;
-        });
-
-        // logout/grace-period expiry call endActiveCall, which checks for an
-        // active call before doing anything else — none of these tests put
-        // a user in a call, so this always resolves to null, but it must
-        // still be tracked in pendingCalls or flushPendingCalls() races past it
-        getCallByUserMock.mockImplementation(() => {
-            const op = Promise.resolve(null);
-            pendingCalls.push(op);
-            return op;
-        });
-
-        // called once per onConnection — must resolve (not just return
-        // undefined, the jest.mock() default) or onConnection's try/catch
-        // swallows the error and the online_users_broadcast right after it
-        // never fires
-        syncActiveCallMock.mockImplementation(() => {
-            const op = Promise.resolve({ call: null, shouldJoin: false });
-            pendingCalls.push(op);
-            return op;
-        });
     });
 
     afterEach(() => {
@@ -204,11 +125,9 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
-        onConnection()(adminWs);
-        await flushPendingCalls();
-
-        onConnection()(customerWs);
-        await flushPendingCalls();
+        await onConnection()(adminWs);
+        await onConnection()(customerWs);
+        await flushRealIO();
 
         // both users appear in customer's store as idle
         expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
@@ -225,7 +144,7 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         customerMessages.length = 0;
 
         simulateMessage(adminWs, { event: 'user_logout' });
-        await flushPendingCalls();
+        await flushRealIO();
 
         // handleMessageLogout only sendToUser's the logging-out client itself
         // (unlike a full broadcast) — the payload carries the full user record
@@ -258,10 +177,10 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         for (let i = 0; i < 4; i++) {
             jest.advanceTimersByTime(30_000);
             simulateMessage(customerWs, { event: 'heartbeat' });
-            await flushPendingCalls();
+            await flushRealIO();
         }
         jest.advanceTimersByTime(1);
-        await flushPendingCalls();
+        await flushRealIO();
 
         // once the grace period expires, admin is finally removed
         expect(
@@ -295,11 +214,9 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
-        onConnection()(adminWs);
-        await flushPendingCalls();
-
-        onConnection()(customerWs);
-        await flushPendingCalls();
+        await onConnection()(adminWs);
+        await onConnection()(customerWs);
+        await flushRealIO();
 
         expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
 
@@ -308,7 +225,7 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         customerMessages.length = 0;
 
         adminWs.terminate();
-        await flushPendingCalls();
+        await flushRealIO();
 
         // customer isn't admin's call partner (there's no call between them
         // here), so user_disconnecting/user_disconnected — now sendToUser'd
@@ -332,10 +249,10 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         for (let i = 0; i < 4; i++) {
             jest.advanceTimersByTime(30_000);
             simulateMessage(customerWs, { event: 'heartbeat' });
-            await flushPendingCalls();
+            await flushRealIO();
         }
         jest.advanceTimersByTime(1);
-        await flushPendingCalls();
+        await flushRealIO();
 
         // still nothing targeted at customer once the grace period expires,
         // for the same reason — no call, no partner to notify
@@ -356,11 +273,9 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
-        onConnection()(adminWs);
-        await flushPendingCalls();
-
-        onConnection()(customerWs);
-        await flushPendingCalls();
+        await onConnection()(adminWs);
+        await onConnection()(customerWs);
+        await flushRealIO();
 
         expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
 
@@ -368,7 +283,7 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         // flow, so admin isn't removed immediately, just grace-timered like
         // any other disconnect ────────────────────────────────────────────
         simulateMessage(adminWs, { event: 'user_logout' });
-        await flushPendingCalls();
+        await flushRealIO();
 
         expect(
             customerStores.onlineUsers.getState().users.find(u => u.id === adminUser._id),
@@ -382,8 +297,8 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory2);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
 
-        onConnection()(adminWs2);
-        await flushPendingCalls();
+        await onConnection()(adminWs2);
+        await flushRealIO();
 
         // customer's store shows admin back as idle (broadcast)
         const adminAfterRelogin = customerStores.onlineUsers.getState().users

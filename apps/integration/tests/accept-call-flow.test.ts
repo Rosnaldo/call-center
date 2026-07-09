@@ -1,22 +1,6 @@
-jest.mock('src/services/users');
-jest.mock('@/src/services/api/online-users', () => ({ fetchOnlineUsers: jest.fn() }));
-const mockSendIncomingCall = jest.fn();
-const mockAcceptIncomingCall = jest.fn();
-jest.mock('@/src/services/api/incoming-calls', () => ({
-    sendIncomingCall: mockSendIncomingCall,
-    cancelIncomingCall: jest.fn(),
-    acceptIncomingCall: mockAcceptIncomingCall,
-}));
-const mockFetchCall = jest.fn();
-const mockCompleteCall = jest.fn();
-jest.mock('@/src/services/api/calls', () => ({
-    fetchCall: mockFetchCall,
-    completeCall: mockCompleteCall,
-}));
-
 import { EventEmitter } from 'node:events';
 import supertest from 'supertest';
-import { IOnlineUser, IUser, mapUserToOnlineUser } from '@repo/shared-types';
+import { IUser, mapUserToOnlineUser } from '@repo/shared-types';
 
 import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
@@ -27,32 +11,36 @@ import { DailyCoService } from './helpers/daily-service';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
+import { deleteDailyRoom } from '../../realtime/src/webhooks/daily_manager';
 
 import { createStores, Stores } from '../../web/src/states/stores';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
-import { Properties as WebProperties } from '../../web/src/properties';
 
-import { setBaseURL, setAuthToken } from '../src/mocks/realtime-calls-service';
+// src/services/users|calls (realtime) and @/src/services/api/{incoming-calls,calls,online-users}
+// (web) are all real here — apiBack resolves baseURL/auth fresh per request
+// (see apps/web/src/api/backend.ts), so WebProperties.override (already set
+// by startIamServer()) + AuthSession.override below are enough; none of the
+// IAM controllers behind these calls check the caller's token identity
+// (accept.ts's customer/attendant check is a body-field comparison), so one
+// shared token works regardless of which side triggers the call. Daily.co
+// calls (webhooks/daily_manager, used by IAM's ensureDailyRoom and
+// realtime's onMeetingEnded) are real too, against a dedicated test account —
+// deleteDailyRoom in afterEach below cleans up the room this suite creates.
 
-import * as usersService from 'src/services/users';
-import * as onlineUsersService from '@/src/services/api/online-users';
+async function wait(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-const addToIamMock = usersService.addToIam as jest.Mock;
-const findUserBySlugMock = usersService.findUserBySlug as jest.Mock;
-const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
-
-const pendingCalls: Array<Promise<unknown>> = [];
-
-async function flushPendingCalls(): Promise<void> {
-    // drain in waves — online_users_broadcast triggers refreshUsers(), which
-    // itself pushes a new pendingCalls entry, so a single snapshot can miss
-    // calls pushed while we're awaiting the previous batch
-    while (pendingCalls.length > 0) {
-        const snapshot = [...pendingCalls];
-        pendingCalls.length = 0;
-        await Promise.all(snapshot);
+// Several steps here chain through a real Daily.co call (network-bound,
+// variable latency) — fixed waits aren't reliable, so poll for the actual
+// end state instead of guessing a duration.
+async function waitFor(condition: () => boolean, maxWaitMs = 10_000, stepMs = 100): Promise<void> {
+    const deadline = Date.now() + maxWaitMs;
+    while (Date.now() < deadline) {
+        if (condition()) return;
+        await wait(stepMs);
     }
 }
 
@@ -106,14 +94,15 @@ describe('Accept Call Flow', () => {
         customerUser = { ...users.customer, tokens: 10 };
         attendantUser = users.attendant;
         roomName = `${customerUser.slug}--${attendantUser.slug}`;
-
-        setBaseURL(WebProperties.getInstance().backendUrl);
-        setAuthToken(CUSTOMER_TOKEN);
     });
 
     afterAll(async () => {
         stopRealtimeServer();
         await stopIamServer();
+    });
+
+    afterEach(async () => {
+        await deleteDailyRoom(roomName);
     });
 
     beforeEach(async () => {
@@ -130,7 +119,6 @@ describe('Accept Call Flow', () => {
         if (onlineKeys.length) await redis.del(...onlineKeys);
 
         clientRegistry.clear();
-        pendingCalls.length = 0;
         jest.clearAllMocks();
         DailyCoService.reset();
         AuthSession.override({ token: CUSTOMER_TOKEN });
@@ -138,59 +126,10 @@ describe('Accept Call Flow', () => {
         const dailyService = DailyCoService.getInstance();
         customerStores = createStores(dailyService);
         attendantStores = createStores(dailyService);
-
-        addToIamMock.mockImplementation((user: IOnlineUser) => {
-            const op = iamRequest.post('/online-users/add').set('Authorization', CUSTOMER_TOKEN).send(user);
-            pendingCalls.push(op);
-            return op;
-        });
-
-        // onCallAccepted's ensureCallExists resolves both slugs before it will
-        // create the call record — left unmocked, findUserBySlug resolves to
-        // undefined and the call is silently never created
-        findUserBySlugMock.mockImplementation(async (_traceId: string, slug: string) => {
-            if (slug === customerUser.slug) return customerUser;
-            if (slug === attendantUser.slug) return attendantUser;
-            throw new Error(`unexpected slug: ${slug}`);
-        });
-
-        fetchOnlineUsersMock.mockImplementation(() => {
-            // triggered internally off the online_users_broadcast websocket
-            // handler (not called directly by the test), so track it in
-            // pendingCalls too or flushPendingCalls() won't wait for it
-            const op = (async () => {
-                const res = await iamRequest.get('/online-users/list').set('Authorization', CUSTOMER_TOKEN);
-                return res.body.users ?? [];
-            })();
-            pendingCalls.push(op);
-            return op;
-        });
-
-        mockSendIncomingCall.mockImplementation(async (customerId: string, attendantId: string) => {
-            await iamRequest.post('/incoming-calls/send').set('Authorization', CUSTOMER_TOKEN)
-                .send({ customerId, attendantId, whoIsCalling: 'customer' });
-        });
-
-        mockAcceptIncomingCall.mockImplementation(async (attendantId: string) => {
-            await iamRequest.post('/incoming-calls/accept').set('Authorization', ATTENDANT_TOKEN)
-                .send({ attendantId, userId: attendantId });
-        });
-
-        mockFetchCall.mockImplementation(async (customerId: string, attendantId: string) => {
-            const res = await iamRequest.get('/calls/get')
-                .query({ customerId, attendantId }).set('Authorization', CUSTOMER_TOKEN);
-            return res.body;
-        });
-
-        mockCompleteCall.mockImplementation(async (customerId: string, attendantId: string) => {
-            await iamRequest.post('/calls/complete').set('Authorization', CUSTOMER_TOKEN)
-                .send({ customerId, attendantId });
-        });
     });
 
     const postDailyWebhook = async (body: Record<string, unknown>): Promise<void> => {
         await realtimeRequest.post('/webhooks/daily').send(body);
-        await new Promise((r) => setTimeout(r, 500));
     };
 
     it('after accept both users are in-call', async () => {
@@ -222,13 +161,22 @@ describe('Accept Call Flow', () => {
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
         await onConnection()(customerWs);
-        await flushPendingCalls();
         await onConnection()(attendantWs);
-        await flushPendingCalls();
+        // each onConnection() broadcasts online_users_broadcast, which
+        // triggers every connected client's refreshUsers() fire-and-forget
+        // (no promise onConnection() itself awaits) — without waiting for it
+        // to settle, that real fetch can clobber the onlineUsers state set
+        // above with a stale snapshot (e.g. admin's own connect firing a
+        // refresh before attendant's addToIam has persisted), which then
+        // fails sendIncomingCall's local "attendant exists" guard silently.
+        await waitFor(() =>
+            customerStores.onlineUsers.getState().users.some((u) => u.id === attendantUser._id)
+            && attendantStores.onlineUsers.getState().users.some((u) => u.id === customerUser._id),
+        );
 
         // ── send incoming call ────────────────────────────────────────
         customerStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
-        await new Promise((r) => setTimeout(r, 500));
+        await waitFor(() => attendantMessages.some((m) => m.event === 'incoming_call_received'));
 
         // ── accept call ───────────────────────────────────────────────
         const acceptMsg = attendantMessages.find((m) => m.event === 'incoming_call_received');
@@ -238,7 +186,10 @@ describe('Accept Call Flow', () => {
         attendantMessages.length = 0;
 
         await attendantStores.call.getState().acceptIncomingCall();
-        await new Promise((r) => setTimeout(r, 500));
+        await waitFor(() =>
+            customerStores.callView.getState().viewState === 'in-call'
+            && attendantStores.callView.getState().viewState === 'in-call',
+        );
 
         // ── both users receive call_accepted ──────────────────────────
         const customerAccepted = customerMessages.find((m) => m.event === 'call_accepted');
@@ -292,16 +243,24 @@ describe('Accept Call Flow', () => {
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
         await onConnection()(customerWs);
-        await flushPendingCalls();
         await onConnection()(attendantWs);
-        await flushPendingCalls();
+        // see the comment on the analogous wait in the previous test — a
+        // broadcast-triggered client refresh can otherwise clobber the
+        // onlineUsers state set above before sendIncomingCall reads it.
+        await waitFor(() =>
+            customerStores.onlineUsers.getState().users.some((u) => u.id === attendantUser._id)
+            && attendantStores.onlineUsers.getState().users.some((u) => u.id === customerUser._id),
+        );
 
         // ── send + accept ─────────────────────────────────────────────
         customerStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
-        await new Promise((r) => setTimeout(r, 500));
+        await waitFor(() => attendantStores.callView.getState().viewState === 'awaiting-to-answer');
 
         await attendantStores.call.getState().acceptIncomingCall();
-        await new Promise((r) => setTimeout(r, 500));
+        await waitFor(() =>
+            customerStores.callView.getState().viewState === 'in-call'
+            && attendantStores.callView.getState().viewState === 'in-call',
+        );
 
         // ── both in-call (auto-processed via call_accepted) ───────────
         expect(attendantStores.callView.getState().viewState).toBe('in-call');
@@ -323,7 +282,10 @@ describe('Accept Call Flow', () => {
         attendantMessages.length = 0;
 
         attendantStores.call.getState().completeCall();
-        await new Promise((r) => setTimeout(r, 500));
+        await waitFor(() =>
+            customerMessages.some((m) => m.event === 'call_completed')
+            && attendantMessages.some((m) => m.event === 'call_completed'),
+        );
 
         // ── both sides receive call_completed ──────────────────────────
         const attendantCompleted = attendantMessages.find((m) => m.event === 'call_completed');
@@ -332,6 +294,10 @@ describe('Accept Call Flow', () => {
         expect(customerCompleted).toBeTruthy();
 
         await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: 'm-accept-1', room: roomName, start_ts: Date.now() / 1000 } });
+        await waitFor(() =>
+            customerStores.call.getState().call === null
+            && attendantStores.call.getState().call === null,
+        );
 
         // ── both sides clear local state ────────────────────────────────
         expect(attendantStores.call.getState().call).toBeNull();

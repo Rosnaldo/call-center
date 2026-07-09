@@ -14,7 +14,16 @@ module.exports = {
     transform: {
         '^.+\\.tsx?$': ['ts-jest', {
             tsconfig: '<rootDir>/tsconfig.json',
-            diagnostics: false, // imported IAM/realtime sources may have version-specific TS errors
+            // NOTE: tried enabling this (it would've caught the dead
+            // updateCallParticipant export and the missing syncActiveCall
+            // mock impl. from the last debugging pass at compile time
+            // instead of at runtime) but web/src/properties.ts's
+            // `import.meta` usage fails type-checking before the
+            // import-meta.ts AST transformer below gets a chance to rewrite
+            // it — ts-jest runs diagnostics against the pre-transform AST.
+            // That's a separate, pre-existing tooling gap; fixing it isn't
+            // in scope here, so this stays off.
+            diagnostics: false,
             astTransformers: {
                 before: [{ path: '<rootDir>/src/transforms/import-meta.ts' }],
             },
@@ -28,17 +37,19 @@ module.exports = {
         // realtime websocket paths
         '^#websocket/(.*)$': '<rootDir>/../realtime/src/websocket/$1',
 
-        // realtime service layer
-        '^src/services/users$': '<rootDir>/src/mocks/realtime-users-service.ts',
-        '^src/services/calls$': '<rootDir>/src/mocks/realtime-calls-service.ts',
-        '^src/services/chat$': '<rootDir>/src/mocks/realtime-chat-service.ts',
-        '^src/webhooks/daily_manager$': '<rootDir>/src/mocks/realtime-daily-manager.ts',
+        // realtime service layer — real modules, not hand-written mocks. They
+        // only need Properties.override({ iamUri }) (see
+        // tests/helpers/realtime-server.ts) to hit the ephemeral test IAM
+        // server for real; no per-function mock file to keep in sync.
+        '^src/services/users$': '<rootDir>/../realtime/src/services/users.ts',
+        '^src/services/calls$': '<rootDir>/../realtime/src/services/calls.ts',
+        '^src/services/chat$': '<rootDir>/../realtime/src/services/chat.ts',
+        '^src/webhooks/daily_manager$': '<rootDir>/../realtime/src/webhooks/daily_manager.ts',
         '^src/helpers/(.*)$': '<rootDir>/../realtime/src/helpers/$1',
         '^src/auth/(.*)$': '<rootDir>/../realtime/src/auth/$1',
         '^src/middleware/(.*)$': '<rootDir>/../realtime/src/middleware/$1',
-        '^src/apis/iam$': '<rootDir>/src/mocks/realtime-apis-iam.ts',
         '^src/apis/(.*)$': '<rootDir>/../realtime/src/apis/$1',
-        '^#apis/iam$': '<rootDir>/src/mocks/realtime-apis-iam.ts',
+        '^#apis/iam$': '<rootDir>/../realtime/src/apis/iam.ts',
 
         // IAM alias paths
         '^#logger$': '<rootDir>/../iam/src/logger',

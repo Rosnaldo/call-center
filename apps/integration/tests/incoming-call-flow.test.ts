@@ -1,18 +1,5 @@
-jest.mock('src/services/users');
-jest.mock('src/services/calls');
-jest.mock('@/src/services/api/online-users', () => ({
-    fetchOnlineUsers: jest.fn(),
-}));
-const mockSendIncomingCall = jest.fn();
-const mockCancelIncomingCall = jest.fn();
-jest.mock('@/src/services/api/incoming-calls', () => ({
-    sendIncomingCall: mockSendIncomingCall,
-    cancelIncomingCall: mockCancelIncomingCall,
-    acceptIncomingCall: jest.fn(),
-}));
-
 import { EventEmitter } from 'node:events';
-import { IOnlineUser, IUser, mapUserToOnlineUser } from '@repo/shared-types';
+import { IUser, mapUserToOnlineUser } from '@repo/shared-types';
 
 import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
@@ -29,25 +16,31 @@ import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
-import * as usersService from 'src/services/users';
-import * as callsService from 'src/services/calls';
-import * as onlineUsersService from '@/src/services/api/online-users';
-
-const addToIamMock = usersService.addToIam as jest.Mock;
-const syncActiveCallMock = callsService.syncActiveCall as jest.Mock;
-const fetchOnlineUsersMock = onlineUsersService.fetchOnlineUsers as jest.Mock;
-
-const pendingCalls: Array<Promise<unknown>> = [];
-
-async function flushPendingCalls(): Promise<void> {
-    // drain in waves — online_users_broadcast triggers refreshUsers(), which
-    // itself pushes a new pendingCalls entry, so a single snapshot can miss
-    // calls pushed while we're awaiting the previous batch
-    while (pendingCalls.length > 0) {
-        const snapshot = [...pendingCalls];
-        pendingCalls.length = 0;
-        await Promise.all(snapshot);
+// src/services/users|calls (realtime) and @/src/services/api/{incoming-calls,online-users}
+// (web) are all real here — apiBack already resolves baseURL/auth fresh per
+// request (see apps/web/src/api/backend.ts), so WebProperties.override
+// (already set by startIamServer()) + AuthSession.override below are enough,
+// no mocking needed. But several actions in this file (broadcastMessage's
+// client-side refreshUsers(), and the incoming-call send/cancel actions
+// below) kick off async work the test has no promise to await directly —
+// sendIncomingCall in particular chains several real HTTP hops (customer ->
+// IAM -> IAM's webhook -> realtime -> both clients' incomingCallSent/
+// Received, which each also call fetchOnlineUsers) before the stores settle.
+// setImmediate yields to the event loop's poll phase without needing real
+// wall time to pass, so polling a condition with it is both fast and
+// reliable regardless of how many hops a given action ends up chaining.
+async function flushRealIO(ticks = 30): Promise<void> {
+    for (let i = 0; i < ticks; i++) {
+        await new Promise<void>((resolve) => setImmediate(resolve));
     }
+}
+
+async function waitFor(condition: () => boolean, maxTicks = 300): Promise<void> {
+    for (let i = 0; i < maxTicks; i++) {
+        if (condition()) return;
+        await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+    // let the final assertion produce the real failure message/diff
 }
 
 // ─── bridge helpers ─────────────────────────────────────────────────────────
@@ -114,7 +107,6 @@ describe('Incoming Call Flow', () => {
         if (onlineKeys.length) await redis.del(...onlineKeys);
 
         clientRegistry.clear();
-        pendingCalls.length = 0;
         jest.clearAllMocks();
         DailyCoService.reset();
         AuthSession.override({ token: CUSTOMER_TOKEN });
@@ -124,53 +116,6 @@ describe('Incoming Call Flow', () => {
         attendantStores = createStores(dailyService);
 
         customerStores.currentUser.setState({ currentUser: mapUserToOnlineUser(customerUser) });
-
-        addToIamMock.mockImplementation((user: IOnlineUser) => {
-            const op = iamRequest
-                .post('/online-users/add')
-                .set('Authorization', CUSTOMER_TOKEN)
-                .send(user);
-            pendingCalls.push(op);
-            return op;
-        });
-
-        // called once per onConnection — must resolve (not just return
-        // undefined, the jest.mock() default) or onConnection's try/catch
-        // swallows the error and the online_users_broadcast right after it
-        // never fires
-        syncActiveCallMock.mockImplementation(() => {
-            const op = Promise.resolve({ call: null, shouldJoin: false });
-            pendingCalls.push(op);
-            return op;
-        });
-
-        fetchOnlineUsersMock.mockImplementation(() => {
-            // triggered internally off the online_users_broadcast websocket
-            // handler (not called directly by the test), so track it in
-            // pendingCalls too or flushPendingCalls() won't wait for it
-            const op = (async () => {
-                const res = await iamRequest
-                    .get('/online-users/list')
-                    .set('Authorization', CUSTOMER_TOKEN);
-                return res.body.users ?? [];
-            })();
-            pendingCalls.push(op);
-            return op;
-        });
-
-        mockSendIncomingCall.mockImplementation(async (customerId: string, attendantId: string) => {
-            await iamRequest
-                .post('/incoming-calls/send')
-                .set('Authorization', CUSTOMER_TOKEN)
-                .send({ customerId, attendantId, whoIsCalling: 'customer' });
-        });
-
-        mockCancelIncomingCall.mockImplementation(async (customerId: string, attendantId: string) => {
-            await iamRequest
-                .post('/incoming-calls/cancel')
-                .set('Authorization', CUSTOMER_TOKEN)
-                .send({ customerId, attendantId });
-        });
     });
 
     it('after sendIncomingCall both stores reflect the correct state', async () => {
@@ -200,16 +145,22 @@ describe('Incoming Call Flow', () => {
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
         await onConnection()(customerWs);
-        await flushPendingCalls();
         await onConnection()(attendantWs);
-        await flushPendingCalls();
+        await flushRealIO();
 
         // ── customer triggers sendIncomingCall ────────────────────────
         customerStores.incomingCall.getState().sendIncomingCall(
             customerUser._id,
             attendantUser._id,
         );
-        await new Promise((r) => setTimeout(r, 250));
+        // viewState is set synchronously at the start of incomingCallSent/
+        // Received, before their internal `await fetchOnlineUsers()` — wait
+        // on the onlineUsers status instead, since that's set last and is
+        // what the assertions below actually depend on.
+        await waitFor(() =>
+            customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status === 'occupied'
+            && attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status === 'occupied',
+        );
 
         // ── both receive events ──────────────────────────────────────
         const sentMsg = customerMessages.find((m) => m.event === 'incoming_call_sent');
@@ -267,16 +218,18 @@ describe('Incoming Call Flow', () => {
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
         await onConnection()(customerWs);
-        await flushPendingCalls();
         await onConnection()(attendantWs);
-        await flushPendingCalls();
+        await flushRealIO();
 
         // ── send incoming call ────────────────────────────────────────
         customerStores.incomingCall.getState().sendIncomingCall(
             customerUser._id,
             attendantUser._id,
         );
-        await new Promise((r) => setTimeout(r, 250));
+        await waitFor(() =>
+            customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status === 'occupied'
+            && attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status === 'occupied',
+        );
 
         expect(customerStores.callView.getState().viewState).toBe('awaiting-answer');
 
@@ -284,8 +237,19 @@ describe('Incoming Call Flow', () => {
         customerMessages.length = 0;
         attendantMessages.length = 0;
 
+        // cancelIncomingCall() sets viewState locally/optimistically before
+        // the network round trip even starts, so it can't be used as a
+        // "the real cancel round trip finished" signal — wait on the actual
+        // broadcast message arriving, and on the status reset that the
+        // receiving incomingCallCancelled handler applies last, after its
+        // own internal await fetchOnlineUsers() resolves.
         customerStores.incomingCall.getState().cancelIncomingCall();
-        await new Promise((r) => setTimeout(r, 250));
+        await waitFor(() =>
+            customerMessages.some((m) => m.event === 'incoming_call_cancelled')
+            && attendantMessages.some((m) => m.event === 'incoming_call_cancelled')
+            && customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status === 'idle'
+            && attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status === 'idle',
+        );
 
         const customerCancelMsg = customerMessages.find((m) => m.event === 'incoming_call_cancelled');
         const attendantCancelMsg = attendantMessages.find((m) => m.event === 'incoming_call_cancelled');
@@ -338,16 +302,18 @@ describe('Incoming Call Flow', () => {
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
 
         await onConnection()(customerWs);
-        await flushPendingCalls();
         await onConnection()(attendantWs);
-        await flushPendingCalls();
+        await flushRealIO();
 
         // ── send incoming call ────────────────────────────────────────
         customerStores.incomingCall.getState().sendIncomingCall(
             customerUser._id,
             attendantUser._id,
         );
-        await new Promise((r) => setTimeout(r, 250));
+        await waitFor(() =>
+            customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status === 'occupied'
+            && attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status === 'occupied',
+        );
 
         expect(attendantStores.callView.getState().viewState).toBe('awaiting-to-answer');
 
@@ -355,8 +321,19 @@ describe('Incoming Call Flow', () => {
         customerMessages.length = 0;
         attendantMessages.length = 0;
 
+        // cancelIncomingCall() sets viewState locally/optimistically before
+        // the network round trip even starts, so it can't be used as a
+        // "the real cancel round trip finished" signal — wait on the actual
+        // broadcast message arriving, and on the status reset that the
+        // receiving incomingCallCancelled handler applies last, after its
+        // own internal await fetchOnlineUsers() resolves.
         attendantStores.incomingCall.getState().cancelIncomingCall();
-        await new Promise((r) => setTimeout(r, 250));
+        await waitFor(() =>
+            customerMessages.some((m) => m.event === 'incoming_call_cancelled')
+            && attendantMessages.some((m) => m.event === 'incoming_call_cancelled')
+            && customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status === 'idle'
+            && attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status === 'idle',
+        );
 
         const attendantCancelMsg = attendantMessages.find((m) => m.event === 'incoming_call_cancelled');
         const customerCancelMsg = customerMessages.find((m) => m.event === 'incoming_call_cancelled');
