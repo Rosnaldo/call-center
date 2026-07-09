@@ -196,6 +196,15 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
     it('charges exactly one token and syncs both stores to null after a real overlap', async () => {
         const { customerWs, attendantWs } = bridgeBothUsers();
 
+        const customerMessages: any[] = [];
+        (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
+            customerMessages.push(JSON.parse(data));
+        });
+
+        // userTokensUpdated only patches currentUser if currentUser.id
+        // matches the charged user — needs seeding for that assertion below
+        customerStores.currentUser.setState({ currentUser: mapUserToOnlineUser(customerUser) });
+
         await onConnection()(customerWs);
         await onConnection()(attendantWs);
 
@@ -241,6 +250,15 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
 
         const endingTokens = await getCustomerTokens();
         expect(endingTokens).toBe(startingTokens - 1);
+
+        // the charge is pushed live over the socket too — not just reflected
+        // in Mongo on the next fetch — and the client's own currentUser
+        // balance is patched in place from it
+        const tokensUpdatedMsg = customerMessages.find((m) => m.event === 'user_tokens_updated');
+        expect(tokensUpdatedMsg).toBeTruthy();
+        expect(tokensUpdatedMsg.data.id).toBe(customerUser._id);
+        expect(tokensUpdatedMsg.data.tokens).toBe(startingTokens - 1);
+        expect(customerStores.currentUser.getState().currentUser?.tokens).toBe(startingTokens - 1);
 
         expect(customerStores.call.getState().call).toBeNull();
         expect(attendantStores.call.getState().call).toBeNull();

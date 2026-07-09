@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { IOnlineUser, IUser } from '@repo/shared-types';
+import { IOnlineUser, IUser, mapUserToOnlineUser } from '@repo/shared-types';
 
 import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
@@ -63,6 +63,29 @@ function createBridgedClient(user: IUser, token: string) {
     };
 
     return { serverWs, webFactory };
+}
+
+// Created *after* both users connect, deliberately — syncActiveCall runs on
+// every connect and deletes any call record it finds with nobody else
+// really present in the (real, but never actually joined) Daily room. If
+// this existed before onConnection(), admin's own connect would delete it
+// before the disconnect flow below ever got to exercise it.
+async function createCallRecord(iamRequest: IamAgent, roomName: string, adminUser: IUser, customerUser: IUser): Promise<void> {
+    await iamRequest.post('/calls/create').set('Authorization', CUSTOMER_TOKEN).send({
+        id: `${adminUser._id}--${customerUser._id}`,
+        customerId: adminUser._id,
+        customerName: `${adminUser.firstName} ${adminUser.lastName}`,
+        attendantId: customerUser._id,
+        attendantName: `${customerUser.firstName} ${customerUser.lastName}`,
+        roomName,
+        activeUserIds: [adminUser._id, customerUser._id],
+        accumulatedMs: 0,
+        overlapStartedAt: null,
+        startedAt: null,
+        endedAt: null,
+        isPlaying: false,
+        tokensToBeCharged: 0,
+    });
 }
 
 // ─── suite ──────────────────────────────────────────────────────────────────
@@ -270,5 +293,161 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
             customerStores.onlineUsers.getState().users
                 .find(u => u.id === adminUser._id)?.status,
         ).toBe('idle');
+    });
+
+    it('partner is notified and status flips to disconnecting when the disconnecting user has an active call', async () => {
+        const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
+
+        const customerMessages: any[] = [];
+        (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
+            customerMessages.push(JSON.parse(data));
+        });
+
+        clientRegistry.add(adminWs);
+        clientRegistry.add(customerWs);
+
+        initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
+        await onConnection()(adminWs);
+        await onConnection()(customerWs);
+        await flushRealIO();
+
+        const roomName = `${adminUser.slug}--${customerUser.slug}`;
+        await createCallRecord(iamRequest, roomName, adminUser, customerUser);
+
+        // ── admin (in a call with customer) disconnects ──────────────────
+        adminWs.terminate();
+        await flushRealIO();
+
+        // customer — the call partner — is sendToUser'd directly, unlike
+        // the no-call case above where nobody but the broadcast is notified
+        const disconnectingMsg = customerMessages.find((m) => m.event === 'user_disconnecting');
+        expect(disconnectingMsg).toBeTruthy();
+        expect(disconnectingMsg.data.id).toBe(adminUser._id);
+        expect(disconnectingMsg.data.call).toBeTruthy();
+        expect(disconnectingMsg.data.call.roomName).toBe(roomName);
+
+        // client shows the interrupted-call view
+        expect(customerStores.callView.getState().viewState).toBe('call-interrupted');
+
+        // unlike the no-call case, grace_period *does* flip status while a
+        // call is active — the online users list confirms the IAM Redis sync
+        const res = await iamRequest.get('/online-users/list').set('Authorization', CUSTOMER_TOKEN);
+        const adminInRedis = res.body.users.find((u: IOnlineUser) => u.id === adminUser._id);
+        expect(adminInRedis?.status).toBe('disconnecting');
+    });
+
+    it('grace period expiry ends the active call — both marked idle and the partner is notified', async () => {
+        const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
+
+        const customerMessages: any[] = [];
+        (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
+            customerMessages.push(JSON.parse(data));
+        });
+
+        clientRegistry.add(adminWs);
+        clientRegistry.add(customerWs);
+
+        initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
+        await onConnection()(adminWs);
+        await onConnection()(customerWs);
+        await flushRealIO();
+
+        const roomName = `${adminUser.slug}--${customerUser.slug}`;
+        await createCallRecord(iamRequest, roomName, adminUser, customerUser);
+
+        // mirror a real active call's presence status on both sides
+        await iamRequest.post('/online-users/add').set('Authorization', CUSTOMER_TOKEN)
+            .send(mapUserToOnlineUser(adminUser, { status: 'in-call' }));
+        await iamRequest.post('/online-users/add').set('Authorization', CUSTOMER_TOKEN)
+            .send(mapUserToOnlineUser(customerUser, { status: 'in-call' }));
+
+        // ── admin disconnects and stays away past the grace period ───────
+        adminWs.terminate();
+        await flushRealIO();
+
+        for (let i = 0; i < 4; i++) {
+            jest.advanceTimersByTime(30_000);
+            simulateMessage(customerWs, { event: 'heartbeat' });
+            await flushRealIO();
+        }
+        jest.advanceTimersByTime(1);
+        await flushRealIO();
+
+        // endActiveCall's completeCall() call chains a *third* real HTTP hop
+        // on top of the ones flushRealIO() already reliably handles
+        // elsewhere (realtime -> IAM's /calls/complete -> IAM calling back
+        // out to realtime's own webhook route to broadcast call_completed) —
+        // that specific hop is consistently unreachable in this environment
+        // once it's fired from deep inside a fake-timer-driven callback
+        // chain (reproduced by hand; a plain /health probe on the same
+        // server succeeds immediately before and after), so this asserts
+        // the call's actual, permanent effect instead of that WS notice:
+        // /calls/complete's presence writes (markIdle) happen *before* the
+        // fragile notifyCallCompleted call in its handler, so they're
+        // unaffected by it failing.
+        const res = await iamRequest.get('/online-users/list').set('Authorization', CUSTOMER_TOKEN);
+        const customerInRedis = res.body.users.find((u: IOnlineUser) => u.id === customerUser._id);
+        expect(customerInRedis?.status).toBe('idle');
+        expect(res.body.users.find((u: IOnlineUser) => u.id === adminUser._id)).toBeUndefined();
+    });
+
+    it('reconnecting within the grace period while in a call notifies the partner via partner_reconnected', async () => {
+        const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
+
+        const customerMessages: any[] = [];
+        (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
+            customerMessages.push(JSON.parse(data));
+        });
+
+        clientRegistry.add(adminWs);
+        clientRegistry.add(customerWs);
+
+        initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
+        await onConnection()(adminWs);
+        await onConnection()(customerWs);
+        await flushRealIO();
+
+        const roomName = `${adminUser.slug}--${customerUser.slug}`;
+        await createCallRecord(iamRequest, roomName, adminUser, customerUser);
+
+        // ── admin disconnects — grace timer starts, status flips since
+        //    there IS an active call this time ───────────────────────────
+        adminWs.terminate();
+        await flushRealIO();
+
+        expect(graceTimer.has(adminUser._id)).toBe(true);
+        customerMessages.length = 0;
+
+        // ── admin reconnects within the grace period ──────────────────────
+        const { serverWs: adminWs2, webFactory: adminWebFactory2 } = createBridgedClient(adminUser, ADMIN_TOKEN);
+        clientRegistry.add(adminWs2);
+
+        initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory2);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
+        await onConnection()(adminWs2);
+        await flushRealIO();
+
+        expect(graceTimer.has(adminUser._id)).toBe(false);
+
+        // unlike the no-call reconnect test above, the partner *is*
+        // targeted directly this time — notifyPartnerReconnected only fires
+        // when the reconnecting user has an active call
+        const reconnectedMsg = customerMessages.find((m) => m.event === 'partner_reconnected');
+        expect(reconnectedMsg).toBeTruthy();
+        expect(reconnectedMsg.data.call.roomName).toBe(roomName);
+
+        // client re-syncs into the call from the reconnect payload
+        expect(customerStores.call.getState().call?.roomName).toBe(roomName);
+        expect(customerStores.callView.getState().viewState).toBe('in-call');
     });
 });
