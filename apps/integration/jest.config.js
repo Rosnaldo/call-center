@@ -47,7 +47,6 @@ module.exports = {
         '^src/webhooks/daily_manager$': '<rootDir>/../realtime/src/webhooks/daily_manager.ts',
         '^src/helpers/(.*)$': '<rootDir>/../realtime/src/helpers/$1',
         '^src/auth/(.*)$': '<rootDir>/../realtime/src/auth/$1',
-        '^src/middleware/(.*)$': '<rootDir>/../realtime/src/middleware/$1',
         '^src/apis/(.*)$': '<rootDir>/../realtime/src/apis/$1',
         '^#apis/iam$': '<rootDir>/../realtime/src/apis/iam.ts',
 
@@ -66,23 +65,22 @@ module.exports = {
         '^#entities/(.*)$': '<rootDir>/../iam/src/entities/$1',
         '^#migrations/(.*)$': '<rootDir>/../iam/src/migrations/$1',
         '^#utils/(.*)$': '<rootDir>/../iam/src/utils/$1',
-        '^#validations/(.*)$': '<rootDir>/../iam/src/validations/$1',
         '^#exceptions/(.*)$': '<rootDir>/../iam/src/exceptions/$1',
         '^#routes/(.*)$': '<rootDir>/../iam/src/routes/$1',
         '^#helpers/(.*)$': '<rootDir>/../iam/src/helpers/$1',
         '^#keycloak/(.*)$': '<rootDir>/../iam/src/keycloak/$1',
         '^#const/(.*)$': '<rootDir>/../iam/src/const/$1',
         '^#apis/(.*)$': '<rootDir>/../iam/src/apis/$1',
-        '^#auth/(.*)$': '<rootDir>/../iam/src/auth/$1',
         '^#route_bootstrap$': '<rootDir>/../iam/src/route_bootstrap',
         '^#mongoose_bootstrap$': '<rootDir>/../iam/src/mongoose_bootstrap',
-        '^#redis_bootstrap$': '<rootDir>/../iam/src/redis_bootstrap',
 
         // web component stubs (not available in Node test env)
         '.*/components/toast$': '<rootDir>/src/mocks/toast.ts',
         '\\.(mp3|wav|ogg)$': '<rootDir>/src/mocks/asset-stub.ts',
 
-        // web path aliases
+        // web path alias — web's own source (states/call/actions.ts etc, loaded
+        // transitively by every test) uses this internally for its own
+        // services/utils imports, not just test files reaching into web
         '^@/(.*)$': '<rootDir>/../web/$1',
 
         // generic src/* → IAM (realtime's src/services/users already captured above)
