@@ -1,6 +1,6 @@
 import React from 'react';
 import { useDevicesContext } from '../../../providers/devices.tsx';
-import { useChatStore } from '../../../states/stores.ts';
+import { useChatStore, useCallViewStore } from '../../../states/stores.ts';
 import { CallViewState } from '../call-view/CallView.tsx';
 import { MicToggleButton } from './MicToggleButton.tsx';
 import { CamToggleButton } from './CamToggleButton.tsx';
@@ -30,6 +30,7 @@ export const CallFooter: React.FC<CallFooterProps> = ({
   const { cameraOn, microphoneOn, toggleCamera, toggleMicrophone } = useDevicesContext();
   const isChatOpen = useChatStore(s => s.isOpen);
   const hasUnreadMessage = useChatStore(s => s.hasUnreadMessage);
+  const isLeader = useCallViewStore(s => s.isLeader);
   const showCallControls = state === CallViewState.InCall;
 
   const handleToggleChat = () => {
@@ -46,28 +47,31 @@ export const CallFooter: React.FC<CallFooterProps> = ({
       <MicToggleButton
         isMuted={!microphoneOn}
         onClick={toggleMicrophone}
+        disabled={!isLeader}
       />
 
       <CamToggleButton
         isVideoOff={!cameraOn}
         onClick={toggleCamera}
+        disabled={!isLeader}
       />
 
       {showCallControls && (
         <ScreenShareToggleButton
-          isCallActive
+          isCallActive={isLeader}
           isScreenSharing={isScreenSharing}
           onClick={onToggleScreenShare}
         />
       )}
 
-      <SettingsButton onClick={() => setIsSettingsOpen(true)} />
+      <SettingsButton onClick={() => setIsSettingsOpen(true)} disabled={!isLeader} />
 
       {showCallControls && (
         <ChatToggleButton
           isOpen={isChatOpen}
           hasUnreadMessage={hasUnreadMessage}
           onClick={handleToggleChat}
+          disabled={!isLeader}
         />
       )}
 
@@ -75,6 +79,7 @@ export const CallFooter: React.FC<CallFooterProps> = ({
         <FullscreenToggleButton
           isFullscreen={isFullscreen}
           onClick={toggleFullscreen}
+          disabled={!isLeader}
         />
       )}
 

@@ -82,6 +82,7 @@ const ensureCallExists = async (traceId: string, payload: AcceptCallPayload): Pr
         endedAt: null,
         isPlaying: false,
         tokensToBeCharged: 0,
+        isClosed: false,
     });
 };
 
@@ -115,12 +116,12 @@ export function onCallCompleted(payload: CallCompletedPayload): void {
 
     sendToUser(payload.customerId, {
         event: 'call_completed',
-        data: {},
+        data: { call: payload.call },
     });
 
     sendToUser(payload.attendantId, {
         event: 'call_completed',
-        data: {},
+        data: { call: payload.call },
     });
 
     broadcastMessage({

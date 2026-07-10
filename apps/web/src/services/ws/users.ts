@@ -70,7 +70,7 @@ export class WsUsersService {
                 refreshUsers();
                 return true;
             case 'user_connected':
-                this.stores.call.getState().syncActiveCall(msg.data.call, msg.data.shouldJoin);
+                this.stores.call.getState().syncActiveCall(msg.data.call, msg.data.shouldJoin, this.stores.callView.getState().isLeader);
                 return true;
             case 'heartbeat_ack':
                 this.cancelAck();
@@ -85,7 +85,7 @@ export class WsUsersService {
                 this.stores.meeting.getState().userDisconnected(msg.data);
                 return true;
             case 'partner_reconnected':
-                this.stores.call.getState().partnerReconnected(msg.data.call);
+                this.stores.call.getState().partnerReconnected(msg.data.call, this.stores.callView.getState().isLeader);
                 return true;
             case 'user_tokens_updated':
                 this.stores.meeting.getState().userTokensUpdated(msg.data);

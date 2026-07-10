@@ -4,6 +4,7 @@ export interface CallViewStateActions {
   setViewState: (viewState: ViewState) => void;
   setSelectedAttendantId: (id: string | null) => void;
   selectAttendant: (attendantId: string) => void;
+  setIsLeader: (isLeader: boolean) => void;
   resetCallViewState: () => void;
 }
 
@@ -13,5 +14,6 @@ export const createCallViewStateActions = (
   setViewState: (viewState) => set({ viewState }),
   setSelectedAttendantId: (selectedAttendantId) => set({ selectedAttendantId }),
   selectAttendant: (attendantId) => set({ selectedAttendantId: attendantId, viewState: 'lobby' }),
-  resetCallViewState: () => set(initialCallViewState),
+  setIsLeader: (isLeader) => set({ isLeader }),
+  resetCallViewState: () => set((state) => ({ ...initialCallViewState, isLeader: state.isLeader })),
 });

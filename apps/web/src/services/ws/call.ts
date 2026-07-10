@@ -1,4 +1,4 @@
-import { IncomingCallState } from '@repo/shared-types';
+import { CallState, IncomingCallState } from '@repo/shared-types';
 import type { CallStoreInstance, CallViewStoreInstance, IncomingCallStoreInstance } from '../../states/stores';
 
 export type WsCallMessage =
@@ -6,7 +6,7 @@ export type WsCallMessage =
     | { event: 'incoming_call_received'; data: { incomingCall: IncomingCallState } }
     | { event: 'incoming_call_cancelled'; data: { targetUserId: string } }
     | { event: 'call_accepted'; data: { incomingCall: IncomingCallState } }
-    | { event: 'call_completed' };
+    | { event: 'call_completed'; data: { call: CallState } };
 
 export interface WsCallStores {
     call: CallStoreInstance;
@@ -39,7 +39,7 @@ export class WsCallService {
                 incomingCallAccepted?.(msg.data.incomingCall);
                 break;
             case 'call_completed':
-                callCompleted?.();
+                callCompleted?.(msg.data.call);
                 break;
             default:
                 return false;

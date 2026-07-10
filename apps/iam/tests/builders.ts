@@ -35,4 +35,5 @@ export const buildCallState = (d?: Partial<CallState>): CallState => ({
     endedAt: d?.endedAt ?? null,
     isPlaying: d?.isPlaying ?? false,
     tokensToBeCharged: d?.tokensToBeCharged ?? 0,
+    isClosed: d?.isClosed ?? false,
 });

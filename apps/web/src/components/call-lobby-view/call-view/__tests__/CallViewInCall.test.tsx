@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CallView, CallViewState } from '../CallView.tsx';
 import { buildCall } from '../../../../__tests__/builders.ts';
-import { useCurrentUserStore } from '../../../../states/stores.ts';
+import { useCurrentUserStore, useCallViewStore } from '../../../../states/stores.ts';
 
 vi.mock('../../../../providers/devices.tsx', () => ({
   useDevicesContext: () => ({
@@ -52,6 +52,10 @@ const defaultProps = (overrides = {}) => ({
 describe('CallView Component - in-call Unit Tests', () => {
   beforeEach(() => {
     useCurrentUserStore.setState({ currentUser: null });
+    // CallViewState.InCall only ever renders in the tab holding the real
+    // socket now (see actions.ts's syncActiveCall/partnerReconnected) —
+    // CallFooter's buttons are disabled otherwise.
+    useCallViewStore.setState({ isLeader: true });
   });
 
   afterEach(() => {

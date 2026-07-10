@@ -31,6 +31,7 @@ export const buildCall = (d?: Partial<CallState>): CallState => ({
   endedAt: d?.endedAt !== undefined ? d.endedAt : null,
   isPlaying: d?.isPlaying ?? true,
   tokensToBeCharged: d?.tokensToBeCharged ?? 0,
+  isClosed: d?.isClosed ?? false,
 });
 
 export const buildTokenTransaction = (d?: Partial<TokenTransaction>): TokenTransaction => ({

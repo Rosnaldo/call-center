@@ -22,19 +22,26 @@ import * as dailyServiceModule from '../../iam/src/services/daily';
 // Exercises IAM's SyncActiveCall (apps/iam/src/controllers/call/sync_active_call.ts),
 // which realtime's onConnection calls on every websocket connect (see
 // apps/realtime/src/websocket/connection.ts). It reconciles a stale-looking
-// call record against who's *actually* present in the Daily room:
-//   - nobody else there  -> the record (and the Daily room) is torn down,
-//     the connecting user does not rejoin a meeting
-//   - someone else is there -> the record is kept, the connecting user is
-//     added as a participant and told to (re)join the meeting
+// call record against whether the Daily meeting is *actually* happening —
+// the counterpart's presence specifically no longer matters, only whether
+// the room has anyone in it at all, and whether the connecting user
+// themselves is already one of them:
+//   - call exists, nobody is in the room -> meeting is over, the record
+//     (and the Daily room) is torn down, the connecting user does not join
+//   - call exists, someone is in the room -> the record is kept, the
+//     connecting user is added as a participant, and told to join only if
+//     their own presence isn't already in the room
+//   - call doesn't exist, the room has presence -> self-healed into a new
+//     record (redis lost the call state but the meeting is real), and the
+//     connecting user is always told to join
 //
 // getRoomPresenceUserIds hits the real Daily.co API (no mock — see the other
 // *-call-flow test files), which is exactly right for the "alone" case: no
 // real WebRTC participant ever joins these Node-only tests, so presence is
-// naturally empty. The "someone else is there" case can't be produced for
-// real the same way (that would need an actual WebRTC client), so it's the
-// one place in this file that stubs presence via jest.spyOn directly on the
-// real module — not a parallel mock file — restored in afterEach.
+// naturally empty. Cases needing someone actually present can't be produced
+// for real the same way (that would need an actual WebRTC client), so those
+// stub presence via jest.spyOn directly on the real module — not a parallel
+// mock file — restored in afterEach.
 async function wait(ms: number): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -177,9 +184,11 @@ describe('Sync Active Call on Connect', () => {
         expect(dailyCoService.joinCalls).toHaveLength(0);
     });
 
-    it('keeps the call and rejoins the meeting when another participant is present', async () => {
+    it('keeps the call and joins the meeting when someone is present but the connecting user is not', async () => {
         await createCallRecord();
 
+        // only the counterpart is in the room — the connecting user's own
+        // presence is what decides shouldJoin now, not the counterpart's
         jest.spyOn(dailyServiceModule, 'getRoomPresenceUserIds').mockImplementation(async (room: string) =>
             room === roomName ? [attendantUser._id] : [],
         );
@@ -217,11 +226,46 @@ describe('Sync Active Call on Connect', () => {
         expect(dailyCoService.joinCalls[0]).toMatchObject({ room: roomName, userId: customerUser._id });
     });
 
-    it('self-heals a new call with the connecting user in it when no record exists but presence shows them in a tracked room', async () => {
+    it('keeps the call but does not rejoin when the connecting user is already present in the room', async () => {
+        await createCallRecord();
+
+        // the connecting user's own Daily/WebRTC session survived the
+        // websocket blip (e.g. a brief reconnect) — no need to join again
+        jest.spyOn(dailyServiceModule, 'getRoomPresenceUserIds').mockImplementation(async (room: string) =>
+            room === roomName ? [customerUser._id] : [],
+        );
+
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
+        clientRegistry.add(customerWs);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
+        const customerMessages: any[] = [];
+        (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
+            customerMessages.push(JSON.parse(data));
+        });
+
+        await onConnection()(customerWs);
+
+        const connectedMsg = customerMessages.find((m) => m.event === 'user_connected');
+        expect(connectedMsg).toBeTruthy();
+        expect(connectedMsg.data.shouldJoin).toBe(false);
+        expect(connectedMsg.data.call).toBeTruthy();
+
+        // the record still persists (the meeting is real, someone's in it)
+        const res = await getCallRecordFromRedis();
+        expect(res.body?.isError).toBeFalsy();
+
+        // no redundant join call for a session that's already live
+        expect(dailyCoService.joinCalls).toHaveLength(0);
+    });
+
+    it('self-heals a new call, always joining, when no record exists but presence shows the connecting user in a tracked room', async () => {
         // no createCallRecord() here — this is the "redis lost the call
         // state entirely" case selfHealFromPresence exists for (e.g. a
         // redis restart), reconstructed off Daily's own tracked rooms +
-        // presence instead of an existing calls:* entry.
+        // presence instead of an existing calls:* entry. The counterpart's
+        // presence doesn't gate this — only whether the room has anyone
+        // (the connecting user, at minimum) in it.
         await iamRequest.post('/calls/track-room').set('Authorization', CUSTOMER_TOKEN).send({ roomName });
 
         jest.spyOn(dailyServiceModule, 'getRoomPresenceUserIds').mockImplementation(async (room: string) =>
@@ -258,6 +302,41 @@ describe('Sync Active Call on Connect', () => {
         await waitFor(() => customerStores.callView.getState().viewState === 'in-call');
         expect(customerStores.call.getState().call).toBeTruthy();
         expect(customerStores.call.getState().call?.activeUserIds).toContain(customerUser._id);
+        expect(dailyCoService.joinCalls).toHaveLength(1);
+        expect(dailyCoService.joinCalls[0]).toMatchObject({ room: roomName, userId: customerUser._id });
+    });
+
+    it('self-heals a new call with both participants when the counterpart is also present in the tracked room', async () => {
+        await iamRequest.post('/calls/track-room').set('Authorization', CUSTOMER_TOKEN).send({ roomName });
+
+        jest.spyOn(dailyServiceModule, 'getRoomPresenceUserIds').mockImplementation(async (room: string) =>
+            room === roomName ? [customerUser._id, attendantUser._id] : [],
+        );
+
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
+        clientRegistry.add(customerWs);
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+
+        const customerMessages: any[] = [];
+        (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
+            customerMessages.push(JSON.parse(data));
+        });
+
+        await onConnection()(customerWs);
+
+        const connectedMsg = customerMessages.find((m) => m.event === 'user_connected');
+        expect(connectedMsg).toBeTruthy();
+        expect(connectedMsg.data.shouldJoin).toBe(true);
+        expect(connectedMsg.data.call).toBeTruthy();
+        expect(connectedMsg.data.call.roomName).toBe(roomName);
+        expect(connectedMsg.data.call.activeUserIds).toEqual([customerUser._id, attendantUser._id]);
+
+        const res = await getCallRecordFromRedis();
+        expect(res.body?.isError).toBeFalsy();
+        expect(res.body?.activeUserIds).toEqual([customerUser._id, attendantUser._id]);
+
+        await waitFor(() => customerStores.callView.getState().viewState === 'in-call');
+        expect(customerStores.call.getState().call).toBeTruthy();
         expect(dailyCoService.joinCalls).toHaveLength(1);
         expect(dailyCoService.joinCalls[0]).toMatchObject({ room: roomName, userId: customerUser._id });
     });

@@ -284,11 +284,13 @@ describe('Reconnect During Active Call Flow', () => {
         expect(customerStores.call.getState().call?.roomName).toBe(roomName);
         expect(customerStores.callView.getState().viewState).toBe('in-call');
 
-        // the reconnecting attendant itself is told to rejoin the same call —
-        // SyncActiveCall keeps the record since (mocked) presence still shows
-        // both parties genuinely in the Daily room
+        // the reconnecting attendant is kept on the same call — SyncActiveCall
+        // keeps the record since (mocked) presence shows the meeting is still
+        // happening. shouldJoin is false because presence also shows the
+        // attendant's own Daily/WebRTC session never actually dropped (only
+        // the IAM websocket did) — no redundant rejoin needed.
         const connectedMsg = attendantMessages2.find((m) => m.event === 'user_connected');
-        expect(connectedMsg.data.shouldJoin).toBe(true);
+        expect(connectedMsg.data.shouldJoin).toBe(false);
         expect(connectedMsg.data.call.roomName).toBe(roomName);
 
         // and its own store actually resyncs from that payload — not just a
@@ -345,8 +347,10 @@ describe('Reconnect During Active Call Flow', () => {
         expect(customerStores.call.getState().call?.roomName).toBe(roomName);
         expect(customerStores.callView.getState().viewState).toBe('in-call');
 
+        // same reasoning as the logout case above: presence shows the
+        // attendant's Daily/WebRTC session survived the drop, so no rejoin
         const connectedMsg = attendantMessages2.find((m) => m.event === 'user_connected');
-        expect(connectedMsg.data.shouldJoin).toBe(true);
+        expect(connectedMsg.data.shouldJoin).toBe(false);
         expect(connectedMsg.data.call.roomName).toBe(roomName);
 
         await completeAndVerifyCleanEnd(customerMessages, attendantMessages2);

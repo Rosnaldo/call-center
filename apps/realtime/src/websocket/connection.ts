@@ -8,9 +8,10 @@ import { handleClose } from '#websocket/handler/on_close';
 import { handlePong } from '#websocket/handler/on_pong';
 import { handleMessageHeartbeat } from '#websocket/handler/message/heartbeat';
 import { handleMessageLogout } from '#websocket/handler/message/logout';
+import { handleMessageRequestState } from '#websocket/handler/message/request_state';
 import { clientRegistry } from '#websocket/client_registry';
-import { broadcastMessage, sendToUser } from '#websocket/broadcast';
-import { syncActiveCall } from 'src/services/calls';
+import { broadcastMessage } from '#websocket/broadcast';
+import { syncAndSendCallState } from '#websocket/sync_call_state';
 import { addToIam } from 'src/services/users';
 import logger from '#logger';
 
@@ -41,6 +42,9 @@ export const onConnection = () => async (ws: AuthenticatedWebSocket): Promise<vo
             case 'user_logout':
                 handleMessageLogout(ws, hb);
                 break;
+            case 'request_state':
+                handleMessageRequestState(ws);
+                break;
         }
     });
 
@@ -53,9 +57,7 @@ export const onConnection = () => async (ws: AuthenticatedWebSocket): Promise<vo
     try {
         logger.info({ userId: user.id, name: user.name }, 'user connected');
         await addToIam(user);
-        const { call, shouldJoin } = await syncActiveCall(ws.traceId, user.id);
-
-        sendToUser(user.id, { event: 'user_connected', data: { call, shouldJoin } });
+        await syncAndSendCallState(ws.traceId, user.id);
         broadcastMessage({ event: 'online_users_broadcast', data: {} });
     } catch (error) {
         logger.error(error, 'ws onConnection: falha ao sincronizar call ativa do usuário');

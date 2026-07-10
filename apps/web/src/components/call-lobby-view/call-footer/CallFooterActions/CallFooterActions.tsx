@@ -15,6 +15,7 @@ export const CallFooterActions: React.FC = () => {
   const sendIncomingCall = useIncomingCallStore(s => s.sendIncomingCall);
   const selectedAttendantId = useCallViewStore(s => s.selectedAttendantId);
   const viewState = useCallViewStore(s => s.viewState);
+  const isLeader = useCallViewStore(s => s.isLeader);
   const currentUser = useCurrentUserStore(s => s.currentUser);
   const remoteParticipantIds = useParticipantIds({ filter: 'remote' });
 
@@ -66,7 +67,11 @@ export const CallFooterActions: React.FC = () => {
     setIsConfirmCloseOpen(false);
   };
 
-  if (viewState === 'none') return null;
+  // 'in-call-in-another' means some other tab holds the real meeting (see
+  // syncActiveCall/partnerReconnected) — nothing in this footer acts on the
+  // call from here, same as 'none'. 'call-closing' means completeCall was
+  // already requested (call.isClosed) — teardown is in flight, no action left.
+  if (viewState === 'none' || viewState === 'in-call-in-another' || viewState === 'call-closing') return null;
 
   // No manual "return" control while interrupted — that resolves on its own,
   // either via the partner's real rejoin or their websocket reconnecting.
@@ -84,7 +89,7 @@ export const CallFooterActions: React.FC = () => {
         <EndCallButton
           label="Finish"
           onClick={handleHangUp}
-          disabled={!call || !canEndCall}
+          disabled={!call || !canEndCall || !isLeader}
         />
         <ConfirmCloseCallModal
           isOpen={isConfirmCloseOpen}
@@ -96,13 +101,13 @@ export const CallFooterActions: React.FC = () => {
   }
 
   if (viewState === 'awaiting-answer') {
-    return <CancelCallButton onClick={handleCancelCall} isLoading={isCancelling} disabled={!!call} />;
+    return <CancelCallButton onClick={handleCancelCall} isLoading={isCancelling} disabled={!!call || !isLeader} />;
   }
 
   if (viewState === 'awaiting-to-answer' && !isReceiving) {
     return (
       <div className="flex gap-2.5 items-center">
-        <CancelCallButton onClick={handleCancelCall} isLoading={isCancelling} disabled={!!call} />
+        <CancelCallButton onClick={handleCancelCall} isLoading={isCancelling} disabled={!!call || !isLeader} />
       </div>
     );
   }
@@ -110,11 +115,11 @@ export const CallFooterActions: React.FC = () => {
   if (viewState === 'awaiting-to-answer' && isReceiving) {
     return (
       <div className="flex gap-2.5 items-center">
-        <AcceptCallButton onClick={handleAcceptCall} isLoading={isAccepting} />
-        <CancelCallButton onClick={handleCancelCall} isLoading={isCancelling} disabled={!!call} />
+        <AcceptCallButton onClick={handleAcceptCall} isLoading={isAccepting} disabled={!isLeader} />
+        <CancelCallButton onClick={handleCancelCall} isLoading={isCancelling} disabled={!!call || !isLeader} />
       </div>
     );
   }
 
-  return <StartCallButton onClick={handleStartCall} isLoading={isStarting} />;
+  return <StartCallButton onClick={handleStartCall} isLoading={isStarting} disabled={!!call || !!incomingCall || !isLeader} />;
 };

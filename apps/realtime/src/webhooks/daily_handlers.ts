@@ -73,6 +73,7 @@ const reconstructCallState = async (traceId: string, logger: ReturnType<typeof b
         endedAt: null,
         isPlaying: false,
         tokensToBeCharged: 0,
+        isClosed: false,
     };
 };
 
@@ -111,6 +112,7 @@ export async function onMeetingStarted(traceId: string, payload: DailyMeetingPay
                 endedAt: null,
                 isPlaying: false,
                 tokensToBeCharged: 0,
+                isClosed: false,
             });
         } else {
             await updateCall(traceId, call.customerId, call.attendantId, {
@@ -143,6 +145,7 @@ export async function onMeetingEnded(traceId: string, payload: DailyMeetingPaylo
             isPlaying: false,
             endedAt: new Date(),
             tokensToBeCharged,
+            isClosed: true,
         };
 
         if (endedCall.tokensToBeCharged > 0) {
@@ -242,6 +245,7 @@ export async function onParticipantJoined(traceId: string, payload: DailyPartici
                 endedAt: null,
                 isPlaying: false,
                 tokensToBeCharged: 0,
+                isClosed: false,
             });
         }
 

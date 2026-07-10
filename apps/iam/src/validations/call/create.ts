@@ -19,6 +19,7 @@ export const inputSchema = z.object({
     endedAt: z.coerce.date().nullable(),
     isPlaying: z.boolean(),
     tokensToBeCharged: z.number(),
+    isClosed: z.boolean(),
 });
 
 export const validateInput = (params: IInput): ValidateParseResult => {

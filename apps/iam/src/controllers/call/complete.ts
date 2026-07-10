@@ -7,6 +7,7 @@ import { BadRequestException } from '#exceptions/bad_request';
 import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { CallState } from '@repo/shared-types';
+import { CallStateBuilder } from '#schemas/call/utils';
 import { notifyCallCompleted } from 'src/services/realtime';
 import { ejectBothParticipantsFromRoom } from 'src/services/daily';
 import { ICallController } from './params';
@@ -53,13 +54,20 @@ export class Complete {
             if (!callJson) return successData({});
             const call = JSON.parse(callJson) as CallState;
 
+            // Marks the record closed right away — the actual teardown (Daily
+            // ejection below, then billing/history/deletion off Daily's own
+            // meeting.ended webhook) can take a few seconds, and isClosed is
+            // what lets every client show that transition instead of a stale
+            // in-call screen in the meantime.
+            const closedCall = await new CallStateBuilder(call).close().save();
+
             await Promise.all([
                 patchOnlineUserIfPresent(customerId, { status: 'idle' }),
                 patchOnlineUserIfPresent(attendantId, { status: 'idle' }),
             ]);
 
-            await ejectBothParticipantsFromRoom(call.roomName);
-            await notifyCallCompleted(traceId, customerId, attendantId, call.roomName);
+            await ejectBothParticipantsFromRoom(closedCall.roomName);
+            await notifyCallCompleted(traceId, customerId, attendantId, closedCall.roomName, closedCall);
 
             return successData({});
         } catch (error: unknown) {

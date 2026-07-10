@@ -56,6 +56,8 @@ export class Create {
             endedAt: endedAt ?? null,
             isPlaying: isPlaying === true,
             tokensToBeCharged: typeof tokensToBeCharged === 'number' ? tokensToBeCharged : 0,
+            // Never taken from the request body — only /calls/complete may close a call.
+            isClosed: false,
         };
     };
 

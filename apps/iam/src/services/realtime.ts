@@ -1,4 +1,4 @@
-import { IncomingCallState, IUser, Message } from '@repo/shared-types';
+import { CallState, IncomingCallState, IUser, Message } from '@repo/shared-types';
 import { createRealtimeClient } from '#apis/realtime';
 
 export async function notifyIncomingCallSent(traceId: string, customerId: string, attendantId: string, calledBy: string): Promise<void> {
@@ -22,10 +22,10 @@ export async function notifyCallAccepted(traceId: string, customerId: string, at
     });
 }
 
-export async function notifyCallCompleted(traceId: string, customerId: string, attendantId: string, roomName: string): Promise<void> {
+export async function notifyCallCompleted(traceId: string, customerId: string, attendantId: string, roomName: string, call: CallState): Promise<void> {
     await createRealtimeClient(traceId).post('/webhooks/iam', {
         event: 'call_completed',
-        payload: { customerId, attendantId, roomName },
+        payload: { customerId, attendantId, roomName, call },
     });
 }
 

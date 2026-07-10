@@ -7,12 +7,14 @@ interface MicToggleButtonProps {
   isMuted: boolean;
   onClick: () => void;
   isCallActive?: boolean;
+  disabled?: boolean;
 }
 
 export const MicToggleButton: React.FC<MicToggleButtonProps> = ({
   id = 'lobby-mic-toggle',
   isMuted,
   onClick,
+  disabled = false,
 }) => {
   const { t } = useTranslation();
   return (
@@ -20,9 +22,12 @@ export const MicToggleButton: React.FC<MicToggleButtonProps> = ({
       type="button"
       id={id}
       onClick={onClick}
+      disabled={disabled}
       title={isMuted ? t('mediaSettings.unmuteMic') : t('mediaSettings.muteMic')}
       className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md border ${
-        isMuted
+        disabled
+          ? 'opacity-40 cursor-not-allowed bg-[#2a2d31]/50 text-slate-500 border-transparent'
+          : isMuted
           ? 'bg-red-600 hover:bg-red-700 text-white border-red-500/20 cursor-pointer active:scale-95'
           : 'bg-[#2a2d31] hover:bg-[#34383d] text-slate-200 border-transparent active:scale-95 cursor-pointer'
       }`}

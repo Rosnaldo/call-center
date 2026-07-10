@@ -1,4 +1,4 @@
-import { IUser, Message } from '@repo/shared-types';
+import { CallState, IUser, Message } from '@repo/shared-types';
 
 export interface SendIncomingCallPayload {
     customerId: string;
@@ -23,6 +23,7 @@ export interface CallCompletedPayload {
     customerId: string;
     attendantId: string;
     roomName: string;
+    call: CallState;
 }
 
 export interface UserTokenChargedPayload {

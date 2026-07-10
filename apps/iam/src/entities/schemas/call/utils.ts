@@ -81,6 +81,12 @@ export class CallStateBuilder {
         return this;
     };
 
+    // Only /calls/complete calls this — see Complete controller.
+    public readonly close = (): this => {
+        this.doc.isClosed = true;
+        return this;
+    };
+
     // Exposes the current state without persisting — callers that manage
     // their own write (e.g. update_participant's WATCH/MULTI optimistic
     // lock) need the computed object without going through save().

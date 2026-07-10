@@ -10,45 +10,58 @@ import { IUser } from '@repo/shared-types';
 import { buildLogger } from '#logger';
 import { randomUUID } from 'crypto';
 
+const AUTH_TIMEOUT_MS = 5_000;
+
 export function createWebSocketServer(server: Server): ISocketServer {
     const wss = new WebSocketServer({ noServer: true });
 
-    server.on('upgrade', async (req, socket, head) => {
-        const parsedUrl = new URL(req.url ?? '', 'http://localhost');
-        if (parsedUrl.pathname === '/logs') return;
-
-        const token = parsedUrl.searchParams.get('token') ?? undefined;
-
-        if (!token) {
-            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-            socket.destroy();
-            return;
-        }
-
-        const traceId = (req.headers['x-trace-id'] as string) || randomUUID();
+    // Auth happens off the first message sent over the socket instead of a
+    // `?token=` query param on the upgrade request, so the JWT doesn't end up
+    // in proxy/CDN access logs or browser history.
+    function authenticateOnFirstMessage(ws: WebSocket, traceId: string): void {
         const logger = buildLogger(traceId);
 
-        try {
-            const tokenUser = await verifyToken(traceId, token);
-            const fullUser: IUser = await userExists(traceId, tokenUser.email, token);
+        const timeout = setTimeout(() => {
+            logger.warn({}, 'ws auth timeout');
+            ws.send(JSON.stringify({ isError: true, message: 'Authentication timeout' }), () => ws.close());
+        }, AUTH_TIMEOUT_MS);
 
-            wss.handleUpgrade(req, socket, head, (ws) => {
+        ws.once('message', async (raw) => {
+            clearTimeout(timeout);
+            try {
+                const msg = JSON.parse(raw.toString());
+                if (msg.event !== 'auth' || typeof msg.token !== 'string' || !msg.token) {
+                    throw new Error('Primeira mensagem deve ser de autenticação');
+                }
+
+                const tokenUser = await verifyToken(traceId, msg.token);
+                const fullUser: IUser = await userExists(traceId, tokenUser.email, msg.token);
+
                 logger.info({ userId: fullUser._id, email: fullUser.email, role: fullUser.role }, 'ws upgrade successful');
                 const transport = new WsTransport(ws);
                 const authWs = transport as unknown as AuthenticatedWebSocket;
                 authWs.user = fullUser;
-                authWs.token = token;
+                authWs.token = msg.token;
                 authWs.traceId = traceId;
                 authWs.isAlive = false;
-                wss.emit('connection', authWs, req);
-            });
-        } catch (err) {
-            const message = err instanceof Error ? err.message : 'Authentication failed';
-            logger.error({ err: message }, 'ws auth failed');
-            wss.handleUpgrade(req, socket, head, (ws) => {
+                wss.emit('connection', authWs);
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Authentication failed';
+                logger.error({ err: message }, 'ws auth failed');
                 ws.send(JSON.stringify({ isError: true, message }), () => ws.close());
-            });
-        }
+            }
+        });
+    }
+
+    server.on('upgrade', (req, socket, head) => {
+        const parsedUrl = new URL(req.url ?? '', 'http://localhost');
+        if (parsedUrl.pathname === '/logs') return;
+
+        const traceId = (req.headers['x-trace-id'] as string) || randomUUID();
+
+        wss.handleUpgrade(req, socket, head, (ws) => {
+            authenticateOnFirstMessage(ws, traceId);
+        });
     });
 
     wss.on('connection', onConnection() as unknown as (ws: WebSocket) => void);

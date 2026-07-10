@@ -8,7 +8,7 @@ import {
   Video
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useCallViewStore } from '../../states/stores.ts';
+import { useCallViewStore, useIncomingCallStore } from '../../states/stores.ts';
 
 import { CallState } from '@/src/states/call/state.ts';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
@@ -30,6 +30,7 @@ export const AttendantList: React.FC<AttendantListProps> = ({
   const { t } = useTranslation();
   const selectedAttendantId = useCallViewStore((s) => s.selectedAttendantId);
   const selectAttendant = useCallViewStore((s) => s.selectAttendant);
+  const incomingCall = useIncomingCallStore((s) => s.incomingCall);
 
   const onlineAttendants = users.filter(u => u.role === 'attendant' || u.role === 'admin');
 
@@ -228,14 +229,14 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                               <button
                                 id={`call-start-${at.id}`}
                                 onClick={() => selectAttendant(at.id)}
-                                disabled={isLocalCustomerBusyState || !!busyCall}
+                                disabled={isLocalCustomerBusyState || !!busyCall || !!incomingCall}
                                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 ${
-                                  isLocalCustomerBusyState || !!busyCall
+                                  isLocalCustomerBusyState || !!busyCall || !!incomingCall
                                     ? 'bg-brand-panel text-brand-muted/50 border border-brand-border cursor-not-allowed'
                                     : 'bg-brand-ochre text-white hover:bg-brand-ochre-hover cursor-pointer'
                                 }`}
                                 title={
-                                  isLocalCustomerBusyState
+                                  isLocalCustomerBusyState || !!incomingCall
                                     ? t('attendantList.alreadyConnected')
                                     : busyCall
                                     ? t('attendantList.attendantBusy')

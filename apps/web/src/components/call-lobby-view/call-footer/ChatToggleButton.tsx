@@ -7,6 +7,7 @@ interface ChatToggleButtonProps {
   isOpen: boolean;
   hasUnreadMessage?: boolean;
   onClick: () => void;
+  disabled?: boolean;
 }
 
 export const ChatToggleButton: React.FC<ChatToggleButtonProps> = ({
@@ -14,6 +15,7 @@ export const ChatToggleButton: React.FC<ChatToggleButtonProps> = ({
   isOpen,
   hasUnreadMessage = false,
   onClick,
+  disabled = false,
 }) => {
   const { t } = useTranslation();
   return (
@@ -21,9 +23,12 @@ export const ChatToggleButton: React.FC<ChatToggleButtonProps> = ({
       type="button"
       id={id}
       onClick={onClick}
+      disabled={disabled}
       title={isOpen ? t('call.closeChat') : t('call.openChat')}
       className={`relative w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md border ${
-        isOpen
+        disabled
+          ? 'opacity-40 cursor-not-allowed bg-[#2a2d31]/50 text-slate-500 border-transparent'
+          : isOpen
           ? 'bg-brand-ochre hover:bg-brand-ochre-hover text-white border-transparent active:scale-95 cursor-pointer'
           : 'bg-[#2a2d31] hover:bg-[#34383d] text-slate-200 border-transparent active:scale-95 cursor-pointer'
       }`}

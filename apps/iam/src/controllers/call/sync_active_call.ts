@@ -61,9 +61,9 @@ export class SyncActiveCall {
 
             if (call) {
                 const presentUserIds = await getRoomPresenceUserIds(call.roomName);
-                const hasOtherParticipant = presentUserIds.some((id) => id !== userId);
+                const meetingExists = presentUserIds.length > 0;
 
-                if (!hasOtherParticipant) {
+                if (!meetingExists) {
                     await this.delete.exec({ mapped: { customerId: call.customerId, attendantId: call.attendantId } });
                     await ejectBothParticipantsFromRoom(call.roomName);
                     return successData({ call: null, shouldJoin: false });
@@ -73,8 +73,12 @@ export class SyncActiveCall {
                     mapped: { customerId: call.customerId, attendantId: call.attendantId, userId },
                 });
                 const currentCall = updated.isError ? call : updated.data;
+                // The meeting is genuinely happening (someone's in it) — whether
+                // *this* user still needs to join depends only on their own
+                // presence, not the counterpart's.
+                const shouldJoin = !presentUserIds.includes(userId);
 
-                return successData({ call: currentCall, shouldJoin: true });
+                return successData({ call: currentCall, shouldJoin });
             }
 
             const created = await this.selfHealFromPresence(redis, userId);
@@ -118,6 +122,7 @@ export class SyncActiveCall {
                     endedAt: null,
                     isPlaying: false,
                     tokensToBeCharged: 0,
+                    isClosed: false,
                 },
             });
             if (either.isError) continue;

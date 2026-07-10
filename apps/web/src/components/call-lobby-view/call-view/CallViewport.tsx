@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Clock, User } from 'lucide-react';
+import { Clock, Loader2, MonitorSmartphone, User } from 'lucide-react';
 import { CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
 import { useIncomingCallStore, useCurrentUserStore, useOnlineUsersStore, useCallViewStore, useDevicesStore, useChatStore, useCallStore } from '../../../states/stores.ts';
@@ -31,6 +31,31 @@ const renderNoneViewport = () => (
     </div>
     <h3 className="text-sm font-semibold text-slate-200 tracking-wide uppercase">
       {i18n.t('call.noServiceSelected')}
+    </h3>
+  </div>
+);
+
+const renderInCallInAnotherViewport = () => (
+  <div id="viewport-in-call-in-another" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
+    <div className="w-16 h-16 rounded-full bg-slate-500/10 border border-slate-500/20 flex items-center justify-center text-slate-400 mb-4">
+      <MonitorSmartphone className="w-8 h-8 text-slate-400" />
+    </div>
+    <h3 className="text-sm font-semibold text-slate-200 tracking-wide uppercase">
+      {i18n.t('call.activeInAnotherTabTitle')}
+    </h3>
+    <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+      {i18n.t('call.activeInAnotherTab')}
+    </p>
+  </div>
+);
+
+const renderCallClosingViewport = () => (
+  <div id="viewport-call-closing" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
+    <div className="w-16 h-16 rounded-full bg-slate-500/10 border border-slate-500/20 flex items-center justify-center text-slate-400 mb-4">
+      <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
+    </div>
+    <h3 className="text-sm font-semibold text-slate-200 tracking-wide uppercase">
+      {i18n.t('call.awaitingCallClose')}
     </h3>
   </div>
 );
@@ -224,6 +249,10 @@ export const CallViewport: React.FC<CallViewportProps> = ({
     content = attendant ? renderLobbyViewport(attendant) : renderNoneViewport();
   } else if (state === CallViewState.InCall) {
     content = <ActiveVideoViewport partner={partner} />;
+  } else if (state === CallViewState.InCallInAnother) {
+    content = renderInCallInAnotherViewport();
+  } else if (state === CallViewState.CallClosing) {
+    content = renderCallClosingViewport();
   } else {
     content = renderNoneViewport();
   }

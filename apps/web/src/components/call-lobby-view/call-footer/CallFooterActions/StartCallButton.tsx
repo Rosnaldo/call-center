@@ -6,6 +6,7 @@ interface StartCallButtonProps {
   onClick: () => void;
   label?: string;
   isLoading?: boolean;
+  disabled?: boolean;
 }
 
 export const StartCallButton: React.FC<StartCallButtonProps> = ({
@@ -13,13 +14,14 @@ export const StartCallButton: React.FC<StartCallButtonProps> = ({
   onClick,
   label = 'Call',
   isLoading = false,
+  disabled = false,
 }) => {
   return (
     <button
       type="button"
       id={id}
       onClick={onClick}
-      disabled={isLoading}
+      disabled={isLoading || disabled}
       className="px-6 py-3 rounded-full flex items-center gap-2 text-white font-semibold transition-all active:scale-95 shadow-lg border border-transparent cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 disabled:animate-none animate-pulse bg-brand-ochre hover:bg-brand-ochre-hover"
     >
       {isLoading ? (
