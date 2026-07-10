@@ -45,7 +45,7 @@ describe('Controller > IncomingCall > Cancel', () => {
         expect(await redis.get(`incoming_call:${attendant.id}`)).toBeNull();
     });
 
-    it('removes matching call from redis when it exists', async () => {
+    it('rejects cancellation once the call has already been accepted, leaving it untouched', async () => {
         const customer = buildOnlineUser({ role: 'customer' });
         const attendant = buildOnlineUser({ role: 'attendant' });
         const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
@@ -56,9 +56,14 @@ describe('Controller > IncomingCall > Cancel', () => {
         await seedUsers(customer, attendant);
 
         const controller = new IncomingCallController();
-        await controller.cancel.exec({ traceId: TRACE, mapped: controller.cancel.mapper({ customerId: customer.id, attendantId: attendant.id }) });
+        const either = await controller.cancel.exec({ traceId: TRACE, mapped: controller.cancel.mapper({ customerId: customer.id, attendantId: attendant.id }) });
 
-        expect(await redis.get(`calls:${customer.id}--${attendant.id}`)).toBeNull();
+        expect(either.isError).toBe(true);
+        expect(either.status).toBe(400);
+        // neither the now-active call nor the (now redundant) incoming call
+        // marker is touched — cancel just refuses the request outright
+        expect(await redis.get(`calls:${customer.id}--${attendant.id}`)).not.toBeNull();
+        expect(await redis.get(`incoming_call:${attendant.id}`)).not.toBeNull();
     });
 
     it('does not delete unrelated calls', async () => {

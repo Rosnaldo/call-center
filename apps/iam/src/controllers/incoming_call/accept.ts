@@ -7,16 +7,16 @@ import { BadRequestException } from '#exceptions/bad_request';
 import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { IIncomingCallController } from './params';
-import { IncomingCallState, IOnlineUser } from '@repo/shared-types';
+import { IncomingCallState } from '@repo/shared-types';
 import { notifyCallAccepted } from 'src/services/realtime';
 import { ensureDailyRoom } from 'src/services/daily';
 import { validateInput } from 'src/validations/incoming_call/accept';
+import { getOnlineUserPair, setOnlineUser } from 'src/interactors/online_user';
 
 type IInput = IIncomingCallController['IAccept']['IInput'];
 type IOutput = IIncomingCallController['IAccept']['IOutput'];
 
 const INCOMING_CALL_PREFIX = 'incoming_call:';
-const ONLINE_USERS_PREFIX = 'online_user:';
 
 interface Props {
     traceId: string;
@@ -51,22 +51,15 @@ export class Accept {
                 throw new BadRequestException('Customer não deve atender ligação');
             }
 
-            const [customerJson, attendantJson] = await Promise.all([
-                redis.get(`${ONLINE_USERS_PREFIX}${incomingCall.customerId}`),
-                redis.get(`${ONLINE_USERS_PREFIX}${incomingCall.attendantId}`),
-            ]);
-
-            if (!customerJson) throw new BadRequestException('Cliente não encontrado.');
-            if (!attendantJson) throw new BadRequestException('Atendente não encontrado.');
-
-            const customer = JSON.parse(customerJson) as IOnlineUser;
-            const attendant = JSON.parse(attendantJson) as IOnlineUser;
+            const { customer, attendant } = await getOnlineUserPair(incomingCall.customerId, incomingCall.attendantId);
             const roomName = `${customer.slug}--${attendant.slug}`;
 
             await redis.del(`${INCOMING_CALL_PREFIX}${attendantId}`);
 
-            await redis.set(`${ONLINE_USERS_PREFIX}${customer.id}`, JSON.stringify({ ...customer, status: 'in-call' }), 'EX', 90);
-            await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'in-call' }), 'EX', 90);
+            await Promise.all([
+                setOnlineUser(customer, { status: 'in-call' }),
+                setOnlineUser(attendant, { status: 'in-call' }),
+            ]);
 
             // Awaited: the room must exist before the client is told the call
             // was accepted, or it can try to join before it's there.

@@ -8,15 +8,14 @@ import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { validateInput } from 'src/validations/incoming_call/send';
 import { IIncomingCallController } from './params';
-import { IOnlineUser } from '@repo/shared-types';
 import { notifyIncomingCallSent } from 'src/services/realtime';
 import { UserCrud } from '#crud/user';
+import { getOnlineUserPair, setOnlineUser } from 'src/interactors/online_user';
 
 type IInput = IIncomingCallController['ISend']['IInput'];
 type IOutput = IIncomingCallController['ISend']['IOutput'];
 
 const INCOMING_CALL_PREFIX = 'incoming_call:';
-const ONLINE_USERS_PREFIX = 'online_user:';
 
 interface Props {
     traceId: string;
@@ -45,17 +44,10 @@ export class Send {
             const params = this.transform(props.mapped);
             const redis = getRedisClient();
 
-            const [customerJson, attendantJson, existing] = await Promise.all([
-                redis.get(`${ONLINE_USERS_PREFIX}${params.customerId}`),
-                redis.get(`${ONLINE_USERS_PREFIX}${params.attendantId}`),
+            const [{ customer, attendant }, existing] = await Promise.all([
+                getOnlineUserPair(params.customerId, params.attendantId),
                 redis.get(`${INCOMING_CALL_PREFIX}${params.attendantId}`),
             ]);
-
-            if (!customerJson) throw new BadRequestException('Cliente não encontrado.');
-            if (!attendantJson) throw new BadRequestException('Atendente não encontrado.');
-
-            const customer = JSON.parse(customerJson) as IOnlineUser;
-            const attendant = JSON.parse(attendantJson) as IOnlineUser;
 
             if (customer.status !== 'idle') throw new BadRequestException(`Cliente não está disponível.`);
 
@@ -66,8 +58,10 @@ export class Send {
             if (existing) throw new BadRequestException(`Atendente ${attendant.name} já está em ligação.`);
 
             await redis.set(`${INCOMING_CALL_PREFIX}${params.attendantId}`, JSON.stringify(params), 'EX', 60);
-            await redis.set(`${ONLINE_USERS_PREFIX}${customer.id}`, JSON.stringify({ ...customer, status: 'occupied' }), 'EX', 90);
-            await redis.set(`${ONLINE_USERS_PREFIX}${attendant.id}`, JSON.stringify({ ...attendant, status: 'occupied' }), 'EX', 90);
+            await Promise.all([
+                setOnlineUser(customer, { status: 'occupied' }),
+                setOnlineUser(attendant, { status: 'occupied' }),
+            ]);
 
             notifyIncomingCallSent(traceId, params.customerId, params.attendantId, params.calledBy).catch(() => {});
 

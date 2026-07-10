@@ -9,6 +9,7 @@ import { getRedisClient } from '#redis/singleton';
 import { getUserDao } from '#daos/singleton';
 import { mapString } from '#utils/mapper/string';
 import { getRoomPresenceUserIds, ejectBothParticipantsFromRoom } from 'src/services/daily';
+import { findCallByUser } from 'src/interactors/find_call_by_user';
 import { AddParticipant } from './add_participant';
 import { Create } from './create';
 import { Delete } from './delete';
@@ -17,7 +18,6 @@ import { ICallController } from './params';
 type IOutput = ICallController['ISyncActiveCall']['IOutput'];
 type Redis = ReturnType<typeof getRedisClient>;
 
-const CALLS_KEY = 'calls';
 const ROOMS_KEY = 'daily_rooms';
 
 interface Props {
@@ -57,25 +57,18 @@ export class SyncActiveCall {
             if (!userId) throw new BadRequestException('userId é obrigatório');
 
             const redis = getRedisClient();
-            const call = await this.findCallByUser(redis, userId);
+            const call = await findCallByUser(userId);
 
             if (call) {
                 const presentUserIds = await getRoomPresenceUserIds(call.roomName);
                 const hasOtherParticipant = presentUserIds.some((id) => id !== userId);
 
-                // Nobody's actually in the Daily room, or the only one there
-                // is this same connecting user — there's no real call
-                // happening, so tear down the stale record and the meeting
-                // itself instead of keeping either alive.
                 if (!hasOtherParticipant) {
                     await this.delete.exec({ mapped: { customerId: call.customerId, attendantId: call.attendantId } });
                     await ejectBothParticipantsFromRoom(call.roomName);
                     return successData({ call: null, shouldJoin: false });
                 }
 
-                // Marks this user active on the call (instead of a plain TTL
-                // touch) — same effect add-participant's own join path has,
-                // refreshing the TTL as a side effect of the write.
                 const updated = await this.addParticipant.exec({
                     mapped: { customerId: call.customerId, attendantId: call.attendantId, userId },
                 });
@@ -89,17 +82,6 @@ export class SyncActiveCall {
         } catch (error: unknown) {
             return logError(error, '/calls/sync-active-call');
         }
-    };
-
-    private readonly findCallByUser = async (redis: Redis, userId: string): Promise<CallState | null> => {
-        const keys = await redis.keys(`${CALLS_KEY}:*`);
-        if (keys.length === 0) return null;
-
-        const values = await redis.mget(keys);
-        return values
-            .filter((v): v is string => v !== null)
-            .map((v) => JSON.parse(v) as CallState)
-            .find((c) => c.customerId === userId || c.attendantId === userId) ?? null;
     };
 
     private readonly selfHealFromPresence = async (redis: Redis, userId: string): Promise<CallState | null> => {

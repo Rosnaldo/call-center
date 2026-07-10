@@ -4,21 +4,14 @@ import logger from '#logger';
 import { logError } from '#utils/log_error';
 import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
-import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
-import { IOnlineUser } from '#schemas/online_user/types';
 import { validateInput, IUpdateStatusInput } from 'src/validations/online_user/update_status';
-
-const ONLINE_USERS_PREFIX = 'online_user:';
-const TTL_SECONDS = 90;
+import { patchOnlineUserIfPresent } from 'src/interactors/online_user';
 
 interface Props {
     mapped: IUpdateStatusInput;
 }
 
-// Used to reset both participants to idle once onMeetingEnded really ends a
-// call — distinct from /calls/complete, which is the explicit "hang up"
-// button flow and also fires call_completed (the calculating-tokens modal).
 export class UpdateStatus {
     public static readonly classId = Symbol.for('Controller > OnlineUser > UpdateStatus');
 
@@ -36,16 +29,9 @@ export class UpdateStatus {
             const { id, status } = this.transform(props.mapped);
             logger.info({ id, status }, 'online user update status');
 
-            const redis = getRedisClient();
-            const key = `${ONLINE_USERS_PREFIX}${id}`;
-            const raw = await redis.get(key);
             // no cached presence entry (not currently connected) — nothing to
             // patch, the fresh value will be picked up whenever they reconnect
-            if (!raw) return successData({});
-
-            const existing = JSON.parse(raw) as IOnlineUser['IParams'];
-            const updated: IOnlineUser['IParams'] = { ...existing, status };
-            await redis.set(key, JSON.stringify(updated), 'EX', TTL_SECONDS);
+            await patchOnlineUserIfPresent(id, { status });
 
             return successData({});
         } catch (error: unknown) {

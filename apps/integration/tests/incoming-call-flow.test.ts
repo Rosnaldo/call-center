@@ -10,6 +10,7 @@ import { DailyCoService } from './helpers/daily-service';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
+import { deleteDailyRoom } from '../../realtime/src/webhooks/daily_manager';
 
 import { createStores, Stores } from '../../web/src/states/stores';
 import { AuthSession } from '../../web/src/auth/session';
@@ -35,9 +36,9 @@ async function flushRealIO(ticks = 30): Promise<void> {
     }
 }
 
-async function waitFor(condition: () => boolean, maxTicks = 300): Promise<void> {
+async function waitFor(condition: () => boolean | Promise<boolean>, maxTicks = 300): Promise<void> {
     for (let i = 0; i < maxTicks; i++) {
-        if (condition()) return;
+        if (await condition()) return;
         await new Promise<void>((resolve) => setImmediate(resolve));
     }
     // let the final assertion produce the real failure message/diff
@@ -95,6 +96,14 @@ describe('Incoming Call Flow', () => {
         await stopIamServer();
     });
 
+    afterEach(async () => {
+        // only the cancel-after-accept test below actually calls
+        // /incoming-calls/accept (which real ensureDailyRoom's a room for
+        // this pair) — harmless no-op for the others, deleteDailyRoom
+        // tolerates a room that was never created
+        await deleteDailyRoom(`${customerUser.slug}--${attendantUser.slug}`);
+    });
+
     beforeEach(async () => {
         const redis = getRedisClient();
         const icKeys = await redis.keys('incoming_call:*');
@@ -105,6 +114,10 @@ describe('Incoming Call Flow', () => {
         // sendIncomingCall's "attendant busy" check)
         const onlineKeys = await redis.keys('online_user:*');
         if (onlineKeys.length) await redis.del(...onlineKeys);
+        // a call accepted in one test (see the cancel-after-accept test
+        // below) would otherwise leak into the next test's cancel guard
+        const callKeys = await redis.keys('calls:*');
+        if (callKeys.length) await redis.del(...callKeys);
 
         clientRegistry.clear();
         jest.clearAllMocks();
@@ -357,5 +370,82 @@ describe('Incoming Call Flow', () => {
         expect(customerStores.callView.getState().viewState).toBe('none');
         expect(customerStores.callView.getState().selectedAttendantId).toBeNull();
         expect(customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('idle');
+    });
+
+    it('cancel is rejected once the incoming call has already been accepted', async () => {
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
+        const { serverWs: attendantWs, webFactory: attendantWebFactory } = createBridgedClient(attendantUser, ATTENDANT_TOKEN);
+
+        const customerMessages: any[] = [];
+        const attendantMessages: any[] = [];
+        (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
+            customerMessages.push(JSON.parse(data));
+        });
+        (attendantWs as unknown as EventEmitter).on('sent', (data: string) => {
+            attendantMessages.push(JSON.parse(data));
+        });
+
+        clientRegistry.add(customerWs);
+        clientRegistry.add(attendantWs);
+
+        customerStores.onlineUsers.setState({
+            users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
+        });
+        attendantStores.onlineUsers.setState({
+            users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
+        });
+
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
+
+        await onConnection()(customerWs);
+        await onConnection()(attendantWs);
+        // each onConnection() broadcasts online_users_broadcast, which
+        // triggers every connected client's refreshUsers() fire-and-forget
+        // — without waiting for it to settle, that real fetch can clobber
+        // the onlineUsers state set above before sendIncomingCall reads it
+        // (see the analogous fix in accept-call-flow.test.ts).
+        await flushRealIO();
+
+        // ── send + accept — the incoming call becomes an active call ────
+        customerStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
+        await waitFor(() => attendantStores.callView.getState().viewState === 'awaiting-to-answer');
+
+        await iamRequest.post('/incoming-calls/accept').set('Authorization', ATTENDANT_TOKEN)
+            .send({ attendantId: attendantUser._id, userId: attendantUser._id });
+
+        // Accept itself doesn't create the calls:* record — it fires
+        // notifyCallAccepted fire-and-forget, and realtime's onCallAccepted
+        // handler (ensureCallExists) creates it asynchronously afterward,
+        // so the record isn't guaranteed to exist the instant accept's HTTP
+        // response comes back.
+        const roomName = `${customerUser.slug}--${attendantUser.slug}`;
+        let acceptedCall: Awaited<ReturnType<typeof iamRequest.get>>;
+        await waitFor(async () => {
+            acceptedCall = await iamRequest.get('/calls/get-by-room')
+                .query({ roomName }).set('Authorization', CUSTOMER_TOKEN);
+            return !acceptedCall.body?.isError;
+        });
+        expect(acceptedCall!.body?.isError).toBeFalsy();
+
+        customerMessages.length = 0;
+        attendantMessages.length = 0;
+
+        // ── cancel is now rejected — the endpoint refuses outright ───────
+        const cancelRes = await iamRequest.post('/incoming-calls/cancel').set('Authorization', CUSTOMER_TOKEN)
+            .send({ customerId: customerUser._id, attendantId: attendantUser._id });
+
+        expect(cancelRes.status).toBe(400);
+        expect(cancelRes.body?.isError).toBe(true);
+
+        // the call it would have deleted is untouched
+        const stillThere = await iamRequest.get('/calls/get-by-room')
+            .query({ roomName }).set('Authorization', CUSTOMER_TOKEN);
+        expect(stillThere.body?.isError).toBeFalsy();
+        expect(stillThere.body?.roomName).toBe(roomName);
+
+        // rejected before ever notifying — neither side hears about a cancel
+        expect(customerMessages.find((m) => m.event === 'incoming_call_cancelled')).toBeUndefined();
+        expect(attendantMessages.find((m) => m.event === 'incoming_call_cancelled')).toBeUndefined();
     });
 });

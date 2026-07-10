@@ -9,6 +9,7 @@ import { mapString } from '#utils/mapper/string';
 import { toUndefined } from '#utils/mapper/to_undefined';
 import { validateInput } from 'src/validations/online_user/add';
 import { IOnlineUserController } from './params';
+import { getOnlineUser } from 'src/interactors/online_user';
 
 type IInput = IOnlineUserController['IAdd']['IInput'];
 type IOutput = IOnlineUserController['IAdd']['IOutput'];
@@ -39,17 +40,8 @@ export class Add {
             const redis = getRedisClient();
 
             const key = `${ONLINE_USERS_PREFIX}${params.id}`;
-            // A reconnect (page reload, network blip) always calls this with
-            // whatever status the client had cached at connect time — which
-            // defaults to 'idle', since the client has no way to know it's
-            // mid-call at that point. This is a full upsert, so without this
-            // check every reconnect would clobber a real 'in-call' status
-            // back to idle. Anything else (idle/disconnecting/offline) still
-            // gets overwritten by the incoming value as before, since only
-            // 'in-call' reflects state the caller couldn't have known about.
-            const existingRaw = await redis.get(key);
-            const existingStatus = existingRaw ? (JSON.parse(existingRaw) as IOutput).status : undefined;
-            const toStore: IOutput = { ...params, status: existingStatus === 'in-call' ? existingStatus : params.status };
+            const existing = await getOnlineUser(params.id);
+            const toStore: IOutput = { ...params, status: existing?.status === 'in-call' ? existing.status : params.status };
 
             await redis.set(key, JSON.stringify(toStore), 'EX', TTL_SECONDS);
             return successData(toStore);

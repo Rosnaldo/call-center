@@ -6,16 +6,15 @@ import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
 import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
-import { CallState, IOnlineUser } from '@repo/shared-types';
+import { CallState } from '@repo/shared-types';
 import { notifyCallCompleted } from 'src/services/realtime';
 import { ejectBothParticipantsFromRoom } from 'src/services/daily';
 import { ICallController } from './params';
+import { patchOnlineUserIfPresent } from 'src/interactors/online_user';
 
-const ONLINE_USERS_PREFIX = 'online_user:';
 const CALLS_KEY = 'calls';
 
 type IOutput = ICallController['IComplete']['IOutput'];
-type Redis = ReturnType<typeof getRedisClient>;
 
 interface CompleteInput {
     customerId: string;
@@ -55,8 +54,8 @@ export class Complete {
             const call = JSON.parse(callJson) as CallState;
 
             await Promise.all([
-                this.markIdle(redis, customerId),
-                this.markIdle(redis, attendantId),
+                patchOnlineUserIfPresent(customerId, { status: 'idle' }),
+                patchOnlineUserIfPresent(attendantId, { status: 'idle' }),
             ]);
 
             await ejectBothParticipantsFromRoom(call.roomName);
@@ -72,13 +71,4 @@ export class Complete {
         customerId: mapString(body.customerId),
         attendantId: mapString(body.attendantId),
     });
-
-    private readonly markIdle = async (redis: Redis, userId: string): Promise<void> => {
-        const key = `${ONLINE_USERS_PREFIX}${userId}`;
-        const raw = await redis.get(key);
-        if (!raw) return;
-
-        const existing = JSON.parse(raw) as IOnlineUser;
-        await redis.set(key, JSON.stringify({ ...existing, status: 'idle' }), 'EX', 90);
-    };
 }
