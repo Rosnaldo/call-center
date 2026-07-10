@@ -6,6 +6,7 @@ import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-serv
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { createWsClient } from './helpers/mock-wss';
+import { createBridgedEventSource } from './helpers/mock-sse';
 import { DailyCoService } from './helpers/daily-service';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
@@ -16,6 +17,7 @@ import { createStores, Stores } from '../../web/src/states/stores';
 import { getCallViewState } from '../../web/src/states/call-view/derive';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
+import { initCallEvents } from '../../web/src/services/sse/init-call-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 // src/services/users|calls (realtime) and @/src/services/api/{incoming-calls,online-users}
@@ -25,12 +27,13 @@ import { ITransport, TransportFactory } from '../../web/src/services/ws/transpor
 // no mocking needed. But several actions in this file (broadcastMessage's
 // client-side refreshUsers(), and the incoming-call send/cancel actions
 // below) kick off async work the test has no promise to await directly —
-// sendIncomingCall in particular chains several real HTTP hops (customer ->
-// IAM -> IAM's webhook -> realtime -> both clients' incomingCallSent/
-// Received, which each also call fetchOnlineUsers) before the stores settle.
-// setImmediate yields to the event loop's poll phase without needing real
-// wall time to pass, so polling a condition with it is both fast and
-// reliable regardless of how many hops a given action ends up chaining.
+// sendIncomingCall in particular chains several real hops (customer -> IAM ->
+// IAM publishes to Redis -> both clients' bridged call-events subscriber ->
+// incomingCallSent/Received, which each also call fetchOnlineUsers) before
+// the stores settle. setImmediate yields to the event loop's poll phase
+// without needing real wall time to pass, so polling a condition with it is
+// both fast and reliable regardless of how many hops a given action ends up
+// chaining.
 async function flushRealIO(ticks = 30): Promise<void> {
     for (let i = 0; i < ticks; i++) {
         await new Promise<void>((resolve) => setImmediate(resolve));
@@ -83,6 +86,20 @@ describe('Incoming Call Flow', () => {
     let attendantUser: IUser;
     let customerStores: Stores;
     let attendantStores: Stores;
+    // send/cancel/accept no longer push over the websocket — IAM publishes
+    // straight to Redis and web listens over SSE instead (see
+    // init-call-events.ts). createBridgedEventSource bridges that same real
+    // Redis channel into a real InitCallEvents instance the same way
+    // createBridgedClient above bridges the websocket, so the actual
+    // production dispatch logic still runs end to end. Closed in afterEach.
+    let sseCloses: Array<() => Promise<void>>;
+
+    const bridgeCallEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
+        const { factory, messages, close } = await createBridgedEventSource(user._id);
+        initCallEvents.init(token, stores, factory);
+        sseCloses.push(close);
+        return messages;
+    };
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
@@ -103,6 +120,7 @@ describe('Incoming Call Flow', () => {
         // this pair) — harmless no-op for the others, deleteDailyRoom
         // tolerates a room that was never created
         await deleteDailyRoom(`${customerUser.slug}--${attendantUser.slug}`);
+        await Promise.all(sseCloses.map((close) => close()));
     });
 
     beforeEach(async () => {
@@ -125,6 +143,7 @@ describe('Incoming Call Flow', () => {
         DailyCoService.reset();
         AuthSession.override({ token: CUSTOMER_TOKEN });
 
+        sseCloses = [];
         const dailyService = DailyCoService.getInstance();
         customerStores = createStores(dailyService);
         attendantStores = createStores(dailyService);
@@ -157,6 +176,8 @@ describe('Incoming Call Flow', () => {
 
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
+        const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const attendantCallEvents = await bridgeCallEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);
@@ -176,9 +197,9 @@ describe('Incoming Call Flow', () => {
             && attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status === 'occupied',
         );
 
-        // ── both receive events ──────────────────────────────────────
-        const sentMsg = customerMessages.find((m) => m.event === 'incoming_call_sent');
-        const recvMsg = attendantMessages.find((m) => m.event === 'incoming_call_received');
+        // ── both receive events (via the call-events Redis pub/sub bridge) ──
+        const sentMsg = customerCallEvents.find((m) => m.event === 'incoming_call_sent');
+        const recvMsg = attendantCallEvents.find((m) => m.event === 'incoming_call_received');
         expect(sentMsg).toBeTruthy();
         expect(recvMsg).toBeTruthy();
 
@@ -230,6 +251,8 @@ describe('Incoming Call Flow', () => {
 
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
+        const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const attendantCallEvents = await bridgeCallEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);
@@ -250,23 +273,26 @@ describe('Incoming Call Flow', () => {
         // ── customer cancels ──────────────────────────────────────────
         customerMessages.length = 0;
         attendantMessages.length = 0;
+        customerCallEvents.length = 0;
+        attendantCallEvents.length = 0;
 
-        // cancelIncomingCall() sets viewState locally/optimistically before
-        // the network round trip even starts, so it can't be used as a
-        // "the real cancel round trip finished" signal — wait on the actual
-        // broadcast message arriving, and on the status reset that the
-        // receiving incomingCallCancelled handler applies last, after its
-        // own internal await fetchOnlineUsers() resolves.
+        // cancelIncomingCall() no longer sets viewState optimistically (see
+        // actions.ts) — the real state clear only happens once IAM's own
+        // incoming_call_cancelled pub/sub event round-trips back to this
+        // same client, so wait on the actual broadcast message arriving, and
+        // on the status reset that the receiving incomingCallCancelled
+        // handler applies last, after its own internal await
+        // fetchOnlineUsers() resolves.
         customerStores.incomingCall.getState().cancelIncomingCall();
         await waitFor(() =>
-            customerMessages.some((m) => m.event === 'incoming_call_cancelled')
-            && attendantMessages.some((m) => m.event === 'incoming_call_cancelled')
+            customerCallEvents.some((m) => m.event === 'incoming_call_cancelled')
+            && attendantCallEvents.some((m) => m.event === 'incoming_call_cancelled')
             && customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status === 'idle'
             && attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status === 'idle',
         );
 
-        const customerCancelMsg = customerMessages.find((m) => m.event === 'incoming_call_cancelled');
-        const attendantCancelMsg = attendantMessages.find((m) => m.event === 'incoming_call_cancelled');
+        const customerCancelMsg = customerCallEvents.find((m) => m.event === 'incoming_call_cancelled');
+        const attendantCancelMsg = attendantCallEvents.find((m) => m.event === 'incoming_call_cancelled');
         expect(customerCancelMsg).toBeTruthy();
         expect(attendantCancelMsg).toBeTruthy();
 
@@ -314,6 +340,8 @@ describe('Incoming Call Flow', () => {
 
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
+        const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const attendantCallEvents = await bridgeCallEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);
@@ -334,23 +362,26 @@ describe('Incoming Call Flow', () => {
         // ── attendant cancels ─────────────────────────────────────────
         customerMessages.length = 0;
         attendantMessages.length = 0;
+        customerCallEvents.length = 0;
+        attendantCallEvents.length = 0;
 
-        // cancelIncomingCall() sets viewState locally/optimistically before
-        // the network round trip even starts, so it can't be used as a
-        // "the real cancel round trip finished" signal — wait on the actual
-        // broadcast message arriving, and on the status reset that the
-        // receiving incomingCallCancelled handler applies last, after its
-        // own internal await fetchOnlineUsers() resolves.
+        // cancelIncomingCall() no longer sets viewState optimistically (see
+        // actions.ts) — the real state clear only happens once IAM's own
+        // incoming_call_cancelled pub/sub event round-trips back to this
+        // same client, so wait on the actual broadcast message arriving, and
+        // on the status reset that the receiving incomingCallCancelled
+        // handler applies last, after its own internal await
+        // fetchOnlineUsers() resolves.
         attendantStores.incomingCall.getState().cancelIncomingCall();
         await waitFor(() =>
-            customerMessages.some((m) => m.event === 'incoming_call_cancelled')
-            && attendantMessages.some((m) => m.event === 'incoming_call_cancelled')
+            customerCallEvents.some((m) => m.event === 'incoming_call_cancelled')
+            && attendantCallEvents.some((m) => m.event === 'incoming_call_cancelled')
             && customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status === 'idle'
             && attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status === 'idle',
         );
 
-        const attendantCancelMsg = attendantMessages.find((m) => m.event === 'incoming_call_cancelled');
-        const customerCancelMsg = customerMessages.find((m) => m.event === 'incoming_call_cancelled');
+        const attendantCancelMsg = attendantCallEvents.find((m) => m.event === 'incoming_call_cancelled');
+        const customerCancelMsg = customerCallEvents.find((m) => m.event === 'incoming_call_cancelled');
         expect(attendantCancelMsg).toBeTruthy();
         expect(customerCancelMsg).toBeTruthy();
 
@@ -398,6 +429,8 @@ describe('Incoming Call Flow', () => {
 
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
+        const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const attendantCallEvents = await bridgeCallEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);
@@ -412,25 +445,21 @@ describe('Incoming Call Flow', () => {
         customerStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
         await waitFor(() => getCallViewState(attendantStores) === 'awaiting-to-answer');
 
+        // accept.ts creates the calls:* record synchronously and in-process
+        // now (see ensure_call_record.ts) — no more realtime round trip to
+        // wait out, the record is guaranteed to exist once this responds.
+        const roomName = `${customerUser.slug}--${attendantUser.slug}`;
         await iamRequest.post('/incoming-calls/accept').set('Authorization', ATTENDANT_TOKEN)
             .send({ attendantId: attendantUser._id, userId: attendantUser._id });
 
-        // Accept itself doesn't create the calls:* record — it fires
-        // notifyCallAccepted fire-and-forget, and realtime's onCallAccepted
-        // handler (ensureCallExists) creates it asynchronously afterward,
-        // so the record isn't guaranteed to exist the instant accept's HTTP
-        // response comes back.
-        const roomName = `${customerUser.slug}--${attendantUser.slug}`;
-        let acceptedCall: Awaited<ReturnType<typeof iamRequest.get>>;
-        await waitFor(async () => {
-            acceptedCall = await iamRequest.get('/calls/get-by-room')
-                .query({ roomName }).set('Authorization', CUSTOMER_TOKEN);
-            return !acceptedCall.body?.isError;
-        });
-        expect(acceptedCall!.body?.isError).toBeFalsy();
+        const acceptedCall = await iamRequest.get('/calls/get-by-room')
+            .query({ roomName }).set('Authorization', CUSTOMER_TOKEN);
+        expect(acceptedCall.body?.isError).toBeFalsy();
 
         customerMessages.length = 0;
         attendantMessages.length = 0;
+        customerCallEvents.length = 0;
+        attendantCallEvents.length = 0;
 
         // ── cancel is now rejected — the endpoint refuses outright ───────
         const cancelRes = await iamRequest.post('/incoming-calls/cancel').set('Authorization', CUSTOMER_TOKEN)
@@ -446,7 +475,7 @@ describe('Incoming Call Flow', () => {
         expect(stillThere.body?.roomName).toBe(roomName);
 
         // rejected before ever notifying — neither side hears about a cancel
-        expect(customerMessages.find((m) => m.event === 'incoming_call_cancelled')).toBeUndefined();
-        expect(attendantMessages.find((m) => m.event === 'incoming_call_cancelled')).toBeUndefined();
+        expect(customerCallEvents.find((m) => m.event === 'incoming_call_cancelled')).toBeUndefined();
+        expect(attendantCallEvents.find((m) => m.event === 'incoming_call_cancelled')).toBeUndefined();
     });
 });

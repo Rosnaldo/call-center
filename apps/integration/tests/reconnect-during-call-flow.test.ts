@@ -7,6 +7,7 @@ import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-serv
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { simulateMessage, createWsClient } from './helpers/mock-wss';
+import { createBridgedEventSource } from './helpers/mock-sse';
 import { DailyCoService } from './helpers/daily-service';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
@@ -18,6 +19,7 @@ import { createStores, Stores } from '../../web/src/states/stores';
 import { getCallViewState } from '../../web/src/states/call-view/derive';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
+import { initCallEvents } from '../../web/src/services/sse/init-call-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 import * as dailyServiceModule from '../../iam/src/services/daily';
@@ -86,6 +88,20 @@ describe('Reconnect During Active Call Flow', () => {
     let attendantStores: Stores;
     let roomName: string;
     let dailyCoService: DailyCoService;
+    // send/cancel/accept/complete no longer push over the websocket — IAM
+    // publishes straight to Redis and web listens over SSE instead (see
+    // init-call-events.ts). createBridgedEventSource bridges that same real
+    // Redis channel into a real InitCallEvents instance the same way
+    // createBridgedClient bridges the websocket, so the actual production
+    // dispatch logic still runs end to end. Closed in afterEach.
+    let sseCloses: Array<() => Promise<void>>;
+
+    const bridgeCallEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
+        const { factory, messages, close } = await createBridgedEventSource(user._id);
+        initCallEvents.init(token, stores, factory);
+        sseCloses.push(close);
+        return messages;
+    };
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
@@ -108,6 +124,7 @@ describe('Reconnect During Active Call Flow', () => {
         graceTimer.cancel(customerUser._id);
         graceTimer.cancel(attendantUser._id);
         await deleteDailyRoom(roomName);
+        await Promise.all(sseCloses.map((close) => close()));
     });
 
     beforeEach(async () => {
@@ -128,6 +145,7 @@ describe('Reconnect During Active Call Flow', () => {
             room === roomName ? [customerUser._id, attendantUser._id] : [],
         );
 
+        sseCloses = [];
         dailyCoService = DailyCoService.getInstance();
         customerStores = createStores(dailyCoService);
         attendantStores = createStores(dailyCoService);
@@ -172,6 +190,8 @@ describe('Reconnect During Active Call Flow', () => {
 
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
+        const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const attendantCallEvents = await bridgeCallEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);
@@ -197,26 +217,27 @@ describe('Reconnect During Active Call Flow', () => {
             && attendantStores.call.getState().call?.roomName === roomName,
         );
 
-        return { customerWs, attendantWs, customerMessages, attendantMessages };
+        return { customerWs, attendantWs, customerMessages, attendantMessages, customerCallEvents, attendantCallEvents };
     };
 
     // Completes the call and drives it all the way through Daily's
     // meeting.ended webhook, mirroring accept-call-flow.test.ts's own
     // completeCall assertions — the point being to certify the call the
     // reconnect disrupted still winds down cleanly afterward, same as a call
-    // that was never interrupted.
-    const completeAndVerifyCleanEnd = async (customerMessages: any[], attendantMessages: any[]) => {
-        customerMessages.length = 0;
-        attendantMessages.length = 0;
+    // that was never interrupted. call_completed itself now arrives over the
+    // call-events Redis/SSE bridge, not the websocket — see connectSendAndAccept.
+    const completeAndVerifyCleanEnd = async (customerCallEvents: any[], attendantCallEvents: any[]) => {
+        customerCallEvents.length = 0;
+        attendantCallEvents.length = 0;
 
         attendantStores.call.getState().completeCall();
         await waitFor(() =>
-            customerMessages.some((m) => m.event === 'call_completed')
-            && attendantMessages.some((m) => m.event === 'call_completed'),
+            customerCallEvents.some((m) => m.event === 'call_completed')
+            && attendantCallEvents.some((m) => m.event === 'call_completed'),
         );
 
-        expect(customerMessages.find((m) => m.event === 'call_completed')).toBeTruthy();
-        expect(attendantMessages.find((m) => m.event === 'call_completed')).toBeTruthy();
+        expect(customerCallEvents.find((m) => m.event === 'call_completed')).toBeTruthy();
+        expect(attendantCallEvents.find((m) => m.event === 'call_completed')).toBeTruthy();
 
         await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: `m-${roomName}`, room: roomName, start_ts: Date.now() / 1000 } });
         await waitFor(() =>
@@ -234,7 +255,7 @@ describe('Reconnect During Active Call Flow', () => {
     };
 
     it('attendant logs out mid-call but reconnects before the grace period expires — the call survives and completes normally', async () => {
-        const { attendantWs, customerMessages, attendantMessages } = await connectSendAndAccept();
+        const { attendantWs, customerMessages, attendantMessages, customerCallEvents, attendantCallEvents } = await connectSendAndAccept();
 
         const roomAtAccept = customerStores.call.getState().call?.roomName;
         expect(roomAtAccept).toBe(roomName);
@@ -302,11 +323,11 @@ describe('Reconnect During Active Call Flow', () => {
         expect(getCallViewState(attendantStores)).toBe('in-call');
 
         // ── the call is still perfectly completable afterward ─────────────
-        await completeAndVerifyCleanEnd(customerMessages, attendantMessages2);
+        await completeAndVerifyCleanEnd(customerCallEvents, attendantCallEvents);
     });
 
     it("attendant's connection drops mid-call but reconnects before the grace period expires — the call survives and completes normally", async () => {
-        const { attendantWs, customerMessages, attendantMessages } = await connectSendAndAccept();
+        const { attendantWs, customerMessages, attendantMessages, customerCallEvents, attendantCallEvents } = await connectSendAndAccept();
 
         expect(customerStores.call.getState().call?.roomName).toBe(roomName);
 
@@ -358,6 +379,6 @@ describe('Reconnect During Active Call Flow', () => {
         expect(connectedMsg.data.shouldJoin).toBe(false);
         expect(connectedMsg.data.call.roomName).toBe(roomName);
 
-        await completeAndVerifyCleanEnd(customerMessages, attendantMessages2);
+        await completeAndVerifyCleanEnd(customerCallEvents, attendantCallEvents);
     });
 });

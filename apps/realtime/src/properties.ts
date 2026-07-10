@@ -11,6 +11,7 @@ class Properties {
     corsOrigins: string[];
     dailyApiKey: string;
     webhookUrl: string;
+    redisUri: string;
 
     private constructor() {
         this.nodeEnv = process.env.NODE_ENV || '';
@@ -23,6 +24,7 @@ class Properties {
         this.corsOrigins = (process.env.CORS_ORIGINS || '').split(',').filter(Boolean);
         this.dailyApiKey = process.env.DAILY_API_KEY || '';
         this.webhookUrl = process.env.WEBHOOK_URL || '';
+        this.redisUri = process.env.REDIS_URI || '';
     }
 
     static getInstance(): Properties {

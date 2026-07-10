@@ -1,9 +1,8 @@
 import { AuthenticatedWebSocket, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
 import { WsUsersService } from './users';
-import { WsCallService } from './call';
 import { WsMeetingService } from './meeting';
 import { WsChatService } from './chat';
-import type { OnlineUsersStoreInstance, IncomingCallStoreInstance, CallStoreInstance, CallViewStoreInstance, MeetingStoreInstance, ChatStoreInstance, CurrentUserStoreInstance } from '../../states/stores';
+import type { OnlineUsersStoreInstance, CallStoreInstance, CallViewStoreInstance, MeetingStoreInstance, ChatStoreInstance, CurrentUserStoreInstance } from '../../states/stores';
 import properties from '../../properties';
 import { mytoast } from '../../components/toast';
 import authSession from '../../auth/session';
@@ -30,7 +29,6 @@ const LEADER_PROMOTION_RESYNC_DELAY_MS = 5_000;
 
 interface InitWsStores {
     onlineUsers: OnlineUsersStoreInstance;
-    incomingCall: IncomingCallStoreInstance;
     call: CallStoreInstance;
     callView: CallViewStoreInstance;
     meeting: MeetingStoreInstance;
@@ -71,7 +69,6 @@ export class InitWs {
         token: string,
         callViewStore: CallViewStoreInstance,
         usersService: WsUsersService,
-        callService: WsCallService,
         meetingService: WsMeetingService,
         chatService: WsChatService,
     ): void {
@@ -118,7 +115,7 @@ export class InitWs {
                 // its call state or rejoin Daily, so it would sit in 'in-call'
                 // waiting forever with no video. See WsUsersService's handling
                 // of that event, which calls syncActiveCall with what arrives.
-                usersService.handle(msg) || callService.handle(msg) || meetingService.handle(msg) || chatService.handle(msg);
+                usersService.handle(msg) || meetingService.handle(msg) || chatService.handle(msg);
                 this.channel?.postMessage({ type: 'ws-message', payload: msg } satisfies RelayMessage);
             } catch {
                 // malformed frame — ignore
@@ -141,7 +138,7 @@ export class InitWs {
             setTimeout(() => {
                 authSession.getToken().then((freshToken) => {
                     if (!freshToken) return;
-                    this.connect(this.createAuthWs(), freshToken, callViewStore, usersService, callService, meetingService, chatService);
+                    this.connect(this.createAuthWs(), freshToken, callViewStore, usersService, meetingService, chatService);
                 });
             }, delay);
         };
@@ -154,7 +151,6 @@ export class InitWs {
     // outgoing sends (see notifyLogout) through whichever tab is the leader.
     private listenAsFollower(
         usersService: WsUsersService,
-        callService: WsCallService,
         meetingService: WsMeetingService,
         chatService: WsChatService,
     ): void {
@@ -162,7 +158,7 @@ export class InitWs {
         this.channel.onmessage = (event: MessageEvent<RelayMessage>) => {
             const data = event.data;
             if (data.type === 'ws-message') {
-                usersService.handle(data.payload) || callService.handle(data.payload) || meetingService.handle(data.payload) || chatService.handle(data.payload);
+                usersService.handle(data.payload) || meetingService.handle(data.payload) || chatService.handle(data.payload);
                 return;
             }
             if (data.type === 'ws-send' && this.activeWs?.readyState === TRANSPORT_OPEN) {
@@ -174,7 +170,6 @@ export class InitWs {
     private async becomeLeader(
         callViewStore: CallViewStoreInstance,
         usersService: WsUsersService,
-        callService: WsCallService,
         meetingService: WsMeetingService,
         chatService: WsChatService,
     ): Promise<void> {
@@ -184,7 +179,7 @@ export class InitWs {
         const freshToken = await authSession.getToken();
         if (!freshToken || !this.running) return;
         this.reconnectAttempts = 0;
-        this.connect(this.createAuthWs(), freshToken, callViewStore, usersService, callService, meetingService, chatService);
+        this.connect(this.createAuthWs(), freshToken, callViewStore, usersService, meetingService, chatService);
 
         // See LEADER_PROMOTION_RESYNC_DELAY_MS above — a second look at
         // syncActiveCall shortly after, in case the first one (from connect()
@@ -210,15 +205,10 @@ export class InitWs {
         this.channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(RELAY_CHANNEL_NAME) : null;
 
         const usersService = new WsUsersService({ onlineUsers: stores.onlineUsers, call: stores.call, callView: stores.callView, currentUser: stores.currentUser, meeting: stores.meeting });
-        const callService = new WsCallService({
-            call: stores.call,
-            callView: stores.callView,
-            incomingCall: stores.incomingCall,
-        });
         const meetingService = new WsMeetingService({ meeting: stores.meeting });
         const chatService = new WsChatService({ chat: stores.chat });
 
-        this.listenAsFollower(usersService, callService, meetingService, chatService);
+        this.listenAsFollower(usersService, meetingService, chatService);
 
         // Checking `window`/`document` and not just `navigator.locks` matters
         // here: this coordination only makes sense between actual browser
@@ -231,7 +221,7 @@ export class InitWs {
         const hasBrowserLocks = typeof window !== 'undefined' && typeof document !== 'undefined'
             && typeof navigator !== 'undefined' && !!navigator.locks;
         if (!hasBrowserLocks) {
-            this.connect(this.createAuthWs(), token, stores.callView, usersService, callService, meetingService, chatService);
+            this.connect(this.createAuthWs(), token, stores.callView, usersService, meetingService, chatService);
             return;
         }
 
@@ -249,7 +239,7 @@ export class InitWs {
 
         navigator.locks.request(LEADER_LOCK_NAME, { signal: abortController.signal }, () => new Promise<void>((resolve) => {
             abortController.signal.addEventListener('abort', () => resolve());
-            this.becomeLeader(stores.callView, usersService, callService, meetingService, chatService);
+            this.becomeLeader(stores.callView, usersService, meetingService, chatService);
         })).catch(() => {
             // Aborted while still queued (a subsequent init() call) — expected, not an error.
         });

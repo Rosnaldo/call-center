@@ -7,7 +7,7 @@ import { BadRequestException } from '#exceptions/bad_request';
 import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { validateInput, ICancelInput } from 'src/validations/incoming_call/cancel';
-import { notifyIncomingCallCancelled } from 'src/services/realtime';
+import { notifyIncomingCallCancelled } from 'src/services/call_events';
 import { findCallByUser } from 'src/interactors/find_call_by_user';
 import { getOnlineUserPair, setOnlineUser } from 'src/interactors/online_user';
 
@@ -49,7 +49,7 @@ export class Cancel {
                 setOnlineUser(attendant, { status: 'idle' }),
             ]);
 
-            notifyIncomingCallCancelled(traceId, customerId, attendantId).catch(() => {});
+            notifyIncomingCallCancelled(traceId, customerId, attendantId);
 
             return successData({});
         } catch (error: unknown) {

@@ -2,8 +2,8 @@ import { connectRedis, getRedisClient, disconnectRedis } from 'src/redis/singlet
 import { CallController } from 'src/controllers/call';
 import { buildOnlineUser, buildCallState } from '../../builders';
 
-jest.mock('src/services/realtime', () => ({
-    notifyCallCompleted: jest.fn().mockResolvedValue(undefined),
+jest.mock('src/services/call_events', () => ({
+    notifyCallCompleted: jest.fn(),
 }));
 
 jest.mock('src/services/daily', () => ({

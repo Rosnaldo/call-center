@@ -8,7 +8,7 @@ import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { validateInput } from 'src/validations/incoming_call/send';
 import { IIncomingCallController } from './params';
-import { notifyIncomingCallSent } from 'src/services/realtime';
+import { notifyIncomingCallSent } from 'src/services/call_events';
 import { UserCrud } from '#crud/user';
 import { getOnlineUserPair, setOnlineUser } from 'src/interactors/online_user';
 import { findCallByUser } from 'src/interactors/find_call_by_user';
@@ -66,7 +66,7 @@ export class Send {
                 setOnlineUser(attendant, { status: 'occupied' }),
             ]);
 
-            notifyIncomingCallSent(traceId, params.customerId, params.attendantId, params.calledBy).catch(() => {});
+            notifyIncomingCallSent(traceId, params.customerId, params.attendantId, params.calledBy);
 
             return successData(params);
         } catch (error: unknown) {

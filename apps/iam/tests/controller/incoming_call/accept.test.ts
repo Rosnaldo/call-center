@@ -3,8 +3,8 @@ import { IncomingCallController } from 'src/controllers/incoming_call';
 import { isSuccess } from 'src/utils/either';
 import { buildOnlineUser, buildIncomingCall, buildCallState } from '../../builders';
 
-jest.mock('src/services/realtime', () => ({
-    notifyCallAccepted: jest.fn().mockResolvedValue(undefined),
+jest.mock('src/services/call_events', () => ({
+    notifyCallAccepted: jest.fn(),
 }));
 
 jest.mock('src/services/daily', () => ({

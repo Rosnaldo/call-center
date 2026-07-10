@@ -8,8 +8,9 @@ import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { IIncomingCallController } from './params';
 import { IncomingCallState } from '@repo/shared-types';
-import { notifyCallAccepted } from 'src/services/realtime';
+import { notifyCallAccepted } from 'src/services/call_events';
 import { ensureDailyRoom } from 'src/services/daily';
+import { ensureCallRecord } from 'src/interactors/ensure_call_record';
 import { validateInput } from 'src/validations/incoming_call/accept';
 import { getOnlineUserPair, setOnlineUser } from 'src/interactors/online_user';
 
@@ -65,7 +66,19 @@ export class Accept {
             // was accepted, or it can try to join before it's there.
             await ensureDailyRoom(roomName);
 
-            notifyCallAccepted(traceId, incomingCall.customerId, incomingCall.attendantId, incomingCall.calledBy, roomName, incomingCall).catch(() => {});
+            // Creates the call record in-process (previously realtime's job,
+            // via a webhook round-trip plus 3 more HTTP calls back to IAM) —
+            // customer/attendant are already on hand from getOnlineUserPair
+            // above, so no extra lookups are needed.
+            const call = await ensureCallRecord({
+                customerId: incomingCall.customerId,
+                attendantId: incomingCall.attendantId,
+                customer,
+                attendant,
+                roomName,
+            });
+
+            notifyCallAccepted(traceId, incomingCall.customerId, incomingCall.attendantId, call);
 
             return successData(incomingCall);
         } catch (error: unknown) {

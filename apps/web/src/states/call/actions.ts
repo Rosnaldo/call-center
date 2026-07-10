@@ -1,9 +1,8 @@
-import { CallState, IncomingCallState } from '@repo/shared-types';
+import { CallState } from '@repo/shared-types';
 import type { StoresRef } from '../stores.ts';
 import { CallStore } from './state.ts';
 import type { IDailyService } from '../../services/daily.ts';
-import { fetchOnlineUsers } from '@/src/services/api/online-users.ts';
-import { fetchCall, completeCall as completeCallApi } from '@/src/services/api/calls.ts';
+import { completeCall as completeCallApi } from '@/src/services/api/calls.ts';
 import { acceptIncomingCall as acceptIncomingCallService } from '@/src/services/api/incoming-calls.ts';
 import { handleRequestError } from '@/src/utils/utils.ts';
 import { ApiError } from '../../error/api.ts';
@@ -14,7 +13,7 @@ import { resetCallState } from '../reset-call-state.ts';
 export interface CallActions {
   acceptIncomingCall: () => Promise<void> | void;
   completeCall: () => Promise<void>;
-  incomingCallAccepted: (incomingCall: IncomingCallState) => void;
+  incomingCallAccepted: (call: CallState) => void;
   callCompleted: (call: CallState) => Promise<void>;
   syncActiveCall: (call: CallState | null, shouldJoin: boolean, isLeader: boolean) => Promise<void>;
   partnerReconnected: (call: CallState) => void;
@@ -34,49 +33,46 @@ export const createCallActions = (
   };
 
   return {
-    incomingCallAccepted: async (incomingCall: IncomingCallState) => {
+    // Fed by the call-events SSE stream now (see init-call-events.ts) — the
+    // published payload already carries the full CallState, so no more
+    // fetchOnlineUsers/fetchCall round trips to reconstruct it. Every open
+    // tab gets this independently (that stream isn't leader-elected like the
+    // websocket is), so the Daily join itself is gated behind isLeader —
+    // same as syncActiveCall — while the call data syncs everywhere either
+    // way, so useCallViewState can still derive 'in-call-in-another' for
+    // the other tabs.
+    incomingCallAccepted: async (call: CallState) => {
       stopRingtone();
 
       try {
-        const updatedUsers = await fetchOnlineUsers();
-        ref.onlineUsers.setState({ users: updatedUsers });
-
-        const customer = updatedUsers.find(u => u.id === incomingCall.customerId);
-        const attendant = updatedUsers.find(u => u.id === incomingCall.attendantId);
-        if (!customer) throw new ApiError(i18n.t('error.customerNotFound'));
-        if (!attendant) throw new ApiError(i18n.t('error.attendantNotFound'));
-
         const currentUser = ref.currentUser.getState().currentUser;
         if (!currentUser) throw new ApiError(i18n.t('error.currentUserNotFound'));
 
+        syncCallWithBillingAndTimer(call);
+
+        if (!ref.callView.getState().isLeader) return;
+
         await dailyService.join({
-          room: `${customer.slug}--${attendant.slug}`,
+          room: call.roomName,
           userId: currentUser.id,
           userName: currentUser.name,
         });
-
-        const call = await fetchCall(incomingCall.customerId, incomingCall.attendantId);
-        syncCallWithBillingAndTimer(call);
-
       } catch (error) {
         handleRequestError(error);
       }
     },
 
+    // Business validation (customer/attendant existence) lives in IAM's
+    // /incoming-calls/accept controller — see the analogous cleanup in
+    // incoming-call/actions.ts's sendIncomingCall.
     acceptIncomingCall: async () => {
       try {
         const incomingCall = ref.incomingCall.getState().incomingCall;
-        if (!incomingCall) throw new ApiError(i18n.t('error.incomingCallNotFound'));
-
-        const { users } = ref.onlineUsers.getState();
-        const customer = users.find(u => u.id === incomingCall.customerId);
-        const attendant = users.find(u => u.id === incomingCall.attendantId);
-        if (!customer) throw new ApiError(i18n.t('error.customerNotFound'));
-        if (!attendant) throw new ApiError(i18n.t('error.attendantNotFound'));
+        if (!incomingCall) return;
 
         stopRingtone();
         playNotificationChime();
-        await acceptIncomingCallService(attendant.id);
+        await acceptIncomingCallService(incomingCall.attendantId);
       } catch (error) {
         handleRequestError(error);
       }

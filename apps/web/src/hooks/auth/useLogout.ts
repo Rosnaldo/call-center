@@ -6,6 +6,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthentication } from './useAuthentication.ts';
 import { initWs } from '../../services/ws/init-ws.ts';
+import { initCallEvents } from '../../services/sse/init-call-events.ts';
 import { DailyService } from '../../services/daily.ts';
 import { resetCallState } from '../../states/reset-call-state.ts';
 
@@ -18,6 +19,7 @@ export function useLogout() {
     // login in the same tab needs a live call object, not a dead one.
     DailyService.getInstance().rebuild();
     initWs.notifyLogout();
+    initCallEvents.close();
     resetCallState();
 
     logout();

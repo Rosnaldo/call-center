@@ -29,33 +29,24 @@ export const createIncomingCallActions = (
       const incomingCall = get().incomingCall;
       if (!incomingCall) throw new ApiError(i18n.t('error.incomingCallNotFound'));
 
-      set({ incomingCall: null });
-      ref.callView.getState().setSelectedAttendantId(null);
-
+      // IAM publishes incoming_call_cancelled back to this same client too
+      // (see call_events.ts's notifyIncomingCallCancelled) — incomingCallCancelled
+      // below applies the actual state clear once that arrives, no need to
+      // set it optimistically here.
       await cancelIncomingCallService(incomingCall.customerId, incomingCall.attendantId);
     } catch (error) {
       handleRequestError(error);
     }
   },
 
+  // Business validation (tokens, attendant status, customer/attendant
+  // identity) lives in IAM's /incoming-calls/send controller — duplicating
+  // it here just means two places to keep in sync. handleRequestError below
+  // surfaces whatever the backend rejects with.
   sendIncomingCall: async (customerId, attendantId) => {
+    if (!customerId || !attendantId) return;
+
     try {
-      if (!customerId) throw new ApiError(i18n.t('error.currentUserNotFound'));
-      if (!attendantId) throw new ApiError(i18n.t('error.attendantNotSelected'));
-
-      const currentUser = ref.currentUser.getState().currentUser;
-      if (!currentUser) throw new ApiError(i18n.t('error.currentUserNotFound'));
-      if (currentUser.id !== customerId) throw new ApiError(i18n.t('error.customerMismatch'));
-
-      if ((currentUser.tokens ?? 0) <= 0) throw new ApiError(i18n.t('attendantList.noTokensHint'));
-
-      const users = await fetchOnlineUsers();
-      ref.onlineUsers.setState({ users });
-      const attendant = users.find(u => u.id === attendantId);
-      if (!attendant) throw new ApiError(i18n.t('error.attendantNotFound'));
-
-      if (attendant.status !== 'idle') throw new ApiError(i18n.t('attendantList.attendantBusy'));
-
       await sendIncomingCallService(customerId, attendantId);
     } catch (error) {
       handleRequestError(error);
@@ -63,6 +54,7 @@ export const createIncomingCallActions = (
   },
 
   incomingCallSent: async (incomingCall: IncomingCallState) => {
+    console.log('incomingCallSent', incomingCall);
     set({ incomingCall });
     try {
       const users = await fetchOnlineUsers();
@@ -72,6 +64,7 @@ export const createIncomingCallActions = (
     }
   },
   incomingCallReceived: async (incomingCall: IncomingCallState) => {
+     console.log('incomingCallReceived', incomingCall);
     set({ incomingCall });
     playRingtone();
     try {

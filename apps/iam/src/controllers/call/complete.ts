@@ -8,7 +8,7 @@ import { getRedisClient } from '#redis/singleton';
 import { mapString } from '#utils/mapper/string';
 import { CallState } from '@repo/shared-types';
 import { CallStateBuilder } from '#schemas/call/utils';
-import { notifyCallCompleted } from 'src/services/realtime';
+import { notifyCallCompleted } from 'src/services/call_events';
 import { ejectBothParticipantsFromRoom } from 'src/services/daily';
 import { ICallController } from './params';
 import { patchOnlineUserIfPresent } from 'src/interactors/online_user';
@@ -67,7 +67,7 @@ export class Complete {
             ]);
 
             await ejectBothParticipantsFromRoom(closedCall.roomName);
-            await notifyCallCompleted(traceId, customerId, attendantId, closedCall.roomName, closedCall);
+            notifyCallCompleted(traceId, customerId, attendantId, closedCall);
 
             return successData({});
         } catch (error: unknown) {
