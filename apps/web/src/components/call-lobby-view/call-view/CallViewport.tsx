@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Clock, User } from 'lucide-react';
 import { CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
-import { useIncomingCallStore, useCurrentUserStore, useOnlineUsersStore, useCallViewStore, useDevicesStore, useChatStore } from '../../../states/stores.ts';
+import { useIncomingCallStore, useCurrentUserStore, useOnlineUsersStore, useCallViewStore, useDevicesStore, useChatStore, useCallStore } from '../../../states/stores.ts';
 import { IOnlineUser } from '@repo/shared-types';
 import { VideoTile } from '../VideoTile.tsx';
 import { PartnerAvatar } from '../PartnerAvatar.tsx';
@@ -113,6 +113,8 @@ const renderAwaitingAnswer = (attendant: IOnlineUser | null) => (
   </div>
 );
 
+const PARTICIPANT_JOIN_TIMEOUT_SECONDS = 30;
+
 const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ partner }) => {
   const { t } = useTranslation();
   const cameraPermission = useDevicesStore(s => s.cameraPermission);
@@ -130,10 +132,37 @@ const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ p
 
   const activeScreen = screens[0];
 
+  const [secondsUntilAutoEnd, setSecondsUntilAutoEnd] = useState(PARTICIPANT_JOIN_TIMEOUT_SECONDS);
+
+  // Guards against the room being stuck in 'in-call' forever when the other
+  // party's Daily track never attaches (e.g. their join silently failed).
+  // Mirrors the same "waiting to join" signal CallFooterActions uses to
+  // disable the manual end-call button.
+  useEffect(() => {
+    if (id) return;
+
+    setSecondsUntilAutoEnd(PARTICIPANT_JOIN_TIMEOUT_SECONDS);
+
+    const interval = setInterval(() => {
+      setSecondsUntilAutoEnd(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          useCallStore.getState().completeCall();
+          useCallViewStore.getState().setViewState('none');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [id]);
+
   if (!id && !activeScreen) return (
     <div className="flex flex-col items-center justify-center p-8 text-center font-sans select-none">
       <PartnerAvatar partner={partner} size="md" />
       <p className="text-xs text-slate-400 mt-2">{t('call.waitingToJoin')}</p>
+      <p className="text-[11px] text-slate-500 mt-1">{t('call.autoEndCountdown', { seconds: secondsUntilAutoEnd })}</p>
     </div>
   );
 

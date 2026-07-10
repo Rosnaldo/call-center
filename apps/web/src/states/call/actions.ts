@@ -103,8 +103,19 @@ export const createCallActions = (
       try {
         const currentUser = ref.currentUser.getState().currentUser;
         if (!currentUser) throw new ApiError(i18n.t('error.currentUserNotFound'));
-        if (!call) throw new ApiError(i18n.t('error.callNotFound'));
-  
+
+        // Server confirms there's no call for us (e.g. it was completed/deleted
+        // while we were disconnected) — clear any stale call state instead of
+        // leaving the client stuck showing a call that no longer exists.
+        if (!call) {
+          ref.timer.getState().reset();
+          ref.callView.getState().resetCallViewState();
+          set(() => ({ call: null }));
+          ref.incomingCall.setState({ incomingCall: null });
+          ref.chat.getState().resetChat();
+          return;
+        }
+
         syncCallWithBillingAndTimer(call);
         ref.callView.getState().setViewState('in-call');
   

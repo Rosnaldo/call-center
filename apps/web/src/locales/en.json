@@ -79,6 +79,7 @@
     "awaitingAttendantReturn": "Waiting for attendant {{name}} to return...",
     "timerPausedAttendant": "Timer and billing paused. Wait for the attendant to return or end the session if you prefer.",
     "waitingToJoin": "Waiting to join the call...",
+    "autoEndCountdown": "Ending call automatically in {{seconds}}s",
     "acceptCall": "Accept Call",
     "enableCamera": "Enable Camera",
     "disableCamera": "Disable Camera",

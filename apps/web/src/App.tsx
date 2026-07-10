@@ -21,6 +21,7 @@ import { RoleProtectedRoute } from './role-protected-route.tsx';
 import { useAuthStore } from './states/stores.ts';
 import { DailyProvider } from '@daily-co/daily-react';
 import { DailyService } from './services/daily.ts';
+import { resetCallState } from './states/reset-call-state.ts';
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ export default function App() {
     // Real tab close/refresh: release camera/mic and tear down the call for good.
     const handleBeforeUnload = () => {
       dailyService.destroy();
+      resetCallState();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 

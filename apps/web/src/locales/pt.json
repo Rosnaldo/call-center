@@ -79,6 +79,7 @@
     "awaitingAttendantReturn": "Aguardando o atendente {{name}} retornar...",
     "timerPausedAttendant": "Timer e cobrança pausados. Aguarde o retorno do atendente ou finalize a sessão se preferir.",
     "waitingToJoin": "Esperando entrar na ligação...",
+    "autoEndCountdown": "Encerrando a chamada automaticamente em {{seconds}}s",
     "acceptCall": "Atender Chamada",
     "enableCamera": "Ativar Câmera",
     "disableCamera": "Desativar Câmera",

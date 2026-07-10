@@ -7,6 +7,7 @@ import type { OnlineUsersStoreInstance, IncomingCallStoreInstance, CallStoreInst
 import properties from '../../properties';
 import { mytoast } from '../../components/toast';
 import authSession from '../../auth/session';
+import { resetCallState } from '../../states/reset-call-state';
 
 const WS_URL = properties.realtimeWsUrl || undefined;
 const RECONNECT_DELAY_MS = 3_000;
@@ -80,6 +81,11 @@ export class InitWs {
 
         ws.onclose = () => {
             usersService.stopHeartbeat();
+            // Losing the socket means we stop receiving call/meeting events —
+            // a deleted/ended call can't reach us while we're down, so drop
+            // any stale call state now. If the call is still active, the
+            // `user_connected` push on reconnect resyncs it (see onopen).
+            resetCallState();
             if (!this.running) return;
             setTimeout(() => {
                 authSession.getToken().then((token) => {

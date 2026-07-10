@@ -98,7 +98,27 @@ describe('Chat Flow — during an active call', () => {
 
         customerStores.currentUser.setState({ currentUser: mapUserToOnlineUser(customerUser) });
         attendantStores.currentUser.setState({ currentUser: mapUserToOnlineUser(attendantUser) });
+    });
 
+    const connectBoth = async () => {
+        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
+        const { serverWs: attendantWs, webFactory: attendantWebFactory } = createBridgedClient(attendantUser, ATTENDANT_TOKEN);
+
+        clientRegistry.add(customerWs);
+        clientRegistry.add(attendantWs);
+
+        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
+
+        await onConnection()(customerWs);
+        await onConnection()(attendantWs);
+        await flushRealIO();
+
+        // Set *after* connecting: the connect handshake's `user_connected`
+        // push carries IAM's real (empty) call state and now correctly
+        // resets the client stores to match it — seeding a fabricated call
+        // before that point would just get wiped, same as it would for a
+        // real client that reconnects.
         const call = {
             id: `${customerUser._id}--${attendantUser._id}`,
             customerId: customerUser._id,
@@ -116,21 +136,6 @@ describe('Chat Flow — during an active call', () => {
         };
         customerStores.call.setState({ call });
         attendantStores.call.setState({ call });
-    });
-
-    const connectBoth = async () => {
-        const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
-        const { serverWs: attendantWs, webFactory: attendantWebFactory } = createBridgedClient(attendantUser, ATTENDANT_TOKEN);
-
-        clientRegistry.add(customerWs);
-        clientRegistry.add(attendantWs);
-
-        initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
-        initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
-
-        await onConnection()(customerWs);
-        await onConnection()(attendantWs);
-        await flushRealIO();
 
         return { customerWs, attendantWs };
     };
