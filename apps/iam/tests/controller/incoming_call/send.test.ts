@@ -1,7 +1,7 @@
 import { connectRedis, getRedisClient, disconnectRedis } from 'src/redis/singleton';
 import { IncomingCallController } from 'src/controllers/incoming_call';
 import { isSuccess } from 'src/utils/either';
-import { buildOnlineUser, buildIncomingCall } from '../../builders';
+import { buildOnlineUser, buildIncomingCall, buildCallState } from '../../builders';
 
 jest.mock('src/services/realtime', () => ({
     notifyIncomingCallSent: jest.fn().mockResolvedValue(undefined),
@@ -89,6 +89,42 @@ describe('Controller > IncomingCall > Send', () => {
 
         const existing = buildIncomingCall({ attendantId: attendant.id });
         await redis.set(`incoming_call:${attendant.id}`, JSON.stringify(existing));
+
+        const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
+        const controller = new IncomingCallController();
+        const either = await controller.send.exec({ traceId: TRACE, mapped: controller.send.mapper(incoming) });
+
+        expect(either.isError).toBe(true);
+        expect(either.status).toBe(400);
+    });
+
+    it('returns 400 when customer already has an active call', async () => {
+        const customer = buildOnlineUser({ role: 'customer' });
+        const attendant = buildOnlineUser({ role: 'attendant', status: 'idle' });
+        const redis = getRedisClient();
+        await redis.set(`online_user:${customer.id}`, JSON.stringify(customer));
+        await redis.set(`online_user:${attendant.id}`, JSON.stringify(attendant));
+
+        const activeCall = buildCallState({ customerId: customer.id });
+        await redis.set(`calls:${activeCall.id}`, JSON.stringify(activeCall));
+
+        const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
+        const controller = new IncomingCallController();
+        const either = await controller.send.exec({ traceId: TRACE, mapped: controller.send.mapper(incoming) });
+
+        expect(either.isError).toBe(true);
+        expect(either.status).toBe(400);
+    });
+
+    it('returns 400 when attendant already has an active call', async () => {
+        const customer = buildOnlineUser({ role: 'customer' });
+        const attendant = buildOnlineUser({ role: 'attendant', status: 'idle' });
+        const redis = getRedisClient();
+        await redis.set(`online_user:${customer.id}`, JSON.stringify(customer));
+        await redis.set(`online_user:${attendant.id}`, JSON.stringify(attendant));
+
+        const activeCall = buildCallState({ attendantId: attendant.id });
+        await redis.set(`calls:${activeCall.id}`, JSON.stringify(activeCall));
 
         const incoming = buildIncomingCall({ customerId: customer.id, attendantId: attendant.id });
         const controller = new IncomingCallController();

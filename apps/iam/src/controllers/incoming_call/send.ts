@@ -11,6 +11,7 @@ import { IIncomingCallController } from './params';
 import { notifyIncomingCallSent } from 'src/services/realtime';
 import { UserCrud } from '#crud/user';
 import { getOnlineUserPair, setOnlineUser } from 'src/interactors/online_user';
+import { findCallByUser } from 'src/interactors/find_call_by_user';
 
 type IInput = IIncomingCallController['ISend']['IInput'];
 type IOutput = IIncomingCallController['ISend']['IOutput'];
@@ -44,9 +45,10 @@ export class Send {
             const params = this.transform(props.mapped);
             const redis = getRedisClient();
 
-            const [{ customer, attendant }, existing] = await Promise.all([
+            const [{ customer, attendant }, existing, existingCall] = await Promise.all([
                 getOnlineUserPair(params.customerId, params.attendantId),
                 redis.get(`${INCOMING_CALL_PREFIX}${params.attendantId}`),
+                findCallByUser(params.customerId).then((call) => call ?? findCallByUser(params.attendantId)),
             ]);
 
             if (customer.status !== 'idle') throw new BadRequestException(`Cliente não está disponível.`);
@@ -56,6 +58,7 @@ export class Send {
 
             if (attendant.status !== 'idle') throw new BadRequestException(`Atendente ${attendant.name} não está disponível.`);
             if (existing) throw new BadRequestException(`Atendente ${attendant.name} já está em ligação.`);
+            if (existingCall) throw new BadRequestException(`Já existe uma ligação em andamento.`);
 
             await redis.set(`${INCOMING_CALL_PREFIX}${params.attendantId}`, JSON.stringify(params), 'EX', 60);
             await Promise.all([

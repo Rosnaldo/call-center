@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useParticipantIds } from '@daily-co/daily-react';
 import { useCallStore, useCallViewStore, useCurrentUserStore, useIncomingCallStore } from '../../../../states/stores.ts';
 import { StartCallButton } from './StartCallButton.tsx';
 import { AcceptCallButton } from './AcceptCallButton.tsx';
@@ -15,6 +16,7 @@ export const CallFooterActions: React.FC = () => {
   const selectedAttendantId = useCallViewStore(s => s.selectedAttendantId);
   const viewState = useCallViewStore(s => s.viewState);
   const currentUser = useCurrentUserStore(s => s.currentUser);
+  const remoteParticipantIds = useParticipantIds({ filter: 'remote' });
 
   const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
@@ -70,12 +72,19 @@ export const CallFooterActions: React.FC = () => {
   // either via the partner's real rejoin or their websocket reconnecting.
   // Ending the call outright is still available, same as a normal in-call.
   if (viewState === 'in-call' || viewState === 'call-interrupted') {
+    // In 'in-call', the remote participant's Daily track hasn't necessarily
+    // caught up with the server-side call/webhook state yet (see
+    // ActiveVideoViewport's own "waiting to join" — same signal). Ending the
+    // call before that lands races the Daily meeting.ended webhook the
+    // billing modal depends on. 'call-interrupted' means a remote track was
+    // already established once, so it's exempt from this check.
+    const canEndCall = viewState === 'call-interrupted' || remoteParticipantIds.length > 0;
     return (
       <>
         <EndCallButton
           label="Finish"
           onClick={handleHangUp}
-          disabled={!call}
+          disabled={!call || !canEndCall}
         />
         <ConfirmCloseCallModal
           isOpen={isConfirmCloseOpen}

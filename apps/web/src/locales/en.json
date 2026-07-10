@@ -49,6 +49,7 @@
     "endCall": "End Call?",
     "endCallWarning": "This action cannot be undone and consumed tokens will be charged.",
     "cancel": "cancel",
+    "close": "Close",
     "endCallConfirm": "End Call",
     "finalizingService": "Finalizing Service",
     "processingServiceSummary": "Processing summary and consolidated service data...",

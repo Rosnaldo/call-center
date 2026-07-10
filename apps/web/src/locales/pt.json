@@ -49,6 +49,7 @@
     "endCall": "Encerrar Chamada?",
     "endCallWarning": "Esta ação não pode ser desfeita e os tokens consumidos serão cobrados.",
     "cancel": "cancelar",
+    "close": "Fechar",
     "endCallConfirm": "Encerrar Chamada",
     "finalizingService": "Finalizando Atendimento",
     "processingServiceSummary": "Processando resumo e dados consolidados do atendimento...",
