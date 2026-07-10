@@ -14,16 +14,16 @@ interface Props {
     userId: string;
 }
 
-export class GetByUser {
-    public static readonly classId = Symbol.for('Controller > Call > GetByUser');
+export class GetCallByUser {
+    public static readonly classId = Symbol.for('Controller > Call > GetCallByUser');
 
     private constructor() {}
 
-    static construir(classId: symbol): GetByUser {
+    static construir(classId: symbol): GetCallByUser {
         if (classId !== Symbol.for('Controller > Call')) {
             throw new Error(`${classId.toString()}: não pode ser instanciado`);
         }
-        return new GetByUser();
+        return new GetCallByUser();
     }
 
     public readonly exec = async (props: Props): Promise<Either<IOutput>> => {

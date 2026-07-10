@@ -1,7 +1,7 @@
 import { Create } from './create';
 import { Get } from './get';
 import { GetByRoom } from './get_by_room';
-import { GetByUser } from './get_by_user';
+import { GetCallByUser } from './get_call_by_user';
 import { Update } from './update';
 import { AddParticipant } from './add_participant';
 import { RemoveParticipant } from './remove_participant';
@@ -17,7 +17,7 @@ export class CallController {
     public readonly create: Create;
     public readonly get: Get;
     public readonly getByRoom: GetByRoom;
-    public readonly getByUser: GetByUser;
+    public readonly getByUser: GetCallByUser;
     public readonly update: Update;
     public readonly addParticipant: AddParticipant;
     public readonly removeParticipant: RemoveParticipant;
@@ -32,7 +32,7 @@ export class CallController {
         this.create = Create.construir(this.classId);
         this.get = Get.construir(this.classId);
         this.getByRoom = GetByRoom.construir(this.classId);
-        this.getByUser = GetByUser.construir(this.classId);
+        this.getByUser = GetCallByUser.construir(this.classId);
         this.update = Update.construir(this.classId);
         this.addParticipant = AddParticipant.construir(this.classId);
         this.removeParticipant = RemoveParticipant.construir(this.classId);

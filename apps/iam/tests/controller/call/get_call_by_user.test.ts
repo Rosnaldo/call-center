@@ -14,7 +14,7 @@ beforeEach(async () => {
     await getRedisClient().flushall();
 });
 
-describe('Controller > Call > GetByUser', () => {
+describe('Controller > Call > GetCallByUser', () => {
     it('finds the call when the userId matches the customer', async () => {
         const call = buildCallState();
         await getRedisClient().set(`calls:${call.customerId}--${call.attendantId}`, JSON.stringify(call));

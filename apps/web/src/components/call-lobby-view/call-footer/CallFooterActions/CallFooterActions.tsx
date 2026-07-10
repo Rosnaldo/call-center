@@ -87,13 +87,13 @@ export const CallFooterActions: React.FC = () => {
   }
 
   if (viewState === 'awaiting-answer') {
-    return <CancelCallButton onClick={handleCancelCall} isLoading={isCancelling} />;
+    return <CancelCallButton onClick={handleCancelCall} isLoading={isCancelling} disabled={!!call} />;
   }
 
   if (viewState === 'awaiting-to-answer' && !isReceiving) {
     return (
       <div className="flex gap-2.5 items-center">
-        <CancelCallButton onClick={handleCancelCall} isLoading={isCancelling} />
+        <CancelCallButton onClick={handleCancelCall} isLoading={isCancelling} disabled={!!call} />
       </div>
     );
   }
@@ -102,7 +102,7 @@ export const CallFooterActions: React.FC = () => {
     return (
       <div className="flex gap-2.5 items-center">
         <AcceptCallButton onClick={handleAcceptCall} isLoading={isAccepting} />
-        <CancelCallButton onClick={handleCancelCall} isLoading={isCancelling} />
+        <CancelCallButton onClick={handleCancelCall} isLoading={isCancelling} disabled={!!call} />
       </div>
     );
   }
