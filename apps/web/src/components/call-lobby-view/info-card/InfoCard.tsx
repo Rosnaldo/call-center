@@ -1,7 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MINUTES_PER_TOKEN } from '@repo/shared-types';
-import { useBillingStore, useCallStore, useCallViewStore, useCurrentUserStore, useOnlineUsersStore, useTimerStore } from '../../../states/stores.ts';
+import { useBillingStore, useCallStore, useCurrentUserStore, useOnlineUsersStore, useTimerStore } from '../../../states/stores.ts';
+import { useCallViewState } from '../../../hooks/useCallViewState.ts';
 
 const BLOCK_DURATION_SECONDS = MINUTES_PER_TOKEN * 60;
 const HALF_BLOCK_DURATION_SECONDS = BLOCK_DURATION_SECONDS / 2;
@@ -16,7 +17,7 @@ const formatTime = (seconds: number) => {
 export const InfoCard: React.FC = () => {
   const { t } = useTranslation();
   const currentCall = useCallStore((s) => s.call);
-  const viewState = useCallViewStore((s) => s.viewState);
+  const viewState = useCallViewState();
   const users = useOnlineUsersStore((s) => s.users);
   const tokensCharged = useBillingStore((s) => s.initialTokens);
   const elapsedSeconds = useTimerStore((s) => s.elapsedSeconds);

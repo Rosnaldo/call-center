@@ -318,11 +318,9 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
 
         // ── the customer hangs up — /calls/complete only flips presence;
         //    Daily's own meeting.ended webhook is what actually tears the
-        //    record down (via onMeetingEnded's deleteCall). deleteCall runs
-        //    early in that chain, before the real (network-bound)
-        //    deleteDailyRoom call, but poll rather than guess a fixed delay
-        //    for it, since a real Daily.co call precedes it in the same
-        //    fire-and-forget handler.
+        //    record down (via onMeetingEnded's deleteCall), asynchronously
+        //    in a fire-and-forget handler — poll rather than guess a fixed
+        //    delay for it.
         await customerStores.call.getState().completeCall();
         await wait(100);
 

@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { CallView, CallViewState } from '../CallView.tsx';
 import { buildCall, buildOnlineUserState } from '../../../../__tests__/builders.ts';
+import { renderHook } from '@testing-library/react';
 import { useCurrentUserStore, useOnlineUsersStore, useCallStore, useCallViewStore, useIncomingCallStore } from '../../../../states/stores.ts';
 import { initialCallViewState } from '../../../../states/call-view/state.ts';
+import { useCallViewState } from '../../../../hooks/useCallViewState.ts';
 
 vi.mock('../../../../providers/devices.tsx', () => ({
   useDevicesContext: () => ({
@@ -75,7 +77,7 @@ afterEach(() => {
 describe('Customer - CallView state machine', () => {
   describe('none — nenhum atendente selecionado', () => {
     beforeEach(() => {
-      useCallViewStore.setState({ viewState: 'none', selectedAttendantId: null });
+      useCallViewStore.setState({ selectedAttendantId: null });
     });
 
     it('viewport exibe nenhum atendimento selecionado', () => {
@@ -99,14 +101,15 @@ describe('Customer - CallView state machine', () => {
 
   describe('lobby — atendente selecionado', () => {
     beforeEach(() => {
-      useCallViewStore.setState({ viewState: 'lobby', selectedAttendantId: ATTENDANT_ID });
+      useCallViewStore.setState({ selectedAttendantId: ATTENDANT_ID });
     });
 
     it('selectAttendant muda viewState para lobby', () => {
-      useCallViewStore.setState({ viewState: 'none', selectedAttendantId: null });
+      useCallViewStore.setState({ selectedAttendantId: null });
       useCallViewStore.getState().selectAttendant(ATTENDANT_ID);
 
-      expect(useCallViewStore.getState().viewState).toBe('lobby');
+      const { result } = renderHook(() => useCallViewState());
+      expect(result.current).toBe('lobby');
       expect(useCallViewStore.getState().selectedAttendantId).toBe(ATTENDANT_ID);
     });
 
@@ -130,7 +133,7 @@ describe('Customer - CallView state machine', () => {
 
   describe('awaiting-answer — aguardando atendente atender', () => {
     beforeEach(() => {
-      useCallViewStore.setState({ viewState: 'awaiting-answer', selectedAttendantId: ATTENDANT_ID });
+      useCallViewStore.setState({ selectedAttendantId: ATTENDANT_ID });
       useIncomingCallStore.setState({ incomingCall: { customerId: CUSTOMER_ID, attendantId: ATTENDANT_ID, calledBy: 'customer' } });
     });
 
@@ -165,7 +168,7 @@ describe('Customer - CallView state machine', () => {
     });
 
     beforeEach(() => {
-      useCallViewStore.setState({ viewState: 'in-call', selectedAttendantId: ATTENDANT_ID });
+      useCallViewStore.setState({ selectedAttendantId: ATTENDANT_ID, isLeader: true });
       useCallStore.setState({ call });
     });
 

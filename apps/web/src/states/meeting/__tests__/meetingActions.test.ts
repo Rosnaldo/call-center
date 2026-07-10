@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { renderHook } from '@testing-library/react';
 import { useMeetingStore, useCallStore, useTimerStore, useBillingStore, useCallViewStore, useCurrentUserStore, useOnlineUsersStore } from '../../stores.ts';
 import { buildCall, buildOnlineUserState } from '../../../__tests__/builders.ts';
+import { useCallViewState } from '../../../hooks/useCallViewState.ts';
 
 beforeEach(() => {
   useCallStore.setState({ call: null });
@@ -8,7 +10,7 @@ beforeEach(() => {
   useBillingStore.getState().setInitialTokens(0);
   useBillingStore.getState().closeCalculationModal();
   useBillingStore.getState().closeSummaryModal();
-  useCallViewStore.getState().setViewState('none');
+  useCallViewStore.setState({ selectedAttendantId: null, isLeader: false });
   useCurrentUserStore.getState().setCurrentUser(null);
   useOnlineUsersStore.setState({ users: [] });
 });
@@ -43,15 +45,17 @@ describe('meeting store — meetingEnded', () => {
   it('clears the call, resets the timer and sends callView back to none', () => {
     const call = buildCall({ customerId: customer.id, attendantId: attendant.id });
     useCallStore.setState({ call });
+    useCallViewStore.setState({ isLeader: true });
     useTimerStore.getState().play();
-    useCallViewStore.getState().setViewState('in-call');
 
     useMeetingStore.getState().meetingEnded(call);
 
     expect(useCallStore.getState().call).toBeNull();
     expect(useTimerStore.getState().status).toBe('stopped');
     expect(useTimerStore.getState().elapsedSeconds).toBe(0);
-    expect(useCallViewStore.getState().viewState).toBe('none');
+
+    const { result } = renderHook(() => useCallViewState());
+    expect(result.current).toBe('none');
   });
 
   it('flips the logged-in currentUser back to idle', () => {

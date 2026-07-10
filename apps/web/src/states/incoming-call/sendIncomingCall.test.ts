@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { buildOnlineUserState } from '../../__tests__/builders.ts';
 import { useCurrentUserStore, useOnlineUsersStore, useCallStore, useCallViewStore, useIncomingCallStore } from '../stores.ts';
 import * as incomingCallsService from '../../services/api/incoming-calls.ts';
+import * as onlineUsersService from '../../services/api/online-users.ts';
 import { mytoast } from '../../components/toast.tsx';
 
 const ATTENDANT_ID = 'att-send-incoming-call-test-1';
@@ -28,44 +29,49 @@ afterEach(() => {
 describe('sendIncomingCall action', () => {
   beforeEach(() => {
     vi.spyOn(incomingCallsService, 'sendIncomingCall').mockResolvedValue(undefined);
+    vi.spyOn(onlineUsersService, 'fetchOnlineUsers').mockResolvedValue([attendant]);
     vi.spyOn(mytoast, 'error').mockImplementation(() => '');
 
     useCurrentUserStore.setState({ currentUser: customer });
     useOnlineUsersStore.setState({ users: [attendant] });
     useCallStore.setState({ call: null });
-    useCallViewStore.setState({ viewState: 'lobby', selectedAttendantId: ATTENDANT_ID });
+    useCallViewStore.setState({ selectedAttendantId: ATTENDANT_ID });
     useIncomingCallStore.setState({ incomingCall: null });
   });
 
-  it('POST /incoming-calls/send é chamado com customerId e attendantId corretos', () => {
-    useIncomingCallStore.getState().sendIncomingCall(CUSTOMER_ID, ATTENDANT_ID);
+  // sendIncomingCall fetches a fresh online-users list (fetchOnlineUsers)
+  // before checking the attendant's status — so the actual gating source is
+  // the fetchOnlineUsers mock below, not the store's pre-seeded users.
+
+  it('POST /incoming-calls/send é chamado com customerId e attendantId corretos', async () => {
+    await useIncomingCallStore.getState().sendIncomingCall(CUSTOMER_ID, ATTENDANT_ID);
 
     expect(incomingCallsService.sendIncomingCall).toHaveBeenCalledWith(CUSTOMER_ID, ATTENDANT_ID);
     expect(mytoast.error).not.toHaveBeenCalled();
   });
 
-  it('bloqueia request e exibe toast se customer não tem tokens', () => {
+  it('bloqueia request e exibe toast se customer não tem tokens', async () => {
     useCurrentUserStore.setState({ currentUser: { ...customer, tokens: 0 } });
 
-    useIncomingCallStore.getState().sendIncomingCall(CUSTOMER_ID, ATTENDANT_ID);
+    await useIncomingCallStore.getState().sendIncomingCall(CUSTOMER_ID, ATTENDANT_ID);
 
     expect(incomingCallsService.sendIncomingCall).not.toHaveBeenCalled();
     expect(mytoast.error).toHaveBeenCalledOnce();
   });
 
-  it('bloqueia request e exibe toast se o atendente não está idle', () => {
-    useOnlineUsersStore.setState({ users: [{ ...attendant, status: 'occupied' }] });
+  it('bloqueia request e exibe toast se o atendente não está idle', async () => {
+    vi.spyOn(onlineUsersService, 'fetchOnlineUsers').mockResolvedValue([{ ...attendant, status: 'occupied' }]);
 
-    useIncomingCallStore.getState().sendIncomingCall(CUSTOMER_ID, ATTENDANT_ID);
+    await useIncomingCallStore.getState().sendIncomingCall(CUSTOMER_ID, ATTENDANT_ID);
 
     expect(incomingCallsService.sendIncomingCall).not.toHaveBeenCalled();
     expect(mytoast.error).toHaveBeenCalledOnce();
   });
 
-  it('bloqueia request e exibe toast se currentUser não bate com customerId', () => {
+  it('bloqueia request e exibe toast se currentUser não bate com customerId', async () => {
     useCurrentUserStore.setState({ currentUser: { ...customer, id: 'outro-id' } });
 
-    useIncomingCallStore.getState().sendIncomingCall(CUSTOMER_ID, ATTENDANT_ID);
+    await useIncomingCallStore.getState().sendIncomingCall(CUSTOMER_ID, ATTENDANT_ID);
 
     expect(incomingCallsService.sendIncomingCall).not.toHaveBeenCalled();
     expect(mytoast.error).toHaveBeenCalledOnce();

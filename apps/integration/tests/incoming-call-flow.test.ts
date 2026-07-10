@@ -13,6 +13,7 @@ import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 import { deleteDailyRoom } from '../../realtime/src/webhooks/daily_manager';
 
 import { createStores, Stores } from '../../web/src/states/stores';
+import { getCallViewState } from '../../web/src/states/call-view/derive';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
@@ -191,7 +192,7 @@ describe('Incoming Call Flow', () => {
         expect(customerStores.incomingCall.getState().incomingCall).toBeTruthy();
         expect(customerStores.incomingCall.getState().incomingCall!.customerId).toBe(customerUser._id);
         expect(customerStores.incomingCall.getState().incomingCall!.attendantId).toBe(attendantUser._id);
-        expect(customerStores.callView.getState().viewState).toBe('awaiting-answer');
+        expect(getCallViewState(customerStores)).toBe('awaiting-answer');
         expect(customerStores.call.getState().call).toBeNull();
         expect(customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('occupied');
 
@@ -199,7 +200,7 @@ describe('Incoming Call Flow', () => {
         expect(attendantStores.incomingCall.getState().incomingCall).toBeTruthy();
         expect(attendantStores.incomingCall.getState().incomingCall!.customerId).toBe(customerUser._id);
         expect(attendantStores.incomingCall.getState().incomingCall!.attendantId).toBe(attendantUser._id);
-        expect(attendantStores.callView.getState().viewState).toBe('awaiting-to-answer');
+        expect(getCallViewState(attendantStores)).toBe('awaiting-to-answer');
         expect(attendantStores.call.getState().call).toBeNull();
         expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('occupied');
     });
@@ -244,7 +245,7 @@ describe('Incoming Call Flow', () => {
             && attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status === 'occupied',
         );
 
-        expect(customerStores.callView.getState().viewState).toBe('awaiting-answer');
+        expect(getCallViewState(customerStores)).toBe('awaiting-answer');
 
         // ── customer cancels ──────────────────────────────────────────
         customerMessages.length = 0;
@@ -277,13 +278,13 @@ describe('Incoming Call Flow', () => {
 
         // ── customer state cleared (auto-processed) ───────────────────
         expect(customerStores.incomingCall.getState().incomingCall).toBeNull();
-        expect(customerStores.callView.getState().viewState).toBe('none');
+        expect(getCallViewState(customerStores)).toBe('none');
         expect(customerStores.callView.getState().selectedAttendantId).toBeNull();
         expect(customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('idle');
 
         // ── attendant state cleared (auto-processed) ──────────────────
         expect(attendantStores.incomingCall.getState().incomingCall).toBeNull();
-        expect(attendantStores.callView.getState().viewState).toBe('none');
+        expect(getCallViewState(attendantStores)).toBe('none');
         expect(attendantStores.callView.getState().selectedAttendantId).toBeNull();
         expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('idle');
     });
@@ -328,7 +329,7 @@ describe('Incoming Call Flow', () => {
             && attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status === 'occupied',
         );
 
-        expect(attendantStores.callView.getState().viewState).toBe('awaiting-to-answer');
+        expect(getCallViewState(attendantStores)).toBe('awaiting-to-answer');
 
         // ── attendant cancels ─────────────────────────────────────────
         customerMessages.length = 0;
@@ -361,13 +362,13 @@ describe('Incoming Call Flow', () => {
 
         // ── attendant state cleared (auto-processed) ──────────────────
         expect(attendantStores.incomingCall.getState().incomingCall).toBeNull();
-        expect(attendantStores.callView.getState().viewState).toBe('none');
+        expect(getCallViewState(attendantStores)).toBe('none');
         expect(attendantStores.callView.getState().selectedAttendantId).toBeNull();
         expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('idle');
 
         // ── customer state cleared (auto-processed) ───────────────────
         expect(customerStores.incomingCall.getState().incomingCall).toBeNull();
-        expect(customerStores.callView.getState().viewState).toBe('none');
+        expect(getCallViewState(customerStores)).toBe('none');
         expect(customerStores.callView.getState().selectedAttendantId).toBeNull();
         expect(customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('idle');
     });
@@ -409,7 +410,7 @@ describe('Incoming Call Flow', () => {
 
         // ── send + accept — the incoming call becomes an active call ────
         customerStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
-        await waitFor(() => attendantStores.callView.getState().viewState === 'awaiting-to-answer');
+        await waitFor(() => getCallViewState(attendantStores) === 'awaiting-to-answer');
 
         await iamRequest.post('/incoming-calls/accept').set('Authorization', ATTENDANT_TOKEN)
             .send({ attendantId: attendantUser._id, userId: attendantUser._id });

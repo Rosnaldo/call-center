@@ -14,6 +14,7 @@ import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 import { deleteDailyRoom } from '../../realtime/src/webhooks/daily_manager';
 
 import { createStores, Stores } from '../../web/src/states/stores';
+import { getCallViewState } from '../../web/src/states/call-view/derive';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
@@ -262,8 +263,8 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
 
         expect(customerStores.call.getState().call).toBeNull();
         expect(attendantStores.call.getState().call).toBeNull();
-        expect(customerStores.callView.getState().viewState).toBe('none');
-        expect(attendantStores.callView.getState().viewState).toBe('none');
+        expect(getCallViewState(customerStores)).toBe('none');
+        expect(getCallViewState(attendantStores)).toBe('none');
 
         // the ephemeral Redis record is torn down once the call is finalized
         const res = await getCallRecordFromRedis();

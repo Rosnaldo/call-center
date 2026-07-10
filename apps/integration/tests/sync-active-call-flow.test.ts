@@ -13,6 +13,7 @@ import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 import { deleteDailyRoom } from '../../realtime/src/webhooks/daily_manager';
 
 import { createStores, Stores } from '../../web/src/states/stores';
+import { getCallViewState } from '../../web/src/states/call-view/derive';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
@@ -180,7 +181,7 @@ describe('Sync Active Call on Connect', () => {
 
         // client never joins a meeting — no call/viewState to sync into
         expect(customerStores.call.getState().call).toBeNull();
-        expect(customerStores.callView.getState().viewState).toBe('none');
+        expect(getCallViewState(customerStores)).toBe('none');
         expect(dailyCoService.joinCalls).toHaveLength(0);
     });
 
@@ -219,7 +220,7 @@ describe('Sync Active Call on Connect', () => {
         // client actually (re)joins the meeting, and its own call object
         // shows the connecting user as a participant — not just the WS
         // payload/redis response checked above
-        await waitFor(() => customerStores.callView.getState().viewState === 'in-call');
+        await waitFor(() => getCallViewState(customerStores) === 'in-call');
         expect(customerStores.call.getState().call).toBeTruthy();
         expect(customerStores.call.getState().call?.activeUserIds).toContain(customerUser._id);
         expect(dailyCoService.joinCalls).toHaveLength(1);
@@ -299,7 +300,7 @@ describe('Sync Active Call on Connect', () => {
 
         // client joins the reconstructed meeting, with itself already shown
         // as a participant in its own call object
-        await waitFor(() => customerStores.callView.getState().viewState === 'in-call');
+        await waitFor(() => getCallViewState(customerStores) === 'in-call');
         expect(customerStores.call.getState().call).toBeTruthy();
         expect(customerStores.call.getState().call?.activeUserIds).toContain(customerUser._id);
         expect(dailyCoService.joinCalls).toHaveLength(1);
@@ -335,7 +336,7 @@ describe('Sync Active Call on Connect', () => {
         expect(res.body?.isError).toBeFalsy();
         expect(res.body?.activeUserIds).toEqual([customerUser._id, attendantUser._id]);
 
-        await waitFor(() => customerStores.callView.getState().viewState === 'in-call');
+        await waitFor(() => getCallViewState(customerStores) === 'in-call');
         expect(customerStores.call.getState().call).toBeTruthy();
         expect(dailyCoService.joinCalls).toHaveLength(1);
         expect(dailyCoService.joinCalls[0]).toMatchObject({ room: roomName, userId: customerUser._id });

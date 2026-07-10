@@ -13,14 +13,15 @@ const setupCall = (customerTokens = 5) => {
   const customer = buildOnlineUserState({ id: call.customerId, tokens: customerTokens });
   useCallStore.setState({ call });
   useOnlineUsersStore.setState({ users: [customer] });
-  useCallViewStore.setState({ viewState: 'in-call' });
+  // isLeader:true is what makes useCallViewState resolve to 'in-call' here.
+  useCallViewStore.setState({ isLeader: true });
   return call;
 };
 
 beforeEach(() => {
   useCallStore.setState({ call: null });
   useOnlineUsersStore.setState({ users: [] });
-  useCallViewStore.setState({ viewState: 'none', selectedAttendantId: null });
+  useCallViewStore.setState({ selectedAttendantId: null, isLeader: false });
   useBillingStore.getState().setInitialTokens(0);
   useTimerStore.setState({ status: 'stopped', elapsedSeconds: 0 });
   useCurrentUserStore.setState({ currentUser: null });
@@ -188,7 +189,9 @@ describe('InfoCard – billing countdown timer (half-cycle rule)', () => {
 
   it('hides the usage/countdown card when not in a call view', () => {
     setupCall();
-    useCallViewStore.setState({ viewState: 'lobby' });
+    // Still has an active call, just not from this (non-leader) tab —
+    // useCallViewState resolves to 'in-call-in-another', not 'in-call'.
+    useCallViewStore.setState({ isLeader: false });
 
     render(<InfoCard />);
 

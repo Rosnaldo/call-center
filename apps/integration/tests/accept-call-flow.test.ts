@@ -14,6 +14,7 @@ import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 import { deleteDailyRoom } from '../../realtime/src/webhooks/daily_manager';
 
 import { createStores, Stores } from '../../web/src/states/stores';
+import { getCallViewState } from '../../web/src/states/call-view/derive';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
@@ -187,8 +188,8 @@ describe('Accept Call Flow', () => {
 
         await attendantStores.call.getState().acceptIncomingCall();
         await waitFor(() =>
-            customerStores.callView.getState().viewState === 'in-call'
-            && attendantStores.callView.getState().viewState === 'in-call',
+            getCallViewState(customerStores) === 'in-call'
+            && getCallViewState(attendantStores) === 'in-call',
         );
 
         // ── both users receive call_accepted ──────────────────────────
@@ -204,12 +205,12 @@ describe('Accept Call Flow', () => {
         expect(attendantBroadcast).toBeTruthy();
 
         // ── customer state (auto-processed via call_accepted event) ───
-        expect(customerStores.callView.getState().viewState).toBe('in-call');
+        expect(getCallViewState(customerStores)).toBe('in-call');
         expect(customerStores.call.getState().call).toBeTruthy();
         expect(customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status).toBe('in-call');
 
         // ── attendant state (auto-processed via call_accepted event) ──
-        expect(attendantStores.callView.getState().viewState).toBe('in-call');
+        expect(getCallViewState(attendantStores)).toBe('in-call');
         expect(attendantStores.call.getState().call).toBeTruthy();
         expect(attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status).toBe('in-call');
     });
@@ -254,17 +255,17 @@ describe('Accept Call Flow', () => {
 
         // ── send + accept ─────────────────────────────────────────────
         customerStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
-        await waitFor(() => attendantStores.callView.getState().viewState === 'awaiting-to-answer');
+        await waitFor(() => getCallViewState(attendantStores) === 'awaiting-to-answer');
 
         await attendantStores.call.getState().acceptIncomingCall();
         await waitFor(() =>
-            customerStores.callView.getState().viewState === 'in-call'
-            && attendantStores.callView.getState().viewState === 'in-call',
+            getCallViewState(customerStores) === 'in-call'
+            && getCallViewState(attendantStores) === 'in-call',
         );
 
         // ── both in-call (auto-processed via call_accepted) ───────────
-        expect(attendantStores.callView.getState().viewState).toBe('in-call');
-        expect(customerStores.callView.getState().viewState).toBe('in-call');
+        expect(getCallViewState(attendantStores)).toBe('in-call');
+        expect(getCallViewState(customerStores)).toBe('in-call');
 
         // ── both receive online_users_broadcast after accept ─────────
         const customerAcceptBroadcast = customerMessages.find((m) => m.event === 'online_users_broadcast');
@@ -301,9 +302,9 @@ describe('Accept Call Flow', () => {
 
         // ── both sides clear local state ────────────────────────────────
         expect(attendantStores.call.getState().call).toBeNull();
-        expect(attendantStores.callView.getState().viewState).toBe('none');
+        expect(getCallViewState(attendantStores)).toBe('none');
 
         expect(customerStores.call.getState().call).toBeNull();
-        expect(customerStores.callView.getState().viewState).toBe('none');
+        expect(getCallViewState(customerStores)).toBe('none');
     });
 });

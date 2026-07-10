@@ -15,6 +15,7 @@ import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 import { deleteDailyRoom } from '../../realtime/src/webhooks/daily_manager';
 
 import { createStores, Stores } from '../../web/src/states/stores';
+import { getCallViewState } from '../../web/src/states/call-view/derive';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
@@ -183,15 +184,15 @@ describe('Reconnect During Active Call Flow', () => {
         );
 
         customerStores.incomingCall.getState().sendIncomingCall(customerUser._id, attendantUser._id);
-        await waitFor(() => attendantStores.callView.getState().viewState === 'awaiting-to-answer');
+        await waitFor(() => getCallViewState(attendantStores) === 'awaiting-to-answer');
 
         await attendantStores.call.getState().acceptIncomingCall();
         // wait for the call object itself, not just the view state — they
         // don't necessarily land in the same tick, and asserting on
         // call.roomName right after this helper returns needs the former.
         await waitFor(() =>
-            customerStores.callView.getState().viewState === 'in-call'
-            && attendantStores.callView.getState().viewState === 'in-call'
+            getCallViewState(customerStores) === 'in-call'
+            && getCallViewState(attendantStores) === 'in-call'
             && customerStores.call.getState().call?.roomName === roomName
             && attendantStores.call.getState().call?.roomName === roomName,
         );
@@ -224,9 +225,9 @@ describe('Reconnect During Active Call Flow', () => {
         );
 
         expect(customerStores.call.getState().call).toBeNull();
-        expect(customerStores.callView.getState().viewState).toBe('none');
+        expect(getCallViewState(customerStores)).toBe('none');
         expect(attendantStores.call.getState().call).toBeNull();
-        expect(attendantStores.callView.getState().viewState).toBe('none');
+        expect(getCallViewState(attendantStores)).toBe('none');
 
         const res = await getCallRecordFromRedis();
         expect(res.body?.message).toBe('Call não encontrada');
@@ -253,7 +254,9 @@ describe('Reconnect During Active Call Flow', () => {
         const disconnectingMsg = customerMessages.find((m) => m.event === 'user_disconnecting');
         expect(disconnectingMsg).toBeTruthy();
         expect(disconnectingMsg.data.call.roomName).toBe(roomName);
-        expect(customerStores.callView.getState().viewState).toBe('call-interrupted');
+        // no "interrupted" view anymore — the call just stays 'in-call'
+        // while the partner is gone, until someone ends it
+        expect(getCallViewState(customerStores)).toBe('in-call');
         expect(graceTimer.has(attendantUser._id)).toBe(true);
 
         // the call record itself is untouched — nobody completed or deleted it
@@ -282,7 +285,7 @@ describe('Reconnect During Active Call Flow', () => {
         expect(reconnectedMsg).toBeTruthy();
         expect(reconnectedMsg.data.call.roomName).toBe(roomName);
         expect(customerStores.call.getState().call?.roomName).toBe(roomName);
-        expect(customerStores.callView.getState().viewState).toBe('in-call');
+        expect(getCallViewState(customerStores)).toBe('in-call');
 
         // the reconnecting attendant is kept on the same call — SyncActiveCall
         // keeps the record since (mocked) presence shows the meeting is still
@@ -296,7 +299,7 @@ describe('Reconnect During Active Call Flow', () => {
         // and its own store actually resyncs from that payload — not just a
         // message sent into the void
         await waitFor(() => attendantStores.call.getState().call?.roomName === roomName);
-        expect(attendantStores.callView.getState().viewState).toBe('in-call');
+        expect(getCallViewState(attendantStores)).toBe('in-call');
 
         // ── the call is still perfectly completable afterward ─────────────
         await completeAndVerifyCleanEnd(customerMessages, attendantMessages2);
@@ -318,7 +321,9 @@ describe('Reconnect During Active Call Flow', () => {
         const disconnectingMsg = customerMessages.find((m) => m.event === 'user_disconnecting');
         expect(disconnectingMsg).toBeTruthy();
         expect(disconnectingMsg.data.call.roomName).toBe(roomName);
-        expect(customerStores.callView.getState().viewState).toBe('call-interrupted');
+        // no "interrupted" view anymore — the call just stays 'in-call'
+        // while the partner is gone, until someone ends it
+        expect(getCallViewState(customerStores)).toBe('in-call');
         expect(graceTimer.has(attendantUser._id)).toBe(true);
 
         const midDisconnectRes = await getCallRecordFromRedis();
@@ -345,7 +350,7 @@ describe('Reconnect During Active Call Flow', () => {
         expect(reconnectedMsg).toBeTruthy();
         expect(reconnectedMsg.data.call.roomName).toBe(roomName);
         expect(customerStores.call.getState().call?.roomName).toBe(roomName);
-        expect(customerStores.callView.getState().viewState).toBe('in-call');
+        expect(getCallViewState(customerStores)).toBe('in-call');
 
         // same reasoning as the logout case above: presence shows the
         // attendant's Daily/WebRTC session survived the drop, so no rejoin

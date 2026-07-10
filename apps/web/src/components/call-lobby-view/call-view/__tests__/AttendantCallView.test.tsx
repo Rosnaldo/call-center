@@ -76,7 +76,7 @@ afterEach(() => {
 describe('Attendant - CallView state machine', () => {
   describe('none — sem chamada', () => {
     beforeEach(() => {
-      useCallViewStore.setState({ viewState: 'none', selectedAttendantId: null });
+      useCallViewStore.setState({ selectedAttendantId: null });
     });
 
     it('viewport exibe nenhum atendimento selecionado', () => {
@@ -101,7 +101,7 @@ describe('Attendant - CallView state machine', () => {
 
   describe('lobby — renderiza igual a none para atendente', () => {
     beforeEach(() => {
-      useCallViewStore.setState({ viewState: 'lobby', selectedAttendantId: null });
+      useCallViewStore.setState({ selectedAttendantId: null });
     });
 
     it('viewport exibe nenhum atendimento selecionado', () => {
@@ -119,7 +119,7 @@ describe('Attendant - CallView state machine', () => {
 
   describe('awaiting-answer — recebendo chamada de cliente', () => {
     beforeEach(() => {
-      useCallViewStore.setState({ viewState: 'awaiting-to-answer', selectedAttendantId: null });
+      useCallViewStore.setState({ selectedAttendantId: null });
       useIncomingCallStore.setState({ incomingCall: { customerId: CUSTOMER_ID, attendantId: ATTENDANT_ID, calledBy: 'customer' } });
     });
 
@@ -160,7 +160,7 @@ describe('Attendant - CallView state machine', () => {
     });
 
     beforeEach(() => {
-      useCallViewStore.setState({ viewState: 'in-call', selectedAttendantId: null });
+      useCallViewStore.setState({ selectedAttendantId: null, isLeader: true });
       useCallStore.setState({ call });
     });
 

@@ -30,7 +30,6 @@ export const createIncomingCallActions = (
       if (!incomingCall) throw new ApiError(i18n.t('error.incomingCallNotFound'));
 
       set({ incomingCall: null });
-      ref.callView.getState().setViewState('none');
       ref.callView.getState().setSelectedAttendantId(null);
 
       await cancelIncomingCallService(incomingCall.customerId, incomingCall.attendantId);
@@ -50,7 +49,8 @@ export const createIncomingCallActions = (
 
       if ((currentUser.tokens ?? 0) <= 0) throw new ApiError(i18n.t('attendantList.noTokensHint'));
 
-      const { users } = ref.onlineUsers.getState();
+      const users = await fetchOnlineUsers();
+      ref.onlineUsers.setState({ users });
       const attendant = users.find(u => u.id === attendantId);
       if (!attendant) throw new ApiError(i18n.t('error.attendantNotFound'));
 
@@ -64,7 +64,6 @@ export const createIncomingCallActions = (
 
   incomingCallSent: async (incomingCall: IncomingCallState) => {
     set({ incomingCall });
-    ref.callView.getState().setViewState('awaiting-answer');
     try {
       const users = await fetchOnlineUsers();
       ref.onlineUsers.setState({ users });
@@ -74,7 +73,6 @@ export const createIncomingCallActions = (
   },
   incomingCallReceived: async (incomingCall: IncomingCallState) => {
     set({ incomingCall });
-    ref.callView.getState().setViewState('awaiting-to-answer');
     playRingtone();
     try {
       const users = await fetchOnlineUsers();
@@ -86,7 +84,6 @@ export const createIncomingCallActions = (
   incomingCallCancelled: async () => {
     stopRingtone();
     set({ incomingCall: null });
-    ref.callView.getState().setViewState('none');
     ref.callView.getState().setSelectedAttendantId(null);
     try {
       const users = await fetchOnlineUsers();

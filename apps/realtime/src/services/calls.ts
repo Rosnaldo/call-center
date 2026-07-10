@@ -48,14 +48,6 @@ export const deleteCall = async (traceId: string, customerId: string, attendantI
     await createIamClient(traceId).delete('/calls/delete', { data: { customerId, attendantId } });
 };
 
-// Centralizes call finalization in iam's /calls/complete (presence reset +
-// Daily room ejection) instead of the realtime side ejecting on its own —
-// used when a call needs to be ended off a websocket-only signal (logout,
-// grace period expiry) rather than the client's own completeCall action.
-export const completeCall = async (traceId: string, customerId: string, attendantId: string): Promise<void> => {
-    await createIamClient(traceId).post('/calls/complete', { customerId, attendantId });
-};
-
 export const trackRoom = async (traceId: string, roomName: string): Promise<void> => {
     await createIamClient(traceId).post('/calls/track-room', { roomName });
 };

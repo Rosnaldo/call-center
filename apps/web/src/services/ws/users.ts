@@ -8,7 +8,6 @@ export type WsUsersMessage =
     | { event: 'user_connected'; data: { call: CallState | null; shouldJoin: boolean } }
     | { event: 'heartbeat_ack' }
     | { event: 'user_logouted'; data: { user: IUser } }
-    | { event: 'user_disconnecting'; data: { id: string; call?: CallState } }
     | { event: 'user_disconnected'; data: { id: string; call?: CallState } }
     | { event: 'partner_reconnected'; data: { call: CallState } }
     | { event: 'user_tokens_updated'; data: { id: string; tokens?: number } };
@@ -78,14 +77,11 @@ export class WsUsersService {
             case 'user_logouted':
                 this.warnIfPartOfMyCall(msg.data.user, 'call.participantLoggedOut');
                 return true;
-            case 'user_disconnecting':
-                this.stores.meeting.getState().userDisconnecting(msg.data);
-                return true;
             case 'user_disconnected':
                 this.stores.meeting.getState().userDisconnected(msg.data);
                 return true;
             case 'partner_reconnected':
-                this.stores.call.getState().partnerReconnected(msg.data.call, this.stores.callView.getState().isLeader);
+                this.stores.call.getState().partnerReconnected(msg.data.call);
                 return true;
             case 'user_tokens_updated':
                 this.stores.meeting.getState().userTokensUpdated(msg.data);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useCallViewStore, useCallStore, useCurrentUserStore, useBillingStore, useTimerStore } from '../../../states/stores.ts';
+import { useCallViewState } from '../../../hooks/useCallViewState.ts';
 import { InfoCard } from '../info-card/InfoCard.tsx';
 import { MediaSettingsModal } from '../media-settings-modal/MediaSettingsModal.tsx';
 import { BillingCalculationModal } from '../BillingCalculationModal.tsx';
@@ -12,7 +13,7 @@ import type { DailyEventObjectFatalError } from '@daily-co/daily-js';
 export const CallLobbyView: React.FC = () => {
   const call = useCallStore((s) => s.call);
   const currentUser = useCurrentUserStore((s) => s.currentUser);
-  const persistedViewState = useCallViewStore((s) => s.viewState);
+  const persistedViewState = useCallViewState();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const currentCall = call;
@@ -123,7 +124,6 @@ export const CallLobbyView: React.FC = () => {
       case 'in-call': return CallViewState.InCall;
       case 'in-call-in-another': return CallViewState.InCallInAnother;
       case 'call-closing': return CallViewState.CallClosing;
-      case 'call-interrupted': return CallViewState.CallInterrupted;
       case 'none':
       default: return CallViewState.None;
     }

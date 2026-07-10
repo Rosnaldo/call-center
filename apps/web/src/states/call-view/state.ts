@@ -1,3 +1,6 @@
+// Purely derived now — see useCallViewState — not written to the store
+// directly anywhere. Kept here since it's the vocabulary every consumer
+// (CallView, CallFooter, tests) still shares.
 export type ViewState =
   | 'none'
   | 'lobby'
@@ -5,11 +8,9 @@ export type ViewState =
   | 'awaiting-to-answer'
   | 'in-call'
   | 'in-call-in-another'
-  | 'call-closing'
-  | 'call-interrupted';
+  | 'call-closing';
 
 export interface CallViewStateData {
-  viewState: ViewState;
   selectedAttendantId: string | null;
   // Whether this tab holds the real websocket (see InitWs) — not reset by
   // resetCallViewState, since that fires on routine reconnects/logout and
@@ -18,7 +19,6 @@ export interface CallViewStateData {
 }
 
 export const initialCallViewState: CallViewStateData = {
-  viewState: 'none',
   selectedAttendantId: null,
   isLeader: false,
 };

@@ -1,18 +1,7 @@
 import { CallState } from '@repo/shared-types';
 import logger from '#logger';
 import { sendToUser } from '#websocket/broadcast';
-import { getCallByUser, completeCall } from 'src/services/calls';
-
-export const endActiveCall = async (traceId: string, userId: string): Promise<void> => {
-    try {
-        const call = await getCallByUser(userId);
-        if (!call) return;
-
-        await completeCall(traceId, call.customerId, call.attendantId);
-    } catch (error) {
-        logger.error(error, 'ws endActiveCall: falha ao encerrar chamada ativa no daily');
-    }
-};
+import { getCallByUser } from 'src/services/calls';
 
 export const otherParticipantId = (call: CallState, userId: string): string =>
     call.customerId === userId ? call.attendantId : call.customerId;

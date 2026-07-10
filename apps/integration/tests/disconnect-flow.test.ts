@@ -11,6 +11,7 @@ import { graceTimer } from '../../realtime/src/websocket/grace_timer';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 
 import { createStores, Stores } from '../../web/src/states/stores';
+import { getCallViewState } from '../../web/src/states/call-view/derive';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
@@ -70,8 +71,8 @@ function createBridgedClient(user: IUser, token: string) {
 // really present in the (real, but never actually joined) Daily room. If
 // this existed before onConnection(), admin's own connect would delete it
 // before the disconnect flow below ever got to exercise it.
-async function createCallRecord(iamRequest: IamAgent, roomName: string, adminUser: IUser, customerUser: IUser): Promise<void> {
-    await iamRequest.post('/calls/create').set('Authorization', CUSTOMER_TOKEN).send({
+async function createCallRecord(iamRequest: IamAgent, roomName: string, adminUser: IUser, customerUser: IUser) {
+    const call = {
         id: `${adminUser._id}--${customerUser._id}`,
         customerId: adminUser._id,
         customerName: `${adminUser.firstName} ${adminUser.lastName}`,
@@ -85,7 +86,10 @@ async function createCallRecord(iamRequest: IamAgent, roomName: string, adminUse
         endedAt: null,
         isPlaying: false,
         tokensToBeCharged: 0,
-    });
+        isClosed: false,
+    };
+    await iamRequest.post('/calls/create').set('Authorization', CUSTOMER_TOKEN).send(call);
+    return call;
 }
 
 // ─── suite ──────────────────────────────────────────────────────────────────
@@ -315,7 +319,12 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         await flushRealIO();
 
         const roomName = `${adminUser.slug}--${customerUser.slug}`;
-        await createCallRecord(iamRequest, roomName, adminUser, customerUser);
+        const call = await createCallRecord(iamRequest, roomName, adminUser, customerUser);
+        // Mirrors the customer client already knowing about this call (e.g.
+        // from its own earlier sync) — createCallRecord is deliberately only
+        // a server-side Redis write (see its comment), so without this the
+        // client has no call to consider "interrupted" when admin drops.
+        customerStores.call.setState({ call });
 
         // ── admin (in a call with customer) disconnects ──────────────────
         adminWs.terminate();
@@ -329,8 +338,9 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         expect(disconnectingMsg.data.call).toBeTruthy();
         expect(disconnectingMsg.data.call.roomName).toBe(roomName);
 
-        // client shows the interrupted-call view
-        expect(customerStores.callView.getState().viewState).toBe('call-interrupted');
+        // there's no more "interrupted" view — the call just stays 'in-call'
+        // regardless of the partner's connection state until someone ends it
+        expect(getCallViewState(customerStores)).toBe('in-call');
 
         // unlike the no-call case, grace_period *does* flip status while a
         // call is active — the online users list confirms the IAM Redis sync
@@ -339,7 +349,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         expect(adminInRedis?.status).toBe('disconnecting');
     });
 
-    it('grace period expiry ends the active call — both marked idle and the partner is notified', async () => {
+    it('grace period expiry removes the disconnected user but leaves the active call alone', async () => {
         const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
@@ -379,22 +389,19 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         jest.advanceTimersByTime(1);
         await flushRealIO();
 
-        // endActiveCall's completeCall() call chains a *third* real HTTP hop
-        // on top of the ones flushRealIO() already reliably handles
-        // elsewhere (realtime -> IAM's /calls/complete -> IAM calling back
-        // out to realtime's own webhook route to broadcast call_completed) —
-        // that specific hop is consistently unreachable in this environment
-        // once it's fired from deep inside a fake-timer-driven callback
-        // chain (reproduced by hand; a plain /health probe on the same
-        // server succeeds immediately before and after), so this asserts
-        // the call's actual, permanent effect instead of that WS notice:
-        // /calls/complete's presence writes (markIdle) happen *before* the
-        // fragile notifyCallCompleted call in its handler, so they're
-        // unaffected by it failing.
+        // /calls/complete is no longer called from here — grace period
+        // expiry only drops the disconnected user's own presence now.
+        // Ending the call is exclusively the web client's own "end call"
+        // action's job, so the customer's presence and the call record
+        // itself must both survive untouched.
         const res = await iamRequest.get('/online-users/list').set('Authorization', CUSTOMER_TOKEN);
         const customerInRedis = res.body.users.find((u: IOnlineUser) => u.id === customerUser._id);
-        expect(customerInRedis?.status).toBe('idle');
+        expect(customerInRedis?.status).toBe('in-call');
         expect(res.body.users.find((u: IOnlineUser) => u.id === adminUser._id)).toBeUndefined();
+
+        const callRes = await iamRequest.get('/calls/get-by-room').query({ roomName }).set('Authorization', CUSTOMER_TOKEN);
+        expect(callRes.body?.isError).toBeFalsy();
+        expect(callRes.body?.roomName).toBe(roomName);
     });
 
     it('reconnecting within the grace period while in a call notifies the partner via partner_reconnected', async () => {
@@ -448,6 +455,6 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
 
         // client re-syncs into the call from the reconnect payload
         expect(customerStores.call.getState().call?.roomName).toBe(roomName);
-        expect(customerStores.callView.getState().viewState).toBe('in-call');
+        expect(getCallViewState(customerStores)).toBe('in-call');
     });
 });

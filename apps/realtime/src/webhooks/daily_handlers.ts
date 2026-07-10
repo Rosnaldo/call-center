@@ -6,7 +6,7 @@ import { createCall, getCallByRoom, updateCall, addParticipant, removeParticipan
 import { deleteChat } from 'src/services/chat';
 import { createIamClient } from 'src/apis/iam';
 import { parseRoomName } from 'src/helpers/parse_room_name';
-import { getMeetingParticipants, deleteDailyRoom, DailyMeetingParticipant } from 'src/webhooks/daily_manager';
+import { getMeetingParticipants, DailyMeetingParticipant } from 'src/webhooks/daily_manager';
 import { DailyMeetingPayload, DailyParticipantPayload } from './daily_types';
 
 
@@ -183,8 +183,10 @@ export async function onMeetingEnded(traceId: string, payload: DailyMeetingPaylo
             }
         }
 
+        // The room itself is no longer deleted here — rooms are reused
+        // across calls for the same pair (ensureDailyRoom creates it once
+        // and treats "already exists" as a no-op on the next call).
         await deleteCall(traceId, endedCall.customerId, endedCall.attendantId);
-        await deleteDailyRoom(endedCall.roomName);
         try {
             await deleteChat(traceId, endedCall.customerId, endedCall.attendantId);
         } catch (error) {

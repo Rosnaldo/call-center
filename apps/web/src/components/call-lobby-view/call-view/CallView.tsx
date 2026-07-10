@@ -11,7 +11,6 @@ export enum CallViewState {
   InCall = 'in-call',
   InCallInAnother = 'in-call-in-another',
   CallClosing = 'call-closing',
-  CallInterrupted = 'call-interrupted',
 }
 
 interface CallViewProps {

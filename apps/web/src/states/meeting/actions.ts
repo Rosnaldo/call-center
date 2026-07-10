@@ -8,7 +8,6 @@ export interface MeetingActions {
   updateJoinedView: (call: CallState) => void;
   updateLeftView: (call: CallState) => void;
   meetingEnded: (call: CallState) => void;
-  userDisconnecting: (data: { id: string; call?: CallState }) => void;
   userDisconnected: (data: { id: string; call?: CallState }) => void;
   userTokensUpdated: (data: { id: string; tokens?: number }) => void;
 }
@@ -25,16 +24,10 @@ export const createMeetingActions = (
 
   return {
     meetingStarted: syncCall,
-    updateJoinedView: (call: CallState) => {
-      syncCall(call);
-      if (ref.callView.getState().viewState === 'call-interrupted') {
-        ref.callView.getState().setViewState('in-call');
-      }
-    },
+    updateJoinedView: syncCall,
     updateLeftView: syncCall,
     meetingEnded: (call: CallState) => {
       ref.timer.getState().reset();
-      ref.callView.getState().setViewState('none');
       ref.callView.getState().setSelectedAttendantId(null);
       ref.call.setState({ call: null });
 
@@ -50,9 +43,6 @@ export const createMeetingActions = (
       ref.billing.getState().openSummaryModal(call);
 
       ref.chat.getState().resetChat();
-    },
-    userDisconnecting: () => {
-      ref.callView.getState().setViewState('call-interrupted');
     },
     userDisconnected: (data) => {
       const currentUser = ref.currentUser.getState().currentUser;

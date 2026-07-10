@@ -10,27 +10,34 @@ function dailyHeaders() {
     };
 }
 
-// Idempotent: a no-op if the room already exists. Called synchronously as
-// part of accepting a call, before the client is told the call was accepted,
-// so the room is guaranteed to exist by the time it tries to join it —
-// closing the gap where the client used to create the room itself.
+// Idempotent: always attempts to create the room outright instead of
+// checking existence first — rooms aren't deleted after a call ends anymore
+// (see onMeetingEnded), but this pair's room can still be missing the very
+// first time, so we can't assume it's always already there either. Skipping
+// the existence check saves a full round-trip to Daily.co on every accept;
+// Daily responds 400 when a room with this name already exists, which is
+// exactly the case that's already fine here — every other failure still
+// gets logged. Called synchronously as part of accepting a call, before the
+// client is told the call was accepted, so the room is guaranteed to exist
+// by the time it tries to join it.
 export async function ensureDailyRoom(room: string): Promise<void> {
     try {
-        const existsRes = await fetch(`${DAILY_API_URL}/rooms/${room}`, {
-            headers: dailyHeaders(),
-        });
-        if (existsRes.ok) return;
-
         const createRes = await fetch(`${DAILY_API_URL}/rooms`, {
             method: 'POST',
             headers: dailyHeaders(),
             body: JSON.stringify({ name: room }),
         });
-        if (!createRes.ok) {
-            logger.error({ room, status: createRes.status, body: await createRes.text() }, 'daily erro ao criar room');
+        if (createRes.ok) {
+            logger.info({ room }, 'daily room criada');
             return;
         }
-        logger.info({ room }, 'daily room criada');
+
+        const body = await createRes.text();
+        if (createRes.status === 400 && body.toLowerCase().includes('already exists')) {
+            return;
+        }
+
+        logger.error({ room, status: createRes.status, body }, 'daily erro ao criar room');
     } catch (error) {
         logger.error(error, 'daily ensureDailyRoom: falha ao comunicar com api do daily');
     }

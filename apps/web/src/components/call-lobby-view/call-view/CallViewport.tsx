@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Clock, Loader2, MonitorSmartphone, User } from 'lucide-react';
 import { CallViewState } from './CallView.tsx';
 import { CallState } from '@/src/states/call/state.ts';
-import { useIncomingCallStore, useCurrentUserStore, useOnlineUsersStore, useCallViewStore, useDevicesStore, useChatStore, useCallStore } from '../../../states/stores.ts';
+import { useIncomingCallStore, useCurrentUserStore, useOnlineUsersStore, useCallViewStore, useDevicesStore, useChatStore } from '../../../states/stores.ts';
 import { IOnlineUser } from '@repo/shared-types';
 import { VideoTile } from '../VideoTile.tsx';
 import { PartnerAvatar } from '../PartnerAvatar.tsx';
@@ -11,6 +11,7 @@ import { ScreenShareTile } from '../ScreenShareTile.tsx';
 import { ChatAttendment } from './ChatAttendment.tsx';
 import { useParticipantIds, useScreenShare } from '@daily-co/daily-react';
 import { useDevicesContext } from '../../../providers/devices.tsx';
+import { useAutoEndCallTimeout } from '../../../hooks/useAutoEndCallTimeout.ts';
 import i18n from '../../../i18n.ts';
 
 
@@ -87,36 +88,6 @@ const renderAwaitingClient = (partner: IOnlineUser | undefined) => (
   </div>
 );
 
-const renderInterruptedAttendant = (partner: IOnlineUser | undefined) => (
-  <div id="viewport-interrupted-attendant" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
-    <PartnerAvatar partner={partner} size="md" pulse />
-    <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mt-2.5 mb-1">
-      {i18n.t('call.connectionInterrupted')}
-    </h3>
-    <p className="text-xs text-slate-300 font-medium select-text">
-      {i18n.t('call.awaitingClientReturn', { name: partner?.name ?? '' })}
-    </p>
-    <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
-      {i18n.t('call.timerPausedClient')}
-    </p>
-  </div>
-);
-
-const renderInterruptedClient = (partner: IOnlineUser | undefined) => (
-  <div id="viewport-interrupted-client" className="flex flex-col items-center justify-center p-8 text-center max-w-sm font-sans select-none">
-    <PartnerAvatar partner={partner} size="md" pulse />
-    <h3 className="text-sm font-bold text-amber-500 tracking-wide uppercase mt-2.5">
-      {i18n.t('call.connectionInterrupted')}
-    </h3>
-    <p className="text-xs text-slate-300 font-medium select-text">
-      {i18n.t('call.awaitingAttendantReturn', { name: partner?.name ?? '' })}
-    </p>
-    <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
-      {i18n.t('call.timerPausedAttendant')}
-    </p>
-  </div>
-);
-
 const renderLobbyViewport = (attendant: IOnlineUser) => (
   <div id="viewport-lobby" className="flex flex-col items-center justify-center gap-3 p-8 text-center max-w-sm font-sans">
     <PartnerAvatar partner={attendant} size="md" fadeIn />
@@ -138,8 +109,6 @@ const renderAwaitingAnswer = (attendant: IOnlineUser | null) => (
   </div>
 );
 
-const PARTICIPANT_JOIN_TIMEOUT_SECONDS = 30;
-
 const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ partner }) => {
   const { t } = useTranslation();
   const cameraPermission = useDevicesStore(s => s.cameraPermission);
@@ -157,31 +126,7 @@ const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ p
 
   const activeScreen = screens[0];
 
-  const [secondsUntilAutoEnd, setSecondsUntilAutoEnd] = useState(PARTICIPANT_JOIN_TIMEOUT_SECONDS);
-
-  // Guards against the room being stuck in 'in-call' forever when the other
-  // party's Daily track never attaches (e.g. their join silently failed).
-  // Mirrors the same "waiting to join" signal CallFooterActions uses to
-  // disable the manual end-call button.
-  useEffect(() => {
-    if (id) return;
-
-    setSecondsUntilAutoEnd(PARTICIPANT_JOIN_TIMEOUT_SECONDS);
-
-    const interval = setInterval(() => {
-      setSecondsUntilAutoEnd(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          useCallStore.getState().completeCall();
-          useCallViewStore.getState().setViewState('none');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [id]);
+  const secondsUntilAutoEnd = useAutoEndCallTimeout(id);
 
   if (!id && !activeScreen) return (
     <div className="flex flex-col items-center justify-center p-8 text-center font-sans select-none">
@@ -241,10 +186,6 @@ export const CallViewport: React.FC<CallViewportProps> = ({
     content = renderAwaitingAttendant(partner);
   } else if (state === CallViewState.AwaitingToAnswer && !isReceiving) {
     content = renderAwaitingClient(partner);
-  } else if (state === CallViewState.CallInterrupted && isReceiving) {
-    content = renderInterruptedAttendant(partner);
-  } else if (state === CallViewState.CallInterrupted && !isReceiving) {
-    content = renderInterruptedClient(partner);
   } else if (state === CallViewState.Lobby) {
     content = attendant ? renderLobbyViewport(attendant) : renderNoneViewport();
   } else if (state === CallViewState.InCall) {
