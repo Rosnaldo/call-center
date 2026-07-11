@@ -17,6 +17,9 @@ export interface CallActions {
   callCompleted: (call: CallState) => Promise<void>;
   syncActiveCall: (call: CallState | null, shouldJoin: boolean, isLeader: boolean) => Promise<void>;
   partnerReconnected: (call: CallState) => void;
+  participantJoined: (call: CallState) => void;
+  participantLeft: (call: CallState) => void;
+  callDeleted: () => void;
 }
 
 export const createCallActions = (
@@ -126,6 +129,26 @@ export const createCallActions = (
 
     partnerReconnected: (call: CallState) => {
       syncCallWithBillingAndTimer(call);
+    },
+
+    // Fed by the call-events SSE stream (participant_joined/left, published
+    // by IAM's /calls/add-participant and /calls/remove-participant routes —
+    // see init-call-events.ts). Relocated here from meeting/actions.ts's old
+    // syncCall helper, since these are call-domain mutations, not
+    // meeting-lifecycle side effects.
+    participantJoined: (call: CallState) => {
+      syncCallWithBillingAndTimer(call);
+    },
+    participantLeft: (call: CallState) => {
+      syncCallWithBillingAndTimer(call);
+    },
+
+    // Fed by the call-events SSE stream (call_deleted, published by IAM's
+    // /calls/delete route) — only the call-null piece of what used to be
+    // the WS meeting_ended handler; the rest (onlineUsers/billing/chat/timer)
+    // still arrives via that WS event, see meeting/actions.ts's meetingEnded.
+    callDeleted: () => {
+      set(() => ({ call: null }));
     },
   };
 };

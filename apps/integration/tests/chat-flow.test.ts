@@ -6,6 +6,7 @@ import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-serv
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { createWsClient } from './helpers/mock-wss';
+import { createBridgedRealtimeEventSource } from './helpers/mock-realtime-sse';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
@@ -13,6 +14,7 @@ import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 import { createStores, Stores } from '../../web/src/states/stores';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
+import { initRealtimeEvents } from '../../web/src/services/sse/init-realtime-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 
@@ -68,6 +70,20 @@ describe('Chat Flow — during an active call', () => {
     let customerStores: Stores;
     let attendantStores: Stores;
     let roomName: string;
+    // chat_message_received moved off the websocket onto realtime's own
+    // realtime-events SSE stream — see init-realtime-events.ts and
+    // apps/realtime/src/routes/realtime_events.ts. createBridgedRealtimeEventSource
+    // bridges that real Redis channel into a real InitRealtimeEvents
+    // instance so production dispatch logic still runs end to end. Closed
+    // in afterEach.
+    let sseCloses: Array<() => Promise<void>>;
+
+    const bridgeRealtimeEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
+        const { factory, messages, close } = await createBridgedRealtimeEventSource(user._id);
+        initRealtimeEvents.init(token, stores, factory);
+        sseCloses.push(close);
+        return messages;
+    };
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
@@ -84,6 +100,10 @@ describe('Chat Flow — during an active call', () => {
         await stopIamServer();
     });
 
+    afterEach(async () => {
+        await Promise.all(sseCloses.map((close) => close()));
+    });
+
     beforeEach(async () => {
         const redis = getRedisClient();
         const chatKeys = await redis.keys('chat:*');
@@ -93,6 +113,7 @@ describe('Chat Flow — during an active call', () => {
         jest.clearAllMocks();
         AuthSession.override({ token: CUSTOMER_TOKEN });
 
+        sseCloses = [];
         customerStores = createStores();
         attendantStores = createStores();
 
@@ -109,6 +130,8 @@ describe('Chat Flow — during an active call', () => {
 
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
+        await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        await bridgeRealtimeEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);

@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthentication } from './useAuthentication.ts';
 import { initWs } from '../../services/ws/init-ws.ts';
 import { initCallEvents } from '../../services/sse/init-call-events.ts';
+import { initRealtimeEvents } from '../../services/sse/init-realtime-events.ts';
 import { DailyService } from '../../services/daily.ts';
 import { resetCallState } from '../../states/reset-call-state.ts';
 
@@ -20,6 +21,7 @@ export function useLogout() {
     DailyService.getInstance().rebuild();
     initWs.notifyLogout();
     initCallEvents.close();
+    initRealtimeEvents.close();
     resetCallState();
 
     logout();

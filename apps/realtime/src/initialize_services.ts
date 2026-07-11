@@ -8,7 +8,6 @@ import { buildKcMain } from './keycloak/singleton';
 import { registerDailyWebhooks, cleanupDailyWebhooks } from './webhooks/daily_manager';
 import { clientRegistry } from '#websocket/client_registry';
 import { connectRedis, disconnectRedis } from './redis/singleton';
-import { subscribeOnlineUsersBroadcast, unsubscribeOnlineUsersBroadcast } from './redis/online_users_broadcast';
 
 class WebhookServer {
     private static instance: WebhookServer;
@@ -49,7 +48,9 @@ class WebhookServer {
 
     setupRoutes(): void {
         const health = require('./routes/health').default;
+        const realtimeEvents = require('./routes/realtime_events').default;
         health(this.app);
+        realtimeEvents(this.app);
     }
 
     setupWebhooks(): void {
@@ -62,7 +63,6 @@ class WebhookServer {
     async start(): Promise<void> {
         await buildKcMain();
         await connectRedis();
-        await subscribeOnlineUsersBroadcast();
         this.setupMiddleware();
         this.setupRoutes();
 
@@ -84,7 +84,6 @@ class WebhookServer {
     }
 
     async stop(): Promise<void> {
-        await unsubscribeOnlineUsersBroadcast();
         await disconnectRedis();
         if (this.server) {
             await new Promise<void>((resolve) => this.server!.close(() => resolve()));
@@ -156,7 +155,6 @@ async function startAll(properties?: Properties): Promise<WebhookServer> {
                 logger.error(error, 'falha ao limpar webhooks/rooms do daily');
             }
 
-            await unsubscribeOnlineUsersBroadcast();
             await disconnectRedis();
 
             clearTimeout(forceExitTimer);

@@ -7,6 +7,7 @@ import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-serv
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { createWsClient } from './helpers/mock-wss';
+import { createBridgedEventSource } from './helpers/mock-sse';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
@@ -15,6 +16,7 @@ import { deleteDailyRoom } from '../../realtime/src/webhooks/daily_manager';
 import { createStores, Stores } from '../../web/src/states/stores';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
+import { initCallEvents } from '../../web/src/services/sse/init-call-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 // src/services/users|calls (realtime) and @/src/services/api/calls (web) are
@@ -69,6 +71,18 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
     let customerStores: Stores;
     let attendantStores: Stores;
     let roomName: string;
+    // participant_joined/participant_left moved to the call-events SSE
+    // stream (see init-call-events.ts and IAM's /calls/add-participant,
+    // /calls/remove-participant routes) — this suite's call-state
+    // assertions depend on that stream being bridged for both users.
+    let sseCloses: Array<() => Promise<void>>;
+
+    const bridgeCallEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
+        const { factory, messages, close } = await createBridgedEventSource(user._id);
+        initCallEvents.init(token, stores, factory);
+        sseCloses.push(close);
+        return messages;
+    };
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
@@ -88,6 +102,7 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
 
     afterEach(async () => {
         await deleteDailyRoom(roomName);
+        await Promise.all(sseCloses.map((close) => close()));
     });
 
     beforeEach(async () => {
@@ -99,6 +114,7 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         jest.clearAllMocks();
         AuthSession.override({ token: CUSTOMER_TOKEN });
 
+        sseCloses = [];
         customerStores = createStores();
         attendantStores = createStores();
     });
@@ -163,16 +179,13 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         const { serverWs: attendantWs, webFactory: attendantWebFactory } = createBridgedClient(attendantUser, ATTENDANT_TOKEN);
 
-        const attendantMessages: any[] = [];
-        (attendantWs as unknown as EventEmitter).on('sent', (data: string) => {
-            attendantMessages.push(JSON.parse(data));
-        });
-
         clientRegistry.add(customerWs);
         clientRegistry.add(attendantWs);
 
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
+        const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const attendantCallEvents = await bridgeCallEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);
@@ -258,11 +271,11 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         expect(customerStores.timer.getState().elapsedSeconds).toBe(elapsedAtFirstLeave);
 
         // ── attendant rejoins — both browsers must resync off the SAME clock ──
-        attendantMessages.length = 0;
+        attendantCallEvents.length = 0;
         const t3Start = Date.now();
         await postDailyWebhook(joinPayload(attendantUser));
 
-        const attendantJoinedMsg = attendantMessages.find((m) => m.event === 'participant_joined');
+        const attendantJoinedMsg = attendantCallEvents.find((m) => m.event === 'participant_joined');
         expect(attendantJoinedMsg).toBeTruthy();
 
         call = customerStores.call.getState().call;

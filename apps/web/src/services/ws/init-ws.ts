@@ -1,8 +1,6 @@
 import { AuthenticatedWebSocket, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
 import { WsUsersService } from './users';
-import { WsMeetingService } from './meeting';
-import { WsChatService } from './chat';
-import type { OnlineUsersStoreInstance, CallStoreInstance, CallViewStoreInstance, MeetingStoreInstance, ChatStoreInstance, CurrentUserStoreInstance } from '../../states/stores';
+import type { CallViewStoreInstance } from '../../states/stores';
 import properties from '../../properties';
 import { mytoast } from '../../components/toast';
 import authSession from '../../auth/session';
@@ -28,12 +26,7 @@ const RELAY_CHANNEL_NAME = 'call-center-ws-relay';
 const LEADER_PROMOTION_RESYNC_DELAY_MS = 5_000;
 
 interface InitWsStores {
-    onlineUsers: OnlineUsersStoreInstance;
-    call: CallStoreInstance;
     callView: CallViewStoreInstance;
-    meeting: MeetingStoreInstance;
-    chat: ChatStoreInstance;
-    currentUser: CurrentUserStoreInstance;
 }
 
 type RelayMessage =
@@ -69,8 +62,6 @@ export class InitWs {
         token: string,
         callViewStore: CallViewStoreInstance,
         usersService: WsUsersService,
-        meetingService: WsMeetingService,
-        chatService: WsChatService,
     ): void {
         if (!this.running || !WS_URL) return;
         this.activeWs = ws;
@@ -109,13 +100,7 @@ export class InitWs {
                         HEARTBEAT_ACK_TIMEOUT_MS,
                     );
                 }
-                // Realtime pushes a `user_connected` event on every (re)connect,
-                // not just the first one — a reconnect after our *own* socket
-                // dropped otherwise has nothing telling this client to recheck
-                // its call state or rejoin Daily, so it would sit in 'in-call'
-                // waiting forever with no video. See WsUsersService's handling
-                // of that event, which calls syncActiveCall with what arrives.
-                usersService.handle(msg) || meetingService.handle(msg) || chatService.handle(msg);
+                usersService.handle(msg);
                 this.channel?.postMessage({ type: 'ws-message', payload: msg } satisfies RelayMessage);
             } catch {
                 // malformed frame — ignore
@@ -128,17 +113,18 @@ export class InitWs {
 
         ws.onclose = () => {
             usersService.stopHeartbeat();
-            // Losing the socket means we stop receiving call/meeting events —
-            // a deleted/ended call can't reach us while we're down, so drop
-            // any stale call state now. If the call is still active, the
-            // `user_connected` push on reconnect resyncs it (see onopen).
+            // Losing the socket means we stop receiving realtime-events SSE
+            // reconnection isn't affected (that's a separate connection —
+            // see init-realtime-events.ts), but the call domain resyncs via
+            // IAM's call_synced on the next connect, so drop any stale call
+            // state now rather than leave it to go stale.
             resetCallState();
             if (!this.running) return;
             const delay = this.nextReconnectDelay();
             setTimeout(() => {
                 authSession.getToken().then((freshToken) => {
                     if (!freshToken) return;
-                    this.connect(this.createAuthWs(), freshToken, callViewStore, usersService, meetingService, chatService);
+                    this.connect(this.createAuthWs(), freshToken, callViewStore, usersService);
                 });
             }, delay);
         };
@@ -149,16 +135,12 @@ export class InitWs {
     // sender), so this only ever does something in followers: apply relayed
     // server messages to this tab's own stores, and forward this tab's
     // outgoing sends (see notifyLogout) through whichever tab is the leader.
-    private listenAsFollower(
-        usersService: WsUsersService,
-        meetingService: WsMeetingService,
-        chatService: WsChatService,
-    ): void {
+    private listenAsFollower(usersService: WsUsersService): void {
         if (!this.channel) return;
         this.channel.onmessage = (event: MessageEvent<RelayMessage>) => {
             const data = event.data;
             if (data.type === 'ws-message') {
-                usersService.handle(data.payload) || meetingService.handle(data.payload) || chatService.handle(data.payload);
+                usersService.handle(data.payload);
                 return;
             }
             if (data.type === 'ws-send' && this.activeWs?.readyState === TRANSPORT_OPEN) {
@@ -170,8 +152,6 @@ export class InitWs {
     private async becomeLeader(
         callViewStore: CallViewStoreInstance,
         usersService: WsUsersService,
-        meetingService: WsMeetingService,
-        chatService: WsChatService,
     ): Promise<void> {
         // Lock acquisition can be queued a long time behind whichever tab was
         // leader before us, so the token captured at init() time may be
@@ -179,7 +159,7 @@ export class InitWs {
         const freshToken = await authSession.getToken();
         if (!freshToken || !this.running) return;
         this.reconnectAttempts = 0;
-        this.connect(this.createAuthWs(), freshToken, callViewStore, usersService, meetingService, chatService);
+        this.connect(this.createAuthWs(), freshToken, callViewStore, usersService);
 
         // See LEADER_PROMOTION_RESYNC_DELAY_MS above — a second look at
         // syncActiveCall shortly after, in case the first one (from connect()
@@ -204,11 +184,9 @@ export class InitWs {
         this.channel?.close();
         this.channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(RELAY_CHANNEL_NAME) : null;
 
-        const usersService = new WsUsersService({ onlineUsers: stores.onlineUsers, call: stores.call, callView: stores.callView, currentUser: stores.currentUser, meeting: stores.meeting });
-        const meetingService = new WsMeetingService({ meeting: stores.meeting });
-        const chatService = new WsChatService({ chat: stores.chat });
+        const usersService = new WsUsersService();
 
-        this.listenAsFollower(usersService, meetingService, chatService);
+        this.listenAsFollower(usersService);
 
         // Checking `window`/`document` and not just `navigator.locks` matters
         // here: this coordination only makes sense between actual browser
@@ -221,7 +199,7 @@ export class InitWs {
         const hasBrowserLocks = typeof window !== 'undefined' && typeof document !== 'undefined'
             && typeof navigator !== 'undefined' && !!navigator.locks;
         if (!hasBrowserLocks) {
-            this.connect(this.createAuthWs(), token, stores.callView, usersService, meetingService, chatService);
+            this.connect(this.createAuthWs(), token, stores.callView, usersService);
             return;
         }
 
@@ -239,7 +217,7 @@ export class InitWs {
 
         navigator.locks.request(LEADER_LOCK_NAME, { signal: abortController.signal }, () => new Promise<void>((resolve) => {
             abortController.signal.addEventListener('abort', () => resolve());
-            this.becomeLeader(stores.callView, usersService, meetingService, chatService);
+            this.becomeLeader(stores.callView, usersService);
         })).catch(() => {
             // Aborted while still queued (a subsequent init() call) — expected, not an error.
         });

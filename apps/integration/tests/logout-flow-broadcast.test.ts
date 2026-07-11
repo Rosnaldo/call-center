@@ -6,6 +6,7 @@ import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-serv
 import { createMockUsers, ADMIN_TOKEN, CUSTOMER_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { simulateMessage, createWsClient } from './helpers/mock-wss';
+import { createBridgedRealtimeEventSource } from './helpers/mock-realtime-sse';
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { graceTimer } from '../../realtime/src/websocket/grace_timer';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
@@ -13,6 +14,7 @@ import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 import { createStores, Stores } from '../../web/src/states/stores';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
+import { initRealtimeEvents } from '../../web/src/services/sse/init-realtime-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 // src/services/users|calls (realtime) and @/src/services/api/online-users
@@ -73,6 +75,20 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
     let customerUser: IUser;
     let customerStores: Stores;
     let adminStores: Stores;
+    // user_logouted/user_disconnecting/user_disconnected/online_users_broadcast
+    // moved off the websocket onto realtime's own SSE stream — see
+    // init-realtime-events.ts and apps/realtime/src/routes/realtime_events.ts.
+    // createBridgedRealtimeEventSource bridges that same real Redis channel
+    // into a real InitRealtimeEvents instance, so production dispatch logic
+    // still runs end to end. Closed in afterEach.
+    let sseCloses: Array<() => Promise<void>>;
+
+    const bridgeRealtimeEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
+        const { factory, messages, close } = await createBridgedRealtimeEventSource(user._id);
+        initRealtimeEvents.init(token, stores, factory);
+        sseCloses.push(close);
+        return messages;
+    };
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
@@ -95,14 +111,16 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         jest.clearAllMocks();
         AuthSession.override({ token: CUSTOMER_TOKEN });
 
+        sseCloses = [];
         customerStores = createStores();
         adminStores = createStores();
     });
 
-    afterEach(() => {
+    afterEach(async () => {
         graceTimer.cancel(adminUser._id);
         graceTimer.cancel(customerUser._id);
         jest.useRealTimers();
+        await Promise.all(sseCloses.map((close) => close()));
     });
 
     it('logout notifies the user directly and falls back to the normal disconnect grace period', async () => {
@@ -124,6 +142,8 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         // admin inits first; customer inits last so this.stores = customerStores
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        const adminRealtimeEvents = await bridgeRealtimeEvents(adminUser, ADMIN_TOKEN, adminStores);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         await onConnection()(adminWs);
         await onConnection()(customerWs);
@@ -142,23 +162,25 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         // ── admin logs out ───────────────────────────────────────────────
         adminMessages.length = 0;
         customerMessages.length = 0;
+        adminRealtimeEvents.length = 0;
+        customerRealtimeEvents.length = 0;
 
         simulateMessage(adminWs, { event: 'user_logout' });
         await flushRealIO();
 
-        // handleMessageLogout only sendToUser's the logging-out client itself
+        // handleMessageLogout only notifies the logging-out client itself
         // (unlike a full broadcast) — the payload carries the full user record
-        const adminLogoutMsg = adminMessages.find((m) => m.event === 'user_logouted');
+        const adminLogoutMsg = adminRealtimeEvents.find((m) => m.event === 'user_logouted');
         expect(adminLogoutMsg).toBeTruthy();
         expect(adminLogoutMsg.data.user._id).toBe(adminUser._id);
 
         // customer never receives user_logouted — it's targeted at admin only
-        expect(customerMessages.find((m) => m.event === 'user_logouted')).toBeUndefined();
+        expect(customerRealtimeEvents.find((m) => m.event === 'user_logouted')).toBeUndefined();
 
         // handleMessageLogout terminates the socket, which fires the same
         // 'close' handler as a raw disconnect — that's what starts the grace
         // period and fires this broadcast, not the logout handler itself
-        const customerBroadcast = customerMessages.find((m) => m.event === 'online_users_broadcast');
+        const customerBroadcast = customerRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
         expect(customerBroadcast).toBeTruthy();
 
         // logout no longer skips the grace period — ws.terminate() re-enters
@@ -213,6 +235,7 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         await onConnection()(adminWs);
         await onConnection()(customerWs);
@@ -223,18 +246,19 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         // ── admin's connection drops abruptly — no user_logout message sent ──
         adminMessages.length = 0;
         customerMessages.length = 0;
+        customerRealtimeEvents.length = 0;
 
         adminWs.terminate();
         await flushRealIO();
 
         // customer isn't admin's call partner (there's no call between them
-        // here), so user_disconnecting/user_disconnected — now sendToUser'd
+        // here), so user_disconnecting/user_disconnected — now published
         // to the disconnecting user and their call partner only — never
         // reach customer; the presence transition below still does, via the
         // separate online_users_broadcast.
-        expect(customerMessages.find((m) => m.event === 'user_disconnecting')).toBeUndefined();
-        expect(customerMessages.find((m) => m.event === 'user_logouted')).toBeUndefined();
-        expect(customerMessages.find((m) => m.event === 'user_disconnected')).toBeUndefined();
+        expect(customerRealtimeEvents.find((m) => m.event === 'user_disconnecting')).toBeUndefined();
+        expect(customerRealtimeEvents.find((m) => m.event === 'user_logouted')).toBeUndefined();
+        expect(customerRealtimeEvents.find((m) => m.event === 'user_disconnected')).toBeUndefined();
 
         // customer's web store still shows admin as idle — grace_period only
         // flips status to 'disconnecting' when there's an active call, and
@@ -256,7 +280,7 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
 
         // still nothing targeted at customer once the grace period expires,
         // for the same reason — no call, no partner to notify
-        expect(customerMessages.find((m) => m.event === 'user_disconnected')).toBeUndefined();
+        expect(customerRealtimeEvents.find((m) => m.event === 'user_disconnected')).toBeUndefined();
 
         expect(
             customerStores.onlineUsers.getState().users.find(u => u.id === adminUser._id),
@@ -272,6 +296,7 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         await onConnection()(adminWs);
         await onConnection()(customerWs);

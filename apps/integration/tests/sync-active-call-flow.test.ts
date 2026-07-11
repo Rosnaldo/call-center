@@ -6,6 +6,7 @@ import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-serv
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { createWsClient } from './helpers/mock-wss';
+import { createBridgedEventSource } from './helpers/mock-sse';
 import { DailyCoService } from './helpers/daily-service';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
@@ -16,6 +17,7 @@ import { createStores, Stores } from '../../web/src/states/stores';
 import { getCallViewState } from '../../web/src/states/call-view/derive';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
+import { initCallEvents } from '../../web/src/services/sse/init-call-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 import * as dailyServiceModule from '../../iam/src/services/daily';
@@ -94,6 +96,20 @@ describe('Sync Active Call on Connect', () => {
     let customerStores: Stores;
     let roomName: string;
     let dailyCoService: DailyCoService;
+    // user_connected moved to the call-events SSE stream (call_synced — see
+    // init-call-events.ts and IAM's /calls/sync-active-call route).
+    // createBridgedEventSource bridges the real Redis channel into a real
+    // InitCallEvents instance, same way createBridgedClient above bridges
+    // the websocket, so the actual production dispatch logic still runs
+    // end to end. Closed in afterEach.
+    let sseCloses: Array<() => Promise<void>>;
+
+    const bridgeCallEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
+        const { factory, messages, close } = await createBridgedEventSource(user._id);
+        initCallEvents.init(token, stores, factory);
+        sseCloses.push(close);
+        return messages;
+    };
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
@@ -113,6 +129,7 @@ describe('Sync Active Call on Connect', () => {
     afterEach(async () => {
         jest.restoreAllMocks();
         await deleteDailyRoom(roomName);
+        await Promise.all(sseCloses.map((close) => close()));
     });
 
     beforeEach(async () => {
@@ -127,6 +144,7 @@ describe('Sync Active Call on Connect', () => {
         DailyCoService.reset();
         AuthSession.override({ token: CUSTOMER_TOKEN });
 
+        sseCloses = [];
         dailyCoService = DailyCoService.getInstance();
         customerStores = createStores(dailyCoService);
         customerStores.currentUser.setState({ currentUser: mapUserToOnlineUser(customerUser) });
@@ -160,6 +178,7 @@ describe('Sync Active Call on Connect', () => {
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         clientRegistry.add(customerWs);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         const customerMessages: any[] = [];
         (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
@@ -170,10 +189,13 @@ describe('Sync Active Call on Connect', () => {
         // empty, since no real WebRTC participant ever joined it
         await onConnection()(customerWs);
 
-        const connectedMsg = customerMessages.find((m) => m.event === 'user_connected');
+        const connectedMsg = customerCallEvents.find((m) => m.event === 'call_synced');
         expect(connectedMsg).toBeTruthy();
         expect(connectedMsg.data.call).toBeNull();
         expect(connectedMsg.data.shouldJoin).toBe(false);
+
+        // regression lock: the old websocket push is gone for good
+        expect(customerMessages.find((m) => m.event === 'user_connected')).toBeUndefined();
 
         // the stale record (and the Daily room behind it) is torn down
         const res = await getCallRecordFromRedis();
@@ -197,6 +219,7 @@ describe('Sync Active Call on Connect', () => {
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         clientRegistry.add(customerWs);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         const customerMessages: any[] = [];
         (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
@@ -205,7 +228,7 @@ describe('Sync Active Call on Connect', () => {
 
         await onConnection()(customerWs);
 
-        const connectedMsg = customerMessages.find((m) => m.event === 'user_connected');
+        const connectedMsg = customerCallEvents.find((m) => m.event === 'call_synced');
         expect(connectedMsg).toBeTruthy();
         expect(connectedMsg.data.shouldJoin).toBe(true);
         expect(connectedMsg.data.call).toBeTruthy();
@@ -239,6 +262,7 @@ describe('Sync Active Call on Connect', () => {
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         clientRegistry.add(customerWs);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         const customerMessages: any[] = [];
         (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
@@ -247,7 +271,7 @@ describe('Sync Active Call on Connect', () => {
 
         await onConnection()(customerWs);
 
-        const connectedMsg = customerMessages.find((m) => m.event === 'user_connected');
+        const connectedMsg = customerCallEvents.find((m) => m.event === 'call_synced');
         expect(connectedMsg).toBeTruthy();
         expect(connectedMsg.data.shouldJoin).toBe(false);
         expect(connectedMsg.data.call).toBeTruthy();
@@ -276,6 +300,7 @@ describe('Sync Active Call on Connect', () => {
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         clientRegistry.add(customerWs);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         const customerMessages: any[] = [];
         (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
@@ -284,7 +309,7 @@ describe('Sync Active Call on Connect', () => {
 
         await onConnection()(customerWs);
 
-        const connectedMsg = customerMessages.find((m) => m.event === 'user_connected');
+        const connectedMsg = customerCallEvents.find((m) => m.event === 'call_synced');
         expect(connectedMsg).toBeTruthy();
         expect(connectedMsg.data.shouldJoin).toBe(true);
         expect(connectedMsg.data.call).toBeTruthy();
@@ -317,6 +342,7 @@ describe('Sync Active Call on Connect', () => {
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         clientRegistry.add(customerWs);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         const customerMessages: any[] = [];
         (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
@@ -325,7 +351,7 @@ describe('Sync Active Call on Connect', () => {
 
         await onConnection()(customerWs);
 
-        const connectedMsg = customerMessages.find((m) => m.event === 'user_connected');
+        const connectedMsg = customerCallEvents.find((m) => m.event === 'call_synced');
         expect(connectedMsg).toBeTruthy();
         expect(connectedMsg.data.shouldJoin).toBe(true);
         expect(connectedMsg.data.call).toBeTruthy();
@@ -340,5 +366,35 @@ describe('Sync Active Call on Connect', () => {
         expect(customerStores.call.getState().call).toBeTruthy();
         expect(dailyCoService.joinCalls).toHaveLength(1);
         expect(dailyCoService.joinCalls[0]).toMatchObject({ room: roomName, userId: customerUser._id });
+    });
+
+    // Exercises IAM's new NotifyPartnerReconnected controller directly —
+    // this is what realtime's connection.ts calls (instead of doing its own
+    // lookup + sendToUser) once its grace-timer bookkeeping detects a
+    // genuine reconnect.
+    describe('POST /calls/notify-partner-reconnected', () => {
+        it('publishes partner_reconnected to the other participant when the user has an active call', async () => {
+            await createCallRecord();
+            const { messages: attendantEvents, close } = await createBridgedEventSource(attendantUser._id);
+
+            try {
+                const res = await iamRequest.post('/calls/notify-partner-reconnected')
+                    .set('Authorization', CUSTOMER_TOKEN).send({ userId: customerUser._id });
+                expect(res.body?.isError).toBeFalsy();
+
+                await waitFor(() => attendantEvents.some((m) => m.event === 'partner_reconnected'));
+                const msg = attendantEvents.find((m) => m.event === 'partner_reconnected');
+                expect(msg.data.call.roomName).toBe(roomName);
+            } finally {
+                await close();
+            }
+        });
+
+        it('no-ops when the user has no active call', async () => {
+            const res = await iamRequest.post('/calls/notify-partner-reconnected')
+                .set('Authorization', CUSTOMER_TOKEN).send({ userId: customerUser._id });
+
+            expect(res.body?.isError).toBeFalsy();
+        });
     });
 });

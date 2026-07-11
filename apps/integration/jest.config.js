@@ -44,6 +44,7 @@ module.exports = {
         '^src/services/users$': '<rootDir>/../realtime/src/services/users.ts',
         '^src/services/calls$': '<rootDir>/../realtime/src/services/calls.ts',
         '^src/services/chat$': '<rootDir>/../realtime/src/services/chat.ts',
+        '^src/services/realtime_events$': '<rootDir>/../realtime/src/services/realtime_events.ts',
         '^src/webhooks/daily_manager$': '<rootDir>/../realtime/src/webhooks/daily_manager.ts',
         '^src/helpers/(.*)$': '<rootDir>/../realtime/src/helpers/$1',
         '^src/auth/(.*)$': '<rootDir>/../realtime/src/auth/$1',

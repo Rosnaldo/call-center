@@ -1,8 +1,8 @@
 import { CallState, IUser, computeTokensToBeCharged, getCallElapsedMs } from '@repo/shared-types';
 import { buildLogger } from '#logger';
-import { sendToUser, broadcastMessage } from '#websocket/broadcast';
 import { findUserBySlug, updateOnlineUserStatus } from 'src/services/users';
 import { createCall, getCallByRoom, updateCall, addParticipant, removeParticipant, trackRoom, deleteCall, createCallHistory } from 'src/services/calls';
+import { notifyMeetingEnded, publishOnlineUsersBroadcast } from 'src/services/realtime_events';
 import { deleteChat } from 'src/services/chat';
 import { createIamClient } from 'src/apis/iam';
 import { parseRoomName } from 'src/helpers/parse_room_name';
@@ -205,10 +205,9 @@ export async function onMeetingEnded(traceId: string, payload: DailyMeetingPaylo
             logger.error(error, 'daily onMeetingEnded: falha ao atualizar status online dos usuários');
         }
 
-        sendToUser(endedCall.customerId, { event: 'meeting_ended', data: { call: endedCall } });
-        sendToUser(endedCall.attendantId, { event: 'meeting_ended', data: { call: endedCall } });
+        notifyMeetingEnded(traceId, endedCall.customerId, endedCall.attendantId, endedCall);
 
-        broadcastMessage({ event: 'online_users_broadcast', data: {} });
+        publishOnlineUsersBroadcast(traceId);
     } catch (error) {
         logger.error(error, 'daily onMeetingEnded');
     }
@@ -253,11 +252,9 @@ export async function onParticipantJoined(traceId: string, payload: DailyPartici
 
         const userId = resolveParticipantId(payload, customer, attendant);
 
-        call = await addParticipant(traceId, call.customerId, call.attendantId, userId);
-
-        sendToUser(call.customerId, { event: 'participant_joined', data: { call } });
-        sendToUser(call.attendantId, { event: 'participant_joined', data: { call } });
-
+        // IAM's /calls/add-participant route publishes participant_joined
+        // itself now (see init-call-events.ts) — no need to relay it here.
+        await addParticipant(traceId, call.customerId, call.attendantId, userId);
     } catch (error) {
         logger.error(error, 'daily onParticipantJoined');
     }
@@ -277,16 +274,14 @@ export async function onParticipantLeft(traceId: string, payload: DailyParticipa
         ]);
         if (!customer || !attendant) return;
 
-        let call = await getCallByRoom(traceId, payload.room);
+        const call = await getCallByRoom(traceId, payload.room);
         if (call) {
             const userId = resolveParticipantId(payload, customer, attendant);
 
-            call = await removeParticipant(traceId, call.customerId, call.attendantId, userId);
-
-            sendToUser(call.customerId, { event: 'participant_left', data: { call } });
-            sendToUser(call.attendantId, { event: 'participant_left', data: { call } });
+            // IAM's /calls/remove-participant route publishes participant_left
+            // itself now (see init-call-events.ts) — no need to relay it here.
+            await removeParticipant(traceId, call.customerId, call.attendantId, userId);
         }
-
     } catch (error) {
         logger.error(error, 'daily onParticipantLeft');
     }

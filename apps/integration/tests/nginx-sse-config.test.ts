@@ -10,7 +10,9 @@ import path from 'node:path';
 // to IAM directly and never go through nginx at all. This test doesn't spin
 // up nginx either; it just asserts the config file itself still carries the
 // directives the fix depends on, so a future edit that drops them fails CI
-// instead of silently reintroducing the bug.
+// instead of silently reintroducing the bug. Realtime's own SSE stream
+// (apps/realtime/src/routes/realtime_events.ts) needs the exact same
+// treatment, behind its own generic /realtime/ location.
 
 function extractLocationBlock(conf: string, locationPath: string): string {
     const start = conf.indexOf(`location ${locationPath} {`);
@@ -22,18 +24,21 @@ function extractLocationBlock(conf: string, locationPath: string): string {
 }
 
 describe.each([
-    ['dev', path.resolve(__dirname, '../../nginx/dev/nginx.conf')],
-    ['prod', path.resolve(__dirname, '../../nginx/prod/https/nginx.conf')],
-])('%s nginx config — /iam/call-events/ SSE location', (_env, confPath) => {
+    ['dev', path.resolve(__dirname, '../../nginx/dev/nginx.conf'), '/iam/call-events/', 'http://iam:5002/call-events/'],
+    ['prod', path.resolve(__dirname, '../../nginx/prod/https/nginx.conf'), '/iam/call-events/', 'http://iam:5002/call-events/'],
+    ['dev', path.resolve(__dirname, '../../nginx/dev/nginx.conf'), '/realtime/realtime-events/', 'http://realtime:5003/realtime-events/'],
+    ['prod', path.resolve(__dirname, '../../nginx/prod/https/nginx.conf'), '/realtime/realtime-events/', 'http://realtime:5003/realtime-events/'],
+])('%s nginx config — %s SSE location', (_env, confPath, locationPath, expectedProxyPass) => {
     let block: string;
 
     beforeAll(() => {
         const conf = fs.readFileSync(confPath, 'utf-8');
-        block = extractLocationBlock(conf, '/iam/call-events/');
+        block = extractLocationBlock(conf, locationPath);
     });
 
-    it('proxies to the IAM call-events route', () => {
-        expect(block).toMatch(/proxy_pass\s+http:\/\/iam:5002\/call-events\/;/);
+    it('proxies to the right upstream SSE route', () => {
+        const escaped = expectedProxyPass.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+        expect(block).toMatch(new RegExp(`proxy_pass\\s+${escaped};`));
     });
 
     it('disables response buffering, so streamed writes reach the client immediately', () => {
@@ -48,8 +53,8 @@ describe.each([
     it('sets a read timeout long enough to outlive the heartbeat interval', () => {
         const match = block.match(/proxy_read_timeout\s+(\d+)s;/);
         expect(match).toBeTruthy();
-        // heartbeat in call_events.ts is every 20s — this just guards against
-        // the timeout regressing back down near/under that.
+        // heartbeat in call_events.ts/realtime_events.ts is every 20s — this
+        // just guards against the timeout regressing back down near/under that.
         expect(Number(match![1])).toBeGreaterThanOrEqual(300);
     });
 });

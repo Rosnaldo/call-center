@@ -8,6 +8,7 @@ import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/user
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { simulateMessage, createWsClient } from './helpers/mock-wss';
 import { createBridgedEventSource } from './helpers/mock-sse';
+import { createBridgedRealtimeEventSource } from './helpers/mock-realtime-sse';
 import { DailyCoService } from './helpers/daily-service';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
@@ -20,6 +21,7 @@ import { getCallViewState } from '../../web/src/states/call-view/derive';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { initCallEvents } from '../../web/src/services/sse/init-call-events';
+import { initRealtimeEvents } from '../../web/src/services/sse/init-realtime-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 import * as dailyServiceModule from '../../iam/src/services/daily';
@@ -99,6 +101,15 @@ describe('Reconnect During Active Call Flow', () => {
     const bridgeCallEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
         const { factory, messages, close } = await createBridgedEventSource(user._id);
         initCallEvents.init(token, stores, factory);
+        sseCloses.push(close);
+        return messages;
+    };
+
+    // user_logouted/user_disconnecting moved off the websocket onto
+    // realtime's own realtime-events SSE stream — see init-realtime-events.ts.
+    const bridgeRealtimeEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
+        const { factory, messages, close } = await createBridgedRealtimeEventSource(user._id);
+        initRealtimeEvents.init(token, stores, factory);
         sseCloses.push(close);
         return messages;
     };
@@ -192,6 +203,8 @@ describe('Reconnect During Active Call Flow', () => {
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
         const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
         const attendantCallEvents = await bridgeCallEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const attendantRealtimeEvents = await bridgeRealtimeEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);
@@ -217,7 +230,7 @@ describe('Reconnect During Active Call Flow', () => {
             && attendantStores.call.getState().call?.roomName === roomName,
         );
 
-        return { customerWs, attendantWs, customerMessages, attendantMessages, customerCallEvents, attendantCallEvents };
+        return { customerWs, attendantWs, customerMessages, attendantMessages, customerCallEvents, attendantCallEvents, customerRealtimeEvents, attendantRealtimeEvents };
     };
 
     // Completes the call and drives it all the way through Daily's
@@ -255,7 +268,7 @@ describe('Reconnect During Active Call Flow', () => {
     };
 
     it('attendant logs out mid-call but reconnects before the grace period expires — the call survives and completes normally', async () => {
-        const { attendantWs, customerMessages, attendantMessages, customerCallEvents, attendantCallEvents } = await connectSendAndAccept();
+        const { attendantWs, customerMessages, attendantMessages, customerCallEvents, attendantCallEvents, customerRealtimeEvents, attendantRealtimeEvents } = await connectSendAndAccept();
 
         const roomAtAccept = customerStores.call.getState().call?.roomName;
         expect(roomAtAccept).toBe(roomName);
@@ -263,16 +276,18 @@ describe('Reconnect During Active Call Flow', () => {
         // ── attendant logs out mid-call ──────────────────────────────────
         customerMessages.length = 0;
         attendantMessages.length = 0;
+        customerRealtimeEvents.length = 0;
+        attendantRealtimeEvents.length = 0;
 
         simulateMessage(attendantWs, { event: 'user_logout' });
         await wait(300);
 
         // logout still notifies the logging-out client directly...
-        expect(attendantMessages.find((m) => m.event === 'user_logouted')).toBeTruthy();
+        expect(attendantRealtimeEvents.find((m) => m.event === 'user_logouted')).toBeTruthy();
         // ...then falls back to the normal disconnect chain (ws.terminate()
         // re-enters the 'close' handler), which — because there's an active
         // call — notifies the partner and starts the grace timer
-        const disconnectingMsg = customerMessages.find((m) => m.event === 'user_disconnecting');
+        const disconnectingMsg = customerRealtimeEvents.find((m) => m.event === 'user_disconnecting');
         expect(disconnectingMsg).toBeTruthy();
         expect(disconnectingMsg.data.call.roomName).toBe(roomName);
         // no "interrupted" view anymore — the call just stays 'in-call'
@@ -286,23 +301,25 @@ describe('Reconnect During Active Call Flow', () => {
 
         // ── attendant reconnects within the grace period ─────────────────
         customerMessages.length = 0;
+        customerCallEvents.length = 0;
+        attendantCallEvents.length = 0;
         const { serverWs: attendantWs2, webFactory: attendantWebFactory2 } = createBridgedClient(attendantUser, ATTENDANT_TOKEN);
         clientRegistry.add(attendantWs2);
-
-        const attendantMessages2: any[] = [];
-        (attendantWs2 as unknown as EventEmitter).on('sent', (data: string) => {
-            attendantMessages2.push(JSON.parse(data));
-        });
 
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory2);
 
         await onConnection()(attendantWs2);
-        await waitFor(() => attendantMessages2.some((m) => m.event === 'user_connected'));
+        // call_synced (SSE) replaced the old websocket user_connected push —
+        // attendantStores' SSE bridge from connectSendAndAccept above is
+        // still live across this websocket reconnect (SSE is a separate,
+        // independent connection), so no need to re-bridge it here.
+        await waitFor(() => attendantCallEvents.some((m) => m.event === 'call_synced'));
 
         expect(graceTimer.has(attendantUser._id)).toBe(false);
 
         // customer is told the partner is back, with the call still intact
-        const reconnectedMsg = customerMessages.find((m) => m.event === 'partner_reconnected');
+        await waitFor(() => customerCallEvents.some((m) => m.event === 'partner_reconnected'));
+        const reconnectedMsg = customerCallEvents.find((m) => m.event === 'partner_reconnected');
         expect(reconnectedMsg).toBeTruthy();
         expect(reconnectedMsg.data.call.roomName).toBe(roomName);
         expect(customerStores.call.getState().call?.roomName).toBe(roomName);
@@ -313,7 +330,7 @@ describe('Reconnect During Active Call Flow', () => {
         // happening. shouldJoin is false because presence also shows the
         // attendant's own Daily/WebRTC session never actually dropped (only
         // the IAM websocket did) — no redundant rejoin needed.
-        const connectedMsg = attendantMessages2.find((m) => m.event === 'user_connected');
+        const connectedMsg = attendantCallEvents.find((m) => m.event === 'call_synced');
         expect(connectedMsg.data.shouldJoin).toBe(false);
         expect(connectedMsg.data.call.roomName).toBe(roomName);
 
@@ -327,19 +344,21 @@ describe('Reconnect During Active Call Flow', () => {
     });
 
     it("attendant's connection drops mid-call but reconnects before the grace period expires — the call survives and completes normally", async () => {
-        const { attendantWs, customerMessages, attendantMessages, customerCallEvents, attendantCallEvents } = await connectSendAndAccept();
+        const { attendantWs, customerMessages, attendantMessages, customerCallEvents, attendantCallEvents, customerRealtimeEvents, attendantRealtimeEvents } = await connectSendAndAccept();
 
         expect(customerStores.call.getState().call?.roomName).toBe(roomName);
 
         // ── attendant's connection drops abruptly — no explicit logout ────
         customerMessages.length = 0;
         attendantMessages.length = 0;
+        customerRealtimeEvents.length = 0;
+        attendantRealtimeEvents.length = 0;
 
         attendantWs.terminate();
         await wait(300);
 
-        expect(customerMessages.find((m) => m.event === 'user_logouted')).toBeUndefined();
-        const disconnectingMsg = customerMessages.find((m) => m.event === 'user_disconnecting');
+        expect(customerRealtimeEvents.find((m) => m.event === 'user_logouted')).toBeUndefined();
+        const disconnectingMsg = customerRealtimeEvents.find((m) => m.event === 'user_disconnecting');
         expect(disconnectingMsg).toBeTruthy();
         expect(disconnectingMsg.data.call.roomName).toBe(roomName);
         // no "interrupted" view anymore — the call just stays 'in-call'
@@ -352,22 +371,24 @@ describe('Reconnect During Active Call Flow', () => {
 
         // ── attendant reconnects within the grace period ─────────────────
         customerMessages.length = 0;
+        customerCallEvents.length = 0;
+        attendantCallEvents.length = 0;
         const { serverWs: attendantWs2, webFactory: attendantWebFactory2 } = createBridgedClient(attendantUser, ATTENDANT_TOKEN);
         clientRegistry.add(attendantWs2);
-
-        const attendantMessages2: any[] = [];
-        (attendantWs2 as unknown as EventEmitter).on('sent', (data: string) => {
-            attendantMessages2.push(JSON.parse(data));
-        });
 
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory2);
 
         await onConnection()(attendantWs2);
-        await waitFor(() => attendantMessages2.some((m) => m.event === 'user_connected'));
+        // call_synced (SSE) replaced the old websocket user_connected push —
+        // attendantStores' SSE bridge from connectSendAndAccept above is
+        // still live across this websocket reconnect (SSE is a separate,
+        // independent connection), so no need to re-bridge it here.
+        await waitFor(() => attendantCallEvents.some((m) => m.event === 'call_synced'));
 
         expect(graceTimer.has(attendantUser._id)).toBe(false);
 
-        const reconnectedMsg = customerMessages.find((m) => m.event === 'partner_reconnected');
+        await waitFor(() => customerCallEvents.some((m) => m.event === 'partner_reconnected'));
+        const reconnectedMsg = customerCallEvents.find((m) => m.event === 'partner_reconnected');
         expect(reconnectedMsg).toBeTruthy();
         expect(reconnectedMsg.data.call.roomName).toBe(roomName);
         expect(customerStores.call.getState().call?.roomName).toBe(roomName);
@@ -375,7 +396,7 @@ describe('Reconnect During Active Call Flow', () => {
 
         // same reasoning as the logout case above: presence shows the
         // attendant's Daily/WebRTC session survived the drop, so no rejoin
-        const connectedMsg = attendantMessages2.find((m) => m.event === 'user_connected');
+        const connectedMsg = attendantCallEvents.find((m) => m.event === 'call_synced');
         expect(connectedMsg.data.shouldJoin).toBe(false);
         expect(connectedMsg.data.call.roomName).toBe(roomName);
 

@@ -59,12 +59,20 @@ export interface SyncActiveCallResult {
 
 // Called once per websocket connect (see connection.ts) — iam reconciles its
 // own redis call state against real Daily presence and tells us whether the
-// connecting user needs to (re)join their Daily room. The result is pushed
-// to that user as a `user_connected` event; nothing on the client calls this
-// directly.
+// connecting user needs to (re)join their Daily room. IAM publishes the
+// result to that user directly (call_synced, over SSE — see
+// init-call-events.ts); nothing on the client calls this directly.
 export const syncActiveCall = async (traceId: string, userId: string): Promise<SyncActiveCallResult> => {
     const { data } = await createIamClient(traceId).post<SyncActiveCallResult>('/calls/sync-active-call', { userId });
     return data;
+};
+
+// Called when a user's websocket reconnects and our own grace-timer
+// bookkeeping (see grace_period.ts) shows it's a genuine reconnect, not a
+// fresh login — IAM looks up their active call and notifies the other
+// participant directly (call_synced's sibling event, partner_reconnected).
+export const notifyPartnerReconnected = async (traceId: string, userId: string): Promise<void> => {
+    await createIamClient(traceId).post('/calls/notify-partner-reconnected', { userId });
 };
 
 export interface CallHistoryPayload {

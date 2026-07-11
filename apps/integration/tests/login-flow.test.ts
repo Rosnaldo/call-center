@@ -6,12 +6,14 @@ import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-serv
 import { createMockUsers, ADMIN_TOKEN, CUSTOMER_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { createWsClient } from './helpers/mock-wss';
+import { createBridgedRealtimeEventSource } from './helpers/mock-realtime-sse';
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
 
 import { createStores, Stores } from '../../web/src/states/stores';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
+import { initRealtimeEvents } from '../../web/src/services/sse/init-realtime-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 // src/services/users|calls (realtime) and @/src/services/api/online-users
@@ -68,6 +70,17 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
     let customerUser: IUser;
     let customerStores: Stores;
     let adminStores: Stores;
+    // online_users_broadcast moved off the websocket onto realtime's own
+    // realtime-events SSE stream — see init-realtime-events.ts. Closed in
+    // afterEach.
+    let sseCloses: Array<() => Promise<void>>;
+
+    const bridgeRealtimeEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
+        const { factory, messages, close } = await createBridgedRealtimeEventSource(user._id);
+        initRealtimeEvents.init(token, stores, factory);
+        sseCloses.push(close);
+        return messages;
+    };
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
@@ -82,6 +95,10 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
         await stopIamServer();
     });
 
+    afterEach(async () => {
+        await Promise.all(sseCloses.map((close) => close()));
+    });
+
     beforeEach(async () => {
         await getRedisClient().del('online_users');
 
@@ -89,6 +106,7 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
         jest.clearAllMocks();
         AuthSession.override({ token: CUSTOMER_TOKEN });
 
+        sseCloses = [];
         customerStores = createStores();
         adminStores = createStores();
     });
@@ -102,6 +120,7 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         // ── admin connects ───────────────────────────────────────────────
         await onConnection()(adminWs);
@@ -133,6 +152,7 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         // ── admin connects ───────────────────────────────────────────────
         await onConnection()(adminWs);

@@ -15,10 +15,10 @@ export default (app: Application) => {
 
         switch (body.event) {
             case 'user_token_charged':
-                onUserTokenCharged(body.payload);
+                onUserTokenCharged(req.traceId, body.payload);
                 break;
             case 'chat_message_sent':
-                onChatMessageSent(body.payload);
+                onChatMessageSent(req.traceId, body.payload);
                 break;
         }
 

@@ -8,6 +8,8 @@ import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/user
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { getUserModel, getCallHistoryModel } from '../../iam/src/entities/models/singleton';
 import { createWsClient } from './helpers/mock-wss';
+import { createBridgedEventSource } from './helpers/mock-sse';
+import { createBridgedRealtimeEventSource } from './helpers/mock-realtime-sse';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
@@ -17,6 +19,8 @@ import { createStores, Stores } from '../../web/src/states/stores';
 import { getCallViewState } from '../../web/src/states/call-view/derive';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
+import { initCallEvents } from '../../web/src/services/sse/init-call-events';
+import { initRealtimeEvents } from '../../web/src/services/sse/init-realtime-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 // src/services/users|calls (realtime) and @/src/services/api/calls (web) are
@@ -83,6 +87,25 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
     let customerStores: Stores;
     let attendantStores: Stores;
     let roomName: string;
+    // participant_joined/call_deleted live on IAM's call-events SSE stream;
+    // user_tokens_updated lives on realtime's own realtime-events SSE
+    // stream — see init-call-events.ts/init-realtime-events.ts. Closed in
+    // afterEach.
+    let sseCloses: Array<() => Promise<void>>;
+
+    const bridgeCallEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
+        const { factory, messages, close } = await createBridgedEventSource(user._id);
+        initCallEvents.init(token, stores, factory);
+        sseCloses.push(close);
+        return messages;
+    };
+
+    const bridgeRealtimeEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
+        const { factory, messages, close } = await createBridgedRealtimeEventSource(user._id);
+        initRealtimeEvents.init(token, stores, factory);
+        sseCloses.push(close);
+        return messages;
+    };
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
@@ -102,6 +125,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
 
     afterEach(async () => {
         await deleteDailyRoom(roomName);
+        await Promise.all(sseCloses.map((close) => close()));
     });
 
     beforeEach(async () => {
@@ -116,6 +140,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         jest.clearAllMocks();
         AuthSession.override({ token: CUSTOMER_TOKEN });
 
+        sseCloses = [];
         customerStores = createStores();
         attendantStores = createStores();
 
@@ -181,7 +206,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         return getCallHistoryModel().findOne({ callId: `${customerUser._id}--${attendantUser._id}` }).lean();
     };
 
-    const bridgeBothUsers = () => {
+    const bridgeBothUsers = async () => {
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
         const { serverWs: attendantWs, webFactory: attendantWebFactory } = createBridgedClient(attendantUser, ATTENDANT_TOKEN);
 
@@ -190,12 +215,16 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
 
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
+        const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const attendantCallEvents = await bridgeCallEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const attendantRealtimeEvents = await bridgeRealtimeEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
 
-        return { customerWs, attendantWs };
+        return { customerWs, attendantWs, customerCallEvents, attendantCallEvents, customerRealtimeEvents, attendantRealtimeEvents };
     };
 
     it('charges exactly one token and syncs both stores to null after a real overlap', async () => {
-        const { customerWs, attendantWs } = bridgeBothUsers();
+        const { customerWs, attendantWs, customerRealtimeEvents } = await bridgeBothUsers();
 
         const customerMessages: any[] = [];
         (customerWs as unknown as EventEmitter).on('sent', (data: string) => {
@@ -252,10 +281,10 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         const endingTokens = await getCustomerTokens();
         expect(endingTokens).toBe(startingTokens - 1);
 
-        // the charge is pushed live over the socket too — not just reflected
-        // in Mongo on the next fetch — and the client's own currentUser
-        // balance is patched in place from it
-        const tokensUpdatedMsg = customerMessages.find((m) => m.event === 'user_tokens_updated');
+        // the charge is pushed live over realtime's own SSE stream too — not
+        // just reflected in Mongo on the next fetch — and the client's own
+        // currentUser balance is patched in place from it
+        const tokensUpdatedMsg = customerRealtimeEvents.find((m) => m.event === 'user_tokens_updated');
         expect(tokensUpdatedMsg).toBeTruthy();
         expect(tokensUpdatedMsg.data.id).toBe(customerUser._id);
         expect(tokensUpdatedMsg.data.tokens).toBe(startingTokens - 1);
@@ -278,7 +307,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
     });
 
     it('charges zero tokens when the attendant never joins (no overlap)', async () => {
-        const { customerWs, attendantWs } = bridgeBothUsers();
+        const { customerWs, attendantWs } = await bridgeBothUsers();
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);

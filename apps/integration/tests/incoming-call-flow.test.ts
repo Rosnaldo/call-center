@@ -7,6 +7,7 @@ import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/user
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { createWsClient } from './helpers/mock-wss';
 import { createBridgedEventSource } from './helpers/mock-sse';
+import { createBridgedRealtimeEventSource } from './helpers/mock-realtime-sse';
 import { DailyCoService } from './helpers/daily-service';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
@@ -18,6 +19,7 @@ import { getCallViewState } from '../../web/src/states/call-view/derive';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { initCallEvents } from '../../web/src/services/sse/init-call-events';
+import { initRealtimeEvents } from '../../web/src/services/sse/init-realtime-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 // src/services/users|calls (realtime) and @/src/services/api/{incoming-calls,online-users}
@@ -101,6 +103,15 @@ describe('Incoming Call Flow', () => {
         return messages;
     };
 
+    // online_users_broadcast moved off the websocket onto realtime's own
+    // realtime-events SSE stream — see init-realtime-events.ts.
+    const bridgeRealtimeEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
+        const { factory, messages, close } = await createBridgedRealtimeEventSource(user._id);
+        initRealtimeEvents.init(token, stores, factory);
+        sseCloses.push(close);
+        return messages;
+    };
+
     beforeAll(async () => {
         iamRequest = await startIamServer();
         await startRealtimeServer();
@@ -178,6 +189,8 @@ describe('Incoming Call Flow', () => {
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
         const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
         const attendantCallEvents = await bridgeCallEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const attendantRealtimeEvents = await bridgeRealtimeEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);
@@ -204,8 +217,8 @@ describe('Incoming Call Flow', () => {
         expect(recvMsg).toBeTruthy();
 
         // ── both receive online_users_broadcast ─────────────────────
-        const customerBroadcast = customerMessages.find((m) => m.event === 'online_users_broadcast');
-        const attendantBroadcast = attendantMessages.find((m) => m.event === 'online_users_broadcast');
+        const customerBroadcast = customerRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
+        const attendantBroadcast = attendantRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
         expect(customerBroadcast).toBeTruthy();
         expect(attendantBroadcast).toBeTruthy();
 
@@ -253,6 +266,8 @@ describe('Incoming Call Flow', () => {
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
         const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
         const attendantCallEvents = await bridgeCallEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const attendantRealtimeEvents = await bridgeRealtimeEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);
@@ -275,6 +290,8 @@ describe('Incoming Call Flow', () => {
         attendantMessages.length = 0;
         customerCallEvents.length = 0;
         attendantCallEvents.length = 0;
+        customerRealtimeEvents.length = 0;
+        attendantRealtimeEvents.length = 0;
 
         // cancelIncomingCall() no longer sets viewState optimistically (see
         // actions.ts) — the real state clear only happens once IAM's own
@@ -297,8 +314,8 @@ describe('Incoming Call Flow', () => {
         expect(attendantCancelMsg).toBeTruthy();
 
         // ── both receive online_users_broadcast after cancel ─────────
-        const customerBroadcast = customerMessages.find((m) => m.event === 'online_users_broadcast');
-        const attendantBroadcast = attendantMessages.find((m) => m.event === 'online_users_broadcast');
+        const customerBroadcast = customerRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
+        const attendantBroadcast = attendantRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
         expect(customerBroadcast).toBeTruthy();
         expect(attendantBroadcast).toBeTruthy();
 
@@ -342,6 +359,8 @@ describe('Incoming Call Flow', () => {
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
         const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
         const attendantCallEvents = await bridgeCallEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const attendantRealtimeEvents = await bridgeRealtimeEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);
@@ -364,6 +383,8 @@ describe('Incoming Call Flow', () => {
         attendantMessages.length = 0;
         customerCallEvents.length = 0;
         attendantCallEvents.length = 0;
+        customerRealtimeEvents.length = 0;
+        attendantRealtimeEvents.length = 0;
 
         // cancelIncomingCall() no longer sets viewState optimistically (see
         // actions.ts) — the real state clear only happens once IAM's own
@@ -386,8 +407,8 @@ describe('Incoming Call Flow', () => {
         expect(customerCancelMsg).toBeTruthy();
 
         // ── both receive online_users_broadcast after cancel ─────────
-        const customerBroadcast = customerMessages.find((m) => m.event === 'online_users_broadcast');
-        const attendantBroadcast = attendantMessages.find((m) => m.event === 'online_users_broadcast');
+        const customerBroadcast = customerRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
+        const attendantBroadcast = attendantRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
         expect(customerBroadcast).toBeTruthy();
         expect(attendantBroadcast).toBeTruthy();
 
@@ -431,6 +452,8 @@ describe('Incoming Call Flow', () => {
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
         const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
         const attendantCallEvents = await bridgeCallEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const attendantRealtimeEvents = await bridgeRealtimeEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);
@@ -460,6 +483,8 @@ describe('Incoming Call Flow', () => {
         attendantMessages.length = 0;
         customerCallEvents.length = 0;
         attendantCallEvents.length = 0;
+        customerRealtimeEvents.length = 0;
+        attendantRealtimeEvents.length = 0;
 
         // ── cancel is now rejected — the endpoint refuses outright ───────
         const cancelRes = await iamRequest.post('/incoming-calls/cancel').set('Authorization', CUSTOMER_TOKEN)

@@ -15,42 +15,22 @@ beforeEach(() => {
   useOnlineUsersStore.setState({ users: [] });
 });
 
-describe('meeting store — meetingStarted/updateJoinedView/updateLeftView', () => {
-  it('syncs call, timer and billing tokens from the incoming call', () => {
-    const call = buildCall({ overlapStartedAt: null, accumulatedMs: 90_000, isPlaying: false, tokensToBeCharged: 2 });
-
-    useMeetingStore.getState().meetingStarted(call);
-
-    expect(useCallStore.getState().call).toEqual(call);
-    expect(useTimerStore.getState().status).toBe('stopped');
-    expect(useTimerStore.getState().elapsedSeconds).toBe(90);
-    expect(useBillingStore.getState().initialTokens).toBe(2);
-  });
-
-  it('updateJoinedView keeps the timer ticking from where the call left off', () => {
-    const call = buildCall({ isPlaying: true, accumulatedMs: 5_000, tokensToBeCharged: 1 });
-
-    useMeetingStore.getState().updateJoinedView(call);
-
-    expect(useCallStore.getState().call).toEqual(call);
-    expect(useTimerStore.getState().status).toBe('playing');
-    expect(useBillingStore.getState().initialTokens).toBe(1);
-  });
-});
-
 describe('meeting store — meetingEnded', () => {
   const customer = buildOnlineUserState({ id: 'cust-1', role: 'customer', status: 'in-call' });
   const attendant = buildOnlineUserState({ id: 'att-1', role: 'attendant', status: 'in-call' });
 
-  it('clears the call, resets the timer and sends callView back to none', () => {
+  // The call itself is nulled independently now, via the call-events SSE
+  // stream's call_deleted event (see call/actions.ts's callDeleted test) —
+  // meetingEnded resets the timer/callView regardless, since in production
+  // both fire from the same underlying call-ending trigger.
+  it('resets the timer and sends callView back to none', () => {
     const call = buildCall({ customerId: customer.id, attendantId: attendant.id });
-    useCallStore.setState({ call });
+    useCallStore.setState({ call: null });
     useCallViewStore.setState({ isLeader: true });
     useTimerStore.getState().play();
 
     useMeetingStore.getState().meetingEnded(call);
 
-    expect(useCallStore.getState().call).toBeNull();
     expect(useTimerStore.getState().status).toBe('stopped');
     expect(useTimerStore.getState().elapsedSeconds).toBe(0);
 

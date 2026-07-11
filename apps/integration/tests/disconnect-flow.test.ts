@@ -6,6 +6,8 @@ import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-serv
 import { createMockUsers, ADMIN_TOKEN, CUSTOMER_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { simulateMessage, createWsClient } from './helpers/mock-wss';
+import { createBridgedEventSource } from './helpers/mock-sse';
+import { createBridgedRealtimeEventSource } from './helpers/mock-realtime-sse';
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { graceTimer } from '../../realtime/src/websocket/grace_timer';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
@@ -14,6 +16,8 @@ import { createStores, Stores } from '../../web/src/states/stores';
 import { getCallViewState } from '../../web/src/states/call-view/derive';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
+import { initCallEvents } from '../../web/src/services/sse/init-call-events';
+import { initRealtimeEvents } from '../../web/src/services/sse/init-realtime-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 // src/services/users|calls (realtime) and @/src/services/api/online-users
@@ -100,6 +104,27 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
     let customerUser: IUser;
     let customerStores: Stores;
     let adminStores: Stores;
+    // partner_reconnected lives on IAM's call-events SSE stream (Phase 1);
+    // user_disconnecting/user_disconnected/online_users_broadcast live on
+    // realtime's own realtime-events SSE stream (Phase 2) — see
+    // init-call-events.ts/init-realtime-events.ts. Both bridge helpers
+    // duplicate the real Redis channel into a real Init*Events instance so
+    // production dispatch logic runs end to end. Closed in afterEach.
+    let sseCloses: Array<() => Promise<void>>;
+
+    const bridgeCallEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
+        const { factory, messages, close } = await createBridgedEventSource(user._id);
+        initCallEvents.init(token, stores, factory);
+        sseCloses.push(close);
+        return messages;
+    };
+
+    const bridgeRealtimeEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
+        const { factory, messages, close } = await createBridgedRealtimeEventSource(user._id);
+        initRealtimeEvents.init(token, stores, factory);
+        sseCloses.push(close);
+        return messages;
+    };
 
     beforeAll(async () => {
         iamRequest = await startIamServer();
@@ -122,14 +147,16 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         jest.clearAllMocks();
         AuthSession.override({ token: CUSTOMER_TOKEN });
 
+        sseCloses = [];
         customerStores = createStores();
         adminStores = createStores();
     });
 
-    afterEach(() => {
+    afterEach(async () => {
         graceTimer.cancel(adminUser._id);
         graceTimer.cancel(customerUser._id);
         jest.useRealTimers();
+        await Promise.all(sseCloses.map((close) => close()));
     });
 
     it('other web clients still see idle status via broadcast when there is no active call', async () => {
@@ -141,6 +168,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         await onConnection()(adminWs);
         await onConnection()(customerWs);
@@ -181,6 +209,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         await onConnection()(adminWs);
         await onConnection()(customerWs);
@@ -239,6 +268,8 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         await onConnection()(adminWs);
         await onConnection()(customerWs);
@@ -257,6 +288,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
 
         // ── admin reconnects within grace period ─────────────────────────
         customerMessages.length = 0;
+        customerCallEvents.length = 0;
         const { serverWs: adminWs2, webFactory: adminWebFactory2 } = createBridgedClient(adminUser, ADMIN_TOKEN);
         clientRegistry.add(adminWs2);
 
@@ -270,9 +302,9 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         expect(graceTimer.has(adminUser._id)).toBe(false);
 
         // admin and customer aren't in a call together here, so reconnecting
-        // targets no one — partner_reconnected is sendToUser'd only to an
+        // targets no one — partner_reconnected is published only to an
         // actual call partner, never broadcast
-        expect(customerMessages.find((m) => m.event === 'partner_reconnected')).toBeUndefined();
+        expect(customerCallEvents.find((m) => m.event === 'partner_reconnected')).toBeUndefined();
 
         // customer's store shows admin back as idle (broadcast)
         const adminAfterReconnect = customerStores.onlineUsers.getState().users
@@ -313,6 +345,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         await onConnection()(adminWs);
         await onConnection()(customerWs);
@@ -330,9 +363,9 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         adminWs.terminate();
         await flushRealIO();
 
-        // customer — the call partner — is sendToUser'd directly, unlike
+        // customer — the call partner — is published to directly, unlike
         // the no-call case above where nobody but the broadcast is notified
-        const disconnectingMsg = customerMessages.find((m) => m.event === 'user_disconnecting');
+        const disconnectingMsg = customerRealtimeEvents.find((m) => m.event === 'user_disconnecting');
         expect(disconnectingMsg).toBeTruthy();
         expect(disconnectingMsg.data.id).toBe(adminUser._id);
         expect(disconnectingMsg.data.call).toBeTruthy();
@@ -363,6 +396,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         await onConnection()(adminWs);
         await onConnection()(customerWs);
@@ -418,6 +452,8 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
 
         initWs.init(ADMIN_TOKEN, adminStores, adminWebFactory);
         initWs.init(CUSTOMER_TOKEN, customerStores, customerWebFactory);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
 
         await onConnection()(adminWs);
         await onConnection()(customerWs);
@@ -433,6 +469,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
 
         expect(graceTimer.has(adminUser._id)).toBe(true);
         customerMessages.length = 0;
+        customerCallEvents.length = 0;
 
         // ── admin reconnects within the grace period ──────────────────────
         const { serverWs: adminWs2, webFactory: adminWebFactory2 } = createBridgedClient(adminUser, ADMIN_TOKEN);
@@ -449,7 +486,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         // unlike the no-call reconnect test above, the partner *is*
         // targeted directly this time — notifyPartnerReconnected only fires
         // when the reconnecting user has an active call
-        const reconnectedMsg = customerMessages.find((m) => m.event === 'partner_reconnected');
+        const reconnectedMsg = customerCallEvents.find((m) => m.event === 'partner_reconnected');
         expect(reconnectedMsg).toBeTruthy();
         expect(reconnectedMsg.data.call.roomName).toBe(roomName);
 

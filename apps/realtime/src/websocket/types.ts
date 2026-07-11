@@ -8,7 +8,11 @@ export interface AuthenticatedWebSocket extends EventEmitterTransport {
     isAlive: boolean;
 }
 
-export type WsEvent = 'online_users_broadcast' | 'user_connected' | 'heartbeat_ack' | 'user_logouted' | 'user_disconnecting' | 'user_disconnected' | 'partner_reconnected' | 'incoming_call_sent' | 'incoming_call_received' | 'incoming_call_cancelled' | 'call_accepted' | 'call_completed' | 'participant_joined' | 'participant_left' | 'meeting_ended' | 'user_tokens_updated' | 'chat_message_received';
+// Everything that used to flow over the websocket beyond heartbeat now goes
+// through IAM's /call-events/stream or realtime's own /realtime-events/stream
+// SSE routes instead — heartbeat_ack is the only server push left on the
+// socket itself.
+export type WsEvent = 'heartbeat_ack';
 
 export type WsClientEvent = 'heartbeat' | 'user_logout' | 'incoming_call_sent' | 'incoming_call_cancelled' | 'request_state';
 

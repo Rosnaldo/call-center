@@ -1,6 +1,6 @@
 import { AuthenticatedWebSocket } from '#websocket/types';
 import { Heartbeat } from '#websocket/heartbeat';
-import { sendToUser } from '#websocket/broadcast';
+import { notifyUserLoggedOut } from 'src/services/realtime_events';
 import logger from '#logger';
 
 export const handleMessageLogout =  (
@@ -10,7 +10,7 @@ export const handleMessageLogout =  (
     logger.info({ userId: ws.user._id, email: ws.user.email }, 'ws client logged out');
     hb.stop();
 
-    sendToUser(ws.user._id, { event: 'user_logouted', data: { user: ws.user } });
+    notifyUserLoggedOut(ws.traceId, ws.user._id, ws.user);
 
     ws.terminate();
 };

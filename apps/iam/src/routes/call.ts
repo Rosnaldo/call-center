@@ -1,6 +1,7 @@
 import { type Application } from 'express';
 import { CallController } from '#controllers/call';
 import { GetKeycloakUser } from '#middleware/get_keycloak_user';
+import { notifyParticipantAdded, notifyParticipantRemoved, notifyCallDeleted, notifyCallSynced } from 'src/services/call_events';
 
 export default (app: Application) => {
     app.get(
@@ -83,6 +84,7 @@ export default (app: Application) => {
             if (either.isError) {
                 return res.status(either.status).send(either);
             }
+            notifyParticipantAdded(req.traceId, either.data.customerId, either.data.attendantId, either.data);
             return res.status(200).send(either.data);
         }
     );
@@ -97,6 +99,7 @@ export default (app: Application) => {
             if (either.isError) {
                 return res.status(either.status).send(either);
             }
+            notifyParticipantRemoved(req.traceId, either.data.customerId, either.data.attendantId, either.data);
             return res.status(200).send(either.data);
         }
     );
@@ -111,6 +114,7 @@ export default (app: Application) => {
             if (either.isError) {
                 return res.status(either.status).send(either);
             }
+            notifyCallDeleted(req.traceId, mapped.customerId, mapped.attendantId);
             return res.status(200).send();
         }
     );
@@ -171,8 +175,8 @@ export default (app: Application) => {
     );
 
     // Only ever called server-to-server by realtime when a user's websocket
-    // connects — not exposed to the browser (see web's syncActiveCall, which
-    // just applies whatever realtime pushes over the socket instead).
+    // connects — not exposed to the browser (web hears the result via the
+    // call_synced SSE publish below instead, see init-call-events.ts).
     app.post(
         '/calls/sync-active-call',
         GetKeycloakUser,
@@ -180,6 +184,24 @@ export default (app: Application) => {
             const controller = new CallController();
             const mapped = controller.syncActiveCall.mapper(req.body);
             const either = await controller.syncActiveCall.exec(mapped);
+            if (either.isError) {
+                return res.status(either.status).send(either);
+            }
+            notifyCallSynced(req.traceId, mapped.userId, either.data.call, either.data.shouldJoin);
+            return res.status(200).send(either.data);
+        }
+    );
+
+    // Only ever called server-to-server by realtime right after its own
+    // grace-timer bookkeeping detects a genuine reconnect — see
+    // NotifyPartnerReconnected.
+    app.post(
+        '/calls/notify-partner-reconnected',
+        GetKeycloakUser,
+        async (req, res) => {
+            const controller = new CallController();
+            const mapped = controller.notifyPartnerReconnected.mapper(req.body);
+            const either = await controller.notifyPartnerReconnected.exec({ traceId: req.traceId, mapped });
             if (either.isError) {
                 return res.status(either.status).send(either);
             }

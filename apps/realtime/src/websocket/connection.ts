@@ -10,9 +10,9 @@ import { handleMessageHeartbeat } from '#websocket/handler/message/heartbeat';
 import { handleMessageLogout } from '#websocket/handler/message/logout';
 import { handleMessageRequestState } from '#websocket/handler/message/request_state';
 import { clientRegistry } from '#websocket/client_registry';
-import { broadcastMessage } from '#websocket/broadcast';
 import { syncAndSendCallState } from '#websocket/sync_call_state';
 import { addToIam } from 'src/services/users';
+import { publishOnlineUsersBroadcast } from 'src/services/realtime_events';
 import logger from '#logger';
 
 export const onConnection = () => async (ws: AuthenticatedWebSocket): Promise<void> => {
@@ -20,7 +20,7 @@ export const onConnection = () => async (ws: AuthenticatedWebSocket): Promise<vo
 
     const wasDisconnecting = graceTimer.cancel(ws.user._id);
     if (wasDisconnecting) {
-        await notifyPartnerReconnected(ws.user._id);
+        await notifyPartnerReconnected(ws.traceId, ws.user._id);
     }
     clientRegistry.add(ws);
 
@@ -58,7 +58,7 @@ export const onConnection = () => async (ws: AuthenticatedWebSocket): Promise<vo
         logger.info({ userId: user.id, name: user.name }, 'user connected');
         await addToIam(user);
         await syncAndSendCallState(ws.traceId, user.id);
-        broadcastMessage({ event: 'online_users_broadcast', data: {} });
+        publishOnlineUsersBroadcast(ws.traceId);
     } catch (error) {
         logger.error(error, 'ws onConnection: falha ao sincronizar call ativa do usuário');
     }

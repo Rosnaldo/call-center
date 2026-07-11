@@ -4,9 +4,6 @@ import { mytoast } from '../../components/toast';
 import i18n from '../../i18n.ts';
 
 export interface MeetingActions {
-  meetingStarted: (call: CallState) => void;
-  updateJoinedView: (call: CallState) => void;
-  updateLeftView: (call: CallState) => void;
   meetingEnded: (call: CallState) => void;
   userDisconnected: (data: { id: string; call?: CallState }) => void;
   userTokensUpdated: (data: { id: string; tokens?: number }) => void;
@@ -15,21 +12,14 @@ export interface MeetingActions {
 export const createMeetingActions = (
   ref: StoresRef,
 ): MeetingActions => {
-  const syncCall = (newCall: CallState) => {
-    ref.call.setState({ call: newCall });
-    ref.timer.getState().syncFromCall(newCall);
-    ref.billing.getState().setInitialTokens(newCall.tokensToBeCharged);
-    ref.incomingCall.setState({ incomingCall: null });
-  };
-
   return {
-    meetingStarted: syncCall,
-    updateJoinedView: syncCall,
-    updateLeftView: syncCall,
+    // call itself is nulled independently now, via the call-events SSE
+    // stream's call_deleted event (see call/actions.ts's callDeleted) —
+    // this still runs for every other side effect of the call ending
+    // (onlineUsers/billing/chat/timer), fed by the websocket's meeting_ended.
     meetingEnded: (call: CallState) => {
       ref.timer.getState().reset();
       ref.callView.getState().setSelectedAttendantId(null);
-      ref.call.setState({ call: null });
 
       const currentUser = ref.currentUser.getState().currentUser;
       if (currentUser) {

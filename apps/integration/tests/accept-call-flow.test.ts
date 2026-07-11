@@ -8,6 +8,7 @@ import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/user
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { createWsClient } from './helpers/mock-wss';
 import { createBridgedEventSource } from './helpers/mock-sse';
+import { createBridgedRealtimeEventSource } from './helpers/mock-realtime-sse';
 import { DailyCoService } from './helpers/daily-service';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
@@ -19,6 +20,7 @@ import { getCallViewState } from '../../web/src/states/call-view/derive';
 import { AuthSession } from '../../web/src/auth/session';
 import { initWs } from '../../web/src/services/ws/init-ws';
 import { initCallEvents } from '../../web/src/services/sse/init-call-events';
+import { initRealtimeEvents } from '../../web/src/services/sse/init-realtime-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
 // src/services/users|calls (realtime) and @/src/services/api/{incoming-calls,calls,online-users}
@@ -102,6 +104,15 @@ describe('Accept Call Flow', () => {
         return messages;
     };
 
+    // online_users_broadcast moved off the websocket onto realtime's own
+    // realtime-events SSE stream — see init-realtime-events.ts.
+    const bridgeRealtimeEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
+        const { factory, messages, close } = await createBridgedRealtimeEventSource(user._id);
+        initRealtimeEvents.init(token, stores, factory);
+        sseCloses.push(close);
+        return messages;
+    };
+
     beforeAll(async () => {
         iamRequest = await startIamServer();
         const webhookServer = await startRealtimeServer();
@@ -180,6 +191,8 @@ describe('Accept Call Flow', () => {
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
         const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
         const attendantCallEvents = await bridgeCallEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const attendantRealtimeEvents = await bridgeRealtimeEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);
@@ -207,12 +220,14 @@ describe('Accept Call Flow', () => {
         attendantMessages.length = 0;
         customerCallEvents.length = 0;
         attendantCallEvents.length = 0;
+        customerRealtimeEvents.length = 0;
+        attendantRealtimeEvents.length = 0;
 
         await attendantStores.call.getState().acceptIncomingCall();
-        // call_accepted (SSE) and online_users_broadcast (websocket, relayed
-        // via realtime's Redis subscription) are two independent pushes now
-        // instead of one handler awaiting both in sequence — viewState can
-        // flip to 'in-call' slightly before the broadcast-triggered
+        // call_accepted (IAM's call-events SSE) and online_users_broadcast
+        // (realtime's own realtime-events SSE) are two independent pushes
+        // now instead of one handler awaiting both in sequence — viewState
+        // can flip to 'in-call' slightly before the broadcast-triggered
         // refreshUsers() resolves, so wait on both before asserting either.
         await waitFor(() =>
             getCallViewState(customerStores) === 'in-call'
@@ -228,8 +243,8 @@ describe('Accept Call Flow', () => {
         expect(attendantAccepted).toBeTruthy();
 
         // ── both receive online_users_broadcast after accept ─────────
-        const customerBroadcast = customerMessages.find((m) => m.event === 'online_users_broadcast');
-        const attendantBroadcast = attendantMessages.find((m) => m.event === 'online_users_broadcast');
+        const customerBroadcast = customerRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
+        const attendantBroadcast = attendantRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
         expect(customerBroadcast).toBeTruthy();
         expect(attendantBroadcast).toBeTruthy();
 
@@ -273,6 +288,8 @@ describe('Accept Call Flow', () => {
         initWs.init(ATTENDANT_TOKEN, attendantStores, attendantWebFactory);
         const customerCallEvents = await bridgeCallEvents(customerUser, CUSTOMER_TOKEN, customerStores);
         const attendantCallEvents = await bridgeCallEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
+        const customerRealtimeEvents = await bridgeRealtimeEvents(customerUser, CUSTOMER_TOKEN, customerStores);
+        const attendantRealtimeEvents = await bridgeRealtimeEvents(attendantUser, ATTENDANT_TOKEN, attendantStores);
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);
@@ -299,8 +316,12 @@ describe('Accept Call Flow', () => {
         expect(getCallViewState(customerStores)).toBe('in-call');
 
         // ── both receive online_users_broadcast after accept ─────────
-        const customerAcceptBroadcast = customerMessages.find((m) => m.event === 'online_users_broadcast');
-        const attendantAcceptBroadcast = attendantMessages.find((m) => m.event === 'online_users_broadcast');
+        await waitFor(() =>
+            customerRealtimeEvents.some((m) => m.event === 'online_users_broadcast')
+            && attendantRealtimeEvents.some((m) => m.event === 'online_users_broadcast'),
+        );
+        const customerAcceptBroadcast = customerRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
+        const attendantAcceptBroadcast = attendantRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
         expect(customerAcceptBroadcast).toBeTruthy();
         expect(attendantAcceptBroadcast).toBeTruthy();
 
@@ -308,8 +329,11 @@ describe('Accept Call Flow', () => {
         // completeCall() calls IAM's /calls/complete, which publishes
         // call_completed back to both parties over the call-events Redis
         // channel (each opens the calculation modal on receipt) — the
-        // actual state clear only happens once Daily's own meeting.ended
-        // webhook arrives and onMeetingEnded broadcasts meeting_ended.
+        // actual call:null clear only happens once Daily's own meeting.ended
+        // webhook arrives and IAM's /calls/delete route publishes
+        // call_deleted (also over the call-events channel); the websocket's
+        // meeting_ended event still fires alongside it, but only for the
+        // non-call side effects (onlineUsers/billing/chat/timer).
         customerMessages.length = 0;
         attendantMessages.length = 0;
         customerCallEvents.length = 0;

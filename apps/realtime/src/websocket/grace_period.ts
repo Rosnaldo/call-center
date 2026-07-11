@@ -1,20 +1,9 @@
-import { CallState, IOnlineUser } from '@repo/shared-types';
+import { IOnlineUser } from '@repo/shared-types';
 import { graceTimer } from '#websocket/grace_timer';
-import { broadcastMessage, sendToUser } from '#websocket/broadcast';
-import { otherParticipantId } from '#websocket/end_active_call';
 import { getCallByUser } from 'src/services/calls';
 import { removeFromIam, updateOnlineUserStatus } from 'src/services/users';
+import { notifyUserDisconnecting, notifyUserDisconnected, publishOnlineUsersBroadcast } from 'src/services/realtime_events';
 import logger from '#logger';
-
-
-const notifyDisconnectEvent = (event: 'user_disconnecting' | 'user_disconnected', userId: string, call: CallState | null): void => {
-    const data = call ? { id: userId, call } : { id: userId };
-
-    sendToUser(userId, { event, data });
-    if (call) {
-        sendToUser(otherParticipantId(call, userId), { event, data });
-    }
-};
 
 export const createGracePeriod = (
     user: IOnlineUser,
@@ -28,8 +17,8 @@ export const createGracePeriod = (
                 if (call) {
                     await updateOnlineUserStatus(traceId, user.id, 'disconnecting');
                 }
-                notifyDisconnectEvent('user_disconnecting', user.id, call);
-                broadcastMessage({ event: 'online_users_broadcast', data: {} });
+                notifyUserDisconnecting(traceId, user.id, call);
+                publishOnlineUsersBroadcast(traceId);
             } catch (error) {
                 logger.error(error, 'grace period: falha ao propagar status do usuário');
             }
@@ -44,9 +33,9 @@ export const createGracePeriod = (
                 // client's own "end call" action now. A call whose partner
                 // never comes back just stays active until the other
                 // participant explicitly ends it.
-                notifyDisconnectEvent('user_disconnected', user.id, call);
+                notifyUserDisconnected(traceId, user.id, call);
 
-                broadcastMessage({ event: 'online_users_broadcast', data: {} });
+                publishOnlineUsersBroadcast(traceId);
             } catch (error) {
                 logger.error(error, 'grace period: falha ao remover usuário do iam');
             }
