@@ -318,8 +318,8 @@ describe('Reconnect During Active Call Flow', () => {
         expect(graceTimer.has(attendantUser._id)).toBe(false);
 
         // customer is told the partner is back, with the call still intact
-        await waitFor(() => customerCallEvents.some((m) => m.event === 'partner_reconnected'));
-        const reconnectedMsg = customerCallEvents.find((m) => m.event === 'partner_reconnected');
+        await waitFor(() => customerCallEvents.some((m) => m.event === 'update_call'));
+        const reconnectedMsg = customerCallEvents.find((m) => m.event === 'update_call');
         expect(reconnectedMsg).toBeTruthy();
         expect(reconnectedMsg.data.call.roomName).toBe(roomName);
         expect(customerStores.call.getState().call?.roomName).toBe(roomName);
@@ -387,8 +387,8 @@ describe('Reconnect During Active Call Flow', () => {
 
         expect(graceTimer.has(attendantUser._id)).toBe(false);
 
-        await waitFor(() => customerCallEvents.some((m) => m.event === 'partner_reconnected'));
-        const reconnectedMsg = customerCallEvents.find((m) => m.event === 'partner_reconnected');
+        await waitFor(() => customerCallEvents.some((m) => m.event === 'update_call'));
+        const reconnectedMsg = customerCallEvents.find((m) => m.event === 'update_call');
         expect(reconnectedMsg).toBeTruthy();
         expect(reconnectedMsg.data.call.roomName).toBe(roomName);
         expect(customerStores.call.getState().call?.roomName).toBe(roomName);

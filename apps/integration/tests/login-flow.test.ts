@@ -21,11 +21,11 @@ import { ITransport, TransportFactory } from '../../web/src/services/ws/transpor
 // so WebProperties.override (already set by startIamServer()) +
 // AuthSession.override below are enough, no mocking needed. Awaiting
 // onConnection() directly waits for its own HTTP calls to settle, but
-// broadcastMessage() (fired synchronously inside onConnection, once addToIam
-// + syncActiveCall resolve) triggers each connected client's refreshUsers()
-// fire-and-forget — that's a *client-side* async chain with no promise
-// onConnection() itself awaits, so a few real event-loop turns are needed
-// for it to settle too.
+// publishOnlineUsersBroadcast() (fired synchronously inside onConnection,
+// once addToIam + syncActiveCall resolve) itself awaits an IAM round trip
+// before pushing update_online_users — that's a promise onConnection()
+// doesn't itself await, so a few real event-loop turns are needed for it to
+// settle too.
 async function flushRealIO(ticks = 20): Promise<void> {
     for (let i = 0; i < ticks; i++) {
         await new Promise<void>((resolve) => setImmediate(resolve));
@@ -70,7 +70,7 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
     let customerUser: IUser;
     let customerStores: Stores;
     let adminStores: Stores;
-    // online_users_broadcast moved off the websocket onto realtime's own
+    // update_online_users moved off the websocket onto realtime's own
     // realtime-events SSE stream — see init-realtime-events.ts. Closed in
     // afterEach.
     let sseCloses: Array<() => Promise<void>>;

@@ -65,7 +65,7 @@ export class SyncActiveCall {
 
                 if (!meetingExists) {
                     await this.delete.exec({ mapped: { customerId: call.customerId, attendantId: call.attendantId } });
-                    await ejectBothParticipantsFromRoom(call.roomName);
+                    // await ejectBothParticipantsFromRoom(call.roomName);
                     return successData({ call: null, shouldJoin: false });
                 }
 

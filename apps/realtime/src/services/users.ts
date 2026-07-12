@@ -1,6 +1,11 @@
 import { IOnlineUser, IUser } from "@repo/shared-types";
 import { createIamClient } from "src/apis/iam";
 
+export const listOnlineUsers = async (traceId?: string): Promise<IOnlineUser[]> => {
+    const { data } = await createIamClient(traceId).get<{ users: IOnlineUser[] }>('/online-users/list');
+    return data.users;
+};
+
 export const userExists = async (traceId: string, email: string, token: string): Promise<IUser> => {
     const { data } = await createIamClient(traceId).get<IUser>('/users/exists', {
         headers: { Authorization: token },

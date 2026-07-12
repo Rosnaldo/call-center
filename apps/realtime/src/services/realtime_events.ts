@@ -1,6 +1,7 @@
 import { CallState, IUser, Message } from '@repo/shared-types';
 import { getRedisClient } from '../redis/singleton';
 import { otherParticipantId } from '#websocket/end_active_call';
+import { listOnlineUsers } from './users';
 import logger from '#logger';
 
 const CHANNEL_PREFIX = 'realtime-events:';
@@ -51,14 +52,19 @@ export function notifyMeetingEnded(traceId: string, customerId: string, attendan
 }
 
 // request_state's targeted resync (a follower tab asking the leader to
-// relay a fresh online_users_broadcast to just itself) — same event name as
+// relay a fresh update_online_users to just itself) — same event name as
 // the shared broadcast below, just scoped to one user's own channel instead
 // of the shared one, matching the old sendToUser(userId, ...) targeting.
-export function notifyOnlineUsersChangedForUser(traceId: string, userId: string): void {
-    publishToUser(traceId, userId, 'online_users_broadcast', {});
+export async function notifyOnlineUsersChangedForUser(traceId: string, userId: string): Promise<void> {
+    const users = await listOnlineUsers(traceId);
+    publishToUser(traceId, userId, 'update_online_users', { users });
 }
 
-export function publishOnlineUsersBroadcast(traceId: string): void {
+// Carries the full online users list now (not just an empty signal) — web
+// applies it directly instead of following up with its own
+// GET /online-users/list (see web's init-realtime-events.ts).
+export async function publishOnlineUsersBroadcast(traceId: string): Promise<void> {
+    const users = await listOnlineUsers(traceId);
     logger.info({ traceId }, 'online users broadcast published');
-    getRedisClient().publish(ONLINE_USERS_BROADCAST_CHANNEL, JSON.stringify({ event: 'online_users_broadcast', data: {} }));
+    getRedisClient().publish(ONLINE_USERS_BROADCAST_CHANNEL, JSON.stringify({ event: 'update_online_users', data: { users } }));
 }

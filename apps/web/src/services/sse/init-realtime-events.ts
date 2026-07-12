@@ -1,4 +1,4 @@
-import { CallState, IUser, Message } from '@repo/shared-types';
+import { CallState, IOnlineUser, IUser, Message } from '@repo/shared-types';
 import type { OnlineUsersStoreInstance, MeetingStoreInstance, ChatStoreInstance } from '../../states/stores';
 import type { ISseSource, SseSourceFactory } from './init-call-events';
 import { mytoast } from '../../components/toast';
@@ -6,7 +6,7 @@ import i18n from '../../i18n.ts';
 import properties from '../../properties';
 
 type RealtimeEventMessage =
-    | { event: 'online_users_broadcast'; data: Record<string, never> }
+    | { event: 'update_online_users'; data: { users: IOnlineUser[] } }
     | { event: 'user_logouted'; data: { user: IUser } }
     | { event: 'user_disconnecting'; data: { id: string; call?: CallState } }
     | { event: 'user_disconnected'; data: { id: string; call?: CallState } }
@@ -34,7 +34,7 @@ const warnIfPartOfMyCall = (user: IUser): void => {
 // EventSource for everything realtime pushes that isn't the call/incomingCall
 // domain (session/presence/chat). The websocket (see services/ws/init-ws.ts)
 // now carries only heartbeat traffic; this is where its old server-push
-// events (online_users_broadcast, user_logouted, user_disconnecting/
+// events (update_online_users, user_logouted, user_disconnecting/
 // disconnected, user_tokens_updated, chat_message_received, meeting_ended)
 // arrive instead.
 export class InitRealtimeEvents {
@@ -70,8 +70,8 @@ export class InitRealtimeEvents {
 
     private handle(msg: RealtimeEventMessage, stores: InitRealtimeEventsStores): void {
         switch (msg.event) {
-            case 'online_users_broadcast':
-                stores.onlineUsers.getState().refreshUsers();
+            case 'update_online_users':
+                stores.onlineUsers.getState().setUsers(msg.data.users);
                 break;
             case 'user_logouted':
                 warnIfPartOfMyCall(msg.data.user);

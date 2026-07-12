@@ -6,7 +6,7 @@ import { Either, successData } from '#utils/either';
 import { BadRequestException } from '#exceptions/bad_request';
 import { mapString } from '#utils/mapper/string';
 import { findCallByUser } from 'src/interactors/find_call_by_user';
-import { notifyPartnerReconnected } from 'src/services/call_events';
+import { notifyCallUpdate } from 'src/services/call_events';
 import { ICallController } from './params';
 
 type IInput = ICallController['INotifyPartnerReconnected']['IInput'];
@@ -45,7 +45,7 @@ export class NotifyPartnerReconnected {
             if (!call) return successData({});
 
             const otherUserId = call.customerId === userId ? call.attendantId : call.customerId;
-            notifyPartnerReconnected(traceId, otherUserId, call);
+            notifyCallUpdate(traceId, [otherUserId], call);
 
             return successData({});
         } catch (error: unknown) {

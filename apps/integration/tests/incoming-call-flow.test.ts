@@ -26,12 +26,12 @@ import { ITransport, TransportFactory } from '../../web/src/services/ws/transpor
 // (web) are all real here — apiBack already resolves baseURL/auth fresh per
 // request (see apps/web/src/api/backend.ts), so WebProperties.override
 // (already set by startIamServer()) + AuthSession.override below are enough,
-// no mocking needed. But several actions in this file (broadcastMessage's
-// client-side refreshUsers(), and the incoming-call send/cancel actions
-// below) kick off async work the test has no promise to await directly —
-// sendIncomingCall in particular chains several real hops (customer -> IAM ->
-// IAM publishes to Redis -> both clients' bridged call-events subscriber ->
-// incomingCallSent/Received, which each also call fetchOnlineUsers) before
+// no mocking needed. But several actions in this file (the incoming-call
+// send/cancel actions below) kick off async work the test has no promise to
+// await directly — sendIncomingCall in particular chains several real hops
+// (customer -> IAM -> IAM publishes to Redis -> both clients' bridged
+// call-events subscriber -> updateIncomingCall/incomingCallReceived, plus a
+// separate update_online_users push over the realtime-events stream) before
 // the stores settle. setImmediate yields to the event loop's poll phase
 // without needing real wall time to pass, so polling a condition with it is
 // both fast and reliable regardless of how many hops a given action ends up
@@ -103,7 +103,7 @@ describe('Incoming Call Flow', () => {
         return messages;
     };
 
-    // online_users_broadcast moved off the websocket onto realtime's own
+    // update_online_users moved off the websocket onto realtime's own
     // realtime-events SSE stream — see init-realtime-events.ts.
     const bridgeRealtimeEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
         const { factory, messages, close } = await createBridgedRealtimeEventSource(user._id);
@@ -201,28 +201,30 @@ describe('Incoming Call Flow', () => {
             customerUser._id,
             attendantUser._id,
         );
-        // viewState is set synchronously at the start of incomingCallSent/
-        // Received, before their internal `await fetchOnlineUsers()` — wait
-        // on the onlineUsers status instead, since that's set last and is
-        // what the assertions below actually depend on.
+        // viewState flips as soon as update_incomingcall arrives, but
+        // update_online_users is a separate SSE push (fed by IAM's own async
+        // round trip before it publishes) — wait on the onlineUsers status
+        // instead, since that's what the assertions below actually depend on.
         await waitFor(() =>
             customerStores.onlineUsers.getState().users.find((u) => u.id === customerUser._id)?.status === 'occupied'
             && attendantStores.onlineUsers.getState().users.find((u) => u.id === attendantUser._id)?.status === 'occupied',
         );
 
         // ── both receive events (via the call-events Redis pub/sub bridge) ──
-        const sentMsg = customerCallEvents.find((m) => m.event === 'incoming_call_sent');
+        // incoming_call_sent was removed — the caller has no side effect of
+        // its own beyond the state carried by update_incomingcall below.
+        const sentMsg = customerCallEvents.find((m) => m.event === 'update_incomingcall');
         const recvMsg = attendantCallEvents.find((m) => m.event === 'incoming_call_received');
         expect(sentMsg).toBeTruthy();
         expect(recvMsg).toBeTruthy();
 
-        // ── both receive online_users_broadcast ─────────────────────
-        const customerBroadcast = customerRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
-        const attendantBroadcast = attendantRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
+        // ── both receive update_online_users ─────────────────────
+        const customerBroadcast = customerRealtimeEvents.find((m) => m.event === 'update_online_users');
+        const attendantBroadcast = attendantRealtimeEvents.find((m) => m.event === 'update_online_users');
         expect(customerBroadcast).toBeTruthy();
         expect(attendantBroadcast).toBeTruthy();
 
-        // ── customer state (auto-processed via incoming_call_sent) ────
+        // ── customer state (auto-processed via update_incomingcall) ────
         expect(customerStores.incomingCall.getState().incomingCall).toBeTruthy();
         expect(customerStores.incomingCall.getState().incomingCall!.customerId).toBe(customerUser._id);
         expect(customerStores.incomingCall.getState().incomingCall!.attendantId).toBe(attendantUser._id);
@@ -313,9 +315,9 @@ describe('Incoming Call Flow', () => {
         expect(customerCancelMsg).toBeTruthy();
         expect(attendantCancelMsg).toBeTruthy();
 
-        // ── both receive online_users_broadcast after cancel ─────────
-        const customerBroadcast = customerRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
-        const attendantBroadcast = attendantRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
+        // ── both receive update_online_users after cancel ─────────
+        const customerBroadcast = customerRealtimeEvents.find((m) => m.event === 'update_online_users');
+        const attendantBroadcast = attendantRealtimeEvents.find((m) => m.event === 'update_online_users');
         expect(customerBroadcast).toBeTruthy();
         expect(attendantBroadcast).toBeTruthy();
 
@@ -406,9 +408,9 @@ describe('Incoming Call Flow', () => {
         expect(attendantCancelMsg).toBeTruthy();
         expect(customerCancelMsg).toBeTruthy();
 
-        // ── both receive online_users_broadcast after cancel ─────────
-        const customerBroadcast = customerRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
-        const attendantBroadcast = attendantRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
+        // ── both receive update_online_users after cancel ─────────
+        const customerBroadcast = customerRealtimeEvents.find((m) => m.event === 'update_online_users');
+        const attendantBroadcast = attendantRealtimeEvents.find((m) => m.event === 'update_online_users');
         expect(customerBroadcast).toBeTruthy();
         expect(attendantBroadcast).toBeTruthy();
 
@@ -457,11 +459,11 @@ describe('Incoming Call Flow', () => {
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);
-        // each onConnection() broadcasts online_users_broadcast, which
-        // triggers every connected client's refreshUsers() fire-and-forget
-        // — without waiting for it to settle, that real fetch can clobber
-        // the onlineUsers state set above before sendIncomingCall reads it
-        // (see the analogous fix in accept-call-flow.test.ts).
+        // each onConnection() broadcasts update_online_users, which applies
+        // directly to onlineUsers state (no follow-up fetch anymore) —
+        // without waiting for it to settle, that push can still clobber the
+        // onlineUsers state set above before sendIncomingCall reads it (see
+        // the analogous fix in accept-call-flow.test.ts).
         await flushRealIO();
 
         // ── send + accept — the incoming call becomes an active call ────

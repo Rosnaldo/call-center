@@ -207,7 +207,7 @@ export async function onMeetingEnded(traceId: string, payload: DailyMeetingPaylo
 
         notifyMeetingEnded(traceId, endedCall.customerId, endedCall.attendantId, endedCall);
 
-        publishOnlineUsersBroadcast(traceId);
+        await publishOnlineUsersBroadcast(traceId);
     } catch (error) {
         logger.error(error, 'daily onMeetingEnded');
     }

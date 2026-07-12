@@ -18,7 +18,7 @@ export const createGracePeriod = (
                     await updateOnlineUserStatus(traceId, user.id, 'disconnecting');
                 }
                 notifyUserDisconnecting(traceId, user.id, call);
-                publishOnlineUsersBroadcast(traceId);
+                await publishOnlineUsersBroadcast(traceId);
             } catch (error) {
                 logger.error(error, 'grace period: falha ao propagar status do usuário');
             }
@@ -35,7 +35,7 @@ export const createGracePeriod = (
                 // participant explicitly ends it.
                 notifyUserDisconnected(traceId, user.id, call);
 
-                publishOnlineUsersBroadcast(traceId);
+                await publishOnlineUsersBroadcast(traceId);
             } catch (error) {
                 logger.error(error, 'grace period: falha ao remover usuário do iam');
             }

@@ -10,7 +10,7 @@ export async function onUserTokenCharged(traceId: string, payload: UserTokenChar
 
     try {
         await updateIamTokens(payload.user._id, payload.user.tokens ?? 0);
-        publishOnlineUsersBroadcast(traceId);
+        await publishOnlineUsersBroadcast(traceId);
     } catch (error) {
         logger.error(error, 'onUserTokenCharged: falha ao sincronizar tokens no iam');
     }

@@ -58,7 +58,7 @@ export const onConnection = () => async (ws: AuthenticatedWebSocket): Promise<vo
         logger.info({ userId: user.id, name: user.name }, 'user connected');
         await addToIam(user);
         await syncAndSendCallState(ws.traceId, user.id);
-        publishOnlineUsersBroadcast(ws.traceId);
+        await publishOnlineUsersBroadcast(ws.traceId);
     } catch (error) {
         logger.error(error, 'ws onConnection: falha ao sincronizar call ativa do usuário');
     }

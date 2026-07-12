@@ -14,12 +14,9 @@ export interface CallActions {
   acceptIncomingCall: () => Promise<void> | void;
   completeCall: () => Promise<void>;
   incomingCallAccepted: (call: CallState) => void;
-  callCompleted: (call: CallState) => Promise<void>;
+  callCompleted: () => Promise<void>;
   syncActiveCall: (call: CallState | null, shouldJoin: boolean, isLeader: boolean) => Promise<void>;
-  partnerReconnected: (call: CallState) => void;
-  participantJoined: (call: CallState) => void;
-  participantLeft: (call: CallState) => void;
-  callDeleted: () => void;
+  updateCall: (call: CallState | null) => void;
 }
 
 export const createCallActions = (
@@ -28,30 +25,30 @@ export const createCallActions = (
   dailyService: IDailyService,
   ref: StoresRef,
 ): CallActions => {
+  // incomingCall is no longer cleared here — IAM publishes update_incomingcall
+  // (null) alongside update_call for every case where accepting a call ends
+  // the incoming-call phase (see notifyCallAccepted in call_events.ts), so
+  // that store's own updateIncomingCall handler is the only thing that
+  // touches it now.
   const syncCallWithBillingAndTimer = (call: CallState) => {
     set(() => ({ call }));
     ref.timer.getState().syncFromCall(call);
     ref.billing.getState().setInitialTokens(call.tokensToBeCharged);
-    ref.incomingCall.setState({ incomingCall: null });
   };
 
   return {
     // Fed by the call-events SSE stream now (see init-call-events.ts) — the
-    // published payload already carries the full CallState, so no more
-    // fetchOnlineUsers/fetchCall round trips to reconstruct it. Every open
-    // tab gets this independently (that stream isn't leader-elected like the
-    // websocket is), so the Daily join itself is gated behind isLeader —
-    // same as syncActiveCall — while the call data syncs everywhere either
-    // way, so useCallViewState can still derive 'in-call-in-another' for
-    // the other tabs.
+    // published payload carries the room to join, while the CallState itself
+    // is applied separately by updateCall (fed by the same stream's
+    // update_call event). Every open tab gets this independently (that
+    // stream isn't leader-elected like the websocket is), so the Daily join
+    // itself is gated behind isLeader — same as syncActiveCall.
     incomingCallAccepted: async (call: CallState) => {
       stopRingtone();
 
       try {
         const currentUser = ref.currentUser.getState().currentUser;
         if (!currentUser) throw new ApiError(i18n.t('error.currentUserNotFound'));
-
-        syncCallWithBillingAndTimer(call);
 
         if (!ref.callView.getState().isLeader) return;
 
@@ -92,8 +89,9 @@ export const createCallActions = (
       }
     },
 
-    callCompleted: async (call: CallState) => {
-      syncCallWithBillingAndTimer(call);
+    // CallState itself now arrives via updateCall (update_call event) —
+    // this only opens the modal.
+    callCompleted: async () => {
       ref.billing.getState().openCalculationModal();
     },
 
@@ -107,13 +105,13 @@ export const createCallActions = (
 
         // Server confirms there's no call for us (e.g. it was completed/deleted
         // while we were disconnected) — clear any stale call state instead of
-        // leaving the client stuck showing a call that no longer exists.
+        // leaving the client stuck showing a call that no longer exists. This
+        // is a broader reset than updateCall(null): it also wipes chat/callView,
+        // which only makes sense for this reconnect self-heal case.
         if (!call) {
           resetCallState();
           return;
         }
-
-        syncCallWithBillingAndTimer(call);
 
         if (!isLeader || call.isClosed || !shouldJoin) return;
 
@@ -127,28 +125,18 @@ export const createCallActions = (
       }
     },
 
-    partnerReconnected: (call: CallState) => {
+    // The single source of truth for call state — fed by the call-events SSE
+    // stream's update_call event, published by IAM alongside every call
+    // mutation (accept, complete, sync, participant add/remove, delete,
+    // partner reconnect). Every other call-domain event now only carries its
+    // own extra side effect (Daily join, modal, ringtone) and leaves the
+    // actual state assignment to this.
+    updateCall: (call: CallState | null) => {
+      if (!call) {
+        set(() => ({ call: null }));
+        return;
+      }
       syncCallWithBillingAndTimer(call);
-    },
-
-    // Fed by the call-events SSE stream (participant_joined/left, published
-    // by IAM's /calls/add-participant and /calls/remove-participant routes —
-    // see init-call-events.ts). Relocated here from meeting/actions.ts's old
-    // syncCall helper, since these are call-domain mutations, not
-    // meeting-lifecycle side effects.
-    participantJoined: (call: CallState) => {
-      syncCallWithBillingAndTimer(call);
-    },
-    participantLeft: (call: CallState) => {
-      syncCallWithBillingAndTimer(call);
-    },
-
-    // Fed by the call-events SSE stream (call_deleted, published by IAM's
-    // /calls/delete route) — only the call-null piece of what used to be
-    // the WS meeting_ended handler; the rest (onlineUsers/billing/chat/timer)
-    // still arrives via that WS event, see meeting/actions.ts's meetingEnded.
-    callDeleted: () => {
-      set(() => ({ call: null }));
     },
   };
 };

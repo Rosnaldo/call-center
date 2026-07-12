@@ -2,19 +2,17 @@ import { IncomingCallState } from '@repo/shared-types';
 import { IncomingCallStore } from './state.ts';
 import type { StoresRef } from '../stores.ts';
 import { sendIncomingCall as sendIncomingCallService, cancelIncomingCall as cancelIncomingCallService } from '../../services/api/incoming-calls.ts';
-import { fetchOnlineUsers } from '../../services/api/online-users.ts';
 import { handleRequestError } from '../../utils/utils.ts';
 import { ApiError } from '../../error/api.ts';
 import i18n from '../../i18n.ts';
 import { playRingtone, stopRingtone } from '../../utils/helpers.ts';
 
 export interface IncomingCallActions {
-  cancel: () => void;
   cancelIncomingCall: () => Promise<void>;
   sendIncomingCall: (customerId?: string, attendantId?: string | null) => Promise<void>;
-  incomingCallSent: (incomingCall: IncomingCallState) => void;
-  incomingCallReceived: (incomingCall: IncomingCallState) => void;
+  incomingCallReceived: () => void;
   incomingCallCancelled: () => void;
+  updateIncomingCall: (incomingCall: IncomingCallState | null) => void;
 }
 
 export const createIncomingCallActions = (
@@ -22,8 +20,6 @@ export const createIncomingCallActions = (
   get: () => IncomingCallStore,
   ref: StoresRef,
 ): IncomingCallActions => ({
-  cancel: () => set({ incomingCall: null }),
-
   cancelIncomingCall: async () => {
     try {
       const incomingCall = get().incomingCall;
@@ -53,36 +49,22 @@ export const createIncomingCallActions = (
     }
   },
 
-  incomingCallSent: async (incomingCall: IncomingCallState) => {
-    console.log('incomingCallSent', incomingCall);
-    set({ incomingCall });
-    try {
-      const users = await fetchOnlineUsers();
-      ref.onlineUsers.setState({ users });
-    } catch (error) {
-      handleRequestError(error);
-    }
-  },
-  incomingCallReceived: async (incomingCall: IncomingCallState) => {
-     console.log('incomingCallReceived', incomingCall);
-    set({ incomingCall });
+  // IncomingCallState itself now arrives via updateIncomingCall
+  // (update_incomingcall event) — this only plays the ringtone.
+  incomingCallReceived: () => {
     playRingtone();
-    try {
-      const users = await fetchOnlineUsers();
-      ref.onlineUsers.setState({ users });
-    } catch (error) {
-      handleRequestError(error);
-    }
   },
-  incomingCallCancelled: async () => {
+  incomingCallCancelled: () => {
     stopRingtone();
-    set({ incomingCall: null });
     ref.callView.getState().setSelectedAttendantId(null);
-    try {
-      const users = await fetchOnlineUsers();
-      ref.onlineUsers.setState({ users });
-    } catch (error) {
-      handleRequestError(error);
-    }
+  },
+
+  // The single source of truth for incoming-call state — fed by the
+  // call-events SSE stream's update_incomingcall event, published by IAM
+  // alongside send/cancel/accept. Every other incoming-call-domain event now
+  // only carries its own extra side effect (ringtone, clearing the selected
+  // attendant) and leaves the actual state assignment to this.
+  updateIncomingCall: (incomingCall: IncomingCallState | null) => {
+    set({ incomingCall });
   },
 });

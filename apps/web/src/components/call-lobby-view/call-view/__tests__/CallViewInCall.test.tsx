@@ -53,7 +53,7 @@ describe('CallView Component - in-call Unit Tests', () => {
   beforeEach(() => {
     useCurrentUserStore.setState({ currentUser: null });
     // CallViewState.InCall only ever renders in the tab holding the real
-    // socket now (see actions.ts's syncActiveCall/partnerReconnected) —
+    // socket now (see actions.ts's syncActiveCall/updateCall) —
     // CallFooter's buttons are disabled otherwise.
     useCallViewStore.setState({ isLeader: true });
   });

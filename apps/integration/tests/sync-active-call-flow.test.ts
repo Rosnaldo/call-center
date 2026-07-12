@@ -373,7 +373,7 @@ describe('Sync Active Call on Connect', () => {
     // lookup + sendToUser) once its grace-timer bookkeeping detects a
     // genuine reconnect.
     describe('POST /calls/notify-partner-reconnected', () => {
-        it('publishes partner_reconnected to the other participant when the user has an active call', async () => {
+        it('publishes update_call to the other participant when the user has an active call', async () => {
             await createCallRecord();
             const { messages: attendantEvents, close } = await createBridgedEventSource(attendantUser._id);
 
@@ -382,8 +382,8 @@ describe('Sync Active Call on Connect', () => {
                     .set('Authorization', CUSTOMER_TOKEN).send({ userId: customerUser._id });
                 expect(res.body?.isError).toBeFalsy();
 
-                await waitFor(() => attendantEvents.some((m) => m.event === 'partner_reconnected'));
-                const msg = attendantEvents.find((m) => m.event === 'partner_reconnected');
+                await waitFor(() => attendantEvents.some((m) => m.event === 'update_call'));
+                const msg = attendantEvents.find((m) => m.event === 'update_call');
                 expect(msg.data.call.roomName).toBe(roomName);
             } finally {
                 await close();

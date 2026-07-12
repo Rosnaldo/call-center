@@ -14,9 +14,11 @@ export const createMeetingActions = (
 ): MeetingActions => {
   return {
     // call itself is nulled independently now, via the call-events SSE
-    // stream's call_deleted event (see call/actions.ts's callDeleted) —
-    // this still runs for every other side effect of the call ending
-    // (onlineUsers/billing/chat/timer), fed by the websocket's meeting_ended.
+    // stream's update_call event (see call/actions.ts's updateCall) — this
+    // still runs for every other side effect of the call ending
+    // (billing/chat/timer), fed by the websocket's meeting_ended. Online
+    // users' status is no longer set here — it arrives via the
+    // update_online_users event fired alongside this one.
     meetingEnded: (call: CallState) => {
       ref.timer.getState().reset();
       ref.callView.getState().setSelectedAttendantId(null);
@@ -25,9 +27,6 @@ export const createMeetingActions = (
       if (currentUser) {
         ref.currentUser.getState().setCurrentUser({ ...currentUser, status: 'idle' });
       }
-
-      ref.onlineUsers.getState().updateUser(call.customerId, { status: 'idle' });
-      ref.onlineUsers.getState().updateUser(call.attendantId, { status: 'idle' });
 
       ref.billing.getState().closeCalculationModal();
       ref.billing.getState().openSummaryModal(call);
@@ -42,9 +41,9 @@ export const createMeetingActions = (
         mytoast.warn(i18n.t('call.participantDisconnected', { name }));
       }
     },
+    // Online users' tokens are no longer set here — they arrive via the
+    // update_online_users event fired alongside this one.
     userTokensUpdated: (data) => {
-      ref.onlineUsers.getState().updateUser(data.id, { tokens: data.tokens });
-
       const currentUser = ref.currentUser.getState().currentUser;
       if (currentUser && currentUser.id === data.id) {
         ref.currentUser.getState().setCurrentUser({ ...currentUser, tokens: data.tokens });

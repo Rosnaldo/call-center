@@ -75,7 +75,7 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
     let customerUser: IUser;
     let customerStores: Stores;
     let adminStores: Stores;
-    // user_logouted/user_disconnecting/user_disconnected/online_users_broadcast
+    // user_logouted/user_disconnecting/user_disconnected/update_online_users
     // moved off the websocket onto realtime's own SSE stream — see
     // init-realtime-events.ts and apps/realtime/src/routes/realtime_events.ts.
     // createBridgedRealtimeEventSource bridges that same real Redis channel
@@ -180,7 +180,7 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         // handleMessageLogout terminates the socket, which fires the same
         // 'close' handler as a raw disconnect — that's what starts the grace
         // period and fires this broadcast, not the logout handler itself
-        const customerBroadcast = customerRealtimeEvents.find((m) => m.event === 'online_users_broadcast');
+        const customerBroadcast = customerRealtimeEvents.find((m) => m.event === 'update_online_users');
         expect(customerBroadcast).toBeTruthy();
 
         // logout no longer skips the grace period — ws.terminate() re-enters
@@ -217,7 +217,7 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         expect(adminInRedis).toBeUndefined();
     });
 
-    it('raw disconnect (no explicit logout) broadcasts online_users_broadcast, without targeting an unrelated user', async () => {
+    it('raw disconnect (no explicit logout) broadcasts update_online_users, without targeting an unrelated user', async () => {
         const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
@@ -255,7 +255,7 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         // here), so user_disconnecting/user_disconnected — now published
         // to the disconnecting user and their call partner only — never
         // reach customer; the presence transition below still does, via the
-        // separate online_users_broadcast.
+        // separate update_online_users.
         expect(customerRealtimeEvents.find((m) => m.event === 'user_disconnecting')).toBeUndefined();
         expect(customerRealtimeEvents.find((m) => m.event === 'user_logouted')).toBeUndefined();
         expect(customerRealtimeEvents.find((m) => m.event === 'user_disconnected')).toBeUndefined();

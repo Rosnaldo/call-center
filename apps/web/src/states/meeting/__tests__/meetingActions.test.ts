@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useMeetingStore, useCallStore, useTimerStore, useBillingStore, useCallViewStore, useCurrentUserStore, useOnlineUsersStore } from '../../stores.ts';
+import { useMeetingStore, useCallStore, useTimerStore, useBillingStore, useCallViewStore, useCurrentUserStore } from '../../stores.ts';
 import { buildCall, buildOnlineUserState } from '../../../__tests__/builders.ts';
 import { useCallViewState } from '../../../hooks/useCallViewState.ts';
 
@@ -12,7 +12,6 @@ beforeEach(() => {
   useBillingStore.getState().closeSummaryModal();
   useCallViewStore.setState({ selectedAttendantId: null, isLeader: false });
   useCurrentUserStore.getState().setCurrentUser(null);
-  useOnlineUsersStore.setState({ users: [] });
 });
 
 describe('meeting store — meetingEnded', () => {
@@ -20,7 +19,7 @@ describe('meeting store — meetingEnded', () => {
   const attendant = buildOnlineUserState({ id: 'att-1', role: 'attendant', status: 'in-call' });
 
   // The call itself is nulled independently now, via the call-events SSE
-  // stream's call_deleted event (see call/actions.ts's callDeleted test) —
+  // stream's update_call event (see call/actions.ts's updateCall test) —
   // meetingEnded resets the timer/callView regardless, since in production
   // both fire from the same underlying call-ending trigger.
   it('resets the timer and sends callView back to none', () => {
@@ -52,17 +51,6 @@ describe('meeting store — meetingEnded', () => {
 
     expect(() => useMeetingStore.getState().meetingEnded(call)).not.toThrow();
     expect(useCurrentUserStore.getState().currentUser).toBeNull();
-  });
-
-  it('flips both the customer and attendant back to idle in the online users list', () => {
-    const call = buildCall({ customerId: customer.id, attendantId: attendant.id });
-    useOnlineUsersStore.setState({ users: [customer, attendant] });
-
-    useMeetingStore.getState().meetingEnded(call);
-
-    const users = useOnlineUsersStore.getState().users;
-    expect(users.find((u) => u.id === customer.id)?.status).toBe('idle');
-    expect(users.find((u) => u.id === attendant.id)?.status).toBe('idle');
   });
 
   it('closes the billing calculation modal and opens the billing summary modal with the ended call', () => {

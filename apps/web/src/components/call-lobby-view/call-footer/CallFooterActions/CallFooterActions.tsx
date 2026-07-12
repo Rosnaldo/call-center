@@ -69,7 +69,7 @@ export const CallFooterActions: React.FC = () => {
   };
 
   // 'in-call-in-another' means some other tab holds the real meeting (see
-  // syncActiveCall/partnerReconnected) — nothing in this footer acts on the
+  // syncActiveCall/updateCall) — nothing in this footer acts on the
   // call from here, same as 'none'. 'call-closing' means completeCall was
   // already requested (call.isClosed) — teardown is in flight, no action left.
   if (viewState === 'none' || viewState === 'in-call-in-another' || viewState === 'call-closing') return null;

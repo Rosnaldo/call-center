@@ -3,16 +3,13 @@ import type { CallStoreInstance, IncomingCallStoreInstance, CallViewStoreInstanc
 import properties from '../../properties';
 
 type CallEventMessage =
-    | { event: 'incoming_call_sent'; data: { incomingCall: IncomingCallState } }
-    | { event: 'incoming_call_received'; data: { incomingCall: IncomingCallState } }
+    | { event: 'incoming_call_received'; data: Record<string, never> }
     | { event: 'incoming_call_cancelled'; data: Record<string, never> }
+    | { event: 'update_incomingcall'; data: { incomingCall: IncomingCallState | null } }
     | { event: 'call_accepted'; data: { call: CallState } }
-    | { event: 'call_completed'; data: { call: CallState } }
+    | { event: 'call_completed'; data: Record<string, never> }
     | { event: 'call_synced'; data: { call: CallState | null; shouldJoin: boolean } }
-    | { event: 'participant_joined'; data: { call: CallState } }
-    | { event: 'participant_left'; data: { call: CallState } }
-    | { event: 'call_deleted'; data: Record<string, never> }
-    | { event: 'partner_reconnected'; data: { call: CallState } };
+    | { event: 'update_call'; data: { call: CallState | null } };
 
 interface InitCallEventsStores {
     call: CallStoreInstance;
@@ -33,8 +30,11 @@ const createSseSource: SseSourceFactory = (url) => new EventSource(url) as unkno
 // domain: send/cancel/accept/complete an incoming call, reconnect sync
 // (call_synced), Daily meeting/participant events, and partner-reconnect —
 // IAM publishes straight to Redis and this reads it via Server-Sent Events,
-// no follow-up fetch, the published payload already carries the full state.
-// (onlineUsers's own broadcast-driven refetch and meeting_ended's non-call
+// no follow-up fetch. State itself (call/incomingCall) is centralized in the
+// update_call/update_incomingcall events; every other event here only
+// carries its own extra side effect (Daily join, modal, ringtone, clearing
+// the selected attendant).
+// (onlineUsers's own update_online_users event and meeting_ended's non-call
 // side effects are a separate, still-websocket-driven phase — see
 // services/ws/users.ts and meeting.ts.)
 // Unlike InitWs's websocket, this isn't leader-elected: every open tab gets
@@ -74,35 +74,26 @@ export class InitCallEvents {
 
     private handle(msg: CallEventMessage, stores: InitCallEventsStores): void {
         switch (msg.event) {
-            case 'incoming_call_sent':
-                stores.incomingCall.getState().incomingCallSent(msg.data.incomingCall);
-                break;
             case 'incoming_call_received':
-                stores.incomingCall.getState().incomingCallReceived(msg.data.incomingCall);
+                stores.incomingCall.getState().incomingCallReceived();
                 break;
             case 'incoming_call_cancelled':
                 stores.incomingCall.getState().incomingCallCancelled();
+                break;
+            case 'update_incomingcall':
+                stores.incomingCall.getState().updateIncomingCall(msg.data.incomingCall);
                 break;
             case 'call_accepted':
                 stores.call.getState().incomingCallAccepted(msg.data.call);
                 break;
             case 'call_completed':
-                stores.call.getState().callCompleted(msg.data.call);
+                stores.call.getState().callCompleted();
                 break;
             case 'call_synced':
                 stores.call.getState().syncActiveCall(msg.data.call, msg.data.shouldJoin, stores.callView.getState().isLeader);
                 break;
-            case 'participant_joined':
-                stores.call.getState().participantJoined(msg.data.call);
-                break;
-            case 'participant_left':
-                stores.call.getState().participantLeft(msg.data.call);
-                break;
-            case 'call_deleted':
-                stores.call.getState().callDeleted();
-                break;
-            case 'partner_reconnected':
-                stores.call.getState().partnerReconnected(msg.data.call);
+            case 'update_call':
+                stores.call.getState().updateCall(msg.data.call);
                 break;
         }
     }

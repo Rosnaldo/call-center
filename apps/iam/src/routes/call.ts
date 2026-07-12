@@ -1,7 +1,7 @@
 import { type Application } from 'express';
 import { CallController } from '#controllers/call';
 import { GetKeycloakUser } from '#middleware/get_keycloak_user';
-import { notifyParticipantAdded, notifyParticipantRemoved, notifyCallDeleted, notifyCallSynced } from 'src/services/call_events';
+import { notifyCallUpdate, notifyCallSynced } from 'src/services/call_events';
 
 export default (app: Application) => {
     app.get(
@@ -84,7 +84,7 @@ export default (app: Application) => {
             if (either.isError) {
                 return res.status(either.status).send(either);
             }
-            notifyParticipantAdded(req.traceId, either.data.customerId, either.data.attendantId, either.data);
+            notifyCallUpdate(req.traceId, [either.data.customerId, either.data.attendantId], either.data);
             return res.status(200).send(either.data);
         }
     );
@@ -99,7 +99,7 @@ export default (app: Application) => {
             if (either.isError) {
                 return res.status(either.status).send(either);
             }
-            notifyParticipantRemoved(req.traceId, either.data.customerId, either.data.attendantId, either.data);
+            notifyCallUpdate(req.traceId, [either.data.customerId, either.data.attendantId], either.data);
             return res.status(200).send(either.data);
         }
     );
@@ -114,7 +114,7 @@ export default (app: Application) => {
             if (either.isError) {
                 return res.status(either.status).send(either);
             }
-            notifyCallDeleted(req.traceId, mapped.customerId, mapped.attendantId);
+            notifyCallUpdate(req.traceId, [mapped.customerId, mapped.attendantId], null);
             return res.status(200).send();
         }
     );

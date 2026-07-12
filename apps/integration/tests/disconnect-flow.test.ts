@@ -104,12 +104,13 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
     let customerUser: IUser;
     let customerStores: Stores;
     let adminStores: Stores;
-    // partner_reconnected lives on IAM's call-events SSE stream (Phase 1);
-    // user_disconnecting/user_disconnected/online_users_broadcast live on
-    // realtime's own realtime-events SSE stream (Phase 2) — see
-    // init-call-events.ts/init-realtime-events.ts. Both bridge helpers
-    // duplicate the real Redis channel into a real Init*Events instance so
-    // production dispatch logic runs end to end. Closed in afterEach.
+    // A reconnect now surfaces as update_call on IAM's call-events SSE
+    // stream (Phase 1); user_disconnecting/user_disconnected/
+    // update_online_users live on realtime's own realtime-events SSE stream
+    // (Phase 2) — see init-call-events.ts/init-realtime-events.ts. Both
+    // bridge helpers duplicate the real Redis channel into a real
+    // Init*Events instance so production dispatch logic runs end to end.
+    // Closed in afterEach.
     let sseCloses: Array<() => Promise<void>>;
 
     const bridgeCallEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
@@ -302,9 +303,9 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         expect(graceTimer.has(adminUser._id)).toBe(false);
 
         // admin and customer aren't in a call together here, so reconnecting
-        // targets no one — partner_reconnected is published only to an
-        // actual call partner, never broadcast
-        expect(customerCallEvents.find((m) => m.event === 'partner_reconnected')).toBeUndefined();
+        // targets no one — the reconnect's update_call is published only to
+        // an actual call partner, never broadcast
+        expect(customerCallEvents.find((m) => m.event === 'update_call')).toBeUndefined();
 
         // customer's store shows admin back as idle (broadcast)
         const adminAfterReconnect = customerStores.onlineUsers.getState().users
@@ -438,7 +439,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         expect(callRes.body?.roomName).toBe(roomName);
     });
 
-    it('reconnecting within the grace period while in a call notifies the partner via partner_reconnected', async () => {
+    it('reconnecting within the grace period while in a call notifies the partner via update_call', async () => {
         const { serverWs: adminWs, webFactory: adminWebFactory } = createBridgedClient(adminUser, ADMIN_TOKEN);
         const { serverWs: customerWs, webFactory: customerWebFactory } = createBridgedClient(customerUser, CUSTOMER_TOKEN);
 
@@ -484,9 +485,9 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         expect(graceTimer.has(adminUser._id)).toBe(false);
 
         // unlike the no-call reconnect test above, the partner *is*
-        // targeted directly this time — notifyPartnerReconnected only fires
-        // when the reconnecting user has an active call
-        const reconnectedMsg = customerCallEvents.find((m) => m.event === 'partner_reconnected');
+        // targeted directly this time — the reconnect's update_call only
+        // fires when the reconnecting user has an active call
+        const reconnectedMsg = customerCallEvents.find((m) => m.event === 'update_call');
         expect(reconnectedMsg).toBeTruthy();
         expect(reconnectedMsg.data.call.roomName).toBe(roomName);
 

@@ -71,10 +71,11 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
     let customerStores: Stores;
     let attendantStores: Stores;
     let roomName: string;
-    // participant_joined/participant_left moved to the call-events SSE
-    // stream (see init-call-events.ts and IAM's /calls/add-participant,
-    // /calls/remove-participant routes) — this suite's call-state
-    // assertions depend on that stream being bridged for both users.
+    // Participant add/remove now only ever surface as update_call on the
+    // call-events SSE stream (see init-call-events.ts and IAM's
+    // /calls/add-participant, /calls/remove-participant routes) — this
+    // suite's call-state assertions depend on that stream being bridged for
+    // both users.
     let sseCloses: Array<() => Promise<void>>;
 
     const bridgeCallEvents = async (user: IUser, token: string, stores: Stores): Promise<any[]> => {
@@ -275,7 +276,7 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         const t3Start = Date.now();
         await postDailyWebhook(joinPayload(attendantUser));
 
-        const attendantJoinedMsg = attendantCallEvents.find((m) => m.event === 'participant_joined');
+        const attendantJoinedMsg = attendantCallEvents.find((m) => m.event === 'update_call');
         expect(attendantJoinedMsg).toBeTruthy();
 
         call = customerStores.call.getState().call;
