@@ -5,6 +5,7 @@ import i18n from '../../i18n.ts';
 
 export interface MeetingActions {
   meetingEnded: (call: CallState) => void;
+  userDisconnecting: (data: { id: string; call?: CallState }) => void;
   userDisconnected: (data: { id: string; call?: CallState }) => void;
   userTokensUpdated: (data: { id: string; tokens?: number }) => void;
 }
@@ -33,7 +34,7 @@ export const createMeetingActions = (
 
       ref.chat.getState().resetChat();
     },
-    userDisconnected: (data) => {
+    userDisconnecting: (data) => {
       const currentUser = ref.currentUser.getState().currentUser;
       if (currentUser && data.id !== currentUser.id && data.call) {
         const { call } = data;
@@ -41,6 +42,7 @@ export const createMeetingActions = (
         mytoast.warn(i18n.t('call.participantDisconnected', { name }));
       }
     },
+    userDisconnected: (_data) => {},
     // Online users' tokens are no longer set here — they arrive via the
     // update_online_users event fired alongside this one.
     userTokensUpdated: (data) => {

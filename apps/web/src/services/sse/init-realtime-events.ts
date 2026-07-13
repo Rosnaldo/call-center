@@ -77,8 +77,7 @@ export class InitRealtimeEvents {
                 warnIfPartOfMyCall(msg.data.user);
                 break;
             case 'user_disconnecting':
-                // no web-side handler today — same as before this moved off
-                // the websocket, nothing consumes this event yet.
+                stores.meeting.getState().userDisconnecting(msg.data);
                 break;
             case 'user_disconnected':
                 stores.meeting.getState().userDisconnected(msg.data);

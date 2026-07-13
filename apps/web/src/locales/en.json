@@ -93,7 +93,8 @@
     "openChat": "Open Chat",
     "closeChat": "Close Chat",
     "participantLoggedOut": "{{name}} has logged out of the call.",
-    "participantDisconnected": "{{name}} has disconnected from the call."
+    "participantDisconnected": "{{name}} has disconnected from the call.",
+    "userDisconnected": "{{name}} has disconnected."
   },
   "mediaSettings": {
     "title": "Audio and Video Settings",

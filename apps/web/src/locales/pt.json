@@ -93,7 +93,8 @@
     "openChat": "Abrir Chat",
     "closeChat": "Fechar Chat",
     "participantLoggedOut": "{{name}} fez logout da chamada.",
-    "participantDisconnected": "{{name}} desconectou da chamada."
+    "participantDisconnected": "{{name}} desconectou da chamada.",
+    "userDisconnected": "{{name}} desconectou."
   },
   "mediaSettings": {
     "title": "Configurações de Áudio e Vídeo",
