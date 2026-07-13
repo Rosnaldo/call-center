@@ -1,5 +1,5 @@
 import { Message } from '@repo/shared-types';
-import type { StoresRef } from '../stores.ts';
+import type { StoresRef } from '../../stores.ts';
 import { ChatStore } from './state.ts';
 import { fetchMessages, sendMessage as sendMessageApi, sendFile as sendFileApi } from '@/src/services/api/chat.ts';
 import { handleRequestError } from '@/src/utils/utils.ts';

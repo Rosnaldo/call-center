@@ -1,4 +1,4 @@
-import { CallState } from '../call/state.ts';
+import { CallState } from '../../shared/call/state.ts';
 import { BillingStore } from './state.ts';
 
 export interface BillingActions {

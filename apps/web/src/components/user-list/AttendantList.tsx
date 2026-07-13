@@ -10,8 +10,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useCallViewStore, useIncomingCallStore } from '../../states/stores.ts';
 
-import { CallState } from '@/src/states/call/state.ts';
-import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { CallState } from '@/src/states/shared/call/state.ts';
+import { OnlineUserState } from '@/src/states/shared/online-users/state.ts';
 import { IUser } from '@repo/shared-types';
 
 interface AttendantListProps {

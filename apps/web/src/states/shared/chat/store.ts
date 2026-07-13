@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { StoresRef } from '../stores.ts';
+import type { StoresRef } from '../../stores.ts';
 import { ChatStore, initialChatStore } from './state.ts';
 import { ChatActions, createChatActions } from './actions.ts';
 

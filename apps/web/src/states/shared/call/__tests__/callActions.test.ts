@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useCallStore, useTimerStore, useBillingStore } from '../../stores.ts';
-import { buildCall } from '../../../__tests__/builders.ts';
+import { useCallStore, useTimerStore, useBillingStore } from '../../../stores.ts';
+import { buildCall } from '../../../../__tests__/builders.ts';
 
 // updateCall: the single source of truth for call state, fed by the
 // call-events SSE stream's update_call event (published by IAM alongside

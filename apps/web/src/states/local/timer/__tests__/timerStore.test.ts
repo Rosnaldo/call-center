@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { useTimerStore } from '../../stores.ts';
+import { useTimerStore } from '../../../stores.ts';
 import { createTimerStore } from '../store.ts';
-import { buildCall } from '../../../__tests__/builders.ts';
+import { buildCall } from '../../../../__tests__/builders.ts';
 
 beforeEach(() => {
   useTimerStore.getState().reset();

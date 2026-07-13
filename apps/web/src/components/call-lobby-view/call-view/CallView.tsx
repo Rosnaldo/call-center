@@ -1,5 +1,5 @@
 import React from 'react';
-import { CallState } from '@/src/states/call/state.ts';
+import { CallState } from '@/src/states/shared/call/state.ts';
 import { CallViewport } from './CallViewport.tsx';
 import { CallFooter } from '../call-footer/CallFooter.tsx';
 

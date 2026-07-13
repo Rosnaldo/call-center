@@ -3,7 +3,7 @@ import { render } from '@testing-library/react';
 import { CallView, CallViewState } from '../CallView.tsx';
 import { buildCall, buildOnlineUserState, buildUser } from '../../../../__tests__/builders.ts';
 import { useCurrentUserStore, useCallStore } from '../../../../states/stores.ts';
-import { CallState } from '../../../../states/call/state.ts';
+import { CallState } from '../../../../states/shared/call/state.ts';
 
 vi.mock('../../../../providers/devices.tsx', () => ({
   useDevicesContext: () => ({
@@ -41,7 +41,7 @@ const attendant = buildOnlineUserState({
   status: 'in-call',
 });
 
-// currentUser is IUser now, not IOnlineUser — see states/current-user/state.ts.
+// currentUser is IUser now, not IOnlineUser — see states/entities/current-user/state.ts.
 const currentUserRecord = buildUser({ _id: ATTENDANT_ID, firstName: 'João', lastName: 'Atendente', role: 'attendant' });
 
 const makeCall = (): CallState =>

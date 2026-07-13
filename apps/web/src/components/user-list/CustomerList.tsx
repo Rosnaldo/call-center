@@ -10,8 +10,8 @@ import {
   Coins
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { CallState } from '@/src/states/call/state.ts';
-import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { CallState } from '@/src/states/shared/call/state.ts';
+import { OnlineUserState } from '@/src/states/shared/online-users/state.ts';
 import { IUser } from '@repo/shared-types';
 
 interface CustomerListProps {

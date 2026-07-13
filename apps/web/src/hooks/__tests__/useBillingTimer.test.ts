@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useBillingTimer } from '../useBillingTimer.ts';
 import { useTimerStore, useCallStore, useCurrentUserStore, useOnlineUsersStore, useBillingStore } from '../../states/stores.ts';
 import { buildCall, buildOnlineUserState, buildUser } from '../../__tests__/builders.ts';
-import { CallState } from '../../states/call/state.ts';
+import { CallState } from '../../states/shared/call/state.ts';
 
 const CALL_ID = 'call-timer-test';
 

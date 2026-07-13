@@ -1,8 +1,8 @@
-import { keycloak } from '../../api/keycloak';
-import { fetchUser } from '../../services/api/user';
-import { useCurrentUserStore } from '../stores';
+import { keycloak } from '../../../api/keycloak';
+import { fetchUser } from '../../../services/api/user';
+import { useCurrentUserStore } from '../../stores';
 import { AuthState } from './state';
-import authSession from '../../auth/session';
+import authSession from '../../../auth/session';
 
 export interface AuthActions {
     reset(): void;

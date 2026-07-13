@@ -1,7 +1,7 @@
 import React from 'react';
 import { Mic, MicOff, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { PermissionState } from '../../../states/devices/store.ts';
+import type { PermissionState } from '../../../states/local/devices/store.ts';
 
 const btnBase = 'mt-1.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider border transition-colors cursor-pointer';
 

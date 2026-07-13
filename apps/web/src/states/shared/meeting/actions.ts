@@ -1,7 +1,7 @@
 import { CallState } from '@repo/shared-types';
-import type { StoresRef } from '../stores.ts';
-import { mytoast } from '../../components/toast';
-import i18n from '../../i18n.ts';
+import type { StoresRef } from '../../stores.ts';
+import { mytoast } from '../../../components/toast';
+import i18n from '../../../i18n.ts';
 
 export interface MeetingActions {
   meetingEnded: (call: CallState) => void;

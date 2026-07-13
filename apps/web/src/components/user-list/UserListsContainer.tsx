@@ -1,7 +1,7 @@
 import React from 'react';
 import { UserLists } from './UserLists';
 import { useOnlineUsersStore } from '../../states/stores';
-import { CallState } from '../../states/call/state';
+import { CallState } from '../../states/shared/call/state';
 import { IUser } from '@repo/shared-types';
 
 interface Props {

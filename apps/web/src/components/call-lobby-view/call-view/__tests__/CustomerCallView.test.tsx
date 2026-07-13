@@ -4,7 +4,7 @@ import { CallView, CallViewState } from '../CallView.tsx';
 import { buildCall, buildOnlineUserState, buildUser } from '../../../../__tests__/builders.ts';
 import { renderHook } from '@testing-library/react';
 import { useCurrentUserStore, useOnlineUsersStore, useCallStore, useCallViewStore, useIncomingCallStore } from '../../../../states/stores.ts';
-import { initialCallViewState } from '../../../../states/call-view/state.ts';
+import { initialCallViewState } from '../../../../states/local/call-view/state.ts';
 import { useCallViewState } from '../../../../hooks/useCallViewState.ts';
 
 vi.mock('../../../../providers/devices.tsx', () => ({
@@ -48,7 +48,7 @@ const customer = buildOnlineUserState({
   status: 'idle',
 });
 
-// currentUser is IUser now, not IOnlineUser — see states/current-user/state.ts.
+// currentUser is IUser now, not IOnlineUser — see states/entities/current-user/state.ts.
 const currentUserRecord = buildUser({ _id: CUSTOMER_ID, role: 'customer', tokens: 5 });
 
 const makeProps = (state: CallViewState, extra = {}) => ({

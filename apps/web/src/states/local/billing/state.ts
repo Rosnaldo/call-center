@@ -1,4 +1,4 @@
-import { CallState } from '../call/state.ts';
+import { CallState } from '../../shared/call/state.ts';
 
 export interface BillingStore {
   initialTokens: number;

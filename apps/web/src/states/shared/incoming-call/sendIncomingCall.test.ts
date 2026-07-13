@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { useIncomingCallStore } from '../stores.ts';
-import * as incomingCallsService from '../../services/api/incoming-calls.ts';
+import { useIncomingCallStore } from '../../stores.ts';
+import * as incomingCallsService from '../../../services/api/incoming-calls.ts';
 
 const ATTENDANT_ID = 'att-send-incoming-call-test-1';
 const CUSTOMER_ID = 'cust-send-incoming-call-test-1';

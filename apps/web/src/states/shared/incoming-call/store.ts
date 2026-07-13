@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { StoresRef } from '../stores.ts';
+import type { StoresRef } from '../../stores.ts';
 import { IncomingCallStore, initialIncomingCallStore } from './state.ts';
 import { IncomingCallActions, createIncomingCallActions } from './actions.ts';
 

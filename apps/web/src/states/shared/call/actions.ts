@@ -1,15 +1,15 @@
 import { CallState } from '@repo/shared-types';
-import type { StoresRef } from '../stores.ts';
+import type { StoresRef } from '../../stores.ts';
 import { CallStore } from './state.ts';
-import type { IDailyService } from '../../services/daily.ts';
+import type { IDailyService } from '../../../services/daily.ts';
 import { completeCall as completeCallApi } from '@/src/services/api/calls.ts';
 import { acceptIncomingCall as acceptIncomingCallService } from '@/src/services/api/incoming-calls.ts';
 import { handleRequestError } from '@/src/utils/utils.ts';
-import { ApiError } from '../../error/api.ts';
-import i18n from '../../i18n.ts';
-import { playNotificationChime, stopRingtone } from '../../utils/helpers.ts';
-import { resetCallState } from '../reset-call-state.ts';
-import { getFullName } from '../../entities/user.ts';
+import { ApiError } from '../../../error/api.ts';
+import i18n from '../../../i18n.ts';
+import { playNotificationChime, stopRingtone } from '../../../utils/helpers.ts';
+import { resetCallState } from '../../reset-call-state.ts';
+import { getFullName } from '../../../entities/user.ts';
 
 export interface CallActions {
   acceptIncomingCall: () => Promise<void> | void;

@@ -11,7 +11,7 @@ import { StoreBoard } from '../../components/store-board/StoreBoard.tsx';
 import { CallLobbyView } from '../../components/call-lobby-view/call-view/CallLobbyView.tsx';
 import { UserListsContainer } from '../../components/user-list/UserListsContainer.tsx';
 import { SectionHeader } from '../../components/SectionHeader.tsx';
-import { CallState } from '@/src/states/call/state.ts';
+import { CallState } from '@/src/states/shared/call/state.ts';
 import { IUser } from '@repo/shared-types';
 import { BrandHero } from '../../components/BrandHero.tsx';
 import { useLogout } from '../../hooks/auth/useLogout.ts';

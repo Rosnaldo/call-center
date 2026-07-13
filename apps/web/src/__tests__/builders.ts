@@ -1,5 +1,5 @@
-import { CallState } from '../states/call/state.ts';
-import { OnlineUserState } from '../states/online-users/state.ts';
+import { CallState } from '../states/shared/call/state.ts';
+import { OnlineUserState } from '../states/shared/online-users/state.ts';
 import { User } from '../entities/user.ts';
 import { Transacao as TokenTransaction } from '../entities/transacao.ts';
 
@@ -18,7 +18,7 @@ export const buildOnlineUserState = (d?: Partial<OnlineUserState>): OnlineUserSt
   phone: d?.phone,
 });
 
-// currentUser is IUser now, not IOnlineUser — see states/current-user/state.ts.
+// currentUser is IUser now, not IOnlineUser — see states/entities/current-user/state.ts.
 export const buildUser = (d?: Partial<User>): User => ({
   _id: d?._id ?? nextId(),
   slug: d?.slug ?? 'test-user',

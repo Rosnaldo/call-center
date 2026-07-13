@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Clock, Loader2, MonitorSmartphone, User } from 'lucide-react';
 import { CallViewState } from './CallView.tsx';
-import { CallState } from '@/src/states/call/state.ts';
+import { CallState } from '@/src/states/shared/call/state.ts';
 import { useIncomingCallStore, useCurrentUserStore, useOnlineUsersStore, useCallViewStore, useDevicesStore, useChatStore } from '../../../states/stores.ts';
 import { IOnlineUser } from '@repo/shared-types';
 import { VideoTile } from '../VideoTile.tsx';

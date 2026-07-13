@@ -6,7 +6,7 @@
 import { useEffect, useRef } from 'react';
 import { IUser, computeTokensToBeCharged } from '@repo/shared-types';
 import { useOnlineUsersStore, useTimerStore, useCurrentUserStore, useBillingStore } from '../states/stores.ts';
-import { CallState } from '../states/call/state.ts';
+import { CallState } from '../states/shared/call/state.ts';
 
 export function useBillingTimer(call: CallState | undefined) {
   const currentUser = useCurrentUserStore((s) => s.currentUser);

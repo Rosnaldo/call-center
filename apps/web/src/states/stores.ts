@@ -1,15 +1,15 @@
 import type { IDailyService } from '../services/daily.ts';
-import { createAuthStore } from './auth/store.ts';
-import { createBillingStore } from './billing/store.ts';
-import { createCallStore } from './call/store.ts';
-import { createCallViewStore } from './call-view/store.ts';
-import { createChatStore } from './chat/store.ts';
-import { createCurrentUserStore } from './current-user/store.ts';
-import { createDevicesStore } from './devices/store.ts';
-import { createIncomingCallStore } from './incoming-call/store.ts';
-import { createMeetingStore } from './meeting/store.ts';
-import { createOnlineUsersStore } from './online-users/store.ts';
-import { createTimerStore } from './timer/store.ts';
+import { createAuthStore } from './local/auth/store.ts';
+import { createBillingStore } from './local/billing/store.ts';
+import { createCallStore } from './shared/call/store.ts';
+import { createCallViewStore } from './local/call-view/store.ts';
+import { createChatStore } from './shared/chat/store.ts';
+import { createCurrentUserStore } from './entities/current-user/store.ts';
+import { createDevicesStore } from './local/devices/store.ts';
+import { createIncomingCallStore } from './shared/incoming-call/store.ts';
+import { createMeetingStore } from './shared/meeting/store.ts';
+import { createOnlineUsersStore } from './shared/online-users/store.ts';
+import { createTimerStore } from './local/timer/store.ts';
 
 export type AuthStoreInstance = ReturnType<typeof createAuthStore>;
 export type BillingStoreInstance = ReturnType<typeof createBillingStore>;

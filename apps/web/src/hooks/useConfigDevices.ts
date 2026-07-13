@@ -1,9 +1,9 @@
 import { useEffect, useCallback } from "react";
 import { DailyService } from "../services/daily.ts";
 import { useDevicesStore } from "../states/stores.ts";
-import type { PermissionState } from "../states/devices/store.ts";
+import type { PermissionState } from "../states/local/devices/store.ts";
 
-export type { MediaDeviceOption, PermissionState } from "../states/devices/store.ts";
+export type { MediaDeviceOption, PermissionState } from "../states/local/devices/store.ts";
 
 async function queryPermission(name: "camera" | "microphone"): Promise<PermissionState> {
   try {

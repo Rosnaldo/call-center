@@ -1,5 +1,5 @@
 import type { CallState, IncomingCallState } from '@repo/shared-types';
-import type { CallStoreInstance, CallViewStoreInstance, CurrentUserStoreInstance, IncomingCallStoreInstance } from '../stores.ts';
+import type { CallStoreInstance, CallViewStoreInstance, CurrentUserStoreInstance, IncomingCallStoreInstance } from '../../stores.ts';
 import type { ViewState } from './state.ts';
 
 export interface CallViewStateInputs {

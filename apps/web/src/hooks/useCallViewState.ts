@@ -1,6 +1,6 @@
 import { useCallStore, useCallViewStore, useCurrentUserStore, useIncomingCallStore } from '../states/stores.ts';
-import { deriveCallViewState } from '../states/call-view/derive.ts';
-import type { ViewState } from '../states/call-view/state.ts';
+import { deriveCallViewState } from '../states/local/call-view/derive.ts';
+import type { ViewState } from '../states/local/call-view/state.ts';
 
 // Single source of truth for callView's state — purely derived from the raw
 // data every render, instead of being pushed into a store from a dozen
