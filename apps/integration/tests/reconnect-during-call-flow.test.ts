@@ -327,17 +327,17 @@ describe('Reconnect During Active Call Flow', () => {
 
         // the reconnecting attendant is kept on the same call — SyncActiveCall
         // keeps the record since (mocked) presence shows the meeting is still
-        // happening. shouldJoin is false because presence also shows the
-        // attendant's own Daily/WebRTC session never actually dropped (only
-        // the IAM websocket did) — no redundant rejoin needed.
+        // happening. No shouldJoin gate anymore — grace_period.ts ejects a
+        // disconnecting user from Daily immediately (see websocket/grace_period.ts),
+        // so the client always (re)joins regardless of what presence shows.
         const connectedMsg = attendantCallEvents.find((m) => m.event === 'call_synced');
-        expect(connectedMsg.data.shouldJoin).toBe(false);
         expect(connectedMsg.data.call.roomName).toBe(roomName);
 
         // and its own store actually resyncs from that payload — not just a
         // message sent into the void
         await waitFor(() => attendantStores.call.getState().call?.roomName === roomName);
         expect(getCallViewState(attendantStores)).toBe('in-call');
+        await waitFor(() => dailyCoService.joinCalls.some((j) => j.userId === attendantUser._id));
 
         // ── the call is still perfectly completable afterward ─────────────
         await completeAndVerifyCleanEnd(customerCallEvents, attendantCallEvents);
@@ -394,11 +394,11 @@ describe('Reconnect During Active Call Flow', () => {
         expect(customerStores.call.getState().call?.roomName).toBe(roomName);
         expect(getCallViewState(customerStores)).toBe('in-call');
 
-        // same reasoning as the logout case above: presence shows the
-        // attendant's Daily/WebRTC session survived the drop, so no rejoin
+        // same reasoning as the logout case above: no shouldJoin gate
+        // anymore, the client always (re)joins regardless of presence
         const connectedMsg = attendantCallEvents.find((m) => m.event === 'call_synced');
-        expect(connectedMsg.data.shouldJoin).toBe(false);
         expect(connectedMsg.data.call.roomName).toBe(roomName);
+        await waitFor(() => dailyCoService.joinCalls.some((j) => j.userId === attendantUser._id));
 
         await completeAndVerifyCleanEnd(customerCallEvents, attendantCallEvents);
     });
