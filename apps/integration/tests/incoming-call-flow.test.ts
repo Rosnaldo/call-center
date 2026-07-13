@@ -22,7 +22,7 @@ import { initCallEvents } from '../../web/src/services/sse/init-call-events';
 import { initRealtimeEvents } from '../../web/src/services/sse/init-realtime-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
-// src/services/users|calls (realtime) and @/src/services/api/{incoming-calls,online-users}
+// src/services/users|calls (realtime) and @/src/services/api/incoming-calls
 // (web) are all real here — apiBack already resolves baseURL/auth fresh per
 // request (see apps/web/src/api/backend.ts), so WebProperties.override
 // (already set by startIamServer()) + AuthSession.override below are enough,
@@ -138,8 +138,8 @@ describe('Incoming Call Flow', () => {
         const redis = getRedisClient();
         const icKeys = await redis.keys('incoming_call:*');
         if (icKeys.length) await redis.del(...icKeys);
-        // /online-users/add preserves an existing 'in-call'/'occupied' status
-        // across a reconnect (see add.ts) — without clearing this, status
+        // addOnlineUser preserves an existing 'in-call'/'occupied' status
+        // across a reconnect (see online_users_redis.ts) — without clearing this, status
         // left by one test leaks into the next test's guards (e.g.
         // sendIncomingCall's "attendant busy" check)
         const onlineKeys = await redis.keys('online_user:*');

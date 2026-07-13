@@ -30,7 +30,7 @@ const publishOnlineUsersBroadcast = async (traceId: string): Promise<void> => {
     getRedisClient().publish(ONLINE_USERS_BROADCAST_CHANNEL, JSON.stringify({ event: 'update_online_users', data: { users } }));
 };
 
-const broadcastOnlineUsers = (traceId: string): void => {
+export const broadcastOnlineUsers = (traceId: string): void => {
     publishOnlineUsersBroadcast(traceId).catch((error: unknown) => {
         logger.error({ traceId, error }, 'failed to publish online users broadcast');
     });

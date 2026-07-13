@@ -12,6 +12,8 @@ import { formatDatePtBr } from '#utils/format_date_ptbr';
 import { formatDurationPtBr } from '#utils/format_duration_ptbr';
 import { IUserController } from './params';
 import { validateInput } from 'src/validations/user/charge_token';
+import { patchOnlineUserIfPresent } from 'src/interactors/online_user';
+import { broadcastOnlineUsers } from 'src/services/call_events';
 
 type IInput = IUserController['IChargeToken']['IInput'];
 type IOutput = IUserController['IChargeToken']['IOutput'];
@@ -60,6 +62,19 @@ export class ChargeToken {
 
             const updated = this.utils.toObject(user);
 
+            // Best-effort — the charge itself already landed above; a
+            // presence-cache hiccup shouldn't turn a successful charge into
+            // an error response.
+            try {
+                await patchOnlineUserIfPresent(customerId, { tokens: updated.tokens ?? 0 });
+                broadcastOnlineUsers(traceId);
+            } catch (error) {
+                logger.error({ traceId, error }, 'charge-token: falha ao sincronizar cache de presença');
+            }
+
+            // realtime still needs to know, to push the per-user
+            // user_tokens_updated SSE event — that's its exclusive job, the
+            // online_user cache/broadcast above is handled here now.
             notifyUserTokenCharged(traceId, updated).catch(() => {});
 
             return successData(updated);

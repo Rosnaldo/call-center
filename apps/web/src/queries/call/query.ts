@@ -8,7 +8,7 @@ export const CALL_QUERY_KEY = (userId: string) => ['call', userId] as const;
 // the call-events SSE stream (update_call/call_synced) is the source of
 // truth after that. staleTime: Infinity/refetchOnWindowFocus: false keeps
 // this query from ever refetching in the background and racing a fresher
-// SSE push, same reasoning as useOnlineUsersQuery.
+// SSE push.
 export function useCallQuery(userId: string) {
   return useSuspenseQuery<CallState | null>({
     queryKey: CALL_QUERY_KEY(userId),

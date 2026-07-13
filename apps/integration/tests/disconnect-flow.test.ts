@@ -5,6 +5,7 @@ import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
 import { createMockUsers, ADMIN_TOKEN, CUSTOMER_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
+import { listOnlineUsersFromRedis, addOnlineUserToRedis } from './helpers/online-users-redis';
 import { simulateMessage, createWsClient } from './helpers/mock-wss';
 import { createBridgedEventSource } from './helpers/mock-sse';
 import { createBridgedRealtimeEventSource } from './helpers/mock-realtime-sse';
@@ -20,10 +21,9 @@ import { initCallEvents } from '../../web/src/services/sse/init-call-events';
 import { initRealtimeEvents } from '../../web/src/services/sse/init-realtime-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
-// src/services/users|calls (realtime) and @/src/services/api/online-users
-// (web) are all real here — apiBack resolves baseURL/auth fresh per request,
-// so WebProperties.override (already set by startIamServer()) +
-// AuthSession.override below are enough, no mocking needed. But grace_period's
+// src/services/users|calls (realtime) are real here — WebProperties.override
+// (already set by startIamServer()) + AuthSession.override below are enough,
+// no mocking needed. But grace_period's
 // disconnect chain (getCallByUser -> updateOnlineUserStatus -> broadcast) is
 // kicked off fire-and-forget from a synchronous 'close' EventEmitter
 // listener, so the test has no promise to await directly. jest.useFakeTimers()
@@ -191,10 +191,8 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         expect(adminInStore!.status).toBe('idle');
 
         // IAM Redis still shows admin as idle (no active call)
-        const res = await iamRequest
-            .get('/online-users/list')
-            .set('Authorization', CUSTOMER_TOKEN);
-        const adminInRedis = res.body.users
+        const redisUsers = await listOnlineUsersFromRedis();
+        const adminInRedis = redisUsers
             .find((u: IOnlineUser) => u.id === adminUser._id);
         expect(adminInRedis).toBeDefined();
         expect(adminInRedis!.status).toBe('idle');
@@ -247,10 +245,8 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         expect(customerStores.onlineUsers.getState().users[0].id).toBe(customerUser._id);
 
         // IAM Redis no longer contains admin (sync)
-        const finalRes = await iamRequest
-            .get('/online-users/list')
-            .set('Authorization', CUSTOMER_TOKEN);
-        expect(finalRes.body.users.find((u: IOnlineUser) => u.id === adminUser._id))
+        const finalUsers = await listOnlineUsersFromRedis();
+        expect(finalUsers.find((u: IOnlineUser) => u.id === adminUser._id))
             .toBeUndefined();
     });
 
@@ -313,10 +309,8 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         expect(adminAfterReconnect!.status).toBe('idle');
 
         // IAM Redis shows admin as idle (sync)
-        const reconnectRes = await iamRequest
-            .get('/online-users/list')
-            .set('Authorization', ADMIN_TOKEN);
-        const adminInRedis = reconnectRes.body.users
+        const reconnectUsers = await listOnlineUsersFromRedis();
+        const adminInRedis = reconnectUsers
             .find((u: IOnlineUser) => u.id === adminUser._id);
         expect(adminInRedis).toBeDefined();
         expect(adminInRedis!.status).toBe('idle');
@@ -377,8 +371,8 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
 
         // unlike the no-call case, grace_period *does* flip status while a
         // call is active — the online users list confirms the IAM Redis sync
-        const res = await iamRequest.get('/online-users/list').set('Authorization', CUSTOMER_TOKEN);
-        const adminInRedis = res.body.users.find((u: IOnlineUser) => u.id === adminUser._id);
+        const redisUsers = await listOnlineUsersFromRedis();
+        const adminInRedis = redisUsers.find((u: IOnlineUser) => u.id === adminUser._id);
         expect(adminInRedis?.status).toBe('disconnecting');
     });
 
@@ -406,10 +400,8 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         await createCallRecord(iamRequest, roomName, adminUser, customerUser);
 
         // mirror a real active call's presence status on both sides
-        await iamRequest.post('/online-users/add').set('Authorization', CUSTOMER_TOKEN)
-            .send(mapUserToOnlineUser(adminUser, { status: 'in-call' }));
-        await iamRequest.post('/online-users/add').set('Authorization', CUSTOMER_TOKEN)
-            .send(mapUserToOnlineUser(customerUser, { status: 'in-call' }));
+        await addOnlineUserToRedis(mapUserToOnlineUser(adminUser, { status: 'in-call' }));
+        await addOnlineUserToRedis(mapUserToOnlineUser(customerUser, { status: 'in-call' }));
 
         // ── admin disconnects and stays away past the grace period ───────
         adminWs.terminate();
@@ -428,10 +420,10 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         // Ending the call is exclusively the web client's own "end call"
         // action's job, so the customer's presence and the call record
         // itself must both survive untouched.
-        const res = await iamRequest.get('/online-users/list').set('Authorization', CUSTOMER_TOKEN);
-        const customerInRedis = res.body.users.find((u: IOnlineUser) => u.id === customerUser._id);
+        const redisUsers = await listOnlineUsersFromRedis();
+        const customerInRedis = redisUsers.find((u: IOnlineUser) => u.id === customerUser._id);
         expect(customerInRedis?.status).toBe('in-call');
-        expect(res.body.users.find((u: IOnlineUser) => u.id === adminUser._id)).toBeUndefined();
+        expect(redisUsers.find((u: IOnlineUser) => u.id === adminUser._id)).toBeUndefined();
 
         const callRes = await iamRequest.get('/calls/get-by-room').query({ roomName }).set('Authorization', CUSTOMER_TOKEN);
         expect(callRes.body?.isError).toBeFalsy();

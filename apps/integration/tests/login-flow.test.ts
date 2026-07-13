@@ -1,10 +1,11 @@
 import { EventEmitter } from 'node:events';
 import { IOnlineUser, IUser } from '@repo/shared-types';
 
-import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
+import { startIamServer, stopIamServer } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
 import { createMockUsers, ADMIN_TOKEN, CUSTOMER_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
+import { listOnlineUsersFromRedis } from './helpers/online-users-redis';
 import { createWsClient } from './helpers/mock-wss';
 import { createBridgedRealtimeEventSource } from './helpers/mock-realtime-sse';
 import { onConnection } from '../../realtime/src/websocket/connection';
@@ -16,16 +17,14 @@ import { initWs } from '../../web/src/services/ws/init-ws';
 import { initRealtimeEvents } from '../../web/src/services/sse/init-realtime-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
-// src/services/users|calls (realtime) and @/src/services/api/online-users
-// (web) are all real here — apiBack resolves baseURL/auth fresh per request,
-// so WebProperties.override (already set by startIamServer()) +
-// AuthSession.override below are enough, no mocking needed. Awaiting
-// onConnection() directly waits for its own HTTP calls to settle, but
-// publishOnlineUsersBroadcast() (fired synchronously inside onConnection,
-// once addToIam + syncActiveCall resolve) itself awaits an IAM round trip
-// before pushing update_online_users — that's a promise onConnection()
-// doesn't itself await, so a few real event-loop turns are needed for it to
-// settle too.
+// src/services/users|calls (realtime) are real here — WebProperties.override
+// (already set by startIamServer()) + AuthSession.override below are enough,
+// no mocking needed. Awaiting onConnection() directly waits for its own HTTP
+// calls to settle, but publishOnlineUsersBroadcast() (fired synchronously
+// inside onConnection, once addToIam + syncActiveCall resolve) itself awaits
+// a Redis round trip before pushing update_online_users — that's a promise
+// onConnection() doesn't itself await, so a few real event-loop turns are
+// needed for it to settle too.
 async function flushRealIO(ticks = 20): Promise<void> {
     for (let i = 0; i < ticks; i++) {
         await new Promise<void>((resolve) => setImmediate(resolve));
@@ -65,7 +64,6 @@ function createBridgedClient(user: IUser, token: string) {
 // ─── suite ──────────────────────────────────────────────────────────────────
 
 describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
-    let iamRequest: IamAgent;
     let adminUser: IUser;
     let customerUser: IUser;
     let customerStores: Stores;
@@ -83,7 +81,7 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
     };
 
     beforeAll(async () => {
-        iamRequest = await startIamServer();
+        await startIamServer();
         await startRealtimeServer();
         const users = await createMockUsers();
         adminUser = users.admin;
@@ -134,13 +132,10 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
         expect(adminInStore!.role).toBe('admin');
 
         // IAM Redis contains admin
-        const listRes = await iamRequest
-            .get('/online-users/list')
-            .set('Authorization', ADMIN_TOKEN);
-        expect(listRes.status).toBe(200);
-        expect(listRes.body.users).toHaveLength(1);
-        expect(listRes.body.users[0].id).toBe(adminUser._id);
-        expect(listRes.body.users[0].status).toBe('idle');
+        const redisUsers = await listOnlineUsersFromRedis();
+        expect(redisUsers).toHaveLength(1);
+        expect(redisUsers[0].id).toBe(adminUser._id);
+        expect(redisUsers[0].status).toBe('idle');
     });
 
     it('customer login after admin broadcasts both users to web store', async () => {
@@ -175,15 +170,12 @@ describe('User Login Flow — Broadcast + IAM Redis Sync', () => {
         expect(customerInStore!.status).toBe('idle');
 
         // IAM Redis has both users
-        const listRes = await iamRequest
-            .get('/online-users/list')
-            .set('Authorization', ADMIN_TOKEN);
-        expect(listRes.status).toBe(200);
-        expect(listRes.body.users).toHaveLength(2);
+        const redisUsers = await listOnlineUsersFromRedis();
+        expect(redisUsers).toHaveLength(2);
 
-        const redisIds = listRes.body.users.map((u: IOnlineUser) => u.id);
+        const redisIds = redisUsers.map((u: IOnlineUser) => u.id);
         expect(redisIds).toContain(adminUser._id);
         expect(redisIds).toContain(customerUser._id);
-        expect(listRes.body.users.every((u: IOnlineUser) => u.status === 'idle')).toBe(true);
+        expect(redisUsers.every((u: IOnlineUser) => u.status === 'idle')).toBe(true);
     });
 });

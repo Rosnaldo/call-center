@@ -6,6 +6,7 @@ import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
+import { addOnlineUserToRedis } from './helpers/online-users-redis';
 import { getUserModel, getCallHistoryModel } from '../../iam/src/entities/models/singleton';
 import { createWsClient } from './helpers/mock-wss';
 import { createBridgedEventSource } from './helpers/mock-sse';
@@ -148,10 +149,8 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         // both users must exist as online_user Redis entries — /calls/complete
         // (fired from the web completeCall() action) looks them up to flip
         // their status idle
-        await iamRequest.post('/online-users/add').set('Authorization', CUSTOMER_TOKEN)
-            .send(mapUserToOnlineUser(customerUser, { status: 'in-call' }));
-        await iamRequest.post('/online-users/add').set('Authorization', CUSTOMER_TOKEN)
-            .send(mapUserToOnlineUser(attendantUser, { status: 'in-call' }));
+        await addOnlineUserToRedis(mapUserToOnlineUser(customerUser, { status: 'in-call' }));
+        await addOnlineUserToRedis(mapUserToOnlineUser(attendantUser, { status: 'in-call' }));
     });
 
     const postDailyWebhook = async (body: Record<string, unknown>): Promise<void> => {

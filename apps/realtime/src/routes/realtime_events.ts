@@ -2,6 +2,7 @@ import { type Application, type Response } from 'express';
 import { getRedisClient } from '../redis/singleton';
 import { authenticateFromQuery } from '../middleware/authenticate_from_query';
 import { AuthenticatedRequest } from '../middleware/authenticate';
+import { getOnlineUsersList } from '../services/online_users_redis';
 import logger from '#logger';
 
 const CHANNEL_PREFIX = 'realtime-events:';
@@ -49,6 +50,12 @@ export default (app: Application) => {
                     subscriber.subscribe(channel),
                     subscriber.subscribe(BROADCAST_CHANNEL),
                 ]);
+
+                // Full snapshot right away — a freshly-opened connection has
+                // no REST call to fall back on for the current state anymore,
+                // so this stream is the only source, not just a diff feed.
+                const users = await getOnlineUsersList();
+                res.write(`data: ${JSON.stringify({ event: 'update_online_users', data: { users } })}\n\n`);
             } catch (error) {
                 logger.error({ err: error, userId }, 'realtime_events stream: falha ao assinar canal Redis');
                 cleanup();

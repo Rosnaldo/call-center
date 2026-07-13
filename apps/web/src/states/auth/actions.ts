@@ -1,7 +1,6 @@
 import { mapUserToOnlineUser } from '@repo/shared-types';
 import { keycloak } from '../../api/keycloak';
 import { fetchUser } from '../../services/api/user';
-import { addOnlineUser } from '../../services/api/online-users';
 import { useCurrentUserStore } from '../stores';
 import { AuthState } from './state';
 import authSession from '../../auth/session';
@@ -40,7 +39,10 @@ export const createAuthActions = (
             if (!email) throw new Error('Email not found in token.');
             const user = await fetchUser(email);
             const onlineUser = mapUserToOnlineUser(user);
-            await addOnlineUser(onlineUser);
+            // No more direct IAM registration here — realtime's onConnection
+            // handler (see websocket/connection.ts) adds this user to the
+            // shared online_user presence record moments later, when its
+            // WebSocket connects right after this.
             useCurrentUserStore.getState().setCurrentUser(onlineUser);
             set(() => ({ ready: true }));
         } catch (err) {

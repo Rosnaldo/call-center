@@ -1,10 +1,11 @@
 import { EventEmitter } from 'node:events';
 import { IOnlineUser, IUser } from '@repo/shared-types';
 
-import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
+import { startIamServer, stopIamServer } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
 import { createMockUsers, ADMIN_TOKEN, CUSTOMER_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
+import { listOnlineUsersFromRedis } from './helpers/online-users-redis';
 import { simulateMessage, createWsClient } from './helpers/mock-wss';
 import { createBridgedRealtimeEventSource } from './helpers/mock-realtime-sse';
 import { onConnection } from '../../realtime/src/websocket/connection';
@@ -17,10 +18,9 @@ import { initWs } from '../../web/src/services/ws/init-ws';
 import { initRealtimeEvents } from '../../web/src/services/sse/init-realtime-events';
 import { ITransport, TransportFactory } from '../../web/src/services/ws/transport';
 
-// src/services/users|calls (realtime) and @/src/services/api/online-users
-// (web) are all real here — apiBack resolves baseURL/auth fresh per request,
-// so WebProperties.override (already set by startIamServer()) +
-// AuthSession.override below are enough, no mocking needed. The grace-period /
+// src/services/users|calls (realtime) are real here — WebProperties.override
+// (already set by startIamServer()) + AuthSession.override below are enough,
+// no mocking needed. The grace-period /
 // logout disconnect chain is kicked off fire-and-forget from a synchronous
 // 'close' EventEmitter listener though, so there's no promise for the test
 // to await directly, and jest.useFakeTimers() is active (to fast-forward the
@@ -70,7 +70,6 @@ function createBridgedClient(user: IUser, token: string) {
 // ─── suite ──────────────────────────────────────────────────────────────────
 
 describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
-    let iamRequest: IamAgent;
     let adminUser: IUser;
     let customerUser: IUser;
     let customerStores: Stores;
@@ -91,7 +90,7 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
     };
 
     beforeAll(async () => {
-        iamRequest = await startIamServer();
+        await startIamServer();
         await startRealtimeServer();
         const users = await createMockUsers();
         adminUser = users.admin;
@@ -153,11 +152,9 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         expect(customerStores.onlineUsers.getState().users).toHaveLength(2);
 
         // both users are idle in IAM Redis
-        const loginRes = await iamRequest
-            .get('/online-users/list')
-            .set('Authorization', ADMIN_TOKEN);
-        expect(loginRes.body.users).toHaveLength(2);
-        expect(loginRes.body.users.every((u: IOnlineUser) => u.status === 'idle')).toBe(true);
+        const loginUsers = await listOnlineUsersFromRedis();
+        expect(loginUsers).toHaveLength(2);
+        expect(loginUsers.every((u: IOnlineUser) => u.status === 'idle')).toBe(true);
 
         // ── admin logs out ───────────────────────────────────────────────
         adminMessages.length = 0;
@@ -209,10 +206,8 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
             customerStores.onlineUsers.getState().users.find(u => u.id === adminUser._id),
         ).toBeUndefined();
 
-        const logoutRes = await iamRequest
-            .get('/online-users/list')
-            .set('Authorization', ADMIN_TOKEN);
-        const adminInRedis = logoutRes.body.users
+        const logoutUsers = await listOnlineUsersFromRedis();
+        const adminInRedis = logoutUsers
             .find((u: IOnlineUser) => u.id === adminUser._id);
         expect(adminInRedis).toBeUndefined();
     });
@@ -332,10 +327,8 @@ describe('User Logout Flow — Broadcast + IAM Redis Sync', () => {
         expect(adminAfterRelogin!.status).toBe('idle');
 
         // IAM Redis shows admin as idle (sync)
-        const reloginRes = await iamRequest
-            .get('/online-users/list')
-            .set('Authorization', ADMIN_TOKEN);
-        const adminInRedis = reloginRes.body.users
+        const reloginUsers = await listOnlineUsersFromRedis();
+        const adminInRedis = reloginUsers
             .find((u: IOnlineUser) => u.id === adminUser._id);
         expect(adminInRedis).toBeDefined();
         expect(adminInRedis!.status).toBe('idle');
