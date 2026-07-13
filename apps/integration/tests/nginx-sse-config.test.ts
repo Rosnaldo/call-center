@@ -2,17 +2,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 // Regression test for a real incident: nginx buffers proxied responses by
-// default, so IAM's SSE stream (apps/iam/src/routes/call_events.ts) had its
-// res.write() pushes sit in nginx's buffer instead of reaching the browser's
-// EventSource, even though IAM and the browser's request/token were both
-// fine. The fix is a dedicated location block ahead of the generic /iam/
-// one — this can't be caught by apps/integration's other tests, which talk
-// to IAM directly and never go through nginx at all. This test doesn't spin
-// up nginx either; it just asserts the config file itself still carries the
+// default, so an SSE stream's res.write() pushes would sit in nginx's buffer
+// instead of reaching the browser's EventSource, even though the service and
+// the browser's request/token were both fine. The fix is a dedicated
+// location block ahead of the generic one for its upstream — this can't be
+// caught by apps/integration's other tests, which talk to IAM/realtime
+// directly and never go through nginx at all. This test doesn't spin up
+// nginx either; it just asserts the config file itself still carries the
 // directives the fix depends on, so a future edit that drops them fails CI
-// instead of silently reintroducing the bug. Realtime's own SSE stream
-// (apps/realtime/src/routes/realtime_events.ts) needs the exact same
-// treatment, behind its own generic /realtime/ location.
+// instead of silently reintroducing the bug. Both of realtime's SSE streams
+// (apps/realtime/src/routes/realtime_events.ts and call_events.ts — the
+// latter fed by IAM's own Redis publish, see apps/iam/src/services/call_events.ts)
+// need the exact same treatment, behind the generic /realtime/ location.
 
 function extractLocationBlock(conf: string, locationPath: string): string {
     const start = conf.indexOf(`location ${locationPath} {`);
@@ -24,8 +25,8 @@ function extractLocationBlock(conf: string, locationPath: string): string {
 }
 
 describe.each([
-    ['dev', path.resolve(__dirname, '../../nginx/dev/nginx.conf'), '/iam/call-events/', 'http://iam:5002/call-events/'],
-    ['prod', path.resolve(__dirname, '../../nginx/prod/https/nginx.conf'), '/iam/call-events/', 'http://iam:5002/call-events/'],
+    ['dev', path.resolve(__dirname, '../../nginx/dev/nginx.conf'), '/realtime/call-events/', 'http://realtime:5003/call-events/'],
+    ['prod', path.resolve(__dirname, '../../nginx/prod/https/nginx.conf'), '/realtime/call-events/', 'http://realtime:5003/call-events/'],
     ['dev', path.resolve(__dirname, '../../nginx/dev/nginx.conf'), '/realtime/realtime-events/', 'http://realtime:5003/realtime-events/'],
     ['prod', path.resolve(__dirname, '../../nginx/prod/https/nginx.conf'), '/realtime/realtime-events/', 'http://realtime:5003/realtime-events/'],
 ])('%s nginx config — %s SSE location', (_env, confPath, locationPath, expectedProxyPass) => {

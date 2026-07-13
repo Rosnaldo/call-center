@@ -29,11 +29,14 @@ const createSseSource: SseSourceFactory = (url) => new EventSource(url) as unkno
 // Replaces realtime's websocket as the transport for the call/incomingCall
 // domain: send/cancel/accept/complete an incoming call, reconnect sync
 // (call_synced), Daily meeting/participant events, and partner-reconnect —
-// IAM publishes straight to Redis and this reads it via Server-Sent Events,
-// no follow-up fetch. State itself (call/incomingCall) is centralized in the
-// update_call/update_incomingcall events; every other event here only
-// carries its own extra side effect (Daily join, modal, ringtone, clearing
-// the selected attendant).
+// IAM publishes straight to Redis, no follow-up fetch, and this reads it via
+// Server-Sent Events served by realtime (see
+// apps/realtime/src/routes/call_events.ts) — realtime owns every
+// client-facing WebSocket/SSE connection now, IAM stays a plain HTTP API and
+// only ever talks to this stream through Redis, never directly. State itself
+// (call/incomingCall) is centralized in the update_call/update_incomingcall
+// events; every other event here only carries its own extra side effect
+// (Daily join, modal, ringtone, clearing the selected attendant).
 // (onlineUsers's own update_online_users event and meeting_ended's non-call
 // side effects are a separate, still-websocket-driven phase — see
 // services/ws/users.ts and meeting.ts.)
@@ -48,11 +51,12 @@ export class InitCallEvents {
         if (!token) return;
         this.source?.close();
 
-        // backendUrl can carry a trailing slash (e.g. VITE_BACKEND_URL=".../iam/")
-        // — apiBack gets this for free from axios's baseURL join, but a plain
-        // template string doesn't, so a trailing slash here produced a
-        // double slash that 404'd behind nginx's /iam/ proxy_pass.
-        const base = properties.backendUrl.replace(/\/+$/, '');
+        // realtimeWsUrl is a ws(s):// URL (used for the actual websocket
+        // connection) — swap the scheme for the HTTP-facing SSE request,
+        // and strip any trailing slash the same way init-realtime-events.ts
+        // normalizes it, so a trailing slash (e.g. VITE_REALTIME_WS_URL="wss://.../realtime/")
+        // doesn't produce a double slash that 404s behind nginx's /realtime/ proxy_pass.
+        const base = properties.realtimeWsUrl.replace(/^ws/, 'http').replace(/\/+$/, '');
         const url = `${base}/call-events/stream?token=${encodeURIComponent(token)}`;
         const source = factory(url);
         this.source = source;

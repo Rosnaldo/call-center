@@ -17,9 +17,15 @@ function UserListsFetcher({ currentUser, call, onCompleteCall }: Props) {
   const setUsers = useOnlineUsersStore((s) => s.setUsers);
   const users = useOnlineUsersStore((s) => s.users);
 
+  // Seeds the store once from the initial REST snapshot — after that, the
+  // update_online_users SSE push (see init-realtime-events.ts) is the only
+  // writer. Re-running this on every background refetch (React Query's
+  // default staleTime is 0, so window focus alone triggers one) could
+  // clobber a fresher SSE update with a stale REST response.
   useEffect(() => {
     setUsers(initialUsers);
-  }, [initialUsers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <UserLists

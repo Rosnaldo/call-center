@@ -103,8 +103,8 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
     let customerUser: IUser;
     let customerStores: Stores;
     let adminStores: Stores;
-    // A reconnect now surfaces as update_call on IAM's call-events SSE
-    // stream (Phase 1); user_disconnecting/user_disconnected/
+    // A reconnect now surfaces as update_call on the call-events SSE stream
+    // (published by IAM, served by realtime — Phase 1); user_disconnecting/user_disconnected/
     // update_online_users live on realtime's own realtime-events SSE stream
     // (Phase 2) — see init-call-events.ts/init-realtime-events.ts. Both
     // bridge helpers duplicate the real Redis channel into a real

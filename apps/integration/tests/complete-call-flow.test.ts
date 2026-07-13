@@ -88,8 +88,9 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
     let attendantStores: Stores;
     let roomName: string;
     // update_call carries every call-state change (participant add/remove,
-    // completion, deletion) on IAM's call-events SSE stream; user_tokens_updated
-    // lives on realtime's own realtime-events SSE stream — see
+    // completion, deletion) on the call-events SSE stream (published by IAM,
+    // served by realtime); user_tokens_updated lives on realtime's own
+    // realtime-events SSE stream — see
     // init-call-events.ts/init-realtime-events.ts. Closed in afterEach.
     let sseCloses: Array<() => Promise<void>>;
 

@@ -224,7 +224,7 @@ describe('Accept Call Flow', () => {
         attendantRealtimeEvents.length = 0;
 
         await attendantStores.call.getState().acceptIncomingCall();
-        // call_accepted (IAM's call-events SSE) and update_online_users
+        // call_accepted (call-events SSE, published by IAM, served by realtime) and update_online_users
         // (realtime's own realtime-events SSE) are two independent pushes
         // now instead of one handler awaiting both in sequence — viewState
         // can flip to 'in-call' slightly before the broadcast resolves, so

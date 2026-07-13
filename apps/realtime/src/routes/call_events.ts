@@ -1,7 +1,7 @@
-import { type Application, type Request, type Response } from 'express';
-import { getRedisClient } from '#redis/singleton';
-import { GetKeycloakUserFromQuery } from '#middleware/get_keycloak_user_from_query';
-import { GetUser } from '#middleware/get_user';
+import { type Application, type Response } from 'express';
+import { getRedisClient } from '../redis/singleton';
+import { authenticateFromQuery } from '../middleware/authenticate_from_query';
+import { AuthenticatedRequest } from '../middleware/authenticate';
 import logger from '#logger';
 
 const CHANNEL_PREFIX = 'call-events:';
@@ -13,15 +13,17 @@ const HEARTBEAT_MS = 20_000;
 export default (app: Application) => {
     // Token travels as a query param, not the Authorization header — the
     // browser's EventSource API can't send custom headers (see
-    // GetKeycloakUserFromQuery). Replaces the old IAM-webhook-to-realtime
-    // push for the send/cancel/accept/complete call flow: web subscribes to
-    // this directly instead of over the realtime websocket.
+    // authenticate_from_query.ts). IAM still owns the call/incomingCall
+    // domain and publishes straight to this same Redis channel (see
+    // apps/iam/src/services/call_events.ts) — moving the stream itself here
+    // just centralizes every client-facing WebSocket/SSE connection on
+    // realtime, so IAM stays a plain HTTP API and can be redeployed without
+    // dropping anyone's live stream.
     app.get(
         '/call-events/stream',
-        GetKeycloakUserFromQuery,
-        GetUser,
-        async (req: Request, res: Response) => {
-            const userId = String(req.user._id);
+        authenticateFromQuery,
+        async (req: AuthenticatedRequest, res: Response) => {
+            const userId = String(req.authUser!._id);
             const channel = `${CHANNEL_PREFIX}${userId}`;
             const subscriber = getRedisClient().duplicate();
             let heartbeat: ReturnType<typeof setInterval> | undefined;

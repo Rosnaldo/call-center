@@ -6,9 +6,11 @@ import logger from '#logger';
 const CHANNEL_PREFIX = 'call-events:';
 const ONLINE_USERS_BROADCAST_CHANNEL = 'online-users:broadcast';
 
-// Local Redis publish instead of an HTTP webhook round-trip to realtime —
-// web subscribes directly (see /call-events/stream), so there's no other
-// service left to notify for this flow.
+// Local Redis publish instead of an HTTP webhook round-trip to realtime — web
+// subscribes directly to realtime's /call-events/stream SSE route (see
+// apps/realtime/src/routes/call_events.ts), which just forwards this
+// channel's raw content verbatim. IAM never talks to the browser directly;
+// Redis is the only thing connecting the two.
 const publishToUser = (traceId: string, userId: string, event: string, data: unknown): void => {
     logger.info({ traceId, userId, event }, 'call event published');
     getRedisClient().publish(`${CHANNEL_PREFIX}${userId}`, JSON.stringify({ event, data }));
