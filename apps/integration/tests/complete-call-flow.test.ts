@@ -2,11 +2,12 @@ import { EventEmitter } from 'node:events';
 import supertest from 'supertest';
 import { IUser, mapUserToOnlineUser } from '@repo/shared-types';
 
-import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
+import { startIamServer, stopIamServer } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { addOnlineUserToRedis } from './helpers/online-users-redis';
+import { createCallInRedis, getCallByRoomFromRedis, updateCallInRedis } from './helpers/calls-redis';
 import { getUserModel, getCallHistoryModel } from '../../iam/src/entities/models/singleton';
 import { createWsClient } from './helpers/mock-wss';
 import { createBridgedEventSource } from './helpers/mock-sse';
@@ -81,7 +82,6 @@ function createBridgedClient(user: IUser, token: string) {
 // ─── suite ──────────────────────────────────────────────────────────────────
 
 describe('Complete Call Flow — token charge + customer/attendant store sync', () => {
-    let iamRequest: IamAgent;
     let realtimeRequest: ReturnType<typeof supertest>;
     let customerUser: IUser;
     let attendantUser: IUser;
@@ -110,7 +110,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
     };
 
     beforeAll(async () => {
-        iamRequest = await startIamServer();
+        await startIamServer();
         const webhookServer = await startRealtimeServer();
         realtimeRequest = supertest(webhookServer.app);
 
@@ -174,7 +174,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
     // createCall if this were skipped, but pre-creating it here keeps the test
     // focused on the billing/sync behavior rather than the recovery path.
     const createCallRecord = async (): Promise<void> => {
-        await iamRequest.post('/calls/create').set('Authorization', CUSTOMER_TOKEN).send({
+        await createCallInRedis({
             id: `${customerUser._id}--${attendantUser._id}`,
             customerId: customerUser._id,
             customerName: `${customerUser.firstName} ${customerUser.lastName}`,
@@ -187,6 +187,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
             startedAt: null,
             endedAt: null,
             tokensToBeCharged: 0,
+            isClosed: false,
         });
     };
 
@@ -198,7 +199,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
     };
 
     const getCallRecordFromRedis = async () => {
-        return iamRequest.get('/calls/get-by-room').query({ roomName }).set('Authorization', CUSTOMER_TOKEN);
+        return getCallByRoomFromRedis(roomName);
     };
 
     const getCallHistoryRecord = async () => {
@@ -258,11 +259,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         // computeTokensToBeCharged) — waiting 2.5min in real time isn't
         // practical here, so backdate overlapStartedAt past that threshold
         // instead of actually waiting for it.
-        await iamRequest.put('/calls/update').set('Authorization', CUSTOMER_TOKEN).send({
-            customerId: customerUser._id,
-            attendantId: attendantUser._id,
-            updates: { overlapStartedAt: Date.now() - 200_000 },
-        });
+        await updateCallInRedis(customerUser._id, attendantUser._id, { overlapStartedAt: Date.now() - 200_000 });
 
         // the customer hangs up directly (no explicit participant.left) —
         // IAM's /calls/complete must still compute elapsed time off overlapStartedAt
@@ -295,7 +292,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
 
         // the ephemeral Redis record is torn down once the call is finalized
         const res = await getCallRecordFromRedis();
-        expect(res.body?.message).toBe('Call não encontrada');
+        expect(res).toBeNull();
 
         // ...but a permanent history record is written in its place
         const history = await getCallHistoryRecord();
@@ -333,7 +330,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         expect(attendantStores.call.getState().call).toBeNull();
 
         const res = await getCallRecordFromRedis();
-        expect(res.body?.message).toBe('Call não encontrada');
+        expect(res).toBeNull();
 
         // history is only recorded for charged calls — a zero-token call
         // (no overlap) leaves no history record

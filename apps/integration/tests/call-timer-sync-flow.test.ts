@@ -2,10 +2,11 @@ import { EventEmitter } from 'node:events';
 import supertest from 'supertest';
 import { IUser, getCallElapsedMs } from '@repo/shared-types';
 
-import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
+import { startIamServer, stopIamServer } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
+import { createCallInRedis, getCallByRoomFromRedis } from './helpers/calls-redis';
 import { createWsClient } from './helpers/mock-wss';
 import { createBridgedEventSource } from './helpers/mock-sse';
 
@@ -64,7 +65,6 @@ function createBridgedClient(user: IUser, token: string) {
 // ─── suite ──────────────────────────────────────────────────────────────────
 
 describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
-    let iamRequest: IamAgent;
     let realtimeRequest: ReturnType<typeof supertest>;
     let customerUser: IUser;
     let attendantUser: IUser;
@@ -86,7 +86,7 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
     };
 
     beforeAll(async () => {
-        iamRequest = await startIamServer();
+        await startIamServer();
         const webhookServer = await startRealtimeServer();
         realtimeRequest = supertest(webhookServer.app);
 
@@ -194,7 +194,7 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         await onConnection()(attendantWs);
 
         // ── call already exists in IAM, same as after an incoming-call accept ──
-        await iamRequest.post('/calls/create').set('Authorization', CUSTOMER_TOKEN).send({
+        await createCallInRedis({
             id: `${customerUser._id}--${attendantUser._id}`,
             customerId: customerUser._id,
             customerName: `${customerUser.firstName} ${customerUser.lastName}`,
@@ -207,6 +207,7 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
             startedAt: null,
             endedAt: null,
             tokensToBeCharged: 0,
+            isClosed: false,
         });
 
         // ── meeting starts, customer joins alone ──────────────────────────
@@ -318,12 +319,9 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         //    and deletes the record.
         await postDailyWebhook(leavePayload(customerUser));
 
-        const stillThere = await iamRequest
-            .get('/calls/get-by-room')
-            .query({ roomName })
-            .set('Authorization', CUSTOMER_TOKEN);
-        expect(stillThere.body?.isError).toBeFalsy();
-        expect(stillThere.body?.accumulatedMs).toBe(call!.accumulatedMs);
+        const stillThere = await getCallByRoomFromRedis(roomName);
+        expect(stillThere).not.toBeNull();
+        expect(stillThere!.accumulatedMs).toBe(call!.accumulatedMs);
 
         // ── the customer hangs up — /calls/complete only flips presence;
         //    Daily's own meeting.ended webhook is what actually tears the
@@ -336,16 +334,13 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         await postDailyWebhook({ type: 'meeting.ended', payload: { meeting_id: 'm-1', room: roomName, start_ts: Date.now() / 1000 } });
 
         const deadline = Date.now() + 10_000;
-        let res: Awaited<ReturnType<typeof iamRequest.get>>;
+        let res: Awaited<ReturnType<typeof getCallByRoomFromRedis>>;
         do {
-            res = await iamRequest
-                .get('/calls/get-by-room')
-                .query({ roomName })
-                .set('Authorization', CUSTOMER_TOKEN);
-            if (res.body?.isError === true) break;
+            res = await getCallByRoomFromRedis(roomName);
+            if (res === null) break;
             await wait(100);
         } while (Date.now() < deadline);
 
-        expect(res.body?.isError).toBe(true);
+        expect(res).toBeNull();
     });
 });

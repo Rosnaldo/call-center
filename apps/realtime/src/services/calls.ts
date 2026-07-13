@@ -1,37 +1,29 @@
 import axios from "axios";
 import { CallState } from "@repo/shared-types";
 import { createIamClient } from "src/apis/iam";
+import * as callsRedis from './calls_redis';
+import { notifyCallUpdate } from './call_events';
 
-export const createCall = async (traceId: string, call: CallState): Promise<CallState> => {
-    const { data } = await createIamClient(traceId).post<CallState>('/calls/create', call);
-    return data;
+// Not imported from #websocket/end_active_call — that module imports
+// notifyPartnerReconnected from here, and a two-line helper isn't worth a
+// circular import.
+const otherParticipantId = (call: CallState, userId: string): string =>
+    call.customerId === userId ? call.attendantId : call.customerId;
+
+export const createCall = async (_traceId: string, call: CallState): Promise<CallState> => {
+    return callsRedis.createCall(call);
 };
 
-export const getCallByRoom = async (traceId: string, roomName: string): Promise<CallState | null> => {
-    try {
-        const { data } = await createIamClient(traceId).get<CallState>('/calls/get-by-room', { params: { roomName } });
-        return data;
-    } catch (error) {
-        // Only treat "call não encontrada" (400) as absence — other failures
-        // (network blip, 500) must propagate, otherwise callers would treat a
-        // transient read error as "no call" and overwrite real state via createCall.
-        if (axios.isAxiosError(error) && error.response?.status === 400) return null;
-        throw error;
-    }
+export const getCallByRoom = async (_traceId: string, roomName: string): Promise<CallState | null> => {
+    return callsRedis.getCallByRoom(roomName);
 };
 
 export const getCallByUser = async (userId: string): Promise<CallState | null> => {
-    try {
-        const { data } = await createIamClient().get<CallState>('/calls/get-by-user', { params: { userId } });
-        return data;
-    } catch {
-        return null;
-    }
+    return callsRedis.getCallByUser(userId);
 };
 
-export const updateCall = async (traceId: string, customerId: string, attendantId: string, updates: Partial<CallState>): Promise<CallState> => {
-    const { data } = await createIamClient(traceId).put<CallState>('/calls/update', { customerId, attendantId, updates });
-    return data;
+export const updateCall = async (_traceId: string, customerId: string, attendantId: string, updates: Partial<CallState>): Promise<CallState | null> => {
+    return callsRedis.updateCall(customerId, attendantId, updates);
 };
 
 export const addParticipant = async (traceId: string, customerId: string, attendantId: string, userId: string): Promise<CallState> => {
@@ -45,11 +37,12 @@ export const removeParticipant = async (traceId: string, customerId: string, att
 };
 
 export const deleteCall = async (traceId: string, customerId: string, attendantId: string): Promise<void> => {
-    await createIamClient(traceId).delete('/calls/delete', { data: { customerId, attendantId } });
+    await callsRedis.deleteCall(customerId, attendantId);
+    notifyCallUpdate(traceId, [customerId, attendantId], null);
 };
 
-export const trackRoom = async (traceId: string, roomName: string): Promise<void> => {
-    await createIamClient(traceId).post('/calls/track-room', { roomName });
+export const trackRoom = async (_traceId: string, roomName: string): Promise<void> => {
+    await callsRedis.trackRoom(roomName);
 };
 
 export interface SyncActiveCallResult {
@@ -57,9 +50,10 @@ export interface SyncActiveCallResult {
 }
 
 // Called once per websocket connect (see connection.ts) — iam reconciles its
-// own redis call state against real Daily presence. IAM publishes the result
-// to that user directly (call_synced, over SSE — see init-call-events.ts);
-// nothing on the client calls this directly.
+// own redis call state against real Daily presence (Mongo-dependent
+// self-heal, stays server-to-server HTTP). IAM publishes the result to that
+// user directly (call_synced, over SSE — see init-call-events.ts); nothing
+// on the client calls this directly.
 export const syncActiveCall = async (traceId: string, userId: string): Promise<SyncActiveCallResult> => {
     const { data } = await createIamClient(traceId).post<SyncActiveCallResult>('/calls/sync-active-call', { userId });
     return data;
@@ -67,10 +61,12 @@ export const syncActiveCall = async (traceId: string, userId: string): Promise<S
 
 // Called when a user's websocket reconnects and our own grace-timer
 // bookkeeping (see grace_period.ts) shows it's a genuine reconnect, not a
-// fresh login — IAM looks up their active call and notifies the other
-// participant directly (call_synced's sibling event, partner_reconnected).
+// fresh login — pure Redis read + relay, no computed state, so this runs
+// directly instead of round-tripping to IAM.
 export const notifyPartnerReconnected = async (traceId: string, userId: string): Promise<void> => {
-    await createIamClient(traceId).post('/calls/notify-partner-reconnected', { userId });
+    const call = await callsRedis.getCallByUser(userId);
+    if (!call) return;
+    notifyCallUpdate(traceId, [otherParticipantId(call, userId)], call);
 };
 
 export interface CallHistoryPayload {

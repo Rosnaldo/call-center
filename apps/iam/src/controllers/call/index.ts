@@ -1,49 +1,30 @@
 import { Create } from './create';
-import { Get } from './get';
-import { GetByRoom } from './get_by_room';
-import { GetCallByUser } from './get_call_by_user';
-import { Update } from './update';
 import { AddParticipant } from './add_participant';
 import { RemoveParticipant } from './remove_participant';
 import { Delete } from './delete';
 import { Complete } from './complete';
-import { Touch } from './touch';
-import { TrackRoom, DeleteRooms } from './track_room';
 import { SyncActiveCall } from './sync_active_call';
-import { NotifyPartnerReconnected } from './notify_partner_reconnected';
 
+// create/delete no longer have their own HTTP route (see routes/call.ts) —
+// SyncActiveCall's self-heal path builds its own instances directly instead
+// of going through this aggregator — but the classes stay reachable here
+// too, since the unit tests exercise them this way.
 export class CallController {
     public readonly classId = Symbol.for('Controller > Call');
 
     public readonly create: Create;
-    public readonly get: Get;
-    public readonly getByRoom: GetByRoom;
-    public readonly getByUser: GetCallByUser;
-    public readonly update: Update;
     public readonly addParticipant: AddParticipant;
     public readonly removeParticipant: RemoveParticipant;
     public readonly delete: Delete;
     public readonly complete: Complete;
-    public readonly touch: Touch;
-    public readonly trackRoom: TrackRoom;
-    public readonly deleteRooms: DeleteRooms;
     public readonly syncActiveCall: SyncActiveCall;
-    public readonly notifyPartnerReconnected: NotifyPartnerReconnected;
 
     constructor() {
         this.create = Create.construir(this.classId);
-        this.get = Get.construir(this.classId);
-        this.getByRoom = GetByRoom.construir(this.classId);
-        this.getByUser = GetCallByUser.construir(this.classId);
-        this.update = Update.construir(this.classId);
         this.addParticipant = AddParticipant.construir(this.classId);
         this.removeParticipant = RemoveParticipant.construir(this.classId);
         this.delete = Delete.construir(this.classId);
         this.complete = Complete.construir(this.classId);
-        this.touch = Touch.construir(this.classId);
-        this.trackRoom = TrackRoom.construir(this.classId);
-        this.deleteRooms = DeleteRooms.construir(this.classId);
         this.syncActiveCall = SyncActiveCall.construir(this.classId);
-        this.notifyPartnerReconnected = NotifyPartnerReconnected.construir(this.classId);
     }
 }

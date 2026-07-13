@@ -5,6 +5,7 @@ import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
+import { getCallByRoomFromRedis } from './helpers/calls-redis';
 import { createWsClient } from './helpers/mock-wss';
 import { createBridgedEventSource } from './helpers/mock-sse';
 import { createBridgedRealtimeEventSource } from './helpers/mock-realtime-sse';
@@ -477,9 +478,8 @@ describe('Incoming Call Flow', () => {
         await iamRequest.post('/incoming-calls/accept').set('Authorization', ATTENDANT_TOKEN)
             .send({ attendantId: attendantUser._id, userId: attendantUser._id });
 
-        const acceptedCall = await iamRequest.get('/calls/get-by-room')
-            .query({ roomName }).set('Authorization', CUSTOMER_TOKEN);
-        expect(acceptedCall.body?.isError).toBeFalsy();
+        const acceptedCall = await getCallByRoomFromRedis(roomName);
+        expect(acceptedCall).not.toBeNull();
 
         customerMessages.length = 0;
         attendantMessages.length = 0;
@@ -496,10 +496,9 @@ describe('Incoming Call Flow', () => {
         expect(cancelRes.body?.isError).toBe(true);
 
         // the call it would have deleted is untouched
-        const stillThere = await iamRequest.get('/calls/get-by-room')
-            .query({ roomName }).set('Authorization', CUSTOMER_TOKEN);
-        expect(stillThere.body?.isError).toBeFalsy();
-        expect(stillThere.body?.roomName).toBe(roomName);
+        const stillThere = await getCallByRoomFromRedis(roomName);
+        expect(stillThere).not.toBeNull();
+        expect(stillThere!.roomName).toBe(roomName);
 
         // rejected before ever notifying — neither side hears about a cancel
         expect(customerCallEvents.find((m) => m.event === 'incoming_call_cancelled')).toBeUndefined();

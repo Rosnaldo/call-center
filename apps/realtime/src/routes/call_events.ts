@@ -2,6 +2,7 @@ import { type Application, type Response } from 'express';
 import { getRedisClient } from '../redis/singleton';
 import { authenticateFromQuery } from '../middleware/authenticate_from_query';
 import { AuthenticatedRequest } from '../middleware/authenticate';
+import { getCallByUser } from '../services/calls_redis';
 import logger from '#logger';
 
 const CHANNEL_PREFIX = 'call-events:';
@@ -13,12 +14,13 @@ const HEARTBEAT_MS = 20_000;
 export default (app: Application) => {
     // Token travels as a query param, not the Authorization header — the
     // browser's EventSource API can't send custom headers (see
-    // authenticate_from_query.ts). IAM still owns the call/incomingCall
-    // domain and publishes straight to this same Redis channel (see
-    // apps/iam/src/services/call_events.ts) — moving the stream itself here
-    // just centralizes every client-facing WebSocket/SSE connection on
-    // realtime, so IAM stays a plain HTTP API and can be redeployed without
-    // dropping anyone's live stream.
+    // authenticate_from_query.ts). IAM still owns incomingCall and the
+    // business-logic call writes (add/remove-participant, complete,
+    // sync-active-call), publishing straight to this same Redis channel (see
+    // apps/iam/src/services/call_events.ts); realtime publishes to it too now
+    // for the plain-CRUD call writes it owns directly (see
+    // services/call_events.ts) — same shared-channel pattern as
+    // online-users:broadcast.
     app.get(
         '/call-events/stream',
         authenticateFromQuery,
@@ -47,6 +49,12 @@ export default (app: Application) => {
                 });
 
                 await subscriber.subscribe(channel);
+
+                // Full snapshot right away — same reasoning as
+                // realtime-events.ts: a freshly-opened connection has no REST
+                // call to fall back on for the current call state anymore.
+                const call = await getCallByUser(userId);
+                res.write(`data: ${JSON.stringify({ event: 'update_call', data: { call } })}\n\n`);
             } catch (error) {
                 logger.error({ err: error, userId }, 'call_events stream: falha ao assinar canal Redis');
                 cleanup();

@@ -2,10 +2,11 @@ import { EventEmitter } from 'node:events';
 import supertest from 'supertest';
 import { IUser, mapUserToOnlineUser } from '@repo/shared-types';
 
-import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
+import { startIamServer, stopIamServer } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
+import { getCallByRoomFromRedis } from './helpers/calls-redis';
 import { simulateMessage, createWsClient } from './helpers/mock-wss';
 import { createBridgedEventSource } from './helpers/mock-sse';
 import { createBridgedRealtimeEventSource } from './helpers/mock-realtime-sse';
@@ -82,7 +83,6 @@ function createBridgedClient(user: IUser, token: string) {
 // ─── suite ──────────────────────────────────────────────────────────────────
 
 describe('Reconnect During Active Call Flow', () => {
-    let iamRequest: IamAgent;
     let realtimeRequest: ReturnType<typeof supertest>;
     let customerUser: IUser;
     let attendantUser: IUser;
@@ -115,7 +115,7 @@ describe('Reconnect During Active Call Flow', () => {
     };
 
     beforeAll(async () => {
-        iamRequest = await startIamServer();
+        await startIamServer();
         const webhookServer = await startRealtimeServer();
         realtimeRequest = supertest(webhookServer.app);
 
@@ -167,7 +167,7 @@ describe('Reconnect During Active Call Flow', () => {
     };
 
     const getCallRecordFromRedis = async () => {
-        return iamRequest.get('/calls/get-by-room').query({ roomName }).set('Authorization', CUSTOMER_TOKEN);
+        return getCallByRoomFromRedis(roomName);
     };
 
     // Drives the same real send -> accept path exercised in
@@ -264,7 +264,7 @@ describe('Reconnect During Active Call Flow', () => {
         expect(getCallViewState(attendantStores)).toBe('none');
 
         const res = await getCallRecordFromRedis();
-        expect(res.body?.message).toBe('Call não encontrada');
+        expect(res).toBeNull();
     };
 
     it('attendant logs out mid-call but reconnects before the grace period expires — the call survives and completes normally', async () => {
@@ -297,7 +297,7 @@ describe('Reconnect During Active Call Flow', () => {
 
         // the call record itself is untouched — nobody completed or deleted it
         const midDisconnectRes = await getCallRecordFromRedis();
-        expect(midDisconnectRes.body?.isError).toBeFalsy();
+        expect(midDisconnectRes).not.toBeNull();
 
         // ── attendant reconnects within the grace period ─────────────────
         customerMessages.length = 0;
@@ -367,7 +367,7 @@ describe('Reconnect During Active Call Flow', () => {
         expect(graceTimer.has(attendantUser._id)).toBe(true);
 
         const midDisconnectRes = await getCallRecordFromRedis();
-        expect(midDisconnectRes.body?.isError).toBeFalsy();
+        expect(midDisconnectRes).not.toBeNull();
 
         // ── attendant reconnects within the grace period ─────────────────
         customerMessages.length = 0;

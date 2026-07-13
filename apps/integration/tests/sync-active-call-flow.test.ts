@@ -1,13 +1,15 @@
 import { EventEmitter } from 'node:events';
 import { IUser, mapUserToOnlineUser } from '@repo/shared-types';
 
-import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
+import { startIamServer, stopIamServer } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
 import { createMockUsers, CUSTOMER_TOKEN, ATTENDANT_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
+import { createCallInRedis, getCallByRoomFromRedis, trackRoomInRedis } from './helpers/calls-redis';
 import { createWsClient } from './helpers/mock-wss';
 import { createBridgedEventSource } from './helpers/mock-sse';
 import { DailyCoService } from './helpers/daily-service';
+import { notifyPartnerReconnected } from 'src/services/calls';
 
 import { onConnection } from '../../realtime/src/websocket/connection';
 import { clientRegistry } from '../../realtime/src/websocket/client_registry';
@@ -92,7 +94,6 @@ function createBridgedClient(user: IUser, token: string) {
 // ─── suite ──────────────────────────────────────────────────────────────────
 
 describe('Sync Active Call on Connect', () => {
-    let iamRequest: IamAgent;
     let customerUser: IUser;
     let attendantUser: IUser;
     let customerStores: Stores;
@@ -114,7 +115,7 @@ describe('Sync Active Call on Connect', () => {
     };
 
     beforeAll(async () => {
-        iamRequest = await startIamServer();
+        await startIamServer();
         await startRealtimeServer();
 
         const users = await createMockUsers();
@@ -153,7 +154,7 @@ describe('Sync Active Call on Connect', () => {
     });
 
     const createCallRecord = async (): Promise<void> => {
-        await iamRequest.post('/calls/create').set('Authorization', CUSTOMER_TOKEN).send({
+        await createCallInRedis({
             id: `${customerUser._id}--${attendantUser._id}`,
             customerId: customerUser._id,
             customerName: `${customerUser.firstName} ${customerUser.lastName}`,
@@ -166,11 +167,12 @@ describe('Sync Active Call on Connect', () => {
             startedAt: null,
             endedAt: null,
             tokensToBeCharged: 0,
+            isClosed: false,
         });
     };
 
     const getCallRecordFromRedis = () => {
-        return iamRequest.get('/calls/get-by-room').query({ roomName }).set('Authorization', CUSTOMER_TOKEN);
+        return getCallByRoomFromRedis(roomName);
     };
 
     it('deletes the call and does not rejoin a meeting when the connecting user is alone', async () => {
@@ -199,7 +201,7 @@ describe('Sync Active Call on Connect', () => {
 
         // the stale record (and the Daily room behind it) is torn down
         const res = await getCallRecordFromRedis();
-        expect(res.body?.message).toBe('Call não encontrada');
+        expect(res).toBeNull();
 
         // client never joins a meeting — no call/viewState to sync into
         expect(customerStores.call.getState().call).toBeNull();
@@ -235,8 +237,8 @@ describe('Sync Active Call on Connect', () => {
         // the record persists, now with the connecting user added as a
         // participant (SyncActiveCall's addParticipant side effect)
         const res = await getCallRecordFromRedis();
-        expect(res.body?.isError).toBeFalsy();
-        expect(res.body?.activeUserIds).toContain(customerUser._id);
+        expect(res).not.toBeNull();
+        expect(res!.activeUserIds).toContain(customerUser._id);
 
         // client actually (re)joins the meeting, and its own call object
         // shows the connecting user as a participant — not just the WS
@@ -278,7 +280,7 @@ describe('Sync Active Call on Connect', () => {
 
         // the record still persists (the meeting is real, someone's in it)
         const res = await getCallRecordFromRedis();
-        expect(res.body?.isError).toBeFalsy();
+        expect(res).not.toBeNull();
 
         // always (re)joins now — no shouldJoin gate left to skip it
         await waitFor(() => dailyCoService.joinCalls.length === 1);
@@ -292,7 +294,7 @@ describe('Sync Active Call on Connect', () => {
         // presence instead of an existing calls:* entry. The counterpart's
         // presence doesn't gate this — only whether the room has anyone
         // (the connecting user, at minimum) in it.
-        await iamRequest.post('/calls/track-room').set('Authorization', CUSTOMER_TOKEN).send({ roomName });
+        await trackRoomInRedis(roomName);
 
         jest.spyOn(dailyServiceModule, 'getRoomPresenceUserIds').mockImplementation(async (room: string) =>
             room === roomName ? [customerUser._id] : [],
@@ -318,10 +320,10 @@ describe('Sync Active Call on Connect', () => {
 
         // a brand new record now exists — there was none before this connect
         const res = await getCallRecordFromRedis();
-        expect(res.body?.isError).toBeFalsy();
-        expect(res.body?.customerId).toBe(customerUser._id);
-        expect(res.body?.attendantId).toBe(attendantUser._id);
-        expect(res.body?.activeUserIds).toEqual([customerUser._id]);
+        expect(res).not.toBeNull();
+        expect(res!.customerId).toBe(customerUser._id);
+        expect(res!.attendantId).toBe(attendantUser._id);
+        expect(res!.activeUserIds).toEqual([customerUser._id]);
 
         // client joins the reconstructed meeting, with itself already shown
         // as a participant in its own call object
@@ -333,7 +335,7 @@ describe('Sync Active Call on Connect', () => {
     });
 
     it('self-heals a new call with both participants when the counterpart is also present in the tracked room', async () => {
-        await iamRequest.post('/calls/track-room').set('Authorization', CUSTOMER_TOKEN).send({ roomName });
+        await trackRoomInRedis(roomName);
 
         jest.spyOn(dailyServiceModule, 'getRoomPresenceUserIds').mockImplementation(async (room: string) =>
             room === roomName ? [customerUser._id, attendantUser._id] : [],
@@ -358,8 +360,8 @@ describe('Sync Active Call on Connect', () => {
         expect(connectedMsg.data.call.activeUserIds).toEqual([customerUser._id, attendantUser._id]);
 
         const res = await getCallRecordFromRedis();
-        expect(res.body?.isError).toBeFalsy();
-        expect(res.body?.activeUserIds).toEqual([customerUser._id, attendantUser._id]);
+        expect(res).not.toBeNull();
+        expect(res!.activeUserIds).toEqual([customerUser._id, attendantUser._id]);
 
         await waitFor(() => getCallViewState(customerStores) === 'in-call');
         expect(customerStores.call.getState().call).toBeTruthy();
@@ -367,19 +369,18 @@ describe('Sync Active Call on Connect', () => {
         expect(dailyCoService.joinCalls[0]).toMatchObject({ room: roomName, userId: customerUser._id });
     });
 
-    // Exercises IAM's new NotifyPartnerReconnected controller directly —
-    // this is what realtime's connection.ts calls (instead of doing its own
-    // lookup + sendToUser) once its grace-timer bookkeeping detects a
-    // genuine reconnect.
-    describe('POST /calls/notify-partner-reconnected', () => {
+    // notifyPartnerReconnected moved off IAM's HTTP route into realtime
+    // itself (pure Redis read + relay, see services/calls.ts) — exercised
+    // directly here, the same way this suite already calls onConnection()
+    // for other realtime-side behavior, instead of hitting an HTTP route
+    // that no longer exists.
+    describe('notifyPartnerReconnected', () => {
         it('publishes update_call to the other participant when the user has an active call', async () => {
             await createCallRecord();
             const { messages: attendantEvents, close } = await createBridgedEventSource(attendantUser._id);
 
             try {
-                const res = await iamRequest.post('/calls/notify-partner-reconnected')
-                    .set('Authorization', CUSTOMER_TOKEN).send({ userId: customerUser._id });
-                expect(res.body?.isError).toBeFalsy();
+                await notifyPartnerReconnected('test-trace', customerUser._id);
 
                 await waitFor(() => attendantEvents.some((m) => m.event === 'update_call'));
                 const msg = attendantEvents.find((m) => m.event === 'update_call');
@@ -390,10 +391,7 @@ describe('Sync Active Call on Connect', () => {
         });
 
         it('no-ops when the user has no active call', async () => {
-            const res = await iamRequest.post('/calls/notify-partner-reconnected')
-                .set('Authorization', CUSTOMER_TOKEN).send({ userId: customerUser._id });
-
-            expect(res.body?.isError).toBeFalsy();
+            await expect(notifyPartnerReconnected('test-trace', customerUser._id)).resolves.toBeUndefined();
         });
     });
 });

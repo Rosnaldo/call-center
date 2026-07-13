@@ -1,7 +1,7 @@
 import { spawn, ChildProcess } from 'child_process';
 import properties from '#properties';
 import logger from '#logger';
-import { createIamClient } from '#apis/iam';
+import { listAndClearTrackedRooms } from '../services/calls_redis';
 
 const DAILY_API_URL = 'https://api.daily.co/v1';
 const WEBHOOK_PATH_LOCAL = '/webhooks/daily';
@@ -213,8 +213,8 @@ export async function isUserPresentInRoom(room: string, userId: string): Promise
 
 async function deleteTrackedRooms(): Promise<void> {
     try {
-        const { data } = await createIamClient().delete<{ rooms: string[] }>('/calls/rooms');
-        for (const room of data.rooms) {
+        const rooms = await listAndClearTrackedRooms();
+        for (const room of rooms) {
             await deleteDailyRoom(room);
         }
     } catch (error) {

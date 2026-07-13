@@ -5,13 +5,6 @@ export interface ICallController {
         IInput: CallState;
         IOutput: CallState;
     };
-    IGet: {
-        IOutput: CallState;
-    };
-    IUpdate: {
-        IInput: { customerId: string; attendantId: string; updates: Partial<CallState> };
-        IOutput: CallState;
-    };
     IAddParticipant: {
         IInput: { customerId: string; attendantId: string; userId: string };
         IOutput: CallState;
@@ -26,15 +19,7 @@ export interface ICallController {
     IComplete: {
         IOutput: {};
     };
-    ITouch: {
-        IInput: { customerId: string; attendantId: string };
-        IOutput: {};
-    };
     ISyncActiveCall: {
         IOutput: { call: CallState | null };
-    };
-    INotifyPartnerReconnected: {
-        IInput: { userId: string };
-        IOutput: {};
     };
 }

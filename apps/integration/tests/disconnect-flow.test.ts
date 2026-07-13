@@ -1,11 +1,12 @@
 import { EventEmitter } from 'node:events';
 import { IOnlineUser, IUser, mapUserToOnlineUser } from '@repo/shared-types';
 
-import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
+import { startIamServer, stopIamServer } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
 import { createMockUsers, ADMIN_TOKEN, CUSTOMER_TOKEN } from './helpers/users';
 import { getRedisClient } from '../../iam/src/redis/singleton';
 import { listOnlineUsersFromRedis, addOnlineUserToRedis } from './helpers/online-users-redis';
+import { createCallInRedis, getCallByRoomFromRedis } from './helpers/calls-redis';
 import { simulateMessage, createWsClient } from './helpers/mock-wss';
 import { createBridgedEventSource } from './helpers/mock-sse';
 import { createBridgedRealtimeEventSource } from './helpers/mock-realtime-sse';
@@ -75,7 +76,7 @@ function createBridgedClient(user: IUser, token: string) {
 // really present in the (real, but never actually joined) Daily room. If
 // this existed before onConnection(), admin's own connect would delete it
 // before the disconnect flow below ever got to exercise it.
-async function createCallRecord(iamRequest: IamAgent, roomName: string, adminUser: IUser, customerUser: IUser) {
+async function createCallRecord(roomName: string, adminUser: IUser, customerUser: IUser) {
     const call = {
         id: `${adminUser._id}--${customerUser._id}`,
         customerId: adminUser._id,
@@ -91,14 +92,13 @@ async function createCallRecord(iamRequest: IamAgent, roomName: string, adminUse
         tokensToBeCharged: 0,
         isClosed: false,
     };
-    await iamRequest.post('/calls/create').set('Authorization', CUSTOMER_TOKEN).send(call);
+    await createCallInRedis(call);
     return call;
 }
 
 // ─── suite ──────────────────────────────────────────────────────────────────
 
 describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
-    let iamRequest: IamAgent;
     let adminUser: IUser;
     let customerUser: IUser;
     let customerStores: Stores;
@@ -127,7 +127,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
     };
 
     beforeAll(async () => {
-        iamRequest = await startIamServer();
+        await startIamServer();
         await startRealtimeServer();
         const users = await createMockUsers();
         adminUser = users.admin;
@@ -346,7 +346,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         await flushRealIO();
 
         const roomName = `${adminUser.slug}--${customerUser.slug}`;
-        const call = await createCallRecord(iamRequest, roomName, adminUser, customerUser);
+        const call = await createCallRecord(roomName, adminUser, customerUser);
         // Mirrors the customer client already knowing about this call (e.g.
         // from its own earlier sync) — createCallRecord is deliberately only
         // a server-side Redis write (see its comment), so without this the
@@ -397,7 +397,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         await flushRealIO();
 
         const roomName = `${adminUser.slug}--${customerUser.slug}`;
-        await createCallRecord(iamRequest, roomName, adminUser, customerUser);
+        await createCallRecord(roomName, adminUser, customerUser);
 
         // mirror a real active call's presence status on both sides
         await addOnlineUserToRedis(mapUserToOnlineUser(adminUser, { status: 'in-call' }));
@@ -425,9 +425,9 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         expect(customerInRedis?.status).toBe('in-call');
         expect(redisUsers.find((u: IOnlineUser) => u.id === adminUser._id)).toBeUndefined();
 
-        const callRes = await iamRequest.get('/calls/get-by-room').query({ roomName }).set('Authorization', CUSTOMER_TOKEN);
-        expect(callRes.body?.isError).toBeFalsy();
-        expect(callRes.body?.roomName).toBe(roomName);
+        const callRes = await getCallByRoomFromRedis(roomName);
+        expect(callRes).not.toBeNull();
+        expect(callRes!.roomName).toBe(roomName);
     });
 
     it('reconnecting within the grace period while in a call notifies the partner via update_call', async () => {
@@ -452,7 +452,7 @@ describe('User Disconnect Flow — Broadcast + IAM Redis Sync', () => {
         await flushRealIO();
 
         const roomName = `${adminUser.slug}--${customerUser.slug}`;
-        await createCallRecord(iamRequest, roomName, adminUser, customerUser);
+        await createCallRecord(roomName, adminUser, customerUser);
 
         // ── admin disconnects — grace timer starts, status flips since
         //    there IS an active call this time ───────────────────────────
