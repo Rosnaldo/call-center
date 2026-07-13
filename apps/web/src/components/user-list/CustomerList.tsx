@@ -12,10 +12,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import { CallState } from '@/src/states/call/state.ts';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { IUser } from '@repo/shared-types';
 
 interface CustomerListProps {
   users: OnlineUserState[];
-  currentUser: OnlineUserState | null;
+  currentUser: IUser | null;
   call: CallState | null;
 }
 
@@ -68,7 +69,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
           </div>
         ) : (
           sortedCustomers.map((cust) => {
-            const isSelf = currentUser?.id === cust.id;
+            const isSelf = currentUser?._id === cust.id;
             const talkingCall = getCustomerCall(cust.id);
             const isDisconnecting = cust.status === 'disconnecting';
 

@@ -4,15 +4,14 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { computeTokensToBeCharged } from '@repo/shared-types';
+import { IUser, computeTokensToBeCharged } from '@repo/shared-types';
 import { useOnlineUsersStore, useTimerStore, useCurrentUserStore, useBillingStore } from '../states/stores.ts';
 import { CallState } from '../states/call/state.ts';
-import { OnlineUserState } from '../states/online-users/state.ts';
 
 export function useBillingTimer(call: CallState | undefined) {
   const currentUser = useCurrentUserStore((s) => s.currentUser);
 
-  const currentUserRef = useRef<OnlineUserState | null>(currentUser);
+  const currentUserRef = useRef<IUser | null>(currentUser);
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
 
   const callIdRef = useRef<string | undefined>(undefined);
@@ -41,7 +40,7 @@ export function useBillingTimer(call: CallState | undefined) {
       const user = currentUserRef.current;
       if (!user) return;
 
-      const isMyCall = user.id === call.customerId || user.id === call.attendantId;
+      const isMyCall = user._id === call.customerId || user._id === call.attendantId;
       if (!isMyCall) return;
 
       const { initialTokens: tokensCharged } = useBillingStore.getState();

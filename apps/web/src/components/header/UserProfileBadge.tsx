@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { LogOut, Radio, ChevronDown, Settings, Coins, LayoutDashboard, History } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCurrentUserStore } from '@/src/states/stores.ts';
+import { getFullName } from '@/src/entities/user.ts';
 
 interface UserProfileBadgeProps {
   onLogout: () => void;
@@ -45,6 +46,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
   }
 
   const tokensCount = currentUser.tokens ?? 0;
+  const fullName = getFullName(currentUser);
 
   return (
     <div id="header-active-profile-area" className="flex items-center gap-2 relative select-none" ref={dropdownRef}>
@@ -66,11 +68,11 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
       >
         <div className="relative shrink-0">
           <img
-            src={currentUser.avatarUrl}
-            alt={currentUser.name}
+            src={currentUser.avatar?.url}
+            alt={fullName}
             className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover border border-brand-border-dark"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${currentUser.name}`;
+              (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${fullName}`;
             }}
           />
           <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 rounded-full border border-white" />
@@ -78,7 +80,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
 
         <div className="hidden md:block">
           <div className="text-[11px] font-bold text-brand-dark leading-tight">
-            {currentUser.name}
+            {fullName}
           </div>
           <div className="text-[8px] uppercase font-bold tracking-wide text-brand-ochre">
             {{
@@ -101,7 +103,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
           {/* User info header */}
           <div className="px-4 py-3.5 border-b border-[#e4dcce]/50 flex flex-col text-left">
             <span className="font-extrabold text-sm text-brand-dark tracking-tight leading-tight">
-              {currentUser.name}
+              {fullName}
             </span>
             <span className="text-xs text-brand-muted/80 truncate mt-0.5 font-medium leading-none">
               {currentUser.email}

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MINUTES_PER_TOKEN } from '@repo/shared-types';
 import { InfoCard } from '../InfoCard.tsx';
-import { buildCall, buildOnlineUserState } from '../../../../__tests__/builders.ts';
+import { buildCall, buildOnlineUserState, buildUser } from '../../../../__tests__/builders.ts';
 import { useBillingStore, useCallStore, useCallViewStore, useCurrentUserStore, useOnlineUsersStore, useTimerStore } from '../../../../states/stores.ts';
 
 const BLOCK = MINUTES_PER_TOKEN * 60; // 300s
@@ -29,7 +29,7 @@ beforeEach(() => {
 
 const setupCustomerViewer = () => {
   useCurrentUserStore.setState({
-    currentUser: { id: 'viewer-customer', name: 'Cliente', slug: 'cliente', email: 'cliente@example.com', role: 'customer', avatarUrl: '', status: 'in-call' },
+    currentUser: buildUser({ _id: 'viewer-customer', firstName: 'Cliente', lastName: '', slug: 'cliente', email: 'cliente@example.com', role: 'customer' }),
   });
 };
 
@@ -170,7 +170,7 @@ describe('InfoCard – billing countdown timer (half-cycle rule)', () => {
   it('hides "Seu Saldo" for attendant/admin viewers', () => {
     setupCall(7);
     useCurrentUserStore.setState({
-      currentUser: { id: 'viewer-attendant', name: 'Atendente', slug: 'atendente', email: 'atendente@example.com', role: 'attendant', avatarUrl: '', status: 'in-call' },
+      currentUser: buildUser({ _id: 'viewer-attendant', firstName: 'Atendente', lastName: '', slug: 'atendente', email: 'atendente@example.com', role: 'attendant' }),
     });
 
     render(<InfoCard />);

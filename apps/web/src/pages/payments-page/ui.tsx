@@ -19,11 +19,11 @@ import {
   ShieldCheck,
   Lock
 } from 'lucide-react';
-import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { IUser } from '@repo/shared-types';
 import { useLogout } from '../../hooks/auth/useLogout.ts';
 
 interface PaymentsPageUIProps {
-  currentUser: OnlineUserState | null;
+  currentUser: IUser | null;
   addTokens: (userId: string, count: number) => void;
   navigate: (path: string) => void;
 }
@@ -98,7 +98,7 @@ export const PaymentsPageUI: React.FC<PaymentsPageUIProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: currentUser.id,
+          userId: currentUser._id,
           count: currentTokensAmount,
         }),
       });
@@ -107,7 +107,7 @@ export const PaymentsPageUI: React.FC<PaymentsPageUIProps> = ({
         throw new Error(t('payments.purchaseError'));
       }
 
-      addTokens(currentUser.id, currentTokensAmount);
+      addTokens(currentUser._id, currentTokensAmount);
 
       setSuccessInfo({
         amount: currentTokensAmount,

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useBillingTimer } from '../useBillingTimer.ts';
 import { useTimerStore, useCallStore, useCurrentUserStore, useOnlineUsersStore, useBillingStore } from '../../states/stores.ts';
-import { buildCall, buildOnlineUserState } from '../../__tests__/builders.ts';
+import { buildCall, buildOnlineUserState, buildUser } from '../../__tests__/builders.ts';
 import { CallState } from '../../states/call/state.ts';
 
 const CALL_ID = 'call-timer-test';
@@ -82,7 +82,7 @@ describe('useBillingTimer — timer / call store integration', () => {
     const setupBillableCall = () => {
       const call = makeCall();
       const customer = buildOnlineUserState({ id: call.customerId, tokens: 10 });
-      useCurrentUserStore.getState().setCurrentUser(customer);
+      useCurrentUserStore.getState().setCurrentUser(buildUser({ _id: call.customerId, tokens: 10 }));
       useOnlineUsersStore.setState({ users: [customer] });
       renderHook(({ call }) => useBillingTimer(call), { initialProps: { call } });
     };

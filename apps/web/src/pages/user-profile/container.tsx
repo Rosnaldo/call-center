@@ -16,7 +16,7 @@ export const UserProfileContainer: React.FC = () => {
   const navigate = useNavigate();
   const currentUser = useCurrentUserStore((s) => s.currentUser);
   const setCurrentUser = useCurrentUserStore((s) => s.setCurrentUser);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(currentUser?.avatarUrl || null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(currentUser?.avatar?.url || null);
   const [fileError, setFileError] = useState<string | null>(null);
   
   const processFile = async (file: File) => {
@@ -37,7 +37,10 @@ export const UserProfileContainer: React.FC = () => {
     try {
       const url = await fetchUserUpload(formData);
       setAvatarUrl(url);
-      setCurrentUser({ ...currentUser!, avatarUrl: url });
+      setCurrentUser({
+        ...currentUser!,
+        avatar: { ...(currentUser!.avatar ?? { _id: '', s3Path: '', s3Host: '' }), url },
+      });
     } catch (error) {
       setFileError(t('profile.imageReadError'));
       throw error;

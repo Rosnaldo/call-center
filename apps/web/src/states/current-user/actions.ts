@@ -1,7 +1,7 @@
-import { OnlineUserState } from "../online-users/state";
+import { IUser } from '@repo/shared-types';
 
 export interface CurrentUserActions {
-  setCurrentUser: (user: OnlineUserState | null) => void;
+  setCurrentUser: (user: IUser | null) => void;
 }
 
 export const createCurrentUserActions = (

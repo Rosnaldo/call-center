@@ -4,7 +4,7 @@ import { ConfirmCloseCallModal } from '../../ConfirmCloseCallModal.tsx';
 import { BillingCalculationModal } from '../../BillingCalculationModal.tsx';
 import { BillingSummaryModal } from '../../BillingSummaryModal.tsx';
 import { MediaSettingsModal } from '../../media-settings-modal/MediaSettingsModal.tsx';
-import { buildCall, buildOnlineUserState } from '../../../../__tests__/builders.ts';
+import { buildCall, buildUser } from '../../../../__tests__/builders.ts';
 import { useBillingStore, useCurrentUserStore } from '../../../../states/stores.ts';
 
 vi.mock('../../../../providers/devices.tsx', () => ({
@@ -140,7 +140,7 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
 
     it('renders customer billed summaries', () => {
       useBillingStore.setState({ initialTokens: 5, completedCallSummary: buildCall({ attendantName: 'Dr. John' }) });
-      useCurrentUserStore.setState({ currentUser: buildOnlineUserState({ role: 'customer' }) });
+      useCurrentUserStore.setState({ currentUser: buildUser({ role: 'customer' }) });
       const { container } = render(
         <BillingSummaryModal />
       );
@@ -164,7 +164,7 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
 
     it('renders singular token word when initialTokens is 1', () => {
       useBillingStore.setState({ initialTokens: 1, completedCallSummary: buildCall({ attendantName: 'Dr. John' }) });
-      useCurrentUserStore.setState({ currentUser: buildOnlineUserState({ role: 'customer' }) });
+      useCurrentUserStore.setState({ currentUser: buildUser({ role: 'customer' }) });
       render(
         <BillingSummaryModal />
       );
@@ -177,7 +177,7 @@ describe('Modals Rendering and Behavior Unit Tests', () => {
 
     it('renders attendant receive summaries', () => {
       useBillingStore.setState({ initialTokens: 5, completedCallSummary: buildCall({ customerName: 'Alice Mary' }) });
-      useCurrentUserStore.setState({ currentUser: buildOnlineUserState({ role: 'attendant' }) });
+      useCurrentUserStore.setState({ currentUser: buildUser({ role: 'attendant' }) });
       render(
         <BillingSummaryModal />
       );

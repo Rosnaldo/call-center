@@ -10,10 +10,10 @@ import { useCurrentUserStore } from '../../states/stores.ts';
 import { useTransactionsQuery } from '../../queries/transaction/query.ts';
 import { TokenHistoryPageUI } from './ui.tsx';
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
-import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { IUser } from '@repo/shared-types';
 
 const TokenHistoryPageDataLoader: React.FC<{
-  currentUser: OnlineUserState;
+  currentUser: IUser;
 }> = ({ currentUser }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,7 +22,7 @@ const TokenHistoryPageDataLoader: React.FC<{
   const itemsPerPage = 8;
 
   const { data: paginatedData } = useTransactionsQuery(
-    currentUser.id,
+    currentUser._id,
     currentPage,
     itemsPerPage,
     searchTerm,

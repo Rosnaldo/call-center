@@ -8,10 +8,11 @@ import { AttendantList } from './AttendantList.tsx';
 import { CustomerList } from './CustomerList.tsx';
 import { CallState } from '@/src/states/call/state.ts';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { IUser } from '@repo/shared-types';
 
 interface UserListsProps {
   users: OnlineUserState[];
-  currentUser: OnlineUserState | null;
+  currentUser: IUser | null;
   call: CallState | null;
   onCompleteCall: (attendantId: string) => void;
 }

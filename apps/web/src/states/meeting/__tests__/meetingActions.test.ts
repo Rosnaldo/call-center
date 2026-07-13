@@ -37,22 +37,6 @@ describe('meeting store — meetingEnded', () => {
     expect(result.current).toBe('none');
   });
 
-  it('flips the logged-in currentUser back to idle', () => {
-    const call = buildCall({ customerId: customer.id, attendantId: attendant.id });
-    useCurrentUserStore.getState().setCurrentUser({ ...attendant, status: 'in-call' });
-
-    useMeetingStore.getState().meetingEnded(call);
-
-    expect(useCurrentUserStore.getState().currentUser?.status).toBe('idle');
-  });
-
-  it('does nothing to currentUser when nobody is logged in locally', () => {
-    const call = buildCall({ customerId: customer.id, attendantId: attendant.id });
-
-    expect(() => useMeetingStore.getState().meetingEnded(call)).not.toThrow();
-    expect(useCurrentUserStore.getState().currentUser).toBeNull();
-  });
-
   it('closes the billing calculation modal and opens the billing summary modal with the ended call', () => {
     const call = buildCall({ customerId: customer.id, attendantId: attendant.id });
     useBillingStore.getState().openCalculationModal();

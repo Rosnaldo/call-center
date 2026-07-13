@@ -167,8 +167,8 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   const hasUnreadMessage = useChatStore(s => s.hasUnreadMessage);
 
   const isReceiving = incomingCall
-    ? currentUser?.id === incomingCall.attendantId
-    : currentUser?.id === currentCall?.attendantId;
+    ? currentUser?._id === incomingCall.attendantId
+    : currentUser?._id === currentCall?.attendantId;
   const hasIncomingCall = !!incomingCall;
 
   const selectedAttendantId = useCallViewStore(s => s.selectedAttendantId);

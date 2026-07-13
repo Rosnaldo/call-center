@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { CallView, CallViewState } from '../CallView.tsx';
-import { buildCall, buildOnlineUserState } from '../../../../__tests__/builders.ts';
+import { buildCall, buildOnlineUserState, buildUser } from '../../../../__tests__/builders.ts';
 import { useCurrentUserStore, useCallStore } from '../../../../states/stores.ts';
 import { CallState } from '../../../../states/call/state.ts';
 
@@ -41,6 +41,9 @@ const attendant = buildOnlineUserState({
   status: 'in-call',
 });
 
+// currentUser is IUser now, not IOnlineUser — see states/current-user/state.ts.
+const currentUserRecord = buildUser({ _id: ATTENDANT_ID, firstName: 'João', lastName: 'Atendente', role: 'attendant' });
+
 const makeCall = (): CallState =>
   buildCall({
     id: CALL_ID,
@@ -71,7 +74,7 @@ const makeProps = (call: CallState, stateOverride?: CallViewState, extra = {}) =
 });
 
 beforeEach(() => {
-  useCurrentUserStore.setState({ currentUser: attendant });
+  useCurrentUserStore.setState({ currentUser: currentUserRecord });
   useCallStore.setState({ call: null });
 });
 

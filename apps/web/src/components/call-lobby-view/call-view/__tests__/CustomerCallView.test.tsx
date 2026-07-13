@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { CallView, CallViewState } from '../CallView.tsx';
-import { buildCall, buildOnlineUserState } from '../../../../__tests__/builders.ts';
+import { buildCall, buildOnlineUserState, buildUser } from '../../../../__tests__/builders.ts';
 import { renderHook } from '@testing-library/react';
 import { useCurrentUserStore, useOnlineUsersStore, useCallStore, useCallViewStore, useIncomingCallStore } from '../../../../states/stores.ts';
 import { initialCallViewState } from '../../../../states/call-view/state.ts';
@@ -48,6 +48,9 @@ const customer = buildOnlineUserState({
   status: 'idle',
 });
 
+// currentUser is IUser now, not IOnlineUser — see states/current-user/state.ts.
+const currentUserRecord = buildUser({ _id: CUSTOMER_ID, role: 'customer', tokens: 5 });
+
 const makeProps = (state: CallViewState, extra = {}) => ({
   state,
   isScreenSharing: false,
@@ -63,7 +66,7 @@ const makeProps = (state: CallViewState, extra = {}) => ({
 });
 
 beforeEach(() => {
-  useCurrentUserStore.setState({ currentUser: customer });
+  useCurrentUserStore.setState({ currentUser: currentUserRecord });
   useOnlineUsersStore.setState({ users: [customer, attendant] });
   useCallStore.setState({ call: null });
   useCallViewStore.setState({ ...initialCallViewState });

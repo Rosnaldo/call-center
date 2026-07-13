@@ -12,10 +12,11 @@ import { useCallViewStore, useIncomingCallStore } from '../../states/stores.ts';
 
 import { CallState } from '@/src/states/call/state.ts';
 import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { IUser } from '@repo/shared-types';
 
 interface AttendantListProps {
   users: OnlineUserState[];
-  currentUser: OnlineUserState | null;
+  currentUser: IUser | null;
   call: CallState | null;
   onCompleteCall: (attendantId: string) => void;
 }
@@ -101,11 +102,11 @@ export const AttendantList: React.FC<AttendantListProps> = ({
             sortedAttendants.map((at) => {
               const activeCall = getAttendantcall(at.id);
               const busyCall = getAttendantOccupiedOrRinging(at.id);
-              const isSelf = currentUser?.id === at.id;
+              const isSelf = currentUser?._id === at.id;
               const isDisconnecting = at.isDisconnecting ?? false;
 
-              const currentCustInActiveWithThisAtt = getAttendantCall(at.id) && currentUser && getAttendantCall(at.id)?.customerId === currentUser.id;
-              const isLocalCustomerBusyState = currentUser ? isCustomerCurrentlyBusy(currentUser.id) : false;
+              const currentCustInActiveWithThisAtt = getAttendantCall(at.id) && currentUser && getAttendantCall(at.id)?.customerId === currentUser._id;
+              const isLocalCustomerBusyState = currentUser ? isCustomerCurrentlyBusy(currentUser._id) : false;
 
               return (
                 <div
@@ -193,7 +194,7 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                           </div>
                         ) : (
                           (() => {
-                            const customerUserObj = users.find(u => u.id === currentUser.id);
+                            const customerUserObj = users.find(u => u.id === currentUser._id);
                             const hasNoTokens = customerUserObj ? (customerUserObj.tokens !== undefined ? customerUserObj.tokens : 5) <= 0 : false;
 
                             if (hasNoTokens) {

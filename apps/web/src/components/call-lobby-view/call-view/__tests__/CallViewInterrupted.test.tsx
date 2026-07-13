@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { CallView, CallViewState } from '../CallView.tsx';
 import { useCurrentUserStore } from '../../../../states/stores.ts';
+import { buildUser } from '../../../../__tests__/builders.ts';
 
 vi.mock('../../../../providers/devices.tsx', () => ({
   useDevicesContext: () => ({
@@ -46,7 +47,7 @@ describe('CallView Component - Call Interrupted (Awaiting Return) Unit Tests', (
 
   it('renders lobby state when no active call', () => {
     useCurrentUserStore.setState({
-      currentUser: { id: 'cust-1', name: 'Customer', slug: 'customer', email: 'customer@example.com', role: 'customer', avatarUrl: '', status: 'idle' },
+      currentUser: buildUser({ _id: 'cust-1', firstName: 'Customer', lastName: '', slug: 'customer', email: 'customer@example.com', role: 'customer' }),
     });
 
     const { container } = render(

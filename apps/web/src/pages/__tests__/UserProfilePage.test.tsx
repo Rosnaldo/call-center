@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { UserProfilePage } from '../user-profile/ui.tsx';
-import { buildOnlineUserState } from '../../__tests__/builders.ts';
-import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { buildUser } from '../../__tests__/builders.ts';
 
 const mockBackToPanelNavigate = vi.fn();
 vi.mock('react-router-dom', () => ({
@@ -39,21 +38,19 @@ class MockFileReader {
 vi.stubGlobal('FileReader', MockFileReader);
 
 describe('UserProfilePage Class and Interactions Unit Tests', () => {
-  const mockUser = buildOnlineUserState({
-    id: 'cust-1',
-    name: 'John Customer',
+  const mockUser = buildUser({
+    _id: 'cust-1',
+    firstName: 'John',
+    lastName: 'Customer',
     role: 'customer',
-    avatarUrl: 'https://avatar/1',
+    avatar: { _id: '', url: 'https://avatar/1', s3Path: '', s3Host: '' },
   });
 
-  const mockUsers: OnlineUserState[] = [mockUser];
-
   const defaultProps = {
-    users: mockUsers,
     currentUser: mockUser,
     navigate: vi.fn(),
     fileError: null,
-    avatarUrl: mockUser.avatarUrl || null,
+    avatarUrl: mockUser.avatar?.url || null,
     processFile: vi.fn().mockResolvedValue(undefined),
   };
 

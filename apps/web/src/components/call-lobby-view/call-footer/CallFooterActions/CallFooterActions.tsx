@@ -25,13 +25,13 @@ export const CallFooterActions: React.FC = () => {
   const [isAccepting, setIsAccepting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  const isReceiving = currentUser?.id === incomingCall?.attendantId;
+  const isReceiving = currentUser?._id === incomingCall?.attendantId;
 
   const handleStartCall = async () => {
     setIsStarting(true);
     try {
       playNotificationChime();
-      await sendIncomingCall(currentUser?.id, selectedAttendantId);
+      await sendIncomingCall(currentUser?._id, selectedAttendantId);
     } finally {
       setIsStarting(false);
     }

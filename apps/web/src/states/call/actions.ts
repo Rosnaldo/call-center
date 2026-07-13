@@ -9,6 +9,7 @@ import { ApiError } from '../../error/api.ts';
 import i18n from '../../i18n.ts';
 import { playNotificationChime, stopRingtone } from '../../utils/helpers.ts';
 import { resetCallState } from '../reset-call-state.ts';
+import { getFullName } from '../../entities/user.ts';
 
 export interface CallActions {
   acceptIncomingCall: () => Promise<void> | void;
@@ -54,8 +55,8 @@ export const createCallActions = (
 
         await dailyService.join({
           room: call.roomName,
-          userId: currentUser.id,
-          userName: currentUser.name,
+          userId: currentUser._id,
+          userName: getFullName(currentUser),
         });
       } catch (error) {
         handleRequestError(error);
@@ -120,8 +121,8 @@ export const createCallActions = (
 
         await dailyService.join({
           room: call.roomName,
-          userId: currentUser.id,
-          userName: currentUser.name,
+          userId: currentUser._id,
+          userName: getFullName(currentUser),
         });
       } catch (error) {
         handleRequestError(error);

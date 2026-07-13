@@ -11,11 +11,11 @@ import { BackToPanelButton } from '../../components/BackToPanelButton.tsx';
 import { PlusCircle } from 'lucide-react';
 import { TransactionsTable } from '../../components/TransactionsTable.tsx';
 import { PaginatedTransactionsResponse } from '../../queries/transaction/query.ts';
-import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { IUser } from '@repo/shared-types';
 import { useLogout } from '../../hooks/auth/useLogout.ts';
 
 interface TokenHistoryPageUIProps {
-  currentUser: OnlineUserState;
+  currentUser: IUser;
   navigate: (path: string) => void;
   paginatedData: PaginatedTransactionsResponse;
   searchTerm: string;

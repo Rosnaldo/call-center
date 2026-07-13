@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { IUser, mapUserToOnlineUser } from '@repo/shared-types';
+import { IUser } from '@repo/shared-types';
 
 import { startIamServer, stopIamServer } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
@@ -150,7 +150,7 @@ describe('Sync Active Call on Connect', () => {
         sseCloses = [];
         dailyCoService = DailyCoService.getInstance();
         customerStores = createStores(dailyCoService);
-        customerStores.currentUser.setState({ currentUser: mapUserToOnlineUser(customerUser) });
+        customerStores.currentUser.setState({ currentUser: customerUser });
     });
 
     const createCallRecord = async (): Promise<void> => {

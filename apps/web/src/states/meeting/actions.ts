@@ -24,11 +24,6 @@ export const createMeetingActions = (
       ref.timer.getState().reset();
       ref.callView.getState().setSelectedAttendantId(null);
 
-      const currentUser = ref.currentUser.getState().currentUser;
-      if (currentUser) {
-        ref.currentUser.getState().setCurrentUser({ ...currentUser, status: 'idle' });
-      }
-
       ref.billing.getState().closeCalculationModal();
       ref.billing.getState().openSummaryModal(call);
 
@@ -36,7 +31,7 @@ export const createMeetingActions = (
     },
     userDisconnecting: (data) => {
       const currentUser = ref.currentUser.getState().currentUser;
-      if (currentUser && data.id !== currentUser.id && data.call) {
+      if (currentUser && data.id !== currentUser._id && data.call) {
         const { call } = data;
         const name = call.customerId === data.id ? call.customerName : call.attendantName;
         mytoast.warn(i18n.t('call.participantDisconnected', { name }));
@@ -47,7 +42,7 @@ export const createMeetingActions = (
     // update_online_users event fired alongside this one.
     userTokensUpdated: (data) => {
       const currentUser = ref.currentUser.getState().currentUser;
-      if (currentUser && currentUser.id === data.id) {
+      if (currentUser && currentUser._id === data.id) {
         ref.currentUser.getState().setCurrentUser({ ...currentUser, tokens: data.tokens });
       }
     },

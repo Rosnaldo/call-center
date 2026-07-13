@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { IUser, mapUserToOnlineUser } from '@repo/shared-types';
+import { IUser } from '@repo/shared-types';
 
 import { startIamServer, stopIamServer, IamAgent } from './helpers/iam-server';
 import { startRealtimeServer, stopRealtimeServer } from './helpers/realtime-server';
@@ -117,8 +117,8 @@ describe('Chat Flow — during an active call', () => {
         customerStores = createStores();
         attendantStores = createStores();
 
-        customerStores.currentUser.setState({ currentUser: mapUserToOnlineUser(customerUser) });
-        attendantStores.currentUser.setState({ currentUser: mapUserToOnlineUser(attendantUser) });
+        customerStores.currentUser.setState({ currentUser: customerUser });
+        attendantStores.currentUser.setState({ currentUser: attendantUser });
     });
 
     const connectBoth = async () => {

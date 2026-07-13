@@ -10,7 +10,8 @@ import { Footer } from '../../components/Footer.tsx';
 import { Title } from '../../components/Title.tsx';
 import { BackToPanelButton } from '../../components/BackToPanelButton.tsx';
 import { Edit2, Check, UploadCloud } from 'lucide-react';
-import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { IUser } from '@repo/shared-types';
+import { getFullName } from '@/src/entities/user.ts';
 import { useLogout } from '../../hooks/auth/useLogout.ts';
 import { mytoast } from '@/src/components/toast.tsx';
 import { handleRequestError } from '@/src/utils/utils.ts';
@@ -18,7 +19,7 @@ import { handleRequestError } from '@/src/utils/utils.ts';
 interface UserProfilePageProps {
   fileError: string | null;
   avatarUrl: string | null;
-  currentUser: OnlineUserState | null;
+  currentUser: IUser | null;
   navigate: (path: string) => void;
   processFile: (file: File) => Promise<void>;
 }
@@ -36,13 +37,15 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
   if (!currentUser) return null;
 
+  const fullName = getFullName(currentUser);
+
   const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(currentUser.name);
+  const [name, setName] = useState(fullName);
   const [isDragging, setIsDragging] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   const handleCancel = () => {
-    setName(currentUser.name);
+    setName(fullName);
     setIsEditing(false);
   };
 
@@ -88,7 +91,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
     }
   };
 
-  const initials = currentUser.name ? currentUser.name.charAt(0).toUpperCase() : '?';
+  const initials = fullName.charAt(0).toUpperCase();
 
   return (
     <div id="user-profile-page-view" className="min-h-screen bg-brand-canvas pb-16 font-sans">
@@ -165,7 +168,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                       className="w-full bg-brand-panel/35 border border-brand-border rounded-xl px-3 py-2 text-sm text-brand-dark focus:outline-none focus:ring-1 focus:ring-brand-ochre"
                     />
                   ) : (
-                    <p className="text-sm font-bold text-brand-dark">{currentUser.name}</p>
+                    <p className="text-sm font-bold text-brand-dark">{fullName}</p>
                   )}
                 </div>
 
@@ -202,7 +205,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                   {avatarUrl ? (
                     <img
                       src={avatarUrl}
-                      alt={currentUser.name}
+                      alt={fullName}
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';

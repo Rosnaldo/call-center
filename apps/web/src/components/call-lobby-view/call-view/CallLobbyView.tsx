@@ -114,7 +114,7 @@ export const CallLobbyView: React.FC = () => {
   useEffect(() => {
     useBillingStore.getState().closeSummaryModal();
     useBillingStore.getState().closeCalculationModal();
-  }, [currentUser?.id]);
+  }, [currentUser?._id]);
 
   const getCallViewState = (): CallViewState => {
     switch (persistedViewState) {

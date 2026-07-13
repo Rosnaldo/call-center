@@ -1,5 +1,6 @@
 import { CallState } from '../states/call/state.ts';
 import { OnlineUserState } from '../states/online-users/state.ts';
+import { User } from '../entities/user.ts';
 import { Transacao as TokenTransaction } from '../entities/transacao.ts';
 
 let seq = 0;
@@ -15,6 +16,21 @@ export const buildOnlineUserState = (d?: Partial<OnlineUserState>): OnlineUserSt
   status: d?.status ?? 'idle',
   tokens: d?.tokens ?? 5,
   phone: d?.phone,
+});
+
+// currentUser is IUser now, not IOnlineUser — see states/current-user/state.ts.
+export const buildUser = (d?: Partial<User>): User => ({
+  _id: d?._id ?? nextId(),
+  slug: d?.slug ?? 'test-user',
+  firstName: d?.firstName ?? 'Test',
+  lastName: d?.lastName ?? 'User',
+  email: d?.email ?? 'test@example.com',
+  phone: d?.phone,
+  avatar: d?.avatar,
+  role: d?.role ?? 'customer',
+  tokens: d?.tokens ?? 5,
+  createdAt: d?.createdAt ?? new Date(),
+  updatedAt: d?.updatedAt ?? new Date(),
 });
 
 export const buildCall = (d?: Partial<CallState>): CallState => ({

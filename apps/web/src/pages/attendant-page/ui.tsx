@@ -12,12 +12,12 @@ import { CallLobbyView } from '../../components/call-lobby-view/call-view/CallLo
 import { UserListsContainer } from '../../components/user-list/UserListsContainer.tsx';
 import { SectionHeader } from '../../components/SectionHeader.tsx';
 import { CallState } from '@/src/states/call/state.ts';
-import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { IUser } from '@repo/shared-types';
 import { BrandHero } from '../../components/BrandHero.tsx';
 import { useLogout } from '../../hooks/auth/useLogout.ts';
 
 interface AttendantPageUIProps {
-  currentUser: OnlineUserState | null;
+  currentUser: IUser | null;
   call: CallState | null;
   completeCall: (attendantId: string, callId?: string, byAttendant?: boolean) => void;
 }

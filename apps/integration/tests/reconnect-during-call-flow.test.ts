@@ -190,11 +190,11 @@ describe('Reconnect During Active Call Flow', () => {
         clientRegistry.add(customerWs);
         clientRegistry.add(attendantWs);
 
-        customerStores.currentUser.setState({ currentUser: mapUserToOnlineUser(customerUser) });
+        customerStores.currentUser.setState({ currentUser: customerUser });
         customerStores.onlineUsers.setState({
             users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
         });
-        attendantStores.currentUser.setState({ currentUser: mapUserToOnlineUser(attendantUser) });
+        attendantStores.currentUser.setState({ currentUser: attendantUser });
         attendantStores.onlineUsers.setState({
             users: [mapUserToOnlineUser(customerUser), mapUserToOnlineUser(attendantUser)],
         });

@@ -8,10 +8,11 @@ import { useTranslation } from 'react-i18next';
 import { Radio } from 'lucide-react';
 import { Header } from '../header/Header.tsx';
 import { Footer } from '../Footer.tsx';
-import { OnlineUserState } from '@/src/states/online-users/state.ts';
+import { IUser } from '@repo/shared-types';
+import { getFullName } from '@/src/entities/user.ts';
 
 interface RoleMismatchViewProps {
-  currentUser: OnlineUserState;
+  currentUser: IUser;
   onLogout: () => void;
   navigate: (path: string) => void;
   requiredRole: 'customer' | 'attendant';
@@ -30,9 +31,10 @@ export const RoleMismatchView: React.FC<RoleMismatchViewProps> = ({
     ? t('roleMismatch.customerAreaExclusive')
     : t('roleMismatch.attendantPanelRestricted');
 
+  const fullName = getFullName(currentUser);
   const description = isTargetCustomer
-    ? t('roleMismatch.attendantLoggedIn', { name: currentUser.name })
-    : t('roleMismatch.customerLoggedIn', { name: currentUser.name });
+    ? t('roleMismatch.attendantLoggedIn', { name: fullName })
+    : t('roleMismatch.customerLoggedIn', { name: fullName });
 
   const primaryButtonLabel = isTargetCustomer
     ? t('roleMismatch.goToAttendantPanel')

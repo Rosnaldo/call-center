@@ -233,7 +233,7 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
 
         // userTokensUpdated only patches currentUser if currentUser.id
         // matches the charged user — needs seeding for that assertion below
-        customerStores.currentUser.setState({ currentUser: mapUserToOnlineUser(customerUser) });
+        customerStores.currentUser.setState({ currentUser: customerUser });
 
         await onConnection()(customerWs);
         await onConnection()(attendantWs);

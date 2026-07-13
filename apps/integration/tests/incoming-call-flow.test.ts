@@ -160,7 +160,7 @@ describe('Incoming Call Flow', () => {
         customerStores = createStores(dailyService);
         attendantStores = createStores(dailyService);
 
-        customerStores.currentUser.setState({ currentUser: mapUserToOnlineUser(customerUser) });
+        customerStores.currentUser.setState({ currentUser: customerUser });
     });
 
     it('after sendIncomingCall both stores reflect the correct state', async () => {

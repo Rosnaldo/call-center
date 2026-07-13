@@ -21,7 +21,7 @@ export const createGracePeriod = (
                     // own errors (see daily_manager.ts) and the partner
                     // shouldn't wait on a Daily API round trip just to be
                     // told their call partner is disconnecting.
-                    await ejectParticipant(call.roomName, user.id);
+                    ejectParticipant(call.roomName, user.id).catch(() => {});
                 }
                 notifyUserDisconnecting(traceId, user.id, call);
                 await publishOnlineUsersBroadcast(traceId);

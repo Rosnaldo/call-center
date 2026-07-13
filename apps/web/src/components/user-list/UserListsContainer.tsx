@@ -1,11 +1,11 @@
 import React from 'react';
 import { UserLists } from './UserLists';
 import { useOnlineUsersStore } from '../../states/stores';
-import { OnlineUserState } from '../../states/online-users/state';
 import { CallState } from '../../states/call/state';
+import { IUser } from '@repo/shared-types';
 
 interface Props {
-  currentUser: OnlineUserState | null;
+  currentUser: IUser | null;
   call: CallState | null;
   onCompleteCall: (attendantId: string) => void;
 }
