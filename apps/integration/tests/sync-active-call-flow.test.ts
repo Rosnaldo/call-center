@@ -27,13 +27,15 @@ import * as dailyServiceModule from '../../iam/src/services/daily';
 // apps/realtime/src/websocket/connection.ts). It reconciles a stale-looking
 // call record against whether the Daily meeting is *actually* happening —
 // the counterpart's presence specifically no longer matters, only whether
-// the room has anyone in it at all, and whether the connecting user
-// themselves is already one of them:
+// the room has anyone in it at all:
 //   - call exists, nobody is in the room -> meeting is over, the record
 //     (and the Daily room) is torn down, the connecting user does not join
 //   - call exists, someone is in the room -> the record is kept, the
-//     connecting user is added as a participant, and told to join only if
-//     their own presence isn't already in the room
+//     connecting user is added as a participant, and always (re)joins —
+//     grace_period.ts ejects a disconnecting user from Daily immediately
+//     (see websocket/grace_period.ts), so a reconnecting user is always
+//     genuinely out of the room by the time this fires, never a case of
+//     "their own presence survived the blip"
 //   - call doesn't exist, the room has presence -> self-healed into a new
 //     record (redis lost the call state but the meeting is real), and the
 //     connecting user is always told to join
@@ -163,7 +165,6 @@ describe('Sync Active Call on Connect', () => {
             overlapStartedAt: null,
             startedAt: null,
             endedAt: null,
-            isPlaying: false,
             tokensToBeCharged: 0,
         });
     };
@@ -192,7 +193,6 @@ describe('Sync Active Call on Connect', () => {
         const connectedMsg = customerCallEvents.find((m) => m.event === 'call_synced');
         expect(connectedMsg).toBeTruthy();
         expect(connectedMsg.data.call).toBeNull();
-        expect(connectedMsg.data.shouldJoin).toBe(false);
 
         // regression lock: the old websocket push is gone for good
         expect(customerMessages.find((m) => m.event === 'user_connected')).toBeUndefined();
@@ -210,8 +210,7 @@ describe('Sync Active Call on Connect', () => {
     it('keeps the call and joins the meeting when someone is present but the connecting user is not', async () => {
         await createCallRecord();
 
-        // only the counterpart is in the room — the connecting user's own
-        // presence is what decides shouldJoin now, not the counterpart's
+        // only the counterpart is in the room
         jest.spyOn(dailyServiceModule, 'getRoomPresenceUserIds').mockImplementation(async (room: string) =>
             room === roomName ? [attendantUser._id] : [],
         );
@@ -230,7 +229,6 @@ describe('Sync Active Call on Connect', () => {
 
         const connectedMsg = customerCallEvents.find((m) => m.event === 'call_synced');
         expect(connectedMsg).toBeTruthy();
-        expect(connectedMsg.data.shouldJoin).toBe(true);
         expect(connectedMsg.data.call).toBeTruthy();
         expect(connectedMsg.data.call.activeUserIds).toContain(customerUser._id);
 
@@ -250,11 +248,14 @@ describe('Sync Active Call on Connect', () => {
         expect(dailyCoService.joinCalls[0]).toMatchObject({ room: roomName, userId: customerUser._id });
     });
 
-    it('keeps the call but does not rejoin when the connecting user is already present in the room', async () => {
+    it('keeps the call and rejoins even when the connecting user is already present in the room', async () => {
         await createCallRecord();
 
-        // the connecting user's own Daily/WebRTC session survived the
-        // websocket blip (e.g. a brief reconnect) — no need to join again
+        // the connecting user's own Daily/WebRTC session apparently survived
+        // the websocket blip — but grace_period.ts already ejects a
+        // disconnecting user from Daily immediately (see websocket/grace_period.ts),
+        // so this stale presence reading is never trusted: the client always
+        // (re)joins regardless of what presence shows for itself.
         jest.spyOn(dailyServiceModule, 'getRoomPresenceUserIds').mockImplementation(async (room: string) =>
             room === roomName ? [customerUser._id] : [],
         );
@@ -273,18 +274,18 @@ describe('Sync Active Call on Connect', () => {
 
         const connectedMsg = customerCallEvents.find((m) => m.event === 'call_synced');
         expect(connectedMsg).toBeTruthy();
-        expect(connectedMsg.data.shouldJoin).toBe(false);
         expect(connectedMsg.data.call).toBeTruthy();
 
         // the record still persists (the meeting is real, someone's in it)
         const res = await getCallRecordFromRedis();
         expect(res.body?.isError).toBeFalsy();
 
-        // no redundant join call for a session that's already live
-        expect(dailyCoService.joinCalls).toHaveLength(0);
+        // always (re)joins now — no shouldJoin gate left to skip it
+        await waitFor(() => dailyCoService.joinCalls.length === 1);
+        expect(dailyCoService.joinCalls[0]).toMatchObject({ room: roomName, userId: customerUser._id });
     });
 
-    it('self-heals a new call, always joining, when no record exists but presence shows the connecting user in a tracked room', async () => {
+    it('self-heals a new call and joins when no record exists but presence shows the connecting user in a tracked room', async () => {
         // no createCallRecord() here — this is the "redis lost the call
         // state entirely" case selfHealFromPresence exists for (e.g. a
         // redis restart), reconstructed off Daily's own tracked rooms +
@@ -311,7 +312,6 @@ describe('Sync Active Call on Connect', () => {
 
         const connectedMsg = customerCallEvents.find((m) => m.event === 'call_synced');
         expect(connectedMsg).toBeTruthy();
-        expect(connectedMsg.data.shouldJoin).toBe(true);
         expect(connectedMsg.data.call).toBeTruthy();
         expect(connectedMsg.data.call.roomName).toBe(roomName);
         expect(connectedMsg.data.call.activeUserIds).toEqual([customerUser._id]);
@@ -353,7 +353,6 @@ describe('Sync Active Call on Connect', () => {
 
         const connectedMsg = customerCallEvents.find((m) => m.event === 'call_synced');
         expect(connectedMsg).toBeTruthy();
-        expect(connectedMsg.data.shouldJoin).toBe(true);
         expect(connectedMsg.data.call).toBeTruthy();
         expect(connectedMsg.data.call.roomName).toBe(roomName);
         expect(connectedMsg.data.call.activeUserIds).toEqual([customerUser._id, attendantUser._id]);

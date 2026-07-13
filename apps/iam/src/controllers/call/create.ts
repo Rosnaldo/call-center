@@ -41,7 +41,7 @@ export class Create {
     };
 
     public readonly mapper = (body: Request['body']): IInput => {
-        const { id, customerId, customerName, attendantId, attendantName, roomName, activeUserIds, accumulatedMs, overlapStartedAt, startedAt, endedAt, isPlaying, tokensToBeCharged } = body;
+        const { id, customerId, customerName, attendantId, attendantName, roomName, activeUserIds, accumulatedMs, overlapStartedAt, startedAt, endedAt, tokensToBeCharged } = body;
         return {
             id: mapString(id),
             customerId: mapString(customerId),
@@ -54,7 +54,6 @@ export class Create {
             overlapStartedAt: typeof overlapStartedAt === 'number' ? overlapStartedAt : null,
             startedAt: startedAt ?? null,
             endedAt: endedAt ?? null,
-            isPlaying: isPlaying === true,
             tokensToBeCharged: typeof tokensToBeCharged === 'number' ? tokensToBeCharged : 0,
             // Never taken from the request body — only /calls/complete may close a call.
             isClosed: false,

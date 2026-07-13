@@ -88,7 +88,6 @@ async function createCallRecord(iamRequest: IamAgent, roomName: string, adminUse
         overlapStartedAt: null,
         startedAt: null,
         endedAt: null,
-        isPlaying: false,
         tokensToBeCharged: 0,
         isClosed: false,
     };

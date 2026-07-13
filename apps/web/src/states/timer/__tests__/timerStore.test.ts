@@ -104,8 +104,11 @@ describe('syncFromCall()', () => {
     vi.useRealTimers();
   });
 
-  it('stops and freezes elapsedSeconds at accumulatedMs when isPlaying is false', () => {
-    const call = buildCall({ isPlaying: false, overlapStartedAt: null, accumulatedMs: 42_000 });
+  // status is no longer derived from the call at all — it's driven by
+  // useTimerFromRemoteParticipant (Daily.co remote-participant presence, see
+  // CallViewport.tsx) — syncFromCall only ever touches elapsedSeconds.
+  it('freezes elapsedSeconds at accumulatedMs and leaves status untouched', () => {
+    const call = buildCall({ overlapStartedAt: null, accumulatedMs: 42_000 });
 
     useTimerStore.getState().syncFromCall(call);
 
@@ -113,25 +116,16 @@ describe('syncFromCall()', () => {
     expect(useTimerStore.getState().elapsedSeconds).toBe(42);
   });
 
-  it('plays and computes elapsedSeconds from accumulatedMs + time since startedAt when isPlaying is true', () => {
+  it('computes elapsedSeconds from accumulatedMs + time since overlapStartedAt without changing status', () => {
     vi.useFakeTimers();
     vi.setSystemTime(100_000);
-    const call = buildCall({ isPlaying: true, overlapStartedAt: 100_000 - 5_000, accumulatedMs: 10_000 });
+    const call = buildCall({ overlapStartedAt: 100_000 - 5_000, accumulatedMs: 10_000 });
 
+    useTimerStore.getState().play();
     useTimerStore.getState().syncFromCall(call);
 
     expect(useTimerStore.getState().status).toBe('playing');
     expect(useTimerStore.getState().elapsedSeconds).toBe(15);
-  });
-
-  it('follows isPlaying rather than overlapStartedAt — backend is the single source of truth', () => {
-    // an inconsistent combination should never happen in practice, but the
-    // store must still defer to isPlaying, not re-derive status from overlapStartedAt
-    const call = buildCall({ isPlaying: false, overlapStartedAt: Date.now(), accumulatedMs: 0 });
-
-    useTimerStore.getState().syncFromCall(call);
-
-    expect(useTimerStore.getState().status).toBe('stopped');
   });
 
   it('resets to stopped/zero when call is null', () => {
@@ -146,7 +140,7 @@ describe('syncFromCall()', () => {
 
   it('keeps two independent stores (e.g. customer and attendant) in sync when fed the same call', () => {
     const attendantTimerStore = createTimerStore();
-    const call = buildCall({ isPlaying: false, overlapStartedAt: null, accumulatedMs: 7_000 });
+    const call = buildCall({ overlapStartedAt: null, accumulatedMs: 7_000 });
 
     useTimerStore.getState().syncFromCall(call);
     attendantTimerStore.getState().syncFromCall(call);

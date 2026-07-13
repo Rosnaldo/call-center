@@ -90,10 +90,13 @@ export function notifyCallCompleted(traceId: string, customerId: string, attenda
 
 // Phase 1 of the call-domain migration (see plan): replaces realtime's
 // sendToUser('user_connected', ...) — sent only to the connecting user,
-// never the counterpart, same as before. call_synced keeps its own payload
-// (call + shouldJoin) since the web side effect (Daily join gating, or a
-// full resetCallState() when call is null) needs both.
-export function notifyCallSynced(traceId: string, userId: string, call: CallState | null, shouldJoin: boolean): void {
-    publishToUser(traceId, userId, 'call_synced', { call, shouldJoin });
+// never the counterpart, same as before. call_synced's own side effect is
+// either a Daily join (non-null call) or a full resetCallState() (null) —
+// see syncActiveCall in web's call/actions.ts. There's no shouldJoin gate
+// anymore: grace_period.ts now ejects a disconnecting user from Daily
+// immediately, so by the time they reconnect they're always genuinely out
+// of the room and always need to (re)join.
+export function notifyCallSynced(traceId: string, userId: string, call: CallState | null): void {
+    publishToUser(traceId, userId, 'call_synced', { call });
     notifyCallUpdate(traceId, [userId], call);
 }

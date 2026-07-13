@@ -31,7 +31,7 @@ export interface ICallController {
         IOutput: {};
     };
     ISyncActiveCall: {
-        IOutput: { call: CallState | null; shouldJoin: boolean };
+        IOutput: { call: CallState | null };
     };
     INotifyPartnerReconnected: {
         IInput: { userId: string };

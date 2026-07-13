@@ -52,7 +52,6 @@ export interface CallState {
     overlapStartedAt: number | null;
     startedAt: Date | null;
     endedAt: Date | null;
-    isPlaying: boolean;
     tokensToBeCharged: number;
     // Only ever set true by /calls/complete — everywhere else that builds or
     // updates a CallState defaults/preserves it as false.

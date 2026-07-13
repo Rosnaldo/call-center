@@ -17,7 +17,6 @@ export const inputSchema = z.object({
     overlapStartedAt: z.number().nullable(),
     startedAt: z.coerce.date().nullable(),
     endedAt: z.coerce.date().nullable(),
-    isPlaying: z.boolean(),
     tokensToBeCharged: z.number(),
     isClosed: z.boolean(),
 });

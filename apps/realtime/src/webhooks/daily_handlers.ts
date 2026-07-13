@@ -71,7 +71,6 @@ const reconstructCallState = async (traceId: string, logger: ReturnType<typeof b
         overlapStartedAt: null,
         startedAt: new Date(payload.start_ts * 1000),
         endedAt: null,
-        isPlaying: false,
         tokensToBeCharged: 0,
         isClosed: false,
     };
@@ -110,7 +109,6 @@ export async function onMeetingStarted(traceId: string, payload: DailyMeetingPay
                 overlapStartedAt: null,
                 startedAt: new Date(),
                 endedAt: null,
-                isPlaying: false,
                 tokensToBeCharged: 0,
                 isClosed: false,
             });
@@ -142,7 +140,6 @@ export async function onMeetingEnded(traceId: string, payload: DailyMeetingPaylo
             ...call,
             accumulatedMs: elapsedMs,
             overlapStartedAt: null,
-            isPlaying: false,
             endedAt: new Date(),
             tokensToBeCharged,
             isClosed: true,
@@ -244,7 +241,6 @@ export async function onParticipantJoined(traceId: string, payload: DailyPartici
                 overlapStartedAt: null,
                 startedAt: null,
                 endedAt: null,
-                isPlaying: false,
                 tokensToBeCharged: 0,
                 isClosed: false,
             });
@@ -252,8 +248,8 @@ export async function onParticipantJoined(traceId: string, payload: DailyPartici
 
         const userId = resolveParticipantId(payload, customer, attendant);
 
-        // IAM's /calls/add-participant route publishes participant_joined
-        // itself now (see init-call-events.ts) — no need to relay it here.
+        // IAM's /calls/add-participant route publishes update_call itself
+        // now (see init-call-events.ts) — no need to relay it here.
         await addParticipant(traceId, call.customerId, call.attendantId, userId);
     } catch (error) {
         logger.error(error, 'daily onParticipantJoined');

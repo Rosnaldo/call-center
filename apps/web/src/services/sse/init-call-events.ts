@@ -8,7 +8,7 @@ type CallEventMessage =
     | { event: 'update_incomingcall'; data: { incomingCall: IncomingCallState | null } }
     | { event: 'call_accepted'; data: { call: CallState } }
     | { event: 'call_completed'; data: Record<string, never> }
-    | { event: 'call_synced'; data: { call: CallState | null; shouldJoin: boolean } }
+    | { event: 'call_synced'; data: { call: CallState | null } }
     | { event: 'update_call'; data: { call: CallState | null } };
 
 interface InitCallEventsStores {
@@ -90,7 +90,7 @@ export class InitCallEvents {
                 stores.call.getState().callCompleted();
                 break;
             case 'call_synced':
-                stores.call.getState().syncActiveCall(msg.data.call, msg.data.shouldJoin, stores.callView.getState().isLeader);
+                stores.call.getState().syncActiveCall(msg.data.call, stores.callView.getState().isLeader);
                 break;
             case 'update_call':
                 stores.call.getState().updateCall(msg.data.call);

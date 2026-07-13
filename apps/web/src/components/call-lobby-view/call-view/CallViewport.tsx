@@ -12,6 +12,7 @@ import { ChatAttendment } from './ChatAttendment.tsx';
 import { useParticipantIds, useScreenShare } from '@daily-co/daily-react';
 import { useDevicesContext } from '../../../providers/devices.tsx';
 import { useAutoEndCallTimeout } from '../../../hooks/useAutoEndCallTimeout.ts';
+import { useTimerFromRemoteParticipant } from '../../../hooks/useTimerFromRemoteParticipant.ts';
 import i18n from '../../../i18n.ts';
 
 
@@ -123,6 +124,7 @@ const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ p
 
   const remoteParticipantIds = useParticipantIds({ filter: "remote" });
   const id = remoteParticipantIds[0];
+  useTimerFromRemoteParticipant(id);
 
   const activeScreen = screens[0];
 

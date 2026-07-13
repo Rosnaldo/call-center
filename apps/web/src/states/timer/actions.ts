@@ -37,13 +37,16 @@ export const createTimerActions = (
       });
     },
 
+    // Only ever touches elapsedSeconds — status is driven independently by
+    // useTimerFromRemoteParticipant (Daily.co remote-participant presence,
+    // see CallViewport.tsx), not by the server-side call record.
     syncFromCall: (call: CallState | null) => {
       if (!call) {
         set(() => ({ status: 'stopped', elapsedSeconds: 0 }));
         return;
       }
-      set(() => ({
-        status: call.isPlaying ? 'playing' : 'stopped',
+      set((timer) => ({
+        status: timer.status,
         elapsedSeconds: Math.floor(getCallElapsedMs(call) / 1000),
       }));
     },

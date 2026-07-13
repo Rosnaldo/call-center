@@ -38,7 +38,6 @@ export const ensureCallRecord = async (params: Params): Promise<CallState> => {
         overlapStartedAt: null,
         startedAt: null,
         endedAt: null,
-        isPlaying: false,
         tokensToBeCharged: 0,
         isClosed: false,
     }).save();

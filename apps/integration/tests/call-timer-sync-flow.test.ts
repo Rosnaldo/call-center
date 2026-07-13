@@ -159,9 +159,11 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
             stores.timer.getState().reset();
             return;
         }
-        // isPlaying is the backend's explicit signal for whether the shared
-        // timer should run — the web side just mirrors it (see syncFromCall).
-        if (call.isPlaying) {
+        // The real app drives play/stop off Daily.co's own remote-participant
+        // presence now (see useTimerFromRemoteParticipant), not off a backend
+        // flag — overlapStartedAt is the equivalent proxy here since it only
+        // ever transitions on the same participant join/leave webhooks.
+        if (call.overlapStartedAt !== null) {
             stores.timer.getState().play();
         } else {
             stores.timer.getState().stop();
@@ -204,7 +206,6 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
             overlapStartedAt: null,
             startedAt: null,
             endedAt: null,
-            isPlaying: false,
             tokensToBeCharged: 0,
         });
 
@@ -216,7 +217,6 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         expect(call).toBeTruthy();
         expect(call!.activeUserIds).toEqual([customerUser._id]);
         expect(call!.overlapStartedAt).toBeNull();
-        expect(call!.isPlaying).toBe(false);
         expect(attendantStores.call.getState().call).toEqual(call);
         expectTimersSynced();
         expect(customerStores.timer.getState().status).toBe('stopped');
@@ -228,7 +228,6 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         call = customerStores.call.getState().call;
         expect(call!.activeUserIds.sort()).toEqual([attendantUser._id, customerUser._id].sort());
         expect(call!.overlapStartedAt).not.toBeNull();
-        expect(call!.isPlaying).toBe(true);
         expect(call!.accumulatedMs).toBe(0);
         expect(attendantStores.call.getState().call).toEqual(call);
         expectTimersSynced();
@@ -245,7 +244,6 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         expect(call!.activeUserIds).toEqual([customerUser._id]);
         // shared timer freezes for BOTH users — not just the one who left
         expect(call!.overlapStartedAt).toBeNull();
-        expect(call!.isPlaying).toBe(false);
         expect(getCallElapsedMs(call!)).toBe(call!.accumulatedMs);
         expect(attendantStores.call.getState().call).toEqual(call);
 
@@ -282,8 +280,6 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
         call = customerStores.call.getState().call;
         expect(call!.overlapStartedAt).not.toBeNull();
         expect(call!.overlapStartedAt).toBe(attendantJoinedMsg.data.call.overlapStartedAt);
-        expect(call!.isPlaying).toBe(true);
-        expect(attendantJoinedMsg.data.call.isPlaying).toBe(true);
         expect(call!.accumulatedMs).toBe(accumulatedAfterFirstLeave);
         expect(attendantStores.call.getState().call).toEqual(call);
 
@@ -303,7 +299,6 @@ describe('Call Timer Sync Flow — accumulatedMs integrity', () => {
 
         call = customerStores.call.getState().call;
         expect(call!.overlapStartedAt).toBeNull();
-        expect(call!.isPlaying).toBe(false);
         expect(attendantStores.call.getState().call).toEqual(call);
         expectTimersSynced();
         expect(customerStores.timer.getState().status).toBe('stopped');

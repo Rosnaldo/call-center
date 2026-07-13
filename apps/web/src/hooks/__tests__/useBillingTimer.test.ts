@@ -25,12 +25,15 @@ afterEach(() => {
 
 describe('useBillingTimer — timer / call store integration', () => {
   describe('call active', () => {
-    it('plays the timer as soon as the call is active', () => {
+    // Status is driven by useTimerFromRemoteParticipant now (Daily.co
+    // remote-participant presence, see CallViewport.tsx) — useBillingTimer
+    // only ever syncs elapsedSeconds/billing off the server-side call record.
+    it('does not touch timer status', () => {
       renderHook(({ call }) => useBillingTimer(call), {
         initialProps: { call: makeCall() },
       });
 
-      expect(useTimerStore.getState().status).toBe('playing');
+      expect(useTimerStore.getState().status).toBe('stopped');
     });
 
     it('increments elapsedSeconds once per second while active', () => {

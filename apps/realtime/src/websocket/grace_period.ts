@@ -3,6 +3,7 @@ import { graceTimer } from '#websocket/grace_timer';
 import { getCallByUser } from 'src/services/calls';
 import { removeFromIam, updateOnlineUserStatus } from 'src/services/users';
 import { notifyUserDisconnecting, notifyUserDisconnected, publishOnlineUsersBroadcast } from 'src/services/realtime_events';
+import { ejectParticipant } from 'src/webhooks/daily_manager';
 import logger from '#logger';
 
 export const createGracePeriod = (
@@ -16,6 +17,7 @@ export const createGracePeriod = (
                 const call = await getCallByUser(user.id);
                 if (call) {
                     await updateOnlineUserStatus(traceId, user.id, 'disconnecting');
+                    await ejectParticipant(call.roomName, user.id);
                 }
                 notifyUserDisconnecting(traceId, user.id, call);
                 await publishOnlineUsersBroadcast(traceId);
@@ -27,12 +29,6 @@ export const createGracePeriod = (
             try {
                 const call = await getCallByUser(user.id);
                 await removeFromIam(user.id);
-
-                // Ending the call itself is no longer this grace period's
-                // job — /calls/complete is only ever called from the web
-                // client's own "end call" action now. A call whose partner
-                // never comes back just stays active until the other
-                // participant explicitly ends it.
                 notifyUserDisconnected(traceId, user.id, call);
 
                 await publishOnlineUsersBroadcast(traceId);

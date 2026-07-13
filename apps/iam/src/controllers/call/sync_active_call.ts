@@ -65,24 +65,19 @@ export class SyncActiveCall {
 
                 if (!meetingExists) {
                     await this.delete.exec({ mapped: { customerId: call.customerId, attendantId: call.attendantId } });
-                    // await ejectBothParticipantsFromRoom(call.roomName);
-                    return successData({ call: null, shouldJoin: false });
+                    return successData({ call: null });
                 }
 
                 const updated = await this.addParticipant.exec({
                     mapped: { customerId: call.customerId, attendantId: call.attendantId, userId },
                 });
                 const currentCall = updated.isError ? call : updated.data;
-                // The meeting is genuinely happening (someone's in it) — whether
-                // *this* user still needs to join depends only on their own
-                // presence, not the counterpart's.
-                const shouldJoin = !presentUserIds.includes(userId);
 
-                return successData({ call: currentCall, shouldJoin });
+                return successData({ call: currentCall });
             }
 
             const created = await this.selfHealFromPresence(redis, userId);
-            return successData({ call: created, shouldJoin: created !== null });
+            return successData({ call: created });
         } catch (error: unknown) {
             return logError(error, '/calls/sync-active-call');
         }
@@ -120,7 +115,6 @@ export class SyncActiveCall {
                     overlapStartedAt: null,
                     startedAt: new Date(),
                     endedAt: null,
-                    isPlaying: false,
                     tokensToBeCharged: 0,
                     isClosed: false,
                 },

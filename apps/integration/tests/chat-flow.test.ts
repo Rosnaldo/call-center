@@ -154,7 +154,6 @@ describe('Chat Flow — during an active call', () => {
             overlapStartedAt: null,
             startedAt: null,
             endedAt: null,
-            isPlaying: false,
             tokensToBeCharged: 0,
         };
         customerStores.call.setState({ call });

@@ -6,7 +6,7 @@ const CALLS_KEY = 'calls';
 
 export type IUpdateBuilder = Pick<
     CallState,
-    'activeUserIds' | 'accumulatedMs' | 'overlapStartedAt' | 'startedAt' | 'endedAt' | 'isPlaying' | 'tokensToBeCharged'
+    'activeUserIds' | 'accumulatedMs' | 'overlapStartedAt' | 'startedAt' | 'endedAt' | 'tokensToBeCharged'
 >;
 
 const applyParticipantChange = (call: CallState, userId: string, joined: boolean): Partial<CallState> => {
@@ -21,7 +21,6 @@ const applyParticipantChange = (call: CallState, userId: string, joined: boolean
 
         if (activeUsers.size === 2 && !call.overlapStartedAt) {
             updates.overlapStartedAt = Date.now();
-            updates.isPlaying = true;
         }
 
         return updates;
@@ -33,7 +32,6 @@ const applyParticipantChange = (call: CallState, userId: string, joined: boolean
     if (activeUsers.size === 2 && call.overlapStartedAt) {
         updates.accumulatedMs = call.accumulatedMs + (Date.now() - call.overlapStartedAt);
         updates.overlapStartedAt = null;
-        updates.isPlaying = false;
     }
 
     activeUsers.delete(userId);
@@ -55,14 +53,13 @@ export class CallStateBuilder {
     };
 
     public readonly update = (params: Partial<IUpdateBuilder>): this => {
-        const { activeUserIds, accumulatedMs, overlapStartedAt, startedAt, endedAt, isPlaying, tokensToBeCharged } = params;
+        const { activeUserIds, accumulatedMs, overlapStartedAt, startedAt, endedAt, tokensToBeCharged } = params;
 
         this.doc.activeUserIds = activeUserIds === undefined ? this.doc.activeUserIds : activeUserIds;
         this.doc.accumulatedMs = accumulatedMs === undefined ? this.doc.accumulatedMs : accumulatedMs;
         this.doc.overlapStartedAt = overlapStartedAt === undefined ? this.doc.overlapStartedAt : overlapStartedAt;
         this.doc.startedAt = startedAt === undefined ? this.doc.startedAt : startedAt;
         this.doc.endedAt = endedAt === undefined ? this.doc.endedAt : endedAt;
-        this.doc.isPlaying = isPlaying === undefined ? this.doc.isPlaying : isPlaying;
         this.doc.tokensToBeCharged = tokensToBeCharged === undefined ? this.doc.tokensToBeCharged : tokensToBeCharged;
 
         return this;

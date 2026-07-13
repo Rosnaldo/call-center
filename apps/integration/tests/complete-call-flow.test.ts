@@ -186,7 +186,6 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
             overlapStartedAt: null,
             startedAt: null,
             endedAt: null,
-            isPlaying: false,
             tokensToBeCharged: 0,
         });
     };
@@ -252,7 +251,6 @@ describe('Complete Call Flow — token charge + customer/attendant store sync', 
         await postDailyWebhook(joinPayload(attendantUser));
 
         call = customerStores.call.getState().call;
-        expect(call!.isPlaying).toBe(true);
         expect(call!.overlapStartedAt).not.toBeNull();
         expect(attendantStores.call.getState().call).toEqual(call);
 

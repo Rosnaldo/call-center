@@ -23,7 +23,6 @@ describe('Controller > Call > RemoveParticipant', () => {
             customerId: 'customer-1',
             attendantId: 'attendant-1',
             overlapStartedAt,
-            isPlaying: true,
         });
         const key = `calls:${call.customerId}--${call.attendantId}`;
         const redis = getRedisClient();
@@ -35,7 +34,6 @@ describe('Controller > Call > RemoveParticipant', () => {
 
         if (!isSuccess(either)) throw new Error(`Expected success, got: ${either.message}`);
         expect(either.data.activeUserIds).toEqual(['attendant-1']);
-        expect(either.data.isPlaying).toBe(false);
         expect(either.data.overlapStartedAt).toBeNull();
         expect(either.data.accumulatedMs).toBeGreaterThanOrEqual(5000);
     });
@@ -52,7 +50,7 @@ describe('Controller > Call > RemoveParticipant', () => {
 
         if (!isSuccess(either)) throw new Error(`Expected success, got: ${either.message}`);
         expect(either.data.activeUserIds).toEqual([]);
-        expect(either.data.isPlaying).toBe(false);
+        expect(either.data.overlapStartedAt).toBeNull();
     });
 
     it('returns 400 when call does not exist', async () => {

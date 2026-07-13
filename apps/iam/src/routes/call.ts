@@ -187,7 +187,7 @@ export default (app: Application) => {
             if (either.isError) {
                 return res.status(either.status).send(either);
             }
-            notifyCallSynced(req.traceId, mapped.userId, either.data.call, either.data.shouldJoin);
+            notifyCallSynced(req.traceId, mapped.userId, either.data.call);
             return res.status(200).send(either.data);
         }
     );

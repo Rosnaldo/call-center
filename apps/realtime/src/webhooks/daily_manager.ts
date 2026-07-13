@@ -120,6 +120,23 @@ export async function deleteDailyRoom(room: string): Promise<void> {
     }
 }
 
+export async function ejectParticipant(room: string, userId: string): Promise<void> {
+    try {
+        const res = await fetch(`${DAILY_API_URL}/rooms/${room}/eject`, {
+            method: 'POST',
+            headers: dailyHeaders(),
+            body: JSON.stringify({ user_ids: [userId] }),
+        });
+        if (!res.ok) {
+            logger.error({ room, userId, status: res.status, body: await res.text() }, 'daily erro ao ejetar participante');
+            return;
+        }
+        logger.info({ room, userId }, 'daily participante ejetado');
+    } catch (error) {
+        logger.error(error, 'daily ejectParticipant: falha ao comunicar com api do daily');
+    }
+}
+
 export interface DailyMeetingParticipant {
     user_id: string | null;
     participant_id: string;

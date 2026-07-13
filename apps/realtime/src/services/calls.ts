@@ -54,14 +54,12 @@ export const trackRoom = async (traceId: string, roomName: string): Promise<void
 
 export interface SyncActiveCallResult {
     call: CallState | null;
-    shouldJoin: boolean;
 }
 
 // Called once per websocket connect (see connection.ts) — iam reconciles its
-// own redis call state against real Daily presence and tells us whether the
-// connecting user needs to (re)join their Daily room. IAM publishes the
-// result to that user directly (call_synced, over SSE — see
-// init-call-events.ts); nothing on the client calls this directly.
+// own redis call state against real Daily presence. IAM publishes the result
+// to that user directly (call_synced, over SSE — see init-call-events.ts);
+// nothing on the client calls this directly.
 export const syncActiveCall = async (traceId: string, userId: string): Promise<SyncActiveCallResult> => {
     const { data } = await createIamClient(traceId).post<SyncActiveCallResult>('/calls/sync-active-call', { userId });
     return data;

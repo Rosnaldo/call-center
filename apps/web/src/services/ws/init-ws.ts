@@ -18,12 +18,6 @@ const HEARTBEAT_ACK_TIMEOUT_MS = 10_000;
 // the browser hands it to the next waiting tab automatically.
 const LEADER_LOCK_NAME = 'call-center-ws-leader';
 const RELAY_CHANNEL_NAME = 'call-center-ws-relay';
-// Daily.co doesn't notice a hard-dropped session (tab closed/crashed) the
-// instant it happens — its own presence can lag a few seconds behind. If the
-// user reconnects in an already-open tab that fast, syncActiveCall's
-// shouldJoin comes back false (it still sees the dead tab's own presence),
-// so we ask again once Daily has had a chance to catch up — see becomeLeader.
-const LEADER_PROMOTION_RESYNC_DELAY_MS = 5_000;
 
 interface InitWsStores {
     callView: CallViewStoreInstance;
@@ -160,14 +154,6 @@ export class InitWs {
         if (!freshToken || !this.running) return;
         this.reconnectAttempts = 0;
         this.connect(this.createAuthWs(), freshToken, callViewStore, usersService);
-
-        // See LEADER_PROMOTION_RESYNC_DELAY_MS above — a second look at
-        // syncActiveCall shortly after, in case the first one (from connect()
-        // above) caught Daily's presence for the tab we just replaced before
-        // it had cleared.
-        setTimeout(() => {
-            if (this.running) this.requestStateSync();
-        }, LEADER_PROMOTION_RESYNC_DELAY_MS);
     }
 
     init(token: string | undefined, stores: InitWsStores, factory: TransportFactory = createWsTransport): void {
@@ -228,7 +214,7 @@ export class InitWs {
         // (see request_state on the realtime side). Harmless no-op if this
         // tab ends up being the leader instead: it gets the same data for
         // free from its own connect() above.
-        this.requestStateSync();
+        // this.requestStateSync();
     }
 
     requestStateSync(): void {

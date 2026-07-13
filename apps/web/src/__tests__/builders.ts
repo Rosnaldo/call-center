@@ -29,7 +29,6 @@ export const buildCall = (d?: Partial<CallState>): CallState => ({
   overlapStartedAt: d?.overlapStartedAt !== undefined ? d.overlapStartedAt : Date.now(),
   startedAt: d?.startedAt !== undefined ? d.startedAt : new Date(),
   endedAt: d?.endedAt !== undefined ? d.endedAt : null,
-  isPlaying: d?.isPlaying ?? true,
   tokensToBeCharged: d?.tokensToBeCharged ?? 0,
   isClosed: d?.isClosed ?? false,
 });

@@ -15,7 +15,7 @@ export interface CallActions {
   completeCall: () => Promise<void>;
   incomingCallAccepted: (call: CallState) => void;
   callCompleted: () => Promise<void>;
-  syncActiveCall: (call: CallState | null, shouldJoin: boolean, isLeader: boolean) => Promise<void>;
+  syncActiveCall: (call: CallState | null, isLeader: boolean) => Promise<void>;
   updateCall: (call: CallState | null) => void;
 }
 
@@ -98,7 +98,10 @@ export const createCallActions = (
     // isLeader still gates the Daily join itself (only the tab holding the
     // real websocket ever actually joins — see InitWs/WsUsersService); what
     // viewState shows for it is purely derived now, see useCallViewState.
-    syncActiveCall: async (call: CallState | null, shouldJoin: boolean, isLeader: boolean) => {
+    // No more shouldJoin gate: grace_period.ts ejects a disconnecting user
+    // from Daily immediately, so by the time this fires on reconnect they're
+    // always genuinely out of the room and always need to (re)join.
+    syncActiveCall: async (call: CallState | null, isLeader: boolean) => {
       try {
         const currentUser = ref.currentUser.getState().currentUser;
         if (!currentUser) throw new ApiError(i18n.t('error.currentUserNotFound'));
@@ -113,7 +116,7 @@ export const createCallActions = (
           return;
         }
 
-        if (!isLeader || call.isClosed || !shouldJoin) return;
+        if (!isLeader || call.isClosed) return;
 
         await dailyService.join({
           room: call.roomName,

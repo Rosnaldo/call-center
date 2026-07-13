@@ -28,7 +28,6 @@ describe('Controller > Call > AddParticipant', () => {
 
         if (!isSuccess(either)) throw new Error(`Expected success, got: ${either.message}`);
         expect(either.data.activeUserIds).toEqual([call.customerId]);
-        expect(either.data.isPlaying).toBe(false);
         expect(either.data.overlapStartedAt).toBeNull();
     });
 
@@ -44,7 +43,7 @@ describe('Controller > Call > AddParticipant', () => {
             mapped: controller.addParticipant.mapper({ customerId: call.customerId, attendantId: call.attendantId, userId: call.customerId }),
         });
         if (!isSuccess(firstJoin)) throw new Error('Expected success');
-        expect(firstJoin.data.isPlaying).toBe(false);
+        expect(firstJoin.data.overlapStartedAt).toBeNull();
 
         const secondJoin = await controller.addParticipant.exec({
             mapped: controller.addParticipant.mapper({ customerId: call.customerId, attendantId: call.attendantId, userId: call.attendantId }),
@@ -52,7 +51,6 @@ describe('Controller > Call > AddParticipant', () => {
         if (!isSuccess(secondJoin)) throw new Error('Expected success');
 
         expect(secondJoin.data.activeUserIds.sort()).toEqual([call.attendantId, call.customerId].sort());
-        expect(secondJoin.data.isPlaying).toBe(true);
         expect(secondJoin.data.overlapStartedAt).not.toBeNull();
     });
 
@@ -78,7 +76,6 @@ describe('Controller > Call > AddParticipant', () => {
 
         const stored = JSON.parse((await redis.get(key))!);
         expect(stored.activeUserIds.sort()).toEqual([call.attendantId, call.customerId].sort());
-        expect(stored.isPlaying).toBe(true);
         expect(stored.overlapStartedAt).not.toBeNull();
     });
 

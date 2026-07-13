@@ -18,7 +18,7 @@ describe('call store — updateCall', () => {
   });
 
   it('syncs call, timer and billing tokens', () => {
-    const call = buildCall({ overlapStartedAt: null, accumulatedMs: 90_000, isPlaying: false, tokensToBeCharged: 2 });
+    const call = buildCall({ overlapStartedAt: null, accumulatedMs: 90_000, tokensToBeCharged: 2 });
 
     useCallStore.getState().updateCall(call);
 
@@ -29,7 +29,10 @@ describe('call store — updateCall', () => {
   });
 
   it('keeps the timer ticking from where the call left off', () => {
-    const call = buildCall({ isPlaying: true, accumulatedMs: 5_000, tokensToBeCharged: 1 });
+    // status is driven by useTimerFromRemoteParticipant now, not by the call
+    // itself — updateCall must never clobber it, only elapsedSeconds/tokens.
+    useTimerStore.getState().play();
+    const call = buildCall({ accumulatedMs: 5_000, tokensToBeCharged: 1 });
 
     useCallStore.getState().updateCall(call);
 
