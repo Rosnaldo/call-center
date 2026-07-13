@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   ChevronsLeft,
   ChevronsRight,
+  Coins,
 } from "lucide-react"
 import {
   Table,
@@ -32,6 +33,7 @@ import {
 } from "@/components/ui/select"
 import { UserFormDialog } from "@/components/user-form-dialog"
 import { DeleteUserDialog } from "@/components/delete-user-dialog"
+import { GiveTokensDialog } from "@/components/give-tokens-dialog"
 import type { IUser, Pagination, UserRole } from "@repo/shared-types"
 import { apiBack } from "@/api/backend"
 import { useQueries } from "@tanstack/react-query"
@@ -86,6 +88,8 @@ export function UsersTable() {
     const [editingUser, setEditingUser] = useState<IUser | null>(null)
     const [deleteOpen, setDeleteOpen] = useState(false)
     const [deletingUser, setDeletingUser] = useState<IUser | null>(null)
+    const [tokensOpen, setTokensOpen] = useState(false)
+    const [tokensUser, setTokensUser] = useState<IUser | null>(null)
 
     const usersListQuery = results[1];
     const counts = results[0].data;
@@ -139,6 +143,11 @@ export function UsersTable() {
     function openDelete(user: IUser) {
         setDeletingUser(user)
         setDeleteOpen(true)
+    }
+
+    function openTokens(user: IUser) {
+        setTokensUser(user)
+        setTokensOpen(true)
     }
 
     // Reset page on filter change
@@ -302,6 +311,17 @@ export function UsersTable() {
                     </TableCell>
                     <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                        {user.role === "customer" && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                onClick={() => openTokens(user)}
+                                aria-label={`Give tokens to ${user.firstName} ${user.lastName}`}
+                            >
+                                <Coins className="h-4 w-4" />
+                            </Button>
+                        )}
                         <Button
                             variant="ghost"
                             size="icon"
@@ -429,6 +449,12 @@ export function UsersTable() {
             onOpenChange={setDeleteOpen}
             user={deletingUser}
             onConfirm={handleDeleteUser}
+        />
+        <GiveTokensDialog
+            open={tokensOpen}
+            onOpenChange={setTokensOpen}
+            user={tokensUser}
+            refetchUsersList={refetchUsersList}
         />
         </div>
     )

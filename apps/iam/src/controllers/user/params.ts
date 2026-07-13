@@ -67,7 +67,7 @@ type IChargeTokenOutput = IUser['IParams'];
 interface IGiveTokenInput {
     customerId: string;
     tokens: number;
-    message: string;
+    message?: string;
 }
 
 type IGiveTokenOutput = IUser['IParams'];

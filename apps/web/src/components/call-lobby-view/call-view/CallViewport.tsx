@@ -130,13 +130,17 @@ const ActiveVideoViewport: React.FC<{ partner: IOnlineUser | undefined }> = ({ p
 
   const secondsUntilAutoEnd = useAutoEndCallTimeout(id);
 
-  if (!id && !activeScreen) return (
-    <div className="flex flex-col items-center justify-center p-8 text-center font-sans select-none">
-      <PartnerAvatar partner={partner} size="md" />
-      <p className="text-xs text-slate-400 mt-2">{t('call.waitingToJoin')}</p>
-      <p className="text-[11px] text-slate-500 mt-1">{t('call.autoEndCountdown', { seconds: secondsUntilAutoEnd })}</p>
-    </div>
-  );
+  if (!id && !activeScreen) {
+    if (!partner || partner.status === 'disconnecting') return null;
+
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center font-sans select-none">
+        <PartnerAvatar partner={partner} size="md" />
+        <p className="text-xs text-slate-400 mt-2">{t('call.waitingToJoin')}</p>
+        <p className="text-[11px] text-slate-500 mt-1">{t('call.autoEndCountdown', { seconds: secondsUntilAutoEnd })}</p>
+      </div>
+    );
+  }
 
   if (activeScreen) {
     return (

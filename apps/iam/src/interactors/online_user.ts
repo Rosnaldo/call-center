@@ -28,6 +28,6 @@ export const setOnlineUser = async (user: IOnlineUser, patch: Partial<IOnlineUse
 
 export const patchOnlineUserIfPresent = async (userId: string, patch: Partial<IOnlineUser>): Promise<void> => {
     const user = await getOnlineUser(userId);
-    if (!user) return;
+    if (!user) throw new BadRequestException('Usuário não encontrado.');
     await setOnlineUser(user, patch);
 };

@@ -10,7 +10,7 @@ type IInput = IUserController['IGiveToken']['IInput'];
 export const inputSchema = z.object({
     customerId: makeObjectIdSchema('customerId'),
     tokens: makeNumberSchema('tokens').positive('tokens deve ser maior que zero'),
-    message: makeStringSchema('message'),
+    message: makeStringSchema('message').optional(),
 });
 
 export const validateInput = (params: IInput): ValidateParseResult => {

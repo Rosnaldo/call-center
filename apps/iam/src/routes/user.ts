@@ -138,7 +138,7 @@ export default (app: Application) => {
         async (req, res) => {
             const controller = new UserController();
             const mapped = controller.giveToken.mapper(req.body);
-            const either = await controller.giveToken.exec({ traceId: req.traceId, mapped });
+            const either = await controller.giveToken.exec({ traceId: req.traceId, mapped, userSource: req.user });
             if (either.isError) {
                 return res.status(either.status).send(either);
             }

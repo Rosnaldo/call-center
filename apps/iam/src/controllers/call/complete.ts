@@ -61,10 +61,17 @@ export class Complete {
             // in-call screen in the meantime.
             const closedCall = await new CallStateBuilder(call).close().save();
 
-            await Promise.all([
-                patchOnlineUserIfPresent(customerId, { status: 'idle' }),
-                patchOnlineUserIfPresent(attendantId, { status: 'idle' }),
-            ]);
+            // Best-effort — the online_user cache entry may have already
+            // expired (90s TTL) or been removed; that shouldn't block the
+            // room ejection/notification below.
+            try {
+                await Promise.all([
+                    patchOnlineUserIfPresent(customerId, { status: 'idle' }),
+                    patchOnlineUserIfPresent(attendantId, { status: 'idle' }),
+                ]);
+            } catch (error) {
+                logger.error({ traceId, error }, 'call complete: falha ao sincronizar cache de presença');
+            }
 
             await ejectBothParticipantsFromRoom(closedCall.roomName);
             notifyCallCompleted(traceId, customerId, attendantId, closedCall);

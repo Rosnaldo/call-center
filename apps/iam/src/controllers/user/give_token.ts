@@ -8,6 +8,7 @@ import { mapString } from '#utils/mapper/string';
 import { getUserModel, getTransactionModel } from '#models/singleton';
 import { UserUtils } from '#schemas/user/utils';
 import { notifyUserTokenCharged } from 'src/services/realtime';
+import { IUser } from '#schemas/user/types';
 import { IUserController } from './params';
 import { validateInput } from 'src/validations/user/give_token';
 
@@ -17,6 +18,7 @@ type IOutput = IUserController['IGiveToken']['IOutput'];
 interface Props {
     traceId: string;
     mapped: IInput;
+    userSource: IUser['IParams'];
 }
 
 export class GiveToken {
@@ -36,7 +38,7 @@ export class GiveToken {
 
     public readonly exec = async (props: Props): Promise<Either<IOutput>> => {
         try {
-            const { traceId } = props;
+            const { traceId, userSource } = props;
             const params = this.transform(props.mapped);
             const { customerId, tokens, message } = params;
             logger.info({ customerId, tokens }, 'user give-token');
@@ -47,9 +49,12 @@ export class GiveToken {
             user.tokens = (user.tokens ?? 0) + tokens;
             await user.save();
 
+            const givenBy = `Tokens dados por ${userSource.firstName} ${userSource.lastName}`;
+            const transactionMessage = message ? `${givenBy}: ${message}` : givenBy;
+
             await getTransactionModel().create({
                 userId: customerId,
-                message,
+                message: transactionMessage,
                 type: 'reload',
                 amount: tokens,
             });
@@ -67,7 +72,7 @@ export class GiveToken {
     public readonly mapper = (body: Request['body']): IInput => ({
         customerId: mapString(body.customerId),
         tokens: typeof body.tokens === 'number' ? body.tokens : Number(body.tokens),
-        message: mapString(body.message),
+        message: body.message ? mapString(body.message) : undefined,
     });
 
     private readonly transform = (mapped: IInput): IInput => {
