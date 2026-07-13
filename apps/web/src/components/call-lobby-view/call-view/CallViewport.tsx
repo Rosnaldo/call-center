@@ -201,13 +201,13 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   }
 
   let topLeftBadge: React.ReactNode = null;
-  if (state === CallViewState.Lobby && !hasIncomingCall) {
+  if (partnerName && state === CallViewState.Lobby && !hasIncomingCall) {
     topLeftBadge = (
       <div className="absolute top-4 left-4 bg-black/75 backdrop-blur-md text-slate-300 text-xs font-medium px-3.5 py-1.5 rounded-full border border-white/5 select-none font-sans shadow-md">
         {partnerName} (Preview)
       </div>
     );
-  } else if (state === CallViewState.InCall) {
+  } else if (partnerName && state === CallViewState.InCall) {
     topLeftBadge = (
       <div className="absolute top-4 left-4 bg-black/75 backdrop-blur-md text-slate-300 text-xs font-medium px-3.5 py-1.5 rounded-full border border-white/5 select-none font-sans shadow-md">
         {partnerName}
@@ -216,7 +216,7 @@ export const CallViewport: React.FC<CallViewportProps> = ({
   }
 
   let timerBadge: React.ReactNode = null;
-  if (timerText) {
+  if (timerText && state === CallViewState.InCall) {
     timerBadge = (
       <div className="flex items-center gap-1.5 bg-black/75 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full text-xs font-mono text-slate-200 shadow-md">
         <Clock className="w-3.5 h-3.5 text-brand-ochre" />

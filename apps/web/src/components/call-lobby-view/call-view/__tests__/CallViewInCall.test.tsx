@@ -87,4 +87,13 @@ describe('CallView Component - in-call Unit Tests', () => {
     const timerSpan = screen.getByText('03:45');
     expect(timerSpan).not.toBeNull();
   });
+
+  // The call (and its timer) is shared across every open tab via update_call,
+  // but only the tab actually showing CallViewState.InCall should display
+  // it — the others just show "active in another tab" (see CallViewport.tsx).
+  it('does not render timer text in in-call-in-another', () => {
+    render(<CallView {...defaultProps({ state: CallViewState.InCallInAnother, timerText: '03:45' })} />);
+
+    expect(screen.queryByText('03:45')).toBeNull();
+  });
 });
