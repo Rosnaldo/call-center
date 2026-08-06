@@ -1,6 +1,11 @@
-# call-center
-turbo run build --filter=@repo/shared-types
+# Call-Center
 
-turbo run dev --filter=backend
+### Manage session credits
+Track and audit call sessions for per-minute credit billing. <br />
 
-npm install -d @types/express --workspace apps/payment
+<br />
+
+<picture>
+  <source media="(max-width: 768px)" srcset="assets/architecture.png" width="100%">
+  <img src="assets/architecture.png" width="50%">
+</picture>
