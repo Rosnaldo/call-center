@@ -84,9 +84,9 @@
     "deviceSettings": "Configurações de Dispositivos",
     "cancelCall": "Cancelar",
     "loadingSession": "Carregando sessão…",
-    "lobbySection": "Lobby de video-chamada ativo.",
-    "placeCallSection": "Ligue para iniciar uma video-chamada.",
-    "manageQueueSection": "Gerencie sua fila e clientes.",
+    "lobbySection": "Videochamada.",
+    "placeCallSection": "Atendentes",
+    "manageQueueSection": "Clientes",
     "heroTitle": "Bloqueie links tóxicos ",
     "heroTitleHighlight": "no seu dispositivo.",
     "heroDescription": "Ligue para um de nossos atendentes, compartilhe seu problema e receba ajuda personalizada para resolver sua questão. Estamos aqui para ajudá-lo em cada etapa!",
@@ -95,6 +95,9 @@
     "participantLoggedOut": "{{name}} fez logout da chamada.",
     "participantDisconnected": "{{name}} desconectou da chamada.",
     "userDisconnected": "{{name}} desconectou."
+  },
+  "chatbot": {
+    "section": "Chatbot."
   },
   "mediaSettings": {
     "title": "Configurações de Áudio e Vídeo",

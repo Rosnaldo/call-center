@@ -1,5 +1,6 @@
 import { CallState, IOnlineUser, IUser, Message } from '@repo/shared-types';
-import type { OnlineUsersStoreInstance, MeetingStoreInstance, ChatStoreInstance } from '../../states/stores';
+import type { OnlineUsersStoreInstance, MeetingStoreInstance, ChatStoreInstance, ChatbotStoreInstance } from '../../states/stores';
+import type { ChatbotMessage } from '../../states/local/chatbot/state.ts';
 import type { ISseSource, SseSourceFactory } from './init-call-events';
 import { mytoast } from '../../components/toast';
 import i18n from '../../i18n.ts';
@@ -12,12 +13,14 @@ type RealtimeEventMessage =
     | { event: 'user_disconnected'; data: { id: string; call?: CallState } }
     | { event: 'user_tokens_updated'; data: { id: string; tokens?: number } }
     | { event: 'chat_message_received'; data: { message: Message } }
+    | { event: 'chatbot_message_received'; data: ChatbotMessage }
     | { event: 'meeting_ended'; data: { call: CallState } };
 
 interface InitRealtimeEventsStores {
     onlineUsers: OnlineUsersStoreInstance;
     meeting: MeetingStoreInstance;
     chat: ChatStoreInstance;
+    chatbot: ChatbotStoreInstance;
 }
 
 const createSseSource: SseSourceFactory = (url) => new EventSource(url) as unknown as ISseSource;
@@ -35,7 +38,8 @@ const warnIfPartOfMyCall = (user: IUser): void => {
 // domain (session/presence/chat). The websocket (see services/ws/init-ws.ts)
 // now carries only heartbeat traffic; this is where its old server-push
 // events (update_online_users, user_logouted, user_disconnecting/
-// disconnected, user_tokens_updated, chat_message_received, meeting_ended)
+// disconnected, user_tokens_updated, chat_message_received, chatbot_message_received,
+// meeting_ended)
 // arrive instead.
 export class InitRealtimeEvents {
     private source: ISseSource | null = null;
@@ -87,6 +91,9 @@ export class InitRealtimeEvents {
                 break;
             case 'chat_message_received':
                 stores.chat.getState().addMessage(msg.data.message);
+                break;
+            case 'chatbot_message_received':
+                stores.chatbot.getState().addMessage(msg.data);
                 break;
             case 'meeting_ended':
                 stores.meeting.getState().meetingEnded(msg.data.call);

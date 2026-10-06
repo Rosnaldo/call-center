@@ -96,6 +96,9 @@
     "participantDisconnected": "{{name}} has disconnected from the call.",
     "userDisconnected": "{{name}} has disconnected."
   },
+  "chatbot": {
+    "section": "Chatbot."
+  },
   "mediaSettings": {
     "title": "Audio and Video Settings",
     "cameraPreview": "Camera Preview",

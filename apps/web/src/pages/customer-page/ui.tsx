@@ -14,6 +14,7 @@ import { SectionHeader } from '../../components/SectionHeader.tsx';
 import { CallState } from '@/src/states/shared/call/state.ts';
 import { IUser } from '@repo/shared-types';
 import { BrandHero } from '../../components/BrandHero.tsx';
+import { ChatbotHero } from '../../components/chatbot-hero/ChatbotHero.tsx';
 import { useLogout } from '../../hooks/auth/useLogout.ts';
 
 interface CustomerPageUIProps {
@@ -39,9 +40,17 @@ export const CustomerPageUI: React.FC<CustomerPageUIProps> = ({
 
           <BrandHero />
 
+          <SectionHeader
+            sectionNumber="01"
+            title={t('chatbot.section')}
+            id="chatbot-section-header"
+          />
+
+          <ChatbotHero />
+
           <div className="flex flex-col gap-8">
             <SectionHeader
-              sectionNumber="01"
+              sectionNumber="02"
               title={t('call.lobbySection')}
               id="lobby-section-header"
             />
@@ -50,7 +59,7 @@ export const CustomerPageUI: React.FC<CustomerPageUIProps> = ({
             <CallLobbyView />
 
             <SectionHeader
-              sectionNumber="02"
+              sectionNumber="03"
               title={t('call.placeCallSection')}
               id="call-section-header"
             />

@@ -1,0 +1,27 @@
+{
+  "name": "chatbot",
+  "version": "1.0.0",
+  "description": "Mobile params chatbot (xstate)",
+  "main": "build/index.js",
+  "scripts": {
+    "start": "node build/index.js",
+    "local": "NODE_ENV=local nodemon",
+    "dev": "NODE_ENV=dev nodemon",
+    "tsc": "rimraf build && tsc -p tsconfig.json",
+    "build": "npm run tsc",
+    "check-types": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "xstate": "^5.33.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "nodemon": "^3.1.11",
+    "rimraf": "^6.1.3",
+    "ts-node": "10.9.2",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
+  }
+}
