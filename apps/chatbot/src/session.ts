@@ -2,8 +2,8 @@ import { createActor, type Actor } from 'xstate';
 import { paramsMachine, type PromptState } from './params-machine';
 import { prompts, summary } from './prompts';
 
-// What the bot sends back: a chat message, or a request for the client to open
-// its allowed apps checklist (answered with selectAllowedApps).
+// What the bot sends back: a chat message, or a request for the allowed apps
+// list, which the client picks in its checklist (answered with selectAllowedApps).
 export type BotReply = { event: 'bot_message'; message: string } | { event: 'open_allowed_apps' };
 
 const say = (message: string): BotReply => ({ event: 'bot_message', message });
@@ -72,7 +72,7 @@ export class ChatSession {
         } else if (entered) {
             replies.push(say(prompts[state](snapshot.context)));
         }
-        // Reopen the checklist after an error too, in case the user closed it.
+        // Ask again after an error too, so the button moves to the newest bot message.
         if (state === 'askAllowedApps' && (entered || snapshot.context.error)) replies.push(OPEN_ALLOWED_APPS);
         this.lastState = state;
         return replies;

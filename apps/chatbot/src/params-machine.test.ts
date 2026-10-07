@@ -59,7 +59,7 @@ describe('paramsMachine', () => {
     it('takes the allowed apps only from the checklist', () => {
         const typed = run('1', '14', 'no', 'com.whatsapp');
         expect(typed.value).toBe('askAllowedApps');
-        expect(typed.context.error).toMatch(/select the allowed apps in the list/);
+        expect(typed.context.error).toMatch(/use the button to select the allowed apps/);
 
         const invalid = run('1', '14', 'no', ['whatsapp']);
         expect(invalid.value).toBe('askAllowedApps');

@@ -62,9 +62,9 @@ export class ChatbotWs {
     // Returns false when the list couldn't be sent (socket not open).
     sendAllowedApps(apps: string[]): boolean {
         if (this.ws?.readyState !== TRANSPORT_OPEN) return false;
-        const { addMessage, closeAllowedAppsModal, setBotTyping } = this.store.getState();
+        const { addMessage, fulfillAllowedAppsRequest, setBotTyping } = this.store.getState();
         addMessage({ autor: 'user', message: apps.length ? apps.join(', ') : 'nenhum app' });
-        closeAllowedAppsModal();
+        fulfillAllowedAppsRequest();
         setBotTyping(true);
         this.ws.send(JSON.stringify({ event: 'allowed_apps', apps }));
         return true;
@@ -124,7 +124,8 @@ export class ChatbotWs {
             if (msg.event === 'bot_message') {
                 this.store.getState().addMessage({ autor: 'bot', message: msg.message });
             } else if (msg.event === 'open_allowed_apps') {
-                this.store.getState().openAllowedAppsModal();
+                // Shows the button on the bot's question; the user opens the modal.
+                this.store.getState().requestAllowedApps();
             }
         };
 

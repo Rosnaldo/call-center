@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Loader2 } from 'lucide-react';
+import { ListChecks, Loader2 } from 'lucide-react';
 import { useChatbotStore } from '../../states/stores.ts';
 
 interface BoardMessageProps {
@@ -12,6 +12,8 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
   className = '',
 }) => {
   const messages = useChatbotStore(s => s.messages);
+  const isAllowedAppsRequested = useChatbotStore(s => s.isAllowedAppsRequested);
+  const openAllowedAppsModal = useChatbotStore(s => s.openAllowedAppsModal);
   const containerRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -52,6 +54,18 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
             >
               <p>{msg.message}</p>
             </div>
+
+            {/* Botão da mensagem: abre a checklist de apps enquanto o bot espera a lista */}
+            {msg.action === 'select_allowed_apps' && isAllowedAppsRequested && (
+              <button
+                type="button"
+                onClick={openAllowedAppsModal}
+                className="mt-2 inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-[#B97204] text-white font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)]"
+              >
+                <ListChecks className="w-4 h-4" />
+                Selecionar apps
+              </button>
+            )}
           </div>
         );
       })}

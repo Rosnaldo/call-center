@@ -95,7 +95,7 @@ export const paramsMachine = setup({
         rejectYesNo: assign({ error: 'Please answer yes or no.' }),
         rejectAppIds: assign({ error: 'Invalid app list. Please select the allowed apps again.' }),
         // The list comes from the web app's checklist, not from typed text.
-        rejectTypedApps: assign({ error: 'Please select the allowed apps in the list.' }),
+        rejectTypedApps: assign({ error: 'Please use the button to select the allowed apps.' }),
     },
 }).createMachine({
     id: 'mobileParams',

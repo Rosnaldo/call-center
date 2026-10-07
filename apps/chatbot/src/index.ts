@@ -8,7 +8,7 @@ import { ChatSession, type BotReply } from './session';
 //                     { event: 'allowed_apps', apps: string[] }   answers open_allowed_apps
 //                     { event: 'search_apps', term: string }      Google Play search, while the checklist is open
 //   server -> client  { event: 'bot_message', message: string }
-//                     { event: 'open_allowed_apps' }             client opens its app checklist
+//                     { event: 'open_allowed_apps' }             client shows a button opening its app checklist
 //                     { event: 'apps_search_results', term, apps: { id, name, iconUrl }[], failed }
 //                     { isError: true, message: string }
 export type ClientMessage =

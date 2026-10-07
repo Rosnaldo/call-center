@@ -1,6 +1,10 @@
+// A button shown under a bot message.
+export type ChatbotMessageAction = 'select_allowed_apps';
+
 export interface ChatbotMessage {
   autor: string;
   message: string;
+  action?: ChatbotMessageAction;
 }
 
 // A Google Play search result, as sent by the chatbot.
@@ -20,7 +24,9 @@ export interface AppSearchState {
 export interface ChatbotState {
   messages: ChatbotMessage[];
   isBotTyping: boolean;
-  // Opened by the bot's `open_allowed_apps` ws event.
+  // Set by the bot's `open_allowed_apps` ws event until the list is sent; the
+  // bot message asking for it shows a button that opens the modal.
+  isAllowedAppsRequested: boolean;
   isAllowedAppsModalOpen: boolean;
   appSearch: AppSearchState;
 }
@@ -30,6 +36,7 @@ export const initialAppSearch: AppSearchState = { term: '', results: [], status:
 export const initialChatbotState: ChatbotState = {
   messages: [],
   isBotTyping: false,
+  isAllowedAppsRequested: false,
   isAllowedAppsModalOpen: false,
   appSearch: initialAppSearch,
 };

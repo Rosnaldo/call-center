@@ -26,24 +26,43 @@ describe('ChatbotWs allowed apps', () => {
     ws.connect();
   });
 
-  it('opens the modal on open_allowed_apps', () => {
+  const askForApps = (message = 'Which apps are allowed?') => {
+    transport.receive({ event: 'bot_message', message });
     transport.receive({ event: 'open_allowed_apps' });
-    expect(useChatbotStore.getState().isAllowedAppsModalOpen).toBe(true);
+  };
+
+  it('puts the button on the bot question instead of opening the modal', () => {
+    askForApps();
+
+    const state = useChatbotStore.getState();
+    expect(state.isAllowedAppsRequested).toBe(true);
+    expect(state.isAllowedAppsModalOpen).toBe(false);
+    expect(state.messages.at(-1)).toEqual({ autor: 'bot', message: 'Which apps are allowed?', action: 'select_allowed_apps' });
   });
 
-  it('sends the picked list and closes the modal', () => {
-    transport.receive({ event: 'open_allowed_apps' });
+  it('moves the button to the newest request', () => {
+    askForApps();
+    askForApps('Please use the button to select the allowed apps.');
+
+    const actions = useChatbotStore.getState().messages.map((m) => m.action);
+    expect(actions).toEqual([undefined, 'select_allowed_apps']);
+  });
+
+  it('sends the picked list and ends the request', () => {
+    askForApps();
+    useChatbotStore.getState().openAllowedAppsModal();
 
     expect(ws.sendAllowedApps(['com.whatsapp'])).toBe(true);
 
     expect(transport.sent).toEqual([{ event: 'allowed_apps', apps: ['com.whatsapp'] }]);
     const state = useChatbotStore.getState();
     expect(state.isAllowedAppsModalOpen).toBe(false);
+    expect(state.isAllowedAppsRequested).toBe(false);
     expect(state.messages.at(-1)).toEqual({ autor: 'user', message: 'com.whatsapp' });
   });
 
   it('sends the normalized term and stores matching results only', () => {
-    transport.receive({ event: 'open_allowed_apps' });
+    askForApps();
 
     ws.searchApps('  Spotify ');
     expect(transport.sent).toEqual([{ event: 'search_apps', term: 'spotify' }]);

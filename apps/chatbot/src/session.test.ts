@@ -18,7 +18,7 @@ describe('ChatSession allowed apps', () => {
     it('rejects typed text and reopens the checklist', () => {
         const { session } = atAllowedApps();
         expect(session.handle('com.whatsapp')).toEqual([
-            { event: 'bot_message', message: 'Please select the allowed apps in the list.' },
+            { event: 'bot_message', message: 'Please use the button to select the allowed apps.' },
             { event: 'open_allowed_apps' },
         ]);
     });
