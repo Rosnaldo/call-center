@@ -1,0 +1,230 @@
+[
+  {
+    "name": "WhatsApp",
+    "id": "com.whatsapp",
+    "category": "Mensagens",
+    "iconUrl": "https://play-lh.googleusercontent.com/Gqxk4T0uZsDwFp07DE-508hkyvcNmgFuRwPiwTEfF7D7OzGv1FdHDzEyMxNsSBZLOJlGpe3ULvVM2RgrRAlBqA"
+  },
+  {
+    "name": "Messenger",
+    "id": "com.facebook.orca",
+    "category": "Mensagens",
+    "iconUrl": "https://play-lh.googleusercontent.com/cuRpiGqvAMkcbAOibD-AKCBagAunUkspQUWC_jVZF2Hob_ODdmkefnZeqkofW1idFQHhgZgnLIjsqT-2v7JKBw"
+  },
+  {
+    "name": "Telegram",
+    "id": "org.telegram.messenger",
+    "category": "Mensagens",
+    "iconUrl": "https://play-lh.googleusercontent.com/PyZ3akMGXPV0tKKirKNwfO--PSQW3FHR6rD_H9mAaukZ8LiHyYFuBLeU8UZ2ok6r5SP79-3prkfybWKh98AZAD0"
+  },
+  {
+    "name": "Instagram",
+    "id": "com.instagram.android",
+    "category": "Redes sociais",
+    "iconUrl": "https://play-lh.googleusercontent.com/yHi59jmO_lVamcyJ1i3rM1_E8bAiAspShnGjjURq05ipQQSUksO3QVEsXTegRSqul038-4YNA7O644XAcx251Q"
+  },
+  {
+    "name": "Facebook",
+    "id": "com.facebook.katana",
+    "category": "Redes sociais",
+    "iconUrl": "https://play-lh.googleusercontent.com/12KEJDhgk6oyE1VgmfCuFzFrQripZ_endElbvEhU1rZawQgV3RI-v3II8fDslI1sdC_WKBkmtxS3jxuIihk33Q"
+  },
+  {
+    "name": "TikTok",
+    "id": "com.zhiliaoapp.musically",
+    "category": "Redes sociais",
+    "iconUrl": "https://play-lh.googleusercontent.com/2o7iuqPe-0msP3DvNhzoOgNo4eZ6GkL_RtGVeKyBn5UBQAW5cw-GW5V3wDOHB1yTQuqWzrFLFOv2u4_5ea1uhg"
+  },
+  {
+    "name": "X (Twitter)",
+    "id": "com.twitter.android",
+    "category": "Redes sociais",
+    "iconUrl": "https://play-lh.googleusercontent.com/IsLsCD4eLC2CYvlkgTI6Z5TROj0BJIBgUF7BZ5eliTzyyTjqG_mbofeG4kw2s7oG_JZMSi5ErLz_qsDi169C8w"
+  },
+  {
+    "name": "LinkedIn",
+    "id": "com.linkedin.android",
+    "category": "Redes sociais",
+    "iconUrl": "https://play-lh.googleusercontent.com/oij55bxj3e-4JrhGntpki0lnQyE8yQn8X5FPEzZ0t7cLppeiSINynEk7n9COoh7QSaCOZ_yiPO31NVaW4SDbWg"
+  },
+  {
+    "name": "YouTube",
+    "id": "com.google.android.youtube",
+    "category": "Entretenimento",
+    "iconUrl": "https://play-lh.googleusercontent.com/QNmuZQc9I6Zbe3mWnSr0hycnENqGFCI5p3yE29Hkxtf22T0IWS6zTrpxULLyyjWpB7ONAXDsDQXnXcVWokl3eg"
+  },
+  {
+    "name": "Netflix",
+    "id": "com.netflix.mediaclient",
+    "category": "Entretenimento",
+    "iconUrl": "https://play-lh.googleusercontent.com/fXVS45nukV1x9PYVSKHkCQK0QGCOishIvAOxIZS3sgRem8HS7l9l94_Ggj-WZPrTLePRdNYN4pp4SPAQL7oS0PU"
+  },
+  {
+    "name": "Spotify",
+    "id": "com.spotify.music",
+    "category": "Entretenimento",
+    "iconUrl": "https://play-lh.googleusercontent.com/IzQgYCcnCFCD08GR-3bdtcT8xzOvrNkC84avGT5CwTX2VIqmTmKKJcP_Cd4JoBOdmCMlTndlOzV6hrthg2fOWA"
+  },
+  {
+    "name": "Gmail",
+    "id": "com.google.android.gm",
+    "category": "Trabalho e produtividade",
+    "iconUrl": "https://play-lh.googleusercontent.com/c6KD_8-GvnGRJA4lRQ4y5YnUa3-LOeYAS7ubw1jWyB9bmr6Kj6zzRvh2A5WBB-Vd3e6zhElmhDv07fCJx2Fc"
+  },
+  {
+    "name": "Microsoft Outlook",
+    "id": "com.microsoft.office.outlook",
+    "category": "Trabalho e produtividade",
+    "iconUrl": "https://play-lh.googleusercontent.com/cQ6W3fn_i56tK1PDQZlKvpuggupXR-kGyzwCtF1vYw-wK9FS3YDVUTnpfEvpbWXXuqH6aJ1JRD_t5bfAyCD4"
+  },
+  {
+    "name": "Microsoft Teams",
+    "id": "com.microsoft.teams",
+    "category": "Trabalho e produtividade",
+    "iconUrl": "https://play-lh.googleusercontent.com/6Dj5fuRhw6aGAeuwW8tQ0UyJOpv14MKtsM0YDx65WOg_zqhxE65wt9XBw9VOzuIMZ-S1hLI9BnnNbaeRkrEf2A"
+  },
+  {
+    "name": "Zoom",
+    "id": "us.zoom.videomeetings",
+    "category": "Trabalho e produtividade",
+    "iconUrl": "https://play-lh.googleusercontent.com/-Ajlo-aDBHtpCez_yILc8Kepv_kNhbTJPw1WyvXgkh4O-hvUN-YD_v_0FlJmgRbZ2vn1OmZCmCBOY23h4kJYEA"
+  },
+  {
+    "name": "Google Drive",
+    "id": "com.google.android.apps.docs",
+    "category": "Trabalho e produtividade",
+    "iconUrl": "https://play-lh.googleusercontent.com/chc-Fx3Qi3BisTZw1aOteYK_XkMHUiXKRbX2Hc8shyFI8pYt7DcyUPzVwLGJKIeKCKDD6nFVhEtUrIaEyzcnmA"
+  },
+  {
+    "name": "Google Chrome",
+    "id": "com.android.chrome",
+    "category": "Trabalho e produtividade",
+    "iconUrl": "https://play-lh.googleusercontent.com/gbkzfC3R1fXcGR4Uag1uRSN_123Tpo_KxhVZFLFCatmthFuO1bzPczUomFtxI42YYEQMJeAaZuIFVrTF58gZYg"
+  },
+  {
+    "name": "Google Maps",
+    "id": "com.google.android.apps.maps",
+    "category": "Mapas e transporte",
+    "iconUrl": "https://play-lh.googleusercontent.com/B8pdO_2K5nBsF0g1h6dKwV_jQFLP-XombGDEQGtJT-mw1EUKCKJpa9lBGCF4rP_MwCsozSXyvI3z19g9R3J4"
+  },
+  {
+    "name": "Waze",
+    "id": "com.waze",
+    "category": "Mapas e transporte",
+    "iconUrl": "https://play-lh.googleusercontent.com/d4dltd4baeDGnfJD1H-ut68ERsIynfywij9zHRL7ioB-PJW3ENw-bFgg08KGPo8zQfSyRW36e58xhlqQ0pE1gg"
+  },
+  {
+    "name": "Uber",
+    "id": "com.ubercab",
+    "category": "Mapas e transporte",
+    "iconUrl": "https://play-lh.googleusercontent.com/OXQnDlRtPa5ha6KCnKPqVmxHYBP7tjrAa7PXGNRqcwDC_J03HVeuEKcKrkcIqnfOqsF5uy3uwWxIXR067QHsNQ"
+  },
+  {
+    "name": "Mercado Livre",
+    "id": "com.mercadolibre",
+    "category": "Compras",
+    "iconUrl": "https://play-lh.googleusercontent.com/iVaeA0HDw8CZjEM-K7GdLB9XYmpcwVFSuv4Q8o9uh4Br7PuKCm3QSYCVU73tr9BBXdR_7xTX4yO0azOJegRVcA"
+  },
+  {
+    "name": "Shopee",
+    "id": "com.shopee.br",
+    "category": "Compras",
+    "iconUrl": "https://play-lh.googleusercontent.com/tA8qSQQAio0zRHgKQQfr-gJConNJcY8vvQWLHLS85lUC_6dV4r9bYcv1lmg56rpznGoJ6cb1-8cEDD1-WHOcXgA"
+  },
+  {
+    "name": "Amazon",
+    "id": "com.amazon.mShop.android.shopping",
+    "category": "Compras",
+    "iconUrl": "https://play-lh.googleusercontent.com/UIYZ9hTFNg-zZUg_uzLS9YdyDpvoo1VHNFb6VlzHy5JqNMq9Uq-p2S1VPwzXCipHTFacfGKhJkyAuKL19VVlcWA"
+  },
+  {
+    "name": "Magalu",
+    "id": "com.luizalabs.mlapp",
+    "category": "Compras",
+    "iconUrl": "https://play-lh.googleusercontent.com/jntImbxnF2WQg4BVhdOJRiMPizHhHIdCzEdOHjE3i7S7mxh5SBvt1HMNf8d5oWsv9Z6V4HPLIuzIXTlxghfuJHA"
+  },
+  {
+    "name": "Shein",
+    "id": "com.zzkko",
+    "category": "Compras",
+    "iconUrl": "https://play-lh.googleusercontent.com/M_c3ZcQ1dx3AlDSfFEL0S2KgYrmkvJz2gz6gMZaL0pSQS9yYfUOGAQJTfuXMvx0K5c46dh5TKauxuRbUlnxB7w"
+  },
+  {
+    "name": "iFood",
+    "id": "br.com.brainweb.ifood",
+    "category": "Compras",
+    "iconUrl": "https://play-lh.googleusercontent.com/u4lHkK2PQF0RuCCS_5NFWtmXjZ0UnMrFN13RbiWo8LF4Aw5nlXTw_7berzgkyayOi-PE0lkZhjsqZXaFngFyXw"
+  },
+  {
+    "name": "Nubank",
+    "id": "com.nu.production",
+    "category": "Bancos",
+    "iconUrl": "https://play-lh.googleusercontent.com/FP6PILGwB6hrdvwg_mE8H1MKi2AcRDbHJcdg7WMfjiHbs4-ZZhYSMtgibkpeakstu1UeNHL4TGCo1l0mV2qkQa4"
+  },
+  {
+    "name": "Itaú",
+    "id": "com.itau",
+    "category": "Bancos",
+    "iconUrl": "https://play-lh.googleusercontent.com/TTzHZIn-jjXoADJ09NSrc0WRnrODhKjtAJj801dvQUPmbMwfRx2N40liORJyh-gaq-vD7jHAkSHYs_23pENTSw"
+  },
+  {
+    "name": "Bradesco",
+    "id": "com.bradesco",
+    "category": "Bancos",
+    "iconUrl": "https://play-lh.googleusercontent.com/B96xAfzq-fWsgqYxc7GOdlK4n0oYDm5CZa_MpMn5JJqxyRXJqIC-Wu8VHD3ITA__wWHStGe1ZDNRE6zzsitE"
+  },
+  {
+    "name": "Banco do Brasil",
+    "id": "br.com.bb.android",
+    "category": "Bancos",
+    "iconUrl": "https://play-lh.googleusercontent.com/JxCbqaUxSeuDfmxkXztItXTkL93jVrHcdMUDkJclmrFwGehwySH3tHNhLTsVsEtU5KFaNIKO9xsPO6urX8wByQ"
+  },
+  {
+    "name": "Caixa",
+    "id": "br.com.gabba.Caixa",
+    "category": "Bancos",
+    "iconUrl": "https://play-lh.googleusercontent.com/OYu6L-gxAsF73bsyv21JfV1PrQA02g5fF11QwXaYlR0FjGaSEkjdyQTb9Lsm50AsfHpL282WvmzwZZAfWWa7_Q"
+  },
+  {
+    "name": "Santander",
+    "id": "com.santander.app",
+    "category": "Bancos",
+    "iconUrl": "https://play-lh.googleusercontent.com/YwnM9AWAHQIZZ5ep3g9L0ya0z5LyWZhhSVkfGZGtXoz_XrFeBquhjlp3c-74uxP9JUogqP0BcbAZLI-MkQJ5AQ"
+  },
+  {
+    "name": "gov.br",
+    "id": "br.gov.meugovbr",
+    "category": "Gov.br",
+    "iconUrl": "https://play-lh.googleusercontent.com/IgGbZYf3uLyGbFNkecfgCoia6aShVvY2AYxRMHLhCF8VDyFz25Vm8SskZ4uGtBNGpquFoEeJlCsrMk7LpCP7"
+  },
+  {
+    "name": "Carteira de Trabalho Digital",
+    "id": "br.gov.dataprev.carteiradigital",
+    "category": "Gov.br",
+    "iconUrl": "https://play-lh.googleusercontent.com/P1A8pNjFka8tpFepGvNDDk_az39MIFeMvALL-vJylHuHrmi9otCA-sRT_5c4CLDgfvJScBY4mtuhJZpDiW7AKQ"
+  },
+  {
+    "name": "Meu INSS",
+    "id": "br.gov.dataprev.meuinss",
+    "category": "Gov.br",
+    "iconUrl": "https://play-lh.googleusercontent.com/tq_hUxhiULOQ3Quw8GClVw8og3ZNtzVG8977E3UXtEsPNir1s2J37TKvOw7fhi1S6KIvax3FEPi89uF5eUJc"
+  },
+  {
+    "name": "CNH do Brasil",
+    "id": "br.gov.serpro.cnhe",
+    "category": "Gov.br",
+    "iconUrl": "https://play-lh.googleusercontent.com/p4oC6zYQu4iYLGTC6hp9dkzAt8LtagUnUBBju1dJvWkrmcmqx7PjI39FRClq0Djz3Rcw0YjGAIHO0bEyzXrBeA"
+  },
+  {
+    "name": "FGTS",
+    "id": "br.gov.caixa.fgts.trabalhador",
+    "category": "Gov.br",
+    "iconUrl": "https://play-lh.googleusercontent.com/gyQ5jy4SQvo7Ct3pnylFVZkZZSx5EJPumHcn5LlTyGxfvDMAvt4f6msAJu_Dk4F_0V28ZBmnJK_pID7MWkA81-4"
+  },
+  {
+    "name": "CAIXA Tem",
+    "id": "br.gov.caixa.tem",
+    "category": "Gov.br",
+    "iconUrl": "https://play-lh.googleusercontent.com/5Ygm3vsi2PcaZKpFdHhnQS-xE_iS075x6jon3kfXMyvwvqyihruXO88cbw9YKCq_MpWsIzzygQ16n6tYCIyfQQ"
+  }
+]

@@ -1,5 +1,6 @@
 import { ITransport, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
 import type { ChatbotStoreInstance } from '../../states/stores';
+import type { AppSearchResult } from '../../states/local/chatbot/state';
 import properties from '../../properties';
 
 const RECONNECT_BASE_DELAY_MS = 1_000;
@@ -8,7 +9,16 @@ const RECONNECT_MAX_DELAY_MS = 30_000;
 // Mirrors the protocol in apps/chatbot/src/index.ts.
 type ChatbotServerMessage =
     | { event: 'bot_message'; message: string }
+    | { event: 'open_allowed_apps' }
+    | { event: 'apps_search_results'; term: string; apps: AppSearchResult[]; failed: boolean }
     | { isError: true; message: string };
+
+// Same rules as the chatbot's normalizeTerm (apps/chatbot/src/app-search.ts):
+// it ignores other terms, which would leave the search loading forever.
+export const normalizeSearchTerm = (term: string): string | null => {
+    const value = term.trim().replace(/\s+/g, ' ').toLowerCase();
+    return value.length >= 2 && value.length <= 50 ? value : null;
+};
 
 // Socket to the chatbot app. Unlike InitWs this is anonymous, per-tab and
 // lives only while the chatbot UI is mounted: every socket is a fresh
@@ -48,6 +58,35 @@ export class ChatbotWs {
         return true;
     }
 
+    // Answers the bot's `open_allowed_apps` with the ids picked in the checklist.
+    // Returns false when the list couldn't be sent (socket not open).
+    sendAllowedApps(apps: string[]): boolean {
+        if (this.ws?.readyState !== TRANSPORT_OPEN) return false;
+        const { addMessage, closeAllowedAppsModal, setBotTyping } = this.store.getState();
+        addMessage({ autor: 'user', message: apps.length ? apps.join(', ') : 'nenhum app' });
+        closeAllowedAppsModal();
+        setBotTyping(true);
+        this.ws.send(JSON.stringify({ event: 'allowed_apps', apps }));
+        return true;
+    }
+
+    // Google Play search for the allowed apps checklist; results land in the store.
+    searchApps(rawTerm: string): void {
+        const { appSearch, startAppSearch, clearAppSearch } = this.store.getState();
+        const term = normalizeSearchTerm(rawTerm);
+        if (!term) {
+            clearAppSearch();
+            return;
+        }
+        if (term === appSearch.term && appSearch.status !== 'error') return;
+        startAppSearch(term);
+        if (this.ws?.readyState !== TRANSPORT_OPEN) {
+            this.store.getState().setAppSearchResults({ term, apps: [], failed: true });
+            return;
+        }
+        this.ws.send(JSON.stringify({ event: 'search_apps', term }));
+    }
+
     // Same full-jitter backoff as InitWs.
     private nextReconnectDelay(): number {
         const cap = Math.min(RECONNECT_MAX_DELAY_MS, RECONNECT_BASE_DELAY_MS * 2 ** this.reconnectAttempts);
@@ -73,6 +112,10 @@ export class ChatbotWs {
             } catch {
                 return; // malformed frame — ignore
             }
+            if ('event' in msg && msg.event === 'apps_search_results') {
+                this.store.getState().setAppSearchResults(msg);
+                return;
+            }
             this.store.getState().setBotTyping(false);
             if ('isError' in msg) {
                 console.error('[chatbot-ws]', msg.message);
@@ -80,6 +123,8 @@ export class ChatbotWs {
             }
             if (msg.event === 'bot_message') {
                 this.store.getState().addMessage({ autor: 'bot', message: msg.message });
+            } else if (msg.event === 'open_allowed_apps') {
+                this.store.getState().openAllowedAppsModal();
             }
         };
 

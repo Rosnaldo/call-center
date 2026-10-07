@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import BoardMessage from './BoardMessage';
+import AllowedAppsModal from './AllowedAppsModal';
 import { useChatbotStore } from '../../states/stores.ts';
 import { ChatbotWs } from '../../services/ws/chatbot-ws.ts';
 
@@ -23,6 +24,10 @@ export const ChatbotHero: React.FC = () => {
     if (!text) return;
     if (chatbotWs.current?.sendMessage(text)) setInput('');
   };
+
+  const handleAllowedApps = (apps: string[]) => chatbotWs.current?.sendAllowedApps(apps) ?? false;
+  // Stable: the modal's debounce effect depends on it.
+  const handleSearchApps = useCallback((term: string) => chatbotWs.current?.searchApps(term), []);
 
   return (
     <div className="w-full flex justify-center select-none overflow-hidden">
@@ -105,6 +110,7 @@ export const ChatbotHero: React.FC = () => {
           </button>
         </div>
       </div>
+      <AllowedAppsModal onSubmit={handleAllowedApps} onSearch={handleSearchApps} />
     </div>
   );
 };

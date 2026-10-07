@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { createActor } from 'xstate';
-import { paramsMachine, parseOs, parseVersion, parseYesNo } from './params-machine';
+import { paramsMachine, parseAppIds, parseOs, parseVersion, parseYesNo } from './params-machine';
 
-const run = (...answers: string[]) => {
+// Strings are typed answers; arrays are lists picked in the checklist.
+const run = (...answers: (string | string[])[]) => {
     const actor = createActor(paramsMachine).start();
-    for (const value of answers) actor.send({ type: 'ANSWER', value });
+    for (const value of answers) {
+        actor.send(Array.isArray(value) ? { type: 'ALLOWED_APPS', apps: value } : { type: 'ANSWER', value });
+    }
     return actor.getSnapshot();
 };
 
@@ -25,13 +28,26 @@ describe('parsers', () => {
         expect(parseYesNo('não')).toBe(false);
         expect(parseYesNo('maybe')).toBeNull();
     });
+
+    it('validates the allowed app list', () => {
+        expect(parseAppIds(['com.whatsapp', 'com.Slack', 'com.whatsapp'])).toEqual(['com.whatsapp', 'com.Slack']);
+        expect(parseAppIds([])).toEqual([]);
+        expect(parseAppIds(['whatsapp'])).toBeNull();
+        expect(parseAppIds([42])).toBeNull();
+        expect(parseAppIds('com.whatsapp')).toBeNull();
+    });
 });
 
 describe('paramsMachine', () => {
     it('collects params and finishes', () => {
-        const snapshot = run('2', '17.4', 'yes', 'yes');
+        const snapshot = run('2', '17.4', 'yes', ['com.whatsapp', 'com.Slack'], 'yes');
         expect(snapshot.status).toBe('done');
-        expect(snapshot.output).toEqual({ os: 'iOS', version: '17.4', privateVpn: true });
+        expect(snapshot.output).toEqual({
+            os: 'iOS',
+            version: '17.4',
+            privateVpn: true,
+            allowedApps: ['com.whatsapp', 'com.Slack'],
+        });
     });
 
     it('rejects invalid answers without advancing', () => {
@@ -40,8 +56,18 @@ describe('paramsMachine', () => {
         expect(snapshot.context.error).toMatch(/Android/);
     });
 
+    it('takes the allowed apps only from the checklist', () => {
+        const typed = run('1', '14', 'no', 'com.whatsapp');
+        expect(typed.value).toBe('askAllowedApps');
+        expect(typed.context.error).toMatch(/select the allowed apps in the list/);
+
+        const invalid = run('1', '14', 'no', ['whatsapp']);
+        expect(invalid.value).toBe('askAllowedApps');
+        expect(invalid.context.error).toMatch(/Invalid app list/);
+    });
+
     it('starts over when the summary is rejected', () => {
-        const snapshot = run('1', '14', 'no', 'no');
+        const snapshot = run('1', '14', 'no', [], 'no');
         expect(snapshot.value).toBe('askOs');
         expect(snapshot.context.os).toBeNull();
     });

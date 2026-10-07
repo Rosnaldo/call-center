@@ -1,6 +1,6 @@
 import readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
-import { ChatSession } from './session';
+import { ChatSession, type BotReply } from './session';
 
 // Terminal front-end for the bot, handy for trying the flow without the web app.
 async function main(): Promise<void> {
@@ -11,7 +11,17 @@ async function main(): Promise<void> {
     });
 
     const session = new ChatSession();
-    const print = (replies: string[]) => replies.forEach((reply) => console.log(`Bot: ${reply}`));
+    // The terminal has no checklist, so the app list is typed as comma-separated ids.
+    let pickingApps = false;
+    const print = (replies: BotReply[]) =>
+        replies.forEach((reply) => {
+            if (reply.event === 'bot_message') {
+                console.log(`Bot: ${reply.message}`);
+                return;
+            }
+            pickingApps = true;
+            console.log('[checklist] Type the allowed app ids separated by commas (empty for none).');
+        });
 
     console.log('Mobile params bot. Type /restart to start over or /exit to quit.\n');
     print(session.start());
@@ -24,6 +34,12 @@ async function main(): Promise<void> {
             break; // stdin closed (Ctrl+D)
         }
         if (answer === '/exit') break;
+        if (pickingApps && !answer.startsWith('/')) {
+            pickingApps = false;
+            print(session.selectAllowedApps(answer.split(/[\s,]+/).filter(Boolean)));
+            continue;
+        }
+        pickingApps = false;
         print(session.handle(answer));
     }
 
