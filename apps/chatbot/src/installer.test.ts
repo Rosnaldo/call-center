@@ -10,6 +10,8 @@ const params = {
     installOs: 'macOS' as const,
 };
 
+const getToken = async () => 'service-token';
+
 describe('createInstallerClient', () => {
     afterEach(() => vi.unstubAllGlobals());
 
@@ -20,11 +22,12 @@ describe('createInstallerClient', () => {
         );
         vi.stubGlobal('fetch', fetch);
 
-        const url = await createInstallerClient('http://executable:5005')(params);
+        const url = await createInstallerClient('http://executable:5005', getToken)(params);
 
         expect(url).toBe(download);
         const [target, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
         expect(target).toBe('http://executable:5005/executables');
+        expect((init.headers as Record<string, string>).Authorization).toBe('Bearer service-token');
         expect(JSON.parse(init.body as string)).toEqual({
             platform: 'macos',
             config: { os: 'Android', version: '14', privateDnsHost: null, allowedApps: [] },
@@ -33,6 +36,6 @@ describe('createInstallerClient', () => {
 
     it('fails when the service does', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => new Response('No macos template', { status: 503 })));
-        await expect(createInstallerClient('http://executable:5005')(params)).rejects.toThrow(/503/);
+        await expect(createInstallerClient('http://executable:5005', getToken)(params)).rejects.toThrow(/503/);
     });
 });

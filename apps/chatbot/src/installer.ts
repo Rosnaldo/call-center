@@ -1,8 +1,9 @@
 import type { InstallOs, ParamsOutput } from './params-machine';
+import type { GetToken } from './service-token';
 
 // Client of the executable service (apps/executable/src/server.ts), which
 // creates the installer with the collected params embedded and uploads it to
-// S3.
+// S3. Requests carry the chatbot's Keycloak service token.
 
 const PLATFORMS: Record<InstallOs, string> = { Linux: 'linux', Windows: 'windows', macOS: 'macos' };
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -13,12 +14,12 @@ export type CreateInstaller = (params: ParamsOutput) => Promise<string>;
 // `baseUrl` is how the chatbot reaches the service; the download URL it
 // answers with is a presigned S3 link the browser uses directly.
 export const createInstallerClient =
-    (baseUrl: string): CreateInstaller =>
+    (baseUrl: string, getToken: GetToken): CreateInstaller =>
     async ({ os, version, privateDnsHost, allowedApps, installOs }) => {
         if (!installOs) throw new Error('No install OS');
         const res = await fetch(`${baseUrl}/executables`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await getToken()}` },
             body: JSON.stringify({
                 platform: PLATFORMS[installOs],
                 config: { os, version, privateDnsHost, allowedApps },

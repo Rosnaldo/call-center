@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import WebSocket, { WebSocketServer } from 'ws';
 import { AppSearchQueue, normalizeTerm, searchGooglePlay, type AppSearchResult } from './app-search';
 import { createInstallerClient } from './installer';
+import { serviceTokenFromEnv } from './service-token';
 import { ChatSession, type BotReply } from './session';
 
 // Wire protocol (JSON frames):
@@ -32,7 +33,7 @@ const PORT = Number(process.env.CHATBOT_PORT ?? 5004);
 const MAX_MESSAGE_LENGTH = 1_000;
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const EXECUTABLE_URL = process.env.EXECUTABLE_URL ?? 'http://127.0.0.1:5005';
-const createInstaller = createInstallerClient(EXECUTABLE_URL);
+const createInstaller = createInstallerClient(EXECUTABLE_URL, serviceTokenFromEnv());
 
 const send = (ws: WebSocket, msg: ServerMessage): void => {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));

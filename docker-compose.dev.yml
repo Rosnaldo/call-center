@@ -95,6 +95,7 @@ services:
       - "5005:5005"
     env_file:
       - ./apps/executable/.env
+      - ./apps/executable/.env.dev
     environment:
       - EXECUTABLE_PORT=5005
     restart: unless-stopped

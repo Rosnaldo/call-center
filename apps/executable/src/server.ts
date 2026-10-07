@@ -5,9 +5,10 @@
 // BUCKET_NAME S3 bucket.
 //
 //   POST /executables       { platform: 'linux' | 'windows' | 'macos', config }
+//                           Authorization: a Keycloak service token (see auth.ts)
 //                           -> 201 { id, filename, url }, `url` being a presigned
 //                              download link valid for EXECUTABLE_URL_TTL_S
-//   GET  /health            200 ok
+//   GET  /health            200 ok (no auth, for the healthcheck)
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { spawnSync } from "child_process";
@@ -16,6 +17,7 @@ import fs from "fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import os from "os";
 import path from "path";
+import { authenticate } from "./auth";
 import { encodeConfig, MAX_CONFIG_BYTES, type EmbeddedConfig } from "./embedded-config";
 
 const PORT = Number(process.env.EXECUTABLE_PORT ?? 5005);
@@ -154,6 +156,17 @@ const sendJson = (res: ServerResponse, status: number, body: unknown): void => {
   res.writeHead(status, { "Content-Type": "application/json" }).end(JSON.stringify(body));
 };
 
+// Checked before reading the body, so anonymous callers can't make the
+// service buffer it.
+async function requireAuth(req: IncomingMessage): Promise<void> {
+  try {
+    await authenticate(req);
+  } catch (err) {
+    console.warn(`Unauthorized ${req.method} ${req.url}: ${err instanceof Error ? err.message : String(err)}`);
+    throw new HttpError(401, "Unauthorized");
+  }
+}
+
 async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const { pathname } = new URL(req.url ?? "/", "http://localhost");
 
@@ -163,6 +176,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   }
 
   if (req.method === "POST" && pathname === "/executables") {
+    await requireAuth(req);
     const body = (await readJson(req)) as { platform?: unknown; config?: unknown } | null;
     if (!isPlatform(body?.platform)) throw new HttpError(400, "Invalid platform");
     const created = await createExecutable(body.platform, parseConfig(body.config));

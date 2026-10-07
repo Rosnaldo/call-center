@@ -5,6 +5,7 @@ import { stdin as input, stdout as output } from 'node:process';
 import { ChatSession, type BotReply } from './session';
 import type { BotText, Summary } from './prompts';
 import { createInstallerClient } from './installer';
+import { serviceTokenFromEnv } from './service-token';
 
 // The bot sends i18n keys; the texts live in the web app's locales.
 const LOCALE_FILE = path.resolve(__dirname, '../../web/src/locales/en.json');
@@ -42,7 +43,10 @@ async function main(): Promise<void> {
         process.exit(0);
     });
 
-    const session = new ChatSession(createInstallerClient(process.env.EXECUTABLE_URL ?? 'http://127.0.0.1:5005'));
+    const session = new ChatSession(createInstallerClient(
+        process.env.EXECUTABLE_URL ?? 'http://127.0.0.1:5005',
+        serviceTokenFromEnv(),
+    ));
     // The terminal has no checklist, so the app list is typed as comma-separated ids.
     let pickingApps = false;
     const print = (replies: BotReply[]) =>
