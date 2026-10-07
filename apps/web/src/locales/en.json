@@ -104,7 +104,7 @@
     "send": "Send",
     "you": "you",
     "bot": "bot",
-    "typing": "typing...",
+    "typing": "generating...",
     "selectApps": "Select apps",
     "generateInstaller": "Generate installer",
     "generateAgain": "Generate again",
