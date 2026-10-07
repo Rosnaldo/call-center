@@ -205,29 +205,59 @@ describe('ChatbotWs installer', () => {
   let transport: FakeTransport;
   let ws: ChatbotWs;
   let downloads: string[];
+  let token: string | undefined;
 
   beforeEach(() => {
     useChatbotStore.getState().resetChatbot();
     transport = new FakeTransport();
     downloads = [];
-    ws = new ChatbotWs(useChatbotStore, 'ws://test', () => transport, (url) => downloads.push(url));
+    token = 'user-token';
+    ws = new ChatbotWs(useChatbotStore, 'ws://test', () => transport, (url) => downloads.push(url), async () => token);
     ws.connect();
   });
 
-  it('asks the bot for the installer', () => {
-    expect(ws.generateInstaller()).toBe(true);
+  it('asks the bot for the installer with the user token', async () => {
+    expect(await ws.generateInstaller()).toBe(true);
 
-    expect(transport.sent).toEqual([{ event: 'generate_installer' }]);
+    expect(transport.sent).toEqual([{ event: 'generate_installer', token: 'user-token' }]);
     expect(useChatbotStore.getState().isBotTyping).toBe(true);
   });
 
-  it('downloads it once ready', () => {
-    ws.generateInstaller();
+  it('asks without a token when logged out', async () => {
+    token = undefined;
+    await ws.generateInstaller();
+    expect(transport.sent).toEqual([{ event: 'generate_installer' }]);
+  });
+
+  it('downloads it once ready', async () => {
+    await ws.generateInstaller();
     transport.receive({ event: 'bot_message', key: 'messages.installerReady' });
     transport.receive({ event: 'installer_ready', url: '/executable/executables/abc' });
 
     expect(downloads).toEqual(['/executable/executables/abc']);
     expect(useChatbotStore.getState().isBotTyping).toBe(false);
     expect(useChatbotStore.getState().messages.at(-1)?.message).toBe('Instalador gerado! O download vai começar em instantes.');
+  });
+});
+
+describe('ChatbotWs send state', () => {
+  let transport: FakeTransport;
+
+  beforeEach(() => {
+    useChatbotStore.getState().resetChatbot();
+    transport = new FakeTransport();
+    new ChatbotWs(useChatbotStore, 'ws://test', () => transport).connect();
+  });
+
+  it('starts with sending disabled', () => {
+    expect(useChatbotStore.getState().isSendEnabled).toBe(false);
+  });
+
+  it('follows the sendEnabled param of the bot messages', () => {
+    transport.receive({ event: 'bot_message', key: 'messages.askVersion', params: { os: 'iOS', example: '17.4' }, sendEnabled: true });
+    expect(useChatbotStore.getState().isSendEnabled).toBe(true);
+
+    transport.receive({ event: 'bot_message', key: 'messages.askDns', sendEnabled: false });
+    expect(useChatbotStore.getState().isSendEnabled).toBe(false);
   });
 });

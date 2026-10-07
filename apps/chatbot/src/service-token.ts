@@ -41,11 +41,15 @@ export const createServiceTokenProvider = ({ keycloakUri, clientId, clientSecret
     };
 };
 
-// From KEYCLOAK_URI, KEYCLOAK_CLIENT_ID and KEYCLOAK_CLIENT_SECRET.
+// From KEYCLOAK_URI, KEYCLOAK_CLIENT_ID and KEYCLOAK_CLIENT_SECRET. Without
+// them only the token requests fail (so only the installer does), not the
+// whole chatbot.
 export const serviceTokenFromEnv = (): GetToken => {
     const { KEYCLOAK_URI, KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET } = process.env;
     if (!KEYCLOAK_URI || !KEYCLOAK_CLIENT_ID || !KEYCLOAK_CLIENT_SECRET) {
-        throw new Error('KEYCLOAK_URI, KEYCLOAK_CLIENT_ID and KEYCLOAK_CLIENT_SECRET must be set');
+        const message = 'KEYCLOAK_URI, KEYCLOAK_CLIENT_ID and KEYCLOAK_CLIENT_SECRET must be set';
+        console.warn(`[service-token] ${message}; installers can't be created`);
+        return () => Promise.reject(new Error(message));
     }
     return createServiceTokenProvider({
         keycloakUri: KEYCLOAK_URI,

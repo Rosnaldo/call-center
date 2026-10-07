@@ -3,6 +3,7 @@ import { ITransport, TransportFactory, TRANSPORT_OPEN, createWsTransport } from 
 import type { ChatbotStoreInstance } from '../../states/stores';
 import type { AppSearchResult } from '../../states/local/chatbot/state';
 import properties from '../../properties';
+import authSession from '../../auth/session';
 
 const RECONNECT_BASE_DELAY_MS = 1_000;
 const RECONNECT_MAX_DELAY_MS = 30_000;
@@ -24,7 +25,7 @@ interface BotSummary {
 
 // Mirrors the protocol in apps/chatbot/src/index.ts.
 type ChatbotServerMessage =
-    | ({ event: 'bot_message' } & BotText)
+    | ({ event: 'bot_message'; sendEnabled: boolean } & BotText)
     | { event: 'open_allowed_apps' }
     | { event: 'ask_choice'; choices: { key: string; value: string }[] }
     | { event: 'offer_restart' }
@@ -83,6 +84,7 @@ export class ChatbotWs {
         private readonly url: string = properties.chatbotWsUrl,
         private readonly factory: TransportFactory = createWsTransport,
         private readonly download: (url: string) => void = downloadFile,
+        private readonly getToken: () => Promise<string | undefined> = () => authSession.getToken(),
     ) {}
 
     connect(): void {
@@ -138,11 +140,18 @@ export class ChatbotWs {
     }
 
     // Answers the "generate installer" button: the bot replies with a message
-    // and the download URL. Returns false when the request couldn't be sent.
-    generateInstaller(): boolean {
+    // and the download URL, or asks to log in when there's no valid token
+    // (the socket is anonymous, so the token goes with the request).
+    // Resolves to false when the request couldn't be sent.
+    async generateInstaller(): Promise<boolean> {
         if (this.ws?.readyState !== TRANSPORT_OPEN) return false;
         this.store.getState().setBotTyping(true);
-        this.ws.send(JSON.stringify({ event: 'generate_installer' }));
+        const token = await this.getToken().catch(() => undefined);
+        if (this.ws?.readyState !== TRANSPORT_OPEN) {
+            this.store.getState().setBotTyping(false);
+            return false;
+        }
+        this.ws.send(JSON.stringify(token ? { event: 'generate_installer', token } : { event: 'generate_installer' }));
         return true;
     }
 
@@ -198,7 +207,9 @@ export class ChatbotWs {
                 return;
             }
             if (msg.event === 'bot_message') {
-                this.store.getState().addMessage({ autor: 'bot', message: translateBotText(msg) });
+                const { addMessage, setSendEnabled } = this.store.getState();
+                addMessage({ autor: 'bot', message: translateBotText(msg) });
+                setSendEnabled(msg.sendEnabled);
             } else if (msg.event === 'open_allowed_apps') {
                 // Shows the button on the bot's question; the user opens the modal.
                 this.store.getState().requestAllowedApps();

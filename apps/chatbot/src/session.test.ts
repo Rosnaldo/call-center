@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ChatSession } from './session';
+import type { IsLoggedIn } from './user-auth';
 
 const atAllowedApps = () => {
     const session = new ChatSession();
@@ -20,7 +21,7 @@ describe('ChatSession allowed apps', () => {
     it('rejects typed text and reopens the checklist', () => {
         const { session } = atAllowedApps();
         expect(session.handle('com.whatsapp')).toEqual([
-            { event: 'bot_message', key: 'errors.typedApps' },
+            { event: 'bot_message', key: 'errors.typedApps', sendEnabled: false },
             { event: 'open_allowed_apps' },
         ]);
     });
@@ -28,14 +29,14 @@ describe('ChatSession allowed apps', () => {
     it('moves on to the USB install OS once picked', () => {
         const { session } = atAllowedApps();
         const [reply] = session.selectAllowedApps(['com.whatsapp']);
-        expect(reply).toEqual({ event: 'bot_message', key: 'messages.askInstallOs' });
+        expect(reply).toEqual({ event: 'bot_message', key: 'messages.askInstallOs', sendEnabled: false });
     });
 
     it('ignores a list outside the allowed apps step', () => {
         const session = new ChatSession();
         session.start();
         expect(session.selectAllowedApps(['com.whatsapp'])).toEqual([
-            { event: 'bot_message', key: 'messages.noAppList' },
+            { event: 'bot_message', key: 'messages.noAppList', sendEnabled: false },
         ]);
     });
 });
@@ -55,7 +56,7 @@ describe('ChatSession choice buttons', () => {
     it('opens with a single proceed button', () => {
         const replies = new ChatSession().start();
         expect(replies).toEqual([
-            { event: 'bot_message', key: 'messages.askStart' },
+            { event: 'bot_message', key: 'messages.askStart', sendEnabled: false },
             { event: 'ask_choice', choices: [{ key: 'choices.proceed', value: 'proceed' }] },
         ]);
     });
@@ -64,7 +65,7 @@ describe('ChatSession choice buttons', () => {
         const session = new ChatSession();
         session.start();
         expect(session.handle('proceed')).toEqual([
-            { event: 'bot_message', key: 'messages.intro' },
+            { event: 'bot_message', key: 'messages.intro', sendEnabled: false },
             { event: 'ask_choice', choices: [{ key: 'choices.proceed', value: 'proceed' }] },
         ]);
     });
@@ -88,7 +89,7 @@ describe('ChatSession choice buttons', () => {
     it('shows them again after an invalid answer', () => {
         const { session } = atDns();
         expect(session.handle('maybe')).toEqual([
-            { event: 'bot_message', key: 'errors.yesNo' },
+            { event: 'bot_message', key: 'errors.yesNo', sendEnabled: false },
             YES_NO,
         ]);
     });
@@ -116,6 +117,7 @@ describe('ChatSession choice buttons', () => {
                 params: {
                     summary: { os: 'Android', version: '14', privateDnsHost: null, allowedApps: ['com.whatsapp'], installOs: 'Linux' },
                 },
+                sendEnabled: false,
             },
             YES_NO,
         ]);
@@ -148,9 +150,43 @@ describe('ChatSession finish', () => {
     });
 });
 
+describe('ChatSession send state', () => {
+    it('enables sending on the steps without buttons', () => {
+        const session = new ChatSession();
+        session.start();
+        session.handle('proceed');
+        session.handle('proceed');
+        expect(session.handle('android')).toEqual([
+            { event: 'bot_message', key: 'messages.askVersion', params: expect.anything(), sendEnabled: true },
+        ]);
+    });
+
+    it('keeps it enabled after an invalid typed answer', () => {
+        const session = new ChatSession();
+        session.start();
+        session.handle('proceed');
+        session.handle('proceed');
+        session.handle('android');
+        const [reply] = session.handle('abc');
+        expect(reply).toMatchObject({ event: 'bot_message', sendEnabled: true });
+    });
+
+    it('disables it on button steps and once finished', () => {
+        const { replies } = atAllowedApps();
+        expect(replies[0]).toMatchObject({ sendEnabled: false });
+        const { session } = atAllowedApps();
+        session.selectAllowedApps(['com.whatsapp']);
+        session.handle('mac');
+        expect(session.handle('yes')[0]).toMatchObject({ sendEnabled: false });
+    });
+});
+
 describe('ChatSession installer', () => {
-    const finishedWith = (createInstaller = vi.fn(async () => 'http://dl.test/executables/1')) => {
-        const session = new ChatSession(createInstaller);
+    const finishedWith = (
+        createInstaller = vi.fn(async () => 'http://dl.test/executables/1'),
+        isLoggedIn?: IsLoggedIn,
+    ) => {
+        const session = new ChatSession(createInstaller, isLoggedIn);
         session.start();
         for (const answer of ['proceed', 'proceed', '1', '14', 'yes', 'dns.google']) session.handle(answer);
         session.selectAllowedApps(['com.whatsapp']);
@@ -162,7 +198,7 @@ describe('ChatSession installer', () => {
     it('creates it with the collected params and sends the download URL', async () => {
         const { session, createInstaller } = finishedWith();
         expect(await session.generateInstaller()).toEqual([
-            { event: 'bot_message', key: 'messages.installerReady' },
+            { event: 'bot_message', key: 'messages.installerReady', sendEnabled: false },
             { event: 'installer_ready', url: 'http://dl.test/executables/1' },
         ]);
         expect(createInstaller).toHaveBeenCalledWith({
@@ -178,7 +214,7 @@ describe('ChatSession installer', () => {
     it('says so when the service fails', async () => {
         vi.spyOn(console, 'error').mockImplementation(() => {});
         const { session } = finishedWith(vi.fn(async () => Promise.reject(new Error('down'))));
-        expect(await session.generateInstaller()).toEqual([{ event: 'bot_message', key: 'messages.installerFailed' }]);
+        expect(await session.generateInstaller()).toEqual([{ event: 'bot_message', key: 'messages.installerFailed', sendEnabled: false }]);
     });
 
     it('ignores clicks while one is being created', async () => {
@@ -188,9 +224,30 @@ describe('ChatSession installer', () => {
         expect(await first).toHaveLength(2);
     });
 
+    it('asks to log in when the user is not logged in', async () => {
+        const { session, createInstaller } = finishedWith(undefined, async (token) => token === 'user-token');
+        expect(await session.generateInstaller()).toEqual([
+            { event: 'bot_message', key: 'messages.loginRequired', sendEnabled: false },
+        ]);
+        expect(await session.generateInstaller('expired')).toEqual([
+            { event: 'bot_message', key: 'messages.loginRequired', sendEnabled: false },
+        ]);
+        expect(createInstaller).not.toHaveBeenCalled();
+        expect(await session.generateInstaller('user-token')).toHaveLength(2);
+        expect(createInstaller).toHaveBeenCalledOnce();
+    });
+
+    it('says it failed when the login cannot be checked', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const { session } = finishedWith(undefined, async () => Promise.reject(new Error('iam down')));
+        expect(await session.generateInstaller('user-token')).toEqual([
+            { event: 'bot_message', key: 'messages.installerFailed', sendEnabled: false },
+        ]);
+    });
+
     it('waits for the conversation to finish', async () => {
         const session = new ChatSession(vi.fn());
         session.start();
-        expect(await session.generateInstaller()).toEqual([{ event: 'bot_message', key: 'messages.installerNotReady' }]);
+        expect(await session.generateInstaller()).toEqual([{ event: 'bot_message', key: 'messages.installerNotReady', sendEnabled: false }]);
     });
 });

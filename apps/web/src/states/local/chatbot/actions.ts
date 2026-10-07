@@ -13,6 +13,7 @@ export interface ChatbotActions {
   startAppSearch: (term: string) => void;
   setAppSearchResults: (result: { term: string; apps: AppSearchResult[]; failed: boolean }) => void;
   clearAppSearch: () => void;
+  setSendEnabled: (isSendEnabled: boolean) => void;
   resetChatbot: () => void;
 }
 
@@ -70,6 +71,7 @@ export const createChatbotActions = (
           : {}
       ),
     clearAppSearch: () => set(() => ({ appSearch: initialAppSearch })),
+    setSendEnabled: (isSendEnabled) => set(() => ({ isSendEnabled })),
     resetChatbot: () => set(() => ({ ...initialChatbotState })),
   };
 };

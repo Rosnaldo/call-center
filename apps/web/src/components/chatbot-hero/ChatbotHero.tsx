@@ -10,6 +10,7 @@ export const ChatbotHero: React.FC = () => {
   const { t } = useTranslation();
   const [input, setInput] = useState('');
   const isProcessing = useChatbotStore(s => s.isBotTyping);
+  const isSendEnabled = useChatbotStore(s => s.isSendEnabled);
   const chatbotWs = useRef<ChatbotWs | null>(null);
 
   useEffect(() => {
@@ -88,7 +89,7 @@ export const ChatbotHero: React.FC = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSend();
+                if (e.key === 'Enter' && isSendEnabled) handleSend();
               }}
               placeholder={t('chatbot.inputPlaceholder')}
               className="w-full bg-transparent border-none outline-none font-mono-terminal text-[#1F1A13] placeholder-[#A09787] text-[15px] p-0 focus:ring-0 selection:bg-[#B97204]/20"
@@ -101,7 +102,8 @@ export const ChatbotHero: React.FC = () => {
           <button
             type="button"
             onClick={handleSend}
-            className="relative inline-flex items-center justify-center gap-2 cursor-pointer font-mono-terminal uppercase font-bold tracking-wider transition-all duration-200 active:scale-[0.98] select-none shrink-0"
+            disabled={!isSendEnabled}
+            className="relative inline-flex items-center justify-center gap-2 cursor-pointer font-mono-terminal uppercase font-bold tracking-wider transition-all duration-200 active:scale-[0.98] select-none shrink-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100"
             style={{
               backgroundColor: '#B97204',
               color: '#FFFFFF',

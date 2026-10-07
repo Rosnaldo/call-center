@@ -24,6 +24,9 @@ services:
       realtime:
         condition: service_healthy
         restart: true
+      chatbot:
+        condition: service_started
+        restart: true
       mongo:
         condition: service_healthy
         restart: true
@@ -96,6 +99,7 @@ services:
       - ./apps/chatbot/.env.production
     environment:
       - EXECUTABLE_URL=http://executable:5005
+      - IAM_URI=http://iam:5002
     restart: unless-stopped
     depends_on:
       executable:

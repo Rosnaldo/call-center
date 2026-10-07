@@ -124,7 +124,8 @@
       "noAppList": "Não há lista de apps para escolher agora.",
       "installerReady": "Instalador gerado! O download vai começar em instantes.",
       "installerFailed": "Não foi possível gerar o instalador agora. Tente novamente.",
-      "installerNotReady": "Termine a configuração antes de gerar o instalador."
+      "installerNotReady": "Termine a configuração antes de gerar o instalador.",
+      "loginRequired": "Faça login para gerar o instalador."
     },
     "errors": {
       "os": "Escolha Android ou iOS.",

@@ -2,6 +2,7 @@ import { createActor, type Actor } from 'xstate';
 import { paramsMachine, type PromptState } from './params-machine';
 import { prompts, summaryOf, type BotText } from './prompts';
 import type { CreateInstaller } from './installer';
+import type { IsLoggedIn } from './user-auth';
 
 // A button: its text (i18n key, like a message's) and what it answers.
 export type Choice = { key: string; value: string };
@@ -12,14 +13,19 @@ export type Choice = { key: string; value: string };
 // as typed text, with the option's value),
 // once finished, an offer to generate again (answered with start), or the
 // download URL of the installer (answered generateInstaller).
+// `sendEnabled` on a chat message tells the client whether to enable its send
+// button: only when the answer is typed, not buttons/checklist (nor once done).
 export type BotReply =
-    | ({ event: 'bot_message' } & BotText)
+    | ({ event: 'bot_message'; sendEnabled: boolean } & BotText)
     | { event: 'open_allowed_apps' }
     | { event: 'ask_choice'; choices: Choice[] }
     | { event: 'offer_restart' }
     | { event: 'installer_ready'; url: string };
 
-const say = (key: string, params?: BotText['params']): BotReply =>
+// `sendEnabled` is filled in by ChatSession.withSendState on the way out.
+type Reply = BotReply | ({ event: 'bot_message' } & BotText);
+
+const say = (key: string, params?: BotText['params']): Reply =>
     params ? { event: 'bot_message', key, params } : { event: 'bot_message', key };
 const OPEN_ALLOWED_APPS: BotReply = { event: 'open_allowed_apps' };
 const askChoice = (...choices: Choice[]): BotReply => ({ event: 'ask_choice', choices });
@@ -49,39 +55,48 @@ export class ChatSession {
     private lastState: PromptState | null = null;
     private isGeneratingInstaller = false;
 
-    constructor(private readonly createInstaller?: CreateInstaller) {}
+    // Without `isLoggedIn` (the terminal CLI) anyone may generate the installer.
+    constructor(
+        private readonly createInstaller?: CreateInstaller,
+        private readonly isLoggedIn?: IsLoggedIn,
+    ) {}
 
     // Opening replies for a fresh conversation.
     start(): BotReply[] {
         this.actor?.stop();
         this.actor = createActor(paramsMachine).start();
         this.lastState = null;
-        return this.replies();
+        return this.withSendState(this.replies());
     }
 
     handle(text: string): BotReply[] {
         const answer = text.trim();
         if (answer === '/restart') return this.start();
-        if (this.isDone()) return [say('messages.finished'), OFFER_RESTART];
+        if (this.isDone()) return this.withSendState([say('messages.finished'), OFFER_RESTART]);
 
         this.actor.send({ type: 'ANSWER', value: answer });
-        return this.replies();
+        return this.withSendState(this.replies());
     }
 
     // The list picked in the client's checklist.
     selectAllowedApps(apps: unknown): BotReply[] {
-        if (this.isDone()) return [say('messages.finished'), OFFER_RESTART];
+        if (this.isDone()) return this.withSendState([say('messages.finished'), OFFER_RESTART]);
         if (!this.isPickingAllowedApps()) {
-            return [say('messages.noAppList')];
+            return this.withSendState([say('messages.noAppList')]);
         }
 
         this.actor.send({ type: 'ALLOWED_APPS', apps });
-        return this.replies();
+        return this.withSendState(this.replies());
     }
 
-    // The installer for the collected params, once the conversation is done.
+    // The installer for the collected params, once the conversation is done
+    // and only for a logged-in user (`token` is their access token).
     // Repeated clicks while one is being created are ignored.
-    async generateInstaller(): Promise<BotReply[]> {
+    async generateInstaller(token?: string): Promise<BotReply[]> {
+        return this.withSendState(await this.installerReplies(token));
+    }
+
+    private async installerReplies(token?: string): Promise<Reply[]> {
         const snapshot = this.actor.getSnapshot();
         if (snapshot.value !== 'done' || !snapshot.output) return [say('messages.installerNotReady')];
         if (!this.createInstaller) return [say('messages.installerFailed')];
@@ -89,6 +104,7 @@ export class ChatSession {
 
         this.isGeneratingInstaller = true;
         try {
+            if (this.isLoggedIn && !(await this.isLoggedIn(token))) return [say('messages.loginRequired')];
             const url = await this.createInstaller(snapshot.output);
             return [say('messages.installerReady'), { event: 'installer_ready', url }];
         } catch (err) {
@@ -108,19 +124,30 @@ export class ChatSession {
         this.actor?.stop();
     }
 
+    // Typing is only for the steps without buttons, while not finished.
+    private isSendEnabled(): boolean {
+        if (this.isDone()) return false;
+        return !BUTTONS[this.actor.getSnapshot().value as PromptState];
+    }
+
+    private withSendState(replies: Reply[]): BotReply[] {
+        const sendEnabled = this.isSendEnabled();
+        return replies.map((r) => (r.event === 'bot_message' ? { ...r, sendEnabled } : r));
+    }
+
     // The final state stops the actor, so it can no longer take events.
     private isDone(): boolean {
         return this.actor.getSnapshot().status === 'done';
     }
 
-    private replies(): BotReply[] {
+    private replies(): Reply[] {
         const snapshot = this.actor.getSnapshot();
         if (snapshot.status === 'done' && snapshot.output) {
             return [say('messages.done', { summary: summaryOf(snapshot.output) }), OFFER_RESTART];
         }
 
         const state = snapshot.value as PromptState;
-        const replies: BotReply[] = [];
+        const replies: Reply[] = [];
         const entered = state !== this.lastState;
         if (snapshot.context.error) {
             replies.push(say(snapshot.context.error));

@@ -124,7 +124,8 @@
       "noAppList": "There is no app list to choose right now.",
       "installerReady": "Installer created! The download will start shortly.",
       "installerFailed": "Couldn't create the installer right now. Please try again.",
-      "installerNotReady": "Finish the setup before generating the installer."
+      "installerNotReady": "Finish the setup before generating the installer.",
+      "loginRequired": "Log in to generate the installer."
     },
     "errors": {
       "os": "Please choose Android or iOS.",
