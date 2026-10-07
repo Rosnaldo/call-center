@@ -7,14 +7,18 @@ import { ChatSession, type BotReply } from './session';
 //   client -> server  { event: 'user_message', message: string }
 //                     { event: 'allowed_apps', apps: string[] }   answers open_allowed_apps
 //                     { event: 'search_apps', term: string }      Google Play search, while the checklist is open
+//                     { event: 'restart' }                       starts a new conversation (answers offer_restart)
 //   server -> client  { event: 'bot_message', message: string }
 //                     { event: 'open_allowed_apps' }             client shows a button opening its app checklist
+//                     { event: 'ask_choice', choices: { label, value }[] }  client shows a button per choice (answered as user_message with its value)
+//                     { event: 'offer_restart' }                 conversation finished; client shows a "generate again" button
 //                     { event: 'apps_search_results', term, apps: { id, name, iconUrl }[], failed }
 //                     { isError: true, message: string }
 export type ClientMessage =
     | { event: 'user_message'; message: string }
     | { event: 'allowed_apps'; apps: unknown[] }
-    | { event: 'search_apps'; term: string };
+    | { event: 'search_apps'; term: string }
+    | { event: 'restart' };
 export type ServerMessage =
     | BotReply
     | { event: 'apps_search_results'; term: string; apps: AppSearchResult[]; failed: boolean }
@@ -35,6 +39,7 @@ const parseClientMessage = (raw: WebSocket.RawData): ClientMessage | null => {
         // Ids are validated by the session.
         if (msg?.event === 'allowed_apps' && Array.isArray(msg.apps)) return msg;
         if (msg?.event === 'search_apps' && typeof msg.term === 'string') return msg;
+        if (msg?.event === 'restart') return { event: 'restart' };
         return null;
     } catch {
         return null;
@@ -68,6 +73,10 @@ wss.on('connection', (ws) => {
         }
         if (msg.event === 'allowed_apps') {
             reply(session.selectAllowedApps(msg.apps));
+            return;
+        }
+        if (msg.event === 'restart') {
+            reply(session.start());
             return;
         }
         if (msg.event === 'search_apps') {

@@ -1,6 +1,6 @@
 import { ITransport, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
 import type { ChatbotStoreInstance } from '../../states/stores';
-import type { AppSearchResult } from '../../states/local/chatbot/state';
+import type { AppSearchResult, ChatbotChoice } from '../../states/local/chatbot/state';
 import properties from '../../properties';
 
 const RECONNECT_BASE_DELAY_MS = 1_000;
@@ -10,6 +10,8 @@ const RECONNECT_MAX_DELAY_MS = 30_000;
 type ChatbotServerMessage =
     | { event: 'bot_message'; message: string }
     | { event: 'open_allowed_apps' }
+    | { event: 'ask_choice'; choices: ChatbotChoice[] }
+    | { event: 'offer_restart' }
     | { event: 'apps_search_results'; term: string; apps: AppSearchResult[]; failed: boolean }
     | { isError: true; message: string };
 
@@ -52,8 +54,11 @@ export class ChatbotWs {
     // Returns false when the message couldn't be sent (socket not open).
     sendMessage(text: string): boolean {
         if (this.ws?.readyState !== TRANSPORT_OPEN) return false;
-        this.store.getState().addMessage({ autor: 'user', message: text });
-        this.store.getState().setBotTyping(true);
+        const { addMessage, fulfillChoiceRequest, setBotTyping } = this.store.getState();
+        addMessage({ autor: 'user', message: text });
+        // Typing answers a choice as well; the bot asks again if it isn't one.
+        fulfillChoiceRequest();
+        setBotTyping(true);
         this.ws.send(JSON.stringify({ event: 'user_message', message: text }));
         return true;
     }
@@ -62,11 +67,23 @@ export class ChatbotWs {
     // Returns false when the list couldn't be sent (socket not open).
     sendAllowedApps(apps: string[]): boolean {
         if (this.ws?.readyState !== TRANSPORT_OPEN) return false;
-        const { addMessage, fulfillAllowedAppsRequest, setBotTyping } = this.store.getState();
-        addMessage({ autor: 'user', message: apps.length ? apps.join(', ') : 'nenhum app' });
+        // No echo of the picked list: the bot's confirmation already shows it.
+        const { fulfillAllowedAppsRequest, setBotTyping } = this.store.getState();
         fulfillAllowedAppsRequest();
         setBotTyping(true);
         this.ws.send(JSON.stringify({ event: 'allowed_apps', apps }));
+        return true;
+    }
+
+    // Answers the bot's `offer_restart`: the server starts a new conversation
+    // and greets again, so the finished one is cleared from the board.
+    // Returns false when the request couldn't be sent (socket not open).
+    restart(): boolean {
+        if (this.ws?.readyState !== TRANSPORT_OPEN) return false;
+        const { resetChatbot, setBotTyping } = this.store.getState();
+        resetChatbot();
+        setBotTyping(true);
+        this.ws.send(JSON.stringify({ event: 'restart' }));
         return true;
     }
 
@@ -126,6 +143,10 @@ export class ChatbotWs {
             } else if (msg.event === 'open_allowed_apps') {
                 // Shows the button on the bot's question; the user opens the modal.
                 this.store.getState().requestAllowedApps();
+            } else if (msg.event === 'ask_choice') {
+                this.store.getState().requestChoice(msg.choices);
+            } else if (msg.event === 'offer_restart') {
+                this.store.getState().offerRestart();
             }
         };
 

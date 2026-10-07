@@ -58,7 +58,7 @@ describe('ChatbotWs allowed apps', () => {
     const state = useChatbotStore.getState();
     expect(state.isAllowedAppsModalOpen).toBe(false);
     expect(state.isAllowedAppsRequested).toBe(false);
-    expect(state.messages.at(-1)).toEqual({ autor: 'user', message: 'com.whatsapp' });
+    expect(state.messages.at(-1)).toEqual({ autor: 'bot', message: 'Which apps are allowed?', action: 'select_allowed_apps' });
   });
 
   it('sends the normalized term and stores matching results only', () => {
@@ -79,5 +79,86 @@ describe('ChatbotWs allowed apps', () => {
     ws.searchApps(' s ');
     expect(transport.sent).toEqual([]);
     expect(useChatbotStore.getState().appSearch.status).toBe('idle');
+  });
+});
+
+describe('ChatbotWs choices', () => {
+  let transport: FakeTransport;
+  let ws: ChatbotWs;
+
+  beforeEach(() => {
+    useChatbotStore.getState().resetChatbot();
+    transport = new FakeTransport();
+    ws = new ChatbotWs(useChatbotStore, 'ws://test', () => transport);
+    ws.connect();
+  });
+
+  const OS_CHOICES = [{ label: 'Android', value: 'android' }, { label: 'iOS', value: 'ios' }];
+
+  it('puts the buttons on the bot question', () => {
+    transport.receive({ event: 'bot_message', message: 'Which mobile operating system do you use?' });
+    transport.receive({ event: 'ask_choice', choices: OS_CHOICES });
+
+    const state = useChatbotStore.getState();
+    expect(state.isChoiceRequested).toBe(true);
+    expect(state.messages.at(-1)).toEqual({
+      autor: 'bot',
+      message: 'Which mobile operating system do you use?',
+      action: 'choice',
+      choices: OS_CHOICES,
+    });
+  });
+
+  it('takes the buttons off the previous question', () => {
+    transport.receive({ event: 'bot_message', message: 'Which mobile operating system do you use?' });
+    transport.receive({ event: 'ask_choice', choices: OS_CHOICES });
+    transport.receive({ event: 'bot_message', message: 'Which apps are allowed?' });
+    transport.receive({ event: 'open_allowed_apps' });
+
+    expect(useChatbotStore.getState().messages[0]).toEqual({ autor: 'bot', message: 'Which mobile operating system do you use?' });
+  });
+
+  it('ends the request once answered', () => {
+    transport.receive({ event: 'bot_message', message: 'Which mobile operating system do you use?' });
+    transport.receive({ event: 'ask_choice', choices: OS_CHOICES });
+
+    expect(ws.sendMessage('android')).toBe(true);
+
+    expect(transport.sent).toEqual([{ event: 'user_message', message: 'android' }]);
+    expect(useChatbotStore.getState().isChoiceRequested).toBe(false);
+  });
+});
+
+describe('ChatbotWs restart', () => {
+  let transport: FakeTransport;
+  let ws: ChatbotWs;
+
+  beforeEach(() => {
+    useChatbotStore.getState().resetChatbot();
+    transport = new FakeTransport();
+    ws = new ChatbotWs(useChatbotStore, 'ws://test', () => transport);
+    ws.connect();
+  });
+
+  it('puts the button on the final message', () => {
+    transport.receive({ event: 'bot_message', message: 'Thanks! Collected params' });
+    transport.receive({ event: 'offer_restart' });
+
+    const state = useChatbotStore.getState();
+    expect(state.isRestartOffered).toBe(true);
+    expect(state.messages.at(-1)).toEqual({ autor: 'bot', message: 'Thanks! Collected params', action: 'restart' });
+  });
+
+  it('clears the board and asks for a new conversation', () => {
+    transport.receive({ event: 'bot_message', message: 'Thanks! Collected params' });
+    transport.receive({ event: 'offer_restart' });
+
+    expect(ws.restart()).toBe(true);
+
+    expect(transport.sent).toEqual([{ event: 'restart' }]);
+    const state = useChatbotStore.getState();
+    expect(state.messages).toEqual([]);
+    expect(state.isRestartOffered).toBe(false);
+    expect(state.isBotTyping).toBe(true);
   });
 });

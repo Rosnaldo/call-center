@@ -5,7 +5,9 @@ export type MobileOs = 'Android' | 'iOS';
 export interface ParamsContext {
     os: MobileOs | null;
     version: string | null;
-    privateVpn: boolean | null;
+    privateDns: boolean | null;
+    // Hostname of the private DNS, when there is one.
+    privateDnsHost: string | null;
     allowedApps: string[] | null;
     error: string | null;
 }
@@ -13,7 +15,8 @@ export interface ParamsContext {
 export interface ParamsOutput {
     os: MobileOs | null;
     version: string | null;
-    privateVpn: boolean | null;
+    privateDns: boolean | null;
+    privateDnsHost: string | null;
     allowedApps: string[] | null;
 }
 
@@ -48,6 +51,15 @@ export const parseYesNo = (text: unknown): boolean | null => {
     return null;
 };
 
+// Private DNS hostname, as in Android's Private DNS setting (e.g. dns.adguard.com):
+// dot-separated labels ending in an alphabetic TLD. No scheme, port or path.
+const HOSTNAME = /^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+
+export const parseHostname = (text: unknown): string | null => {
+    const value = normalize(text).replace(/\.$/, '');
+    return HOSTNAME.test(value) ? value : null;
+};
+
 // Android application id, as in play.google.com/store/apps/details?id=<id>:
 // two or more dot-separated segments, each starting with a letter.
 const APP_ID = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/;
@@ -63,7 +75,14 @@ export const parseAppIds = (apps: unknown): string[] | null => {
     return [...new Set(apps as string[])];
 };
 
-const initialContext: ParamsContext = { os: null, version: null, privateVpn: null, allowedApps: null, error: null };
+const initialContext: ParamsContext = {
+    os: null,
+    version: null,
+    privateDns: null,
+    privateDnsHost: null,
+    allowedApps: null,
+    error: null,
+};
 
 // Guards/actions are typed with every event, so they read payloads defensively.
 const answerOf = (event: ParamsEvent): string => (event.type === 'ANSWER' ? event.value : '');
@@ -78,20 +97,22 @@ export const paramsMachine = setup({
     guards: {
         isValidOs: ({ event }) => parseOs(answerOf(event)) !== null,
         isValidVersion: ({ event }) => parseVersion(answerOf(event)) !== null,
+        isValidHostname: ({ event }) => parseHostname(answerOf(event)) !== null,
         isValidAppIds: ({ event }) => parseAppIds(appsOf(event)) !== null,
-        isYesNo: ({ event }) => parseYesNo(answerOf(event)) !== null,
         isYes: ({ event }) => parseYesNo(answerOf(event)) === true,
         isNo: ({ event }) => parseYesNo(answerOf(event)) === false,
     },
     actions: {
         saveOs: assign({ os: ({ event }) => parseOs(answerOf(event)), error: null }),
         saveVersion: assign({ version: ({ event }) => parseVersion(answerOf(event)), error: null }),
-        saveVpn: assign({ privateVpn: ({ event }) => parseYesNo(answerOf(event)), error: null }),
+        saveDns: assign({ privateDns: ({ event }) => parseYesNo(answerOf(event)), privateDnsHost: null, error: null }),
+        saveDnsHost: assign({ privateDnsHost: ({ event }) => parseHostname(answerOf(event)), error: null }),
         saveAllowedApps: assign({ allowedApps: ({ event }) => parseAppIds(appsOf(event)), error: null }),
         clearError: assign({ error: null }),
         reset: assign(() => ({ ...initialContext })),
         rejectOs: assign({ error: 'Please choose 1 (Android) or 2 (iOS).' }),
         rejectVersion: assign({ error: 'Please enter a version number such as 14 or 17.4.1.' }),
+        rejectHostname: assign({ error: 'Please enter the private DNS hostname, such as dns.adguard.com.' }),
         rejectYesNo: assign({ error: 'Please answer yes or no.' }),
         rejectAppIds: assign({ error: 'Invalid app list. Please select the allowed apps again.' }),
         // The list comes from the web app's checklist, not from typed text.
@@ -116,16 +137,25 @@ export const paramsMachine = setup({
         askVersion: {
             on: {
                 ANSWER: [
-                    { guard: 'isValidVersion', target: 'askVpn', actions: 'saveVersion' },
+                    { guard: 'isValidVersion', target: 'askDns', actions: 'saveVersion' },
                     { actions: 'rejectVersion' },
                 ],
             },
         },
-        askVpn: {
+        askDns: {
             on: {
                 ANSWER: [
-                    { guard: 'isYesNo', target: 'askAllowedApps', actions: 'saveVpn' },
+                    { guard: 'isYes', target: 'askDnsHost', actions: 'saveDns' },
+                    { guard: 'isNo', target: 'askAllowedApps', actions: 'saveDns' },
                     { actions: 'rejectYesNo' },
+                ],
+            },
+        },
+        askDnsHost: {
+            on: {
+                ANSWER: [
+                    { guard: 'isValidHostname', target: 'askAllowedApps', actions: 'saveDnsHost' },
+                    { actions: 'rejectHostname' },
                 ],
             },
         },
@@ -154,9 +184,10 @@ export const paramsMachine = setup({
     output: ({ context }) => ({
         os: context.os,
         version: context.version,
-        privateVpn: context.privateVpn,
+        privateDns: context.privateDns,
+        privateDnsHost: context.privateDnsHost,
         allowedApps: context.allowedApps,
     }),
 });
 
-export type PromptState = 'askOs' | 'askVersion' | 'askVpn' | 'askAllowedApps' | 'confirm';
+export type PromptState = 'askOs' | 'askVersion' | 'askDns' | 'askDnsHost' | 'askAllowedApps' | 'confirm';

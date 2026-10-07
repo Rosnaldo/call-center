@@ -1,10 +1,18 @@
 // A button shown under a bot message.
-export type ChatbotMessageAction = 'select_allowed_apps';
+export type ChatbotMessageAction = 'select_allowed_apps' | 'choice' | 'restart';
+
+// A button's text and what it answers (sent as the user's message).
+export interface ChatbotChoice {
+  label: string;
+  value: string;
+}
 
 export interface ChatbotMessage {
   autor: string;
   message: string;
   action?: ChatbotMessageAction;
+  // The buttons of a `choice` action.
+  choices?: ChatbotChoice[];
 }
 
 // A Google Play search result, as sent by the chatbot.
@@ -28,6 +36,12 @@ export interface ChatbotState {
   // bot message asking for it shows a button that opens the modal.
   isAllowedAppsRequested: boolean;
   isAllowedAppsModalOpen: boolean;
+  // Set by the bot's `ask_choice` ws event until the user answers; the bot
+  // question shows a button per choice.
+  isChoiceRequested: boolean;
+  // Set by the bot's `offer_restart` ws event once the conversation is
+  // finished; the last bot message shows a "generate again" button.
+  isRestartOffered: boolean;
   appSearch: AppSearchState;
 }
 
@@ -38,5 +52,7 @@ export const initialChatbotState: ChatbotState = {
   isBotTyping: false,
   isAllowedAppsRequested: false,
   isAllowedAppsModalOpen: false,
+  isChoiceRequested: false,
+  isRestartOffered: false,
   appSearch: initialAppSearch,
 };

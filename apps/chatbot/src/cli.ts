@@ -19,6 +19,11 @@ async function main(): Promise<void> {
                 console.log(`Bot: ${reply.message}`);
                 return;
             }
+            if (reply.event === 'ask_choice') return; // the prompt already lists the options
+            if (reply.event === 'offer_restart') {
+                console.log('[done] Type /restart to generate again.');
+                return;
+            }
             pickingApps = true;
             console.log('[checklist] Type the allowed app ids separated by commas (empty for none).');
         });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createActor } from 'xstate';
-import { paramsMachine, parseAppIds, parseOs, parseVersion, parseYesNo } from './params-machine';
+import { paramsMachine, parseAppIds, parseHostname, parseOs, parseVersion, parseYesNo } from './params-machine';
 
 // Strings are typed answers; arrays are lists picked in the checklist.
 const run = (...answers: (string | string[])[]) => {
@@ -29,6 +29,15 @@ describe('parsers', () => {
         expect(parseYesNo('maybe')).toBeNull();
     });
 
+    it('parses private DNS hostnames', () => {
+        expect(parseHostname(' DNS.AdGuard.com ')).toBe('dns.adguard.com');
+        expect(parseHostname('dns.google.')).toBe('dns.google');
+        expect(parseHostname('https://dns.google')).toBeNull();
+        expect(parseHostname('dns.google:853')).toBeNull();
+        expect(parseHostname('localhost')).toBeNull();
+        expect(parseHostname('8.8.8.8')).toBeNull();
+    });
+
     it('validates the allowed app list', () => {
         expect(parseAppIds(['com.whatsapp', 'com.Slack', 'com.whatsapp'])).toEqual(['com.whatsapp', 'com.Slack']);
         expect(parseAppIds([])).toEqual([]);
@@ -40,14 +49,24 @@ describe('parsers', () => {
 
 describe('paramsMachine', () => {
     it('collects params and finishes', () => {
-        const snapshot = run('2', '17.4', 'yes', ['com.whatsapp', 'com.Slack'], 'yes');
+        const snapshot = run('2', '17.4', 'yes', 'dns.adguard.com', ['com.whatsapp', 'com.Slack'], 'yes');
         expect(snapshot.status).toBe('done');
         expect(snapshot.output).toEqual({
             os: 'iOS',
             version: '17.4',
-            privateVpn: true,
+            privateDns: true,
+            privateDnsHost: 'dns.adguard.com',
             allowedApps: ['com.whatsapp', 'com.Slack'],
         });
+    });
+
+    it('asks the private DNS hostname only when there is one', () => {
+        expect(run('1', '14', 'yes').value).toBe('askDnsHost');
+        expect(run('1', '14', 'no').value).toBe('askAllowedApps');
+
+        const invalid = run('1', '14', 'yes', 'not a host');
+        expect(invalid.value).toBe('askDnsHost');
+        expect(invalid.context.error).toMatch(/hostname/);
     });
 
     it('rejects invalid answers without advancing', () => {

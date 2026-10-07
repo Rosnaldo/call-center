@@ -1,19 +1,25 @@
 import React, { useRef } from 'react';
-import { ListChecks, Loader2 } from 'lucide-react';
+import { Download, ListChecks, Loader2, RotateCcw } from 'lucide-react';
 import { useChatbotStore } from '../../states/stores.ts';
 
 interface BoardMessageProps {
   isProcessing?: boolean;
+  onAnswer?: (text: string) => void;
+  onRestart?: () => void;
   className?: string;
 }
 
 export const BoardMessage: React.FC<BoardMessageProps> = ({
   isProcessing = false,
+  onAnswer,
+  onRestart,
   className = '',
 }) => {
   const messages = useChatbotStore(s => s.messages);
   const isAllowedAppsRequested = useChatbotStore(s => s.isAllowedAppsRequested);
   const openAllowedAppsModal = useChatbotStore(s => s.openAllowedAppsModal);
+  const isChoiceRequested = useChatbotStore(s => s.isChoiceRequested);
+  const isRestartOffered = useChatbotStore(s => s.isRestartOffered);
   const containerRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -65,6 +71,44 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
                 <ListChecks className="w-4 h-4" />
                 Selecionar apps
               </button>
+            )}
+
+            {/* Botões de escolha: respondem a pergunta do bot com o valor da opção */}
+            {msg.action === 'choice' && isChoiceRequested && onAnswer && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {msg.choices?.map((choice) => (
+                  <button
+                    key={choice.value}
+                    type="button"
+                    onClick={() => onAnswer(choice.value)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-white text-[#B97204] border border-[#B97204] font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] hover:bg-[#B97204] hover:text-white"
+                  >
+                    {choice.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Botões da mensagem final: gerar o instalador ou começar uma nova conversa */}
+            {msg.action === 'restart' && isRestartOffered && onRestart && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {/* TODO: ainda não faz nada */}
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-[#B97204] text-white font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)]"
+                >
+                  <Download className="w-4 h-4" />
+                  Gerar instalador
+                </button>
+                <button
+                  type="button"
+                  onClick={onRestart}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-white text-[#B97204] border border-[#B97204] font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98]"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Gerar novamente
+                </button>
+              </div>
             )}
           </div>
         );
