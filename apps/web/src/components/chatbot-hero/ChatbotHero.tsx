@@ -29,6 +29,7 @@ export const ChatbotHero: React.FC = () => {
   };
 
   const handleAnswer = ({ value, label }: ChatbotChoice) => chatbotWs.current?.sendMessage(value, label);
+  const handleGenerateInstaller = () => chatbotWs.current?.generateInstaller();
   const handleRestart = () => chatbotWs.current?.restart();
   const handleAllowedApps = (apps: string[]) => chatbotWs.current?.sendAllowedApps(apps) ?? false;
   // Stable: the modal's debounce effect depends on it.
@@ -75,7 +76,7 @@ export const ChatbotHero: React.FC = () => {
             </span>
           </div>
         </div>
-        <BoardMessage isProcessing={isProcessing} onAnswer={handleAnswer} onRestart={handleRestart} />
+        <BoardMessage isProcessing={isProcessing} onAnswer={handleAnswer} onRestart={handleRestart} onGenerateInstaller={handleGenerateInstaller} />
 
         {/* Single-Row Launcher */}
         <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-3 transition-colors px-4.5 py-3.5 bg-white">

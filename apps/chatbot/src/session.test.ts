@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ChatSession } from './session';
 
 const atAllowedApps = () => {
@@ -145,5 +145,52 @@ describe('ChatSession finish', () => {
         const replies = session.start();
         expect(replies.map((r) => r.event)).toEqual(['bot_message', 'ask_choice']);
         expect(session.handle('proceed').map((r) => r.event)).toEqual(['bot_message', 'ask_choice']);
+    });
+});
+
+describe('ChatSession installer', () => {
+    const finishedWith = (createInstaller = vi.fn(async () => 'http://dl.test/executables/1')) => {
+        const session = new ChatSession(createInstaller);
+        session.start();
+        for (const answer of ['proceed', 'proceed', '1', '14', 'yes', 'dns.google']) session.handle(answer);
+        session.selectAllowedApps(['com.whatsapp']);
+        session.handle('windows');
+        session.handle('yes');
+        return { session, createInstaller };
+    };
+
+    it('creates it with the collected params and sends the download URL', async () => {
+        const { session, createInstaller } = finishedWith();
+        expect(await session.generateInstaller()).toEqual([
+            { event: 'bot_message', key: 'messages.installerReady' },
+            { event: 'installer_ready', url: 'http://dl.test/executables/1' },
+        ]);
+        expect(createInstaller).toHaveBeenCalledWith({
+            os: 'Android',
+            version: '14',
+            privateDns: true,
+            privateDnsHost: 'dns.google',
+            allowedApps: ['com.whatsapp'],
+            installOs: 'Windows',
+        });
+    });
+
+    it('says so when the service fails', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const { session } = finishedWith(vi.fn(async () => Promise.reject(new Error('down'))));
+        expect(await session.generateInstaller()).toEqual([{ event: 'bot_message', key: 'messages.installerFailed' }]);
+    });
+
+    it('ignores clicks while one is being created', async () => {
+        const { session } = finishedWith();
+        const first = session.generateInstaller();
+        expect(await session.generateInstaller()).toEqual([]);
+        expect(await first).toHaveLength(2);
+    });
+
+    it('waits for the conversation to finish', async () => {
+        const session = new ChatSession(vi.fn());
+        session.start();
+        expect(await session.generateInstaller()).toEqual([{ event: 'bot_message', key: 'messages.installerNotReady' }]);
     });
 });

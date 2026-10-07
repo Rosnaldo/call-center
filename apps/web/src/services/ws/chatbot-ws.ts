@@ -28,6 +28,7 @@ type ChatbotServerMessage =
     | { event: 'open_allowed_apps' }
     | { event: 'ask_choice'; choices: { key: string; value: string }[] }
     | { event: 'offer_restart' }
+    | { event: 'installer_ready'; url: string }
     | { event: 'apps_search_results'; term: string; apps: AppSearchResult[]; failed: boolean }
     | { isError: true; message: string };
 
@@ -57,6 +58,17 @@ export const translateBotText = ({ key, params }: BotText): string => {
     return t(key, summary ? { ...params, summary: formatSummary(summary) } : params);
 };
 
+// Starts the browser download of the installer (a presigned S3 URL served as
+// an attachment, so the page stays put).
+const downloadFile = (url: string): void => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = '';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+};
+
 // Socket to the chatbot app. Unlike InitWs this is anonymous, per-tab and
 // lives only while the chatbot UI is mounted: every socket is a fresh
 // conversation on the server, so there's nothing to share between tabs.
@@ -70,6 +82,7 @@ export class ChatbotWs {
         private readonly store: ChatbotStoreInstance,
         private readonly url: string = properties.chatbotWsUrl,
         private readonly factory: TransportFactory = createWsTransport,
+        private readonly download: (url: string) => void = downloadFile,
     ) {}
 
     connect(): void {
@@ -121,6 +134,15 @@ export class ChatbotWs {
         resetChatbot();
         setBotTyping(true);
         this.ws.send(JSON.stringify({ event: 'restart' }));
+        return true;
+    }
+
+    // Answers the "generate installer" button: the bot replies with a message
+    // and the download URL. Returns false when the request couldn't be sent.
+    generateInstaller(): boolean {
+        if (this.ws?.readyState !== TRANSPORT_OPEN) return false;
+        this.store.getState().setBotTyping(true);
+        this.ws.send(JSON.stringify({ event: 'generate_installer' }));
         return true;
     }
 
@@ -182,6 +204,8 @@ export class ChatbotWs {
                 this.store.getState().requestAllowedApps();
             } else if (msg.event === 'ask_choice') {
                 this.store.getState().requestChoice(msg.choices.map(({ key, value }) => ({ label: t(key), value })));
+            } else if (msg.event === 'installer_ready') {
+                this.download(msg.url);
             } else if (msg.event === 'offer_restart') {
                 this.store.getState().offerRestart();
             }

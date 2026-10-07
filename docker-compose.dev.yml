@@ -81,6 +81,27 @@ services:
       - .:/app
     networks:
       - backend
+
+  # Creates the installers for the chatbot (apps/executable/src/server.ts).
+  # Templates come from apps/executable/dist: run `npm run build` there first.
+  executable:
+    image: executable
+    container_name: executable
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: apps/executable/dockerfile.dev
+    ports:
+      - "5005:5005"
+    env_file:
+      - ./apps/executable/.env
+    environment:
+      - EXECUTABLE_PORT=5005
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    networks:
+      - backend
   
   realtime:
     image: realtime

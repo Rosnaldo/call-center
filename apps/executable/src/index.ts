@@ -1,8 +1,11 @@
 import { openInTerminal, launchedWithoutTerminal, shouldPauseOnExit, waitForEnter } from "./terminal";
 import { listDevices } from "./adb";
+import { readEmbeddedConfig } from "./embedded-config";
 
 async function main(): Promise<void> {
-  console.log("hello world");
+  // Params collected by the chatbot, embedded by the server on download.
+  const config = readEmbeddedConfig();
+  console.log(config ? `Config: ${JSON.stringify(config)}` : "No embedded config");
   console.log("List of devices attached");
   for (const { serial, state } of await listDevices()) {
     console.log(`${serial}\t${state}`);

@@ -120,7 +120,10 @@
       "confirm": "Confira os dados:\n{{summary}}\nEstá correto?",
       "done": "Pronto! Dados coletados:\n{{summary}}",
       "finished": "Esta conversa terminou. Use \"Gerar novamente\" para começar outra.",
-      "noAppList": "Não há lista de apps para escolher agora."
+      "noAppList": "Não há lista de apps para escolher agora.",
+      "installerReady": "Instalador gerado! O download vai começar em instantes.",
+      "installerFailed": "Não foi possível gerar o instalador agora. Tente novamente.",
+      "installerNotReady": "Termine a configuração antes de gerar o instalador."
     },
     "errors": {
       "os": "Escolha Android ou iOS.",

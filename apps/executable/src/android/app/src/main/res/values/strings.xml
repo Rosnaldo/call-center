@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Lockdown MDM</string>
+    <string name="device_admin_description">Enforces the organization\'s DNS and app-installation policy on this device. Settings can only be changed with an authorized adb command.</string>
+</resources>

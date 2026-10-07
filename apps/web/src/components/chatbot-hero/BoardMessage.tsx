@@ -8,6 +8,7 @@ interface BoardMessageProps {
   isProcessing?: boolean;
   onAnswer?: (choice: ChatbotChoice) => void;
   onRestart?: () => void;
+  onGenerateInstaller?: () => void;
   className?: string;
 }
 
@@ -15,6 +16,7 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
   isProcessing = false,
   onAnswer,
   onRestart,
+  onGenerateInstaller,
   className = '',
 }) => {
   const { t } = useTranslation();
@@ -95,10 +97,11 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
             {/* Botões da mensagem final: gerar o instalador ou começar uma nova conversa */}
             {msg.action === 'restart' && isRestartOffered && onRestart && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {/* TODO: ainda não faz nada */}
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-[#B97204] text-white font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)]"
+                  onClick={onGenerateInstaller}
+                  disabled={isProcessing}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-[#B97204] text-white font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)] disabled:opacity-60 disabled:cursor-wait"
                 >
                   <Download className="w-4 h-4" />
                   {t('chatbot.generateInstaller')}

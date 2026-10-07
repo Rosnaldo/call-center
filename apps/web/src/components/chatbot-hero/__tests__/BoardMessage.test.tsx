@@ -58,13 +58,16 @@ describe('BoardMessage restart button', () => {
   });
 
   it('offers the installer next to it', () => {
-    render(<BoardMessage onRestart={vi.fn()} />);
+    const onGenerateInstaller = vi.fn();
+    render(<BoardMessage onRestart={vi.fn()} onGenerateInstaller={onGenerateInstaller} />);
     act(() => {
       useChatbotStore.getState().addMessage({ autor: 'bot', message: 'Thanks! Collected params' });
       useChatbotStore.getState().offerRestart();
     });
 
-    expect(screen.getByRole('button', { name: /Gerar instalador/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Gerar instalador/ }));
+
+    expect(onGenerateInstaller).toHaveBeenCalledOnce();
   });
 });
 

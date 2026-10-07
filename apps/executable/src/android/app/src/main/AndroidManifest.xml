@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.DELETE_PACKAGES" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
+      Without this, PackageManager.getInstalledApplications() (used by PolicyEnforcer's
+      allowlist sweep) silently returns an EMPTY list on newer Android builds where this app
+      apparently doesn't get the platform's normal "device owner sees every package regardless
+      of visibility filtering" exemption for this call - confirmed live: a sideloaded,
+      non-allowlisted app (Fire Emblem Heroes) installed via Play Store stayed completely
+      invisible to every sweep, with no error, because the loop had zero packages to iterate.
+      This app's whole purpose is enforcing a device-wide allowlist, so it inherently needs to
+      see every installed package, not a declared subset - there is no <queries> alternative
+      that fits.
+    -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.LockdownMdm">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Device Owner admin receiver. Must be signature-protected (BIND_DEVICE_ADMIN). -->
+        <receiver
+            android:name=".AdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Internal callback target for PackageInstaller.uninstall() results. -->
+        <receiver
+            android:name=".UninstallStatusReceiver"
+            android:exported="false" />
+
+        <!-- Watches every install completion and removes anything not on the allowlist. -->
+        <receiver
+            android:name=".PackageEventReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PACKAGE_ADDED" />
+                <data android:scheme="package" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          Re-applies lockdown policy after every reboot, and after every app update too -
+          MY_PACKAGE_REPLACED is a system broadcast sent only to this app itself (exported
+          doesn't matter for it), needed because `adb install -r` kills the running
+          ControlChannelService and nothing else restarts it: it can't be started directly via
+          adb (exported=false), so without this the control channel stays dead until the next
+          full reboot.
+        -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          Secondary remote control channel, driven via an adb broadcast carrying "password",
+          "cmd" and optional "arg" string extras (see AdbControlReceiver). Kept for devices
+          that don't block shell from reaching device-owner-protected components; the primary,
+          always-reliable channel is ControlChannelService's file drop.
+        -->
+        <receiver
+            android:name=".AdbControlReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.lockdown.mdm.ADMIN_ACTION" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          VPN-based DNS fallback for Android versions below 10 (API 29), where
+          DevicePolicyManager has no native Private DNS API at all. Routes only DNS-port
+          traffic through DNS-over-TLS to the locked host; every other route is untouched.
+          Apps implementing VpnService are exempt from foreground service type declaration.
+        -->
+        <service
+            android:name=".LocalVpnService"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+
+        <!--
+          Primary password-gated admin control channel. Polls a command file dropped via
+          `adb push` (see ControlChannelService) since shell can be blocked from directly
+          invoking components inside a device-owner-protected package.
+        -->
+        <service
+            android:name=".ControlChannelService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="mdm-admin-command-channel" />
+        </service>
+
+        <!--
+          Watches monitored browsers (MonitoredBrowsers) for denied terms typed into the
+          address/search bar and suspends the browser on a match (UrlTermDenyList,
+          BrowserGuardAccessibilityService). Enabled silently by PolicyEnforcer.enableBrowserGuard
+          via DevicePolicyManager.setSecureSetting - a device owner doesn't need the user to walk
+          through Settings > Accessibility.
+        -->
+        <service
+            android:name=".BrowserGuardAccessibilityService"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+    </application>
+</manifest>

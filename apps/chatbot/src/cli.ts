@@ -4,6 +4,7 @@ import path from 'node:path';
 import { stdin as input, stdout as output } from 'node:process';
 import { ChatSession, type BotReply } from './session';
 import type { BotText, Summary } from './prompts';
+import { createInstallerClient } from './installer';
 
 // The bot sends i18n keys; the texts live in the web app's locales.
 const LOCALE_FILE = path.resolve(__dirname, '../../web/src/locales/en.json');
@@ -41,7 +42,7 @@ async function main(): Promise<void> {
         process.exit(0);
     });
 
-    const session = new ChatSession();
+    const session = new ChatSession(createInstallerClient(process.env.EXECUTABLE_URL ?? 'http://127.0.0.1:5005'));
     // The terminal has no checklist, so the app list is typed as comma-separated ids.
     let pickingApps = false;
     const print = (replies: BotReply[]) =>
@@ -54,8 +55,12 @@ async function main(): Promise<void> {
                 console.log(`[options] ${reply.choices.map((c) => `${t(c.key)} (${c.value})`).join(' / ')}`);
                 return;
             }
+            if (reply.event === 'installer_ready') {
+                console.log(`[installer] ${reply.url}`);
+                return;
+            }
             if (reply.event === 'offer_restart') {
-                console.log('[done] Type /restart to generate again.');
+                console.log('[done] Type /installer to generate the installer or /restart to generate again.');
                 return;
             }
             pickingApps = true;
@@ -73,6 +78,10 @@ async function main(): Promise<void> {
             break; // stdin closed (Ctrl+D)
         }
         if (answer === '/exit') break;
+        if (answer === '/installer') {
+            print(await session.generateInstaller());
+            continue;
+        }
         if (pickingApps && !answer.startsWith('/')) {
             pickingApps = false;
             print(session.selectAllowedApps(answer.split(/[\s,]+/).filter(Boolean)));

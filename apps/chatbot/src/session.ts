@@ -1,6 +1,7 @@
 import { createActor, type Actor } from 'xstate';
 import { paramsMachine, type PromptState } from './params-machine';
 import { prompts, summaryOf, type BotText } from './prompts';
+import type { CreateInstaller } from './installer';
 
 // A button: its text (i18n key, like a message's) and what it answers.
 export type Choice = { key: string; value: string };
@@ -9,12 +10,14 @@ export type Choice = { key: string; value: string };
 // list, which the client picks in its checklist (answered with selectAllowedApps),
 // a question with fixed options, which the client answers with buttons (sent
 // as typed text, with the option's value),
-// or, once finished, an offer to generate again (answered with start).
+// once finished, an offer to generate again (answered with start), or the
+// download URL of the installer (answered generateInstaller).
 export type BotReply =
     | ({ event: 'bot_message' } & BotText)
     | { event: 'open_allowed_apps' }
     | { event: 'ask_choice'; choices: Choice[] }
-    | { event: 'offer_restart' };
+    | { event: 'offer_restart' }
+    | { event: 'installer_ready'; url: string };
 
 const say = (key: string, params?: BotText['params']): BotReply =>
     params ? { event: 'bot_message', key, params } : { event: 'bot_message', key };
@@ -44,6 +47,9 @@ const BUTTONS: Partial<Record<PromptState, BotReply>> = {
 export class ChatSession {
     private actor!: Actor<typeof paramsMachine>;
     private lastState: PromptState | null = null;
+    private isGeneratingInstaller = false;
+
+    constructor(private readonly createInstaller?: CreateInstaller) {}
 
     // Opening replies for a fresh conversation.
     start(): BotReply[] {
@@ -71,6 +77,26 @@ export class ChatSession {
 
         this.actor.send({ type: 'ALLOWED_APPS', apps });
         return this.replies();
+    }
+
+    // The installer for the collected params, once the conversation is done.
+    // Repeated clicks while one is being created are ignored.
+    async generateInstaller(): Promise<BotReply[]> {
+        const snapshot = this.actor.getSnapshot();
+        if (snapshot.value !== 'done' || !snapshot.output) return [say('messages.installerNotReady')];
+        if (!this.createInstaller) return [say('messages.installerFailed')];
+        if (this.isGeneratingInstaller) return [];
+
+        this.isGeneratingInstaller = true;
+        try {
+            const url = await this.createInstaller(snapshot.output);
+            return [say('messages.installerReady'), { event: 'installer_ready', url }];
+        } catch (err) {
+            console.error('[installer]', err);
+            return [say('messages.installerFailed')];
+        } finally {
+            this.isGeneratingInstaller = false;
+        }
     }
 
     // Whether the client's checklist is answering the bot right now.

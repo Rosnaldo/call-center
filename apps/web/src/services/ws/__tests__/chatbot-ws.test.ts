@@ -200,3 +200,34 @@ describe('ChatbotWs restart', () => {
     expect(state.isBotTyping).toBe(true);
   });
 });
+
+describe('ChatbotWs installer', () => {
+  let transport: FakeTransport;
+  let ws: ChatbotWs;
+  let downloads: string[];
+
+  beforeEach(() => {
+    useChatbotStore.getState().resetChatbot();
+    transport = new FakeTransport();
+    downloads = [];
+    ws = new ChatbotWs(useChatbotStore, 'ws://test', () => transport, (url) => downloads.push(url));
+    ws.connect();
+  });
+
+  it('asks the bot for the installer', () => {
+    expect(ws.generateInstaller()).toBe(true);
+
+    expect(transport.sent).toEqual([{ event: 'generate_installer' }]);
+    expect(useChatbotStore.getState().isBotTyping).toBe(true);
+  });
+
+  it('downloads it once ready', () => {
+    ws.generateInstaller();
+    transport.receive({ event: 'bot_message', key: 'messages.installerReady' });
+    transport.receive({ event: 'installer_ready', url: '/executable/executables/abc' });
+
+    expect(downloads).toEqual(['/executable/executables/abc']);
+    expect(useChatbotStore.getState().isBotTyping).toBe(false);
+    expect(useChatbotStore.getState().messages.at(-1)?.message).toBe('Instalador gerado! O download vai começar em instantes.');
+  });
+});

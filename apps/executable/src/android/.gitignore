@@ -1,0 +1,17 @@
+# Gradle
+.gradle/
+build/
+
+# Machine-specific SDK path
+local.properties
+
+# APKs built by generate_apk.sh
+output/
+
+# IDE / tooling
+.idea/
+*.iml
+.cxx/
+.externalNativeBuild/
+captures/
+.claude/

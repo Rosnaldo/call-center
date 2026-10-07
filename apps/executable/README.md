@@ -23,6 +23,30 @@ Output in `dist/`:
 | `executable-macos-x64` | macOS Intel |
 | `executable-macos-arm64` | macOS Apple Silicon |
 
+## Installer service (`npm run serve`)
+
+`src/server.ts` is an HTTP service the chatbot calls from its "Gerar instalador"
+button. The binaries in `dist/` are templates: each request copies the one for
+the user's OS and appends the params collected by the chatbot (see
+`src/embedded-config.ts`), which the executable reads from itself on start, and
+uploads it to the `BUCKET_NAME` S3 bucket (`installers/<id>/<filename>`). The
+response carries a presigned download URL, which the chatbot hands the user.
+
+| Route | |
+|---|---|
+| `POST /executables` | `{ platform: "linux" \| "windows" \| "macos", config }` → `201 { id, filename, url }` (`url` valid for `EXECUTABLE_URL_TTL_S`, 1 h) |
+| `GET /health` | `ok` |
+
+Env (see `.env.example`): `BUCKET_NAME` (required), `AWS_REGION`,
+`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (or any other AWS credential
+source), `EXECUTABLE_PORT` (5005), `EXECUTABLE_TEMPLATES_DIR` (`dist/`),
+`EXECUTABLE_OUTPUT_DIR` (temp dir, files are deleted after the upload),
+`EXECUTABLE_URL_TTL_S` (3600). The bucket needs no public access; consider a
+lifecycle rule expiring `installers/` after a day.
+
+macOS: appending the config breaks the binary's signature, so the service signs
+it again ad hoc with `ldid` (`codesign` on a Mac) when available.
+
 ## How the build works
 
 1. `scripts/build-wdi-simple.sh` cross-compiles libwdi's `wdi-simple.exe` (Windows

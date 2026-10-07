@@ -1,0 +1,35 @@
+ARG NODE_VERSION=24.13.0
+
+# libwdi's wdi-simple.exe, bundled into the Windows executable.
+FROM debian:bookworm AS wdi
+
+COPY ./apps/executable/scripts/compile-wdi-simple.sh /compile-wdi-simple.sh
+RUN bash /compile-wdi-simple.sh /out
+
+
+# Standalone package (own package-lock.json), built outside the workspace.
+FROM node:${NODE_VERSION}-slim AS builder
+
+WORKDIR /app
+
+COPY ./apps/executable/package.json ./apps/executable/package-lock.json ./
+RUN npm ci --workspaces=false
+
+COPY ./apps/executable/tsconfig.json ./
+COPY ./apps/executable/scripts ./scripts
+COPY ./apps/executable/src ./src
+COPY --from=wdi /out/wdi-simple.exe ./vendor/wdi/wdi-simple.exe
+
+# Templates for every platform into dist/ (build:wdi skips: the exe exists).
+RUN npm run build
+RUN npm run bundle:server
+
+
+FROM node:${NODE_VERSION}-slim AS runner
+
+WORKDIR /app
+
+COPY --from=builder /app/build/server.js ./build/server.js
+COPY --from=builder /app/dist ./dist
+
+CMD ["node", "build/server.js"]

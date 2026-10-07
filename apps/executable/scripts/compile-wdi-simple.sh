@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Cross-compiles libwdi's wdi-simple.exe with MinGW into $1. Runs on Debian
+# bookworm as root: inside `docker run` (build-wdi-simple.sh) or as a stage of
+# dockerfile.prod.
+set -euo pipefail
+
+OUT_DIR="$1"
+
+LIBWDI_VERSION="1.5.1"
+LIBWDI_URL="https://github.com/pbatard/libwdi/archive/refs/tags/v${LIBWDI_VERSION}.tar.gz"
+LIBWDI_SHA256="a695e93db0977dfdc5c6a99a4ea91b22f9027547d0177b2a0f3075078643c929"
+# Windows 8.0 Driver Kit redistributables (WinUSB/WDF coinstallers), required by libwdi.
+WDK_URL="https://download.microsoft.com/download/0/5/F/05FD6919-6250-425B-86ED-9B095E54065A/wdfcoinstaller.msi"
+WDK_SHA256="29314207814ce9d5d73695f7e9239539cf37c79e750b9d5ea5a5ef5487a583d6"
+
+apt-get update -qq >/dev/null
+apt-get install -y -qq --no-install-recommends \
+  mingw-w64 autoconf automake libtool make gcc libc6-dev msitools curl ca-certificates >/dev/null
+
+mkdir /work && cd /work
+curl -fsSL "$LIBWDI_URL" -o libwdi.tar.gz
+curl -fsSL "$WDK_URL" -o wdk.msi
+echo "$LIBWDI_SHA256  libwdi.tar.gz" | sha256sum -c -
+echo "$WDK_SHA256  wdk.msi" | sha256sum -c -
+
+mkdir wdk-msi && (cd wdk-msi && msiextract ../wdk.msi >/dev/null)
+mv "wdk-msi/Program Files/Windows Kits/8.0" /work/wdk
+mkdir libwdi && tar -xzf libwdi.tar.gz -C libwdi --strip-components=1
+
+cd libwdi
+./bootstrap.sh >/dev/null 2>&1
+./configure --build=x86_64-linux-gnu --host=x86_64-w64-mingw32 --disable-32bit \
+  --enable-examples-build --disable-debug --with-wdkdir=/work/wdk --with-wdfver=1011 \
+  LDFLAGS="-static" >/dev/null
+# configure skips WDK layout detection when cross-compiling; set it for the WDK 8.0 redist.
+test -f /work/wdk/redist/wdf/x64/winusbcoinstaller2.dll
+printf "#define COINSTALLER_DIR \"wdf\"\n#define X64_DIR \"x64\"\n" >> config.h
+make -j"$(nproc)" >/dev/null
+x86_64-w64-mingw32-strip examples/.libs/wdi-simple.exe 2>/dev/null || x86_64-w64-mingw32-strip examples/wdi-simple.exe
+mkdir -p "$OUT_DIR"
+cp examples/.libs/wdi-simple.exe "$OUT_DIR/" 2>/dev/null || cp examples/wdi-simple.exe "$OUT_DIR/"
