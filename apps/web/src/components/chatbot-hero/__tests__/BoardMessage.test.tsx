@@ -52,7 +52,7 @@ describe('BoardMessage restart button', () => {
       useChatbotStore.getState().offerRestart();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Gerar novamente/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Resetar/ }));
 
     expect(onRestart).toHaveBeenCalledOnce();
   });

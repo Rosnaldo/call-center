@@ -19,7 +19,6 @@ interface BotSummary {
     os: string | null;
     version: string | null;
     privateDnsHost: string | null;
-    allowedApps: string[] | null;
     installOs: string | null;
 }
 
@@ -43,12 +42,11 @@ export const normalizeSearchTerm = (term: string): string | null => {
 const t = (key: string, params?: Record<string, unknown>): string => i18n.t(`chatbot.${key}`, params);
 
 // Same lines as the chatbot CLI's formatSummary (apps/chatbot/src/cli.ts).
-export const formatSummary = ({ os, version, privateDnsHost, allowedApps, installOs }: BotSummary): string =>
+export const formatSummary = ({ os, version, privateDnsHost, installOs }: BotSummary): string =>
     [
         [t('summary.os'), os],
         [t('summary.version'), version],
         [t('summary.privateDns'), privateDnsHost ?? t('summary.no')],
-        [t('summary.allowedApps'), allowedApps?.length ? allowedApps.join(', ') : t('summary.none')],
         [t('summary.installOs'), installOs],
     ]
         .map(([label, value]) => `  ${label}: ${value}`)

@@ -108,7 +108,7 @@
     "typing": "generating...",
     "selectApps": "Select apps",
     "generateInstaller": "Generate installer",
-    "generateAgain": "Generate again",
+    "generateAgain": "Reset",
     "messages": {
       "askStart": "Set up the device owner environment on your phone.",
       "intro": "For this you will need a laptop, the phone and a USB cable.\nYou will connect the phone to the laptop over USB,\nthen install the device owner environment from your laptop.\nFirst, let's generate the executable.",
@@ -120,7 +120,7 @@
       "askInstallOs": "The installation is done over USB. Which operating system will you install it from?",
       "confirm": "Please confirm:\n{{summary}}\nIs this correct?",
       "done": "Done! Collected params:\n{{summary}}",
-      "finished": "This conversation is over. Use \"Generate again\" to start another one.",
+      "finished": "This conversation is over. Use \"Reset\" to start another one.",
       "noAppList": "There is no app list to choose right now.",
       "installerReady": "Installer created! The download will start shortly.",
       "installerFailed": "Couldn't create the installer right now. Please try again.",
@@ -141,10 +141,8 @@
       "os": "OS",
       "version": "Version",
       "privateDns": "Private DNS",
-      "allowedApps": "Allowed apps",
       "installOs": "USB install from",
-      "no": "no",
-      "none": "none"
+      "no": "no"
     },
     "choices": {
       "proceed": "Proceed",

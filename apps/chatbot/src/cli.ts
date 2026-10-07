@@ -19,12 +19,11 @@ const t = (key: string, params: Record<string, unknown> = {}): string => {
 };
 
 // Same lines as the web app's formatSummary (services/ws/chatbot-ws.ts).
-const formatSummary = ({ os, version, privateDnsHost, allowedApps, installOs }: Summary): string =>
+const formatSummary = ({ os, version, privateDnsHost, installOs }: Summary): string =>
     [
         [t('summary.os'), os],
         [t('summary.version'), version],
         [t('summary.privateDns'), privateDnsHost ?? t('summary.no')],
-        [t('summary.allowedApps'), allowedApps?.length ? allowedApps.join(', ') : t('summary.none')],
         [t('summary.installOs'), installOs],
     ]
         .map(([label, value]) => `  ${label}: ${value}`)

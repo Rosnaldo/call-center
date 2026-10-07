@@ -8,13 +8,13 @@ export interface BotText {
 }
 
 // The collected params, as shown in the confirm/done messages (`summary` param).
-export type Summary = Pick<ParamsContext, 'os' | 'version' | 'privateDnsHost' | 'allowedApps' | 'installOs'>;
+// The allowed apps aren't shown.
+export type Summary = Pick<ParamsContext, 'os' | 'version' | 'privateDnsHost' | 'installOs'>;
 
-export const summaryOf = ({ os, version, privateDnsHost, allowedApps, installOs }: Summary): Summary => ({
+export const summaryOf = ({ os, version, privateDnsHost, installOs }: Summary): Summary => ({
     os,
     version,
     privateDnsHost,
-    allowedApps,
     installOs,
 });
 

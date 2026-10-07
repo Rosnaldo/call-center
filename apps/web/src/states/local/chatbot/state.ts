@@ -40,7 +40,7 @@ export interface ChatbotState {
   // question shows a button per choice.
   isChoiceRequested: boolean;
   // Set by the bot's `offer_restart` ws event once the conversation is
-  // finished; the last bot message shows a "generate again" button.
+  // finished; the last bot message shows a "reset" button.
   isRestartOffered: boolean;
   // Whether the send button is enabled, set by the bot with each message: only
   // on the steps answered by typing (not buttons/checklist, nor once finished).

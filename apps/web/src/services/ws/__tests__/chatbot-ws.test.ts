@@ -109,12 +109,12 @@ describe('ChatbotWs choices', () => {
   });
 
   it('formats the summary', () => {
-    const summary = { os: 'Android', version: '14', privateDnsHost: null, allowedApps: [], installOs: 'Linux' };
+    const summary = { os: 'Android', version: '14', privateDnsHost: null, installOs: 'Linux' };
     transport.receive({ event: 'bot_message', key: 'messages.confirm', params: { summary } });
 
     expect(useChatbotStore.getState().messages.at(-1)?.message).toBe(
       'Confira os dados:\n  Sistema: Android\n  Versão: 14\n  DNS privado: não\n' +
-        '  Apps permitidos: nenhum\n  Instalação USB a partir de: Linux\nEstá correto?',
+        '  Instalação USB a partir de: Linux\nEstá correto?',
     );
   });
 
@@ -182,7 +182,7 @@ describe('ChatbotWs restart', () => {
     expect(state.isRestartOffered).toBe(true);
     expect(state.messages.at(-1)).toEqual({
       autor: 'bot',
-      message: 'Esta conversa terminou. Use "Gerar novamente" para começar outra.',
+      message: 'Esta conversa terminou. Use "Resetar" para começar outra.',
       action: 'restart',
     });
   });

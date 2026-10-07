@@ -108,7 +108,7 @@
     "typing": "gerando...",
     "selectApps": "Selecionar apps",
     "generateInstaller": "Gerar instalador",
-    "generateAgain": "Gerar novamente",
+    "generateAgain": "Resetar",
     "messages": {
       "askStart": "Configurar ambiente device owner no seu celular.",
       "intro": "Para isso será necessário um notebook, o celular e um cabo USB.\nVocê conectará o celular ao notebook via USB,\ndepois, instalará o ambiente device owner pelo seu notebook.\nPrimeiro vamos gerar o executável.",
@@ -120,7 +120,7 @@
       "askInstallOs": "A instalação é feita via USB. Em qual sistema operacional ela será feita?",
       "confirm": "Confira os dados:\n{{summary}}\nEstá correto?",
       "done": "Pronto! Dados coletados:\n{{summary}}",
-      "finished": "Esta conversa terminou. Use \"Gerar novamente\" para começar outra.",
+      "finished": "Esta conversa terminou. Use \"Resetar\" para começar outra.",
       "noAppList": "Não há lista de apps para escolher agora.",
       "installerReady": "Instalador gerado! O download vai começar em instantes.",
       "installerFailed": "Não foi possível gerar o instalador agora. Tente novamente.",
@@ -141,10 +141,8 @@
       "os": "Sistema",
       "version": "Versão",
       "privateDns": "DNS privado",
-      "allowedApps": "Apps permitidos",
       "installOs": "Instalação USB a partir de",
-      "no": "não",
-      "none": "nenhum"
+      "no": "não"
     },
     "choices": {
       "proceed": "Prosseguir",

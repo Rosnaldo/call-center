@@ -17,7 +17,7 @@ import { createUserAuthClient } from './user-auth';
 //                                                                sendEnabled: whether the client's send button is enabled
 //                     { event: 'open_allowed_apps' }             client shows a button opening its app checklist
 //                     { event: 'ask_choice', choices: { key, value }[] }  client shows a button per choice (answered as user_message with its value)
-//                     { event: 'offer_restart' }                 conversation finished; client shows the "generate again"/"generate installer" buttons
+//                     { event: 'offer_restart' }                 conversation finished; client shows the "reset"/"generate installer" buttons
 //                     { event: 'installer_ready', url: string }  the installer's download URL
 //                     { event: 'apps_search_results', term, apps: { id, name, iconUrl }[], failed }
 //                     { isError: true, message: string }

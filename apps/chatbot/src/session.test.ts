@@ -115,7 +115,7 @@ describe('ChatSession choice buttons', () => {
                 event: 'bot_message',
                 key: 'messages.confirm',
                 params: {
-                    summary: { os: 'Android', version: '14', privateDnsHost: null, allowedApps: ['com.whatsapp'], installOs: 'Linux' },
+                    summary: { os: 'Android', version: '14', privateDnsHost: null, installOs: 'Linux' },
                 },
                 sendEnabled: false,
             },
