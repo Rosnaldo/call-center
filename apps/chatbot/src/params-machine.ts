@@ -1,6 +1,8 @@
 import { assign, setup } from 'xstate';
 
 export type MobileOs = 'Android' | 'iOS';
+// The computer the device owner is installed from, over USB.
+export type InstallOs = 'Linux' | 'Windows' | 'macOS';
 
 export interface ParamsContext {
     os: MobileOs | null;
@@ -9,6 +11,8 @@ export interface ParamsContext {
     // Hostname of the private DNS, when there is one.
     privateDnsHost: string | null;
     allowedApps: string[] | null;
+    installOs: InstallOs | null;
+    // i18n key (under `chatbot.`) of the last answer's error.
     error: string | null;
 }
 
@@ -18,6 +22,7 @@ export interface ParamsOutput {
     privateDns: boolean | null;
     privateDnsHost: string | null;
     allowedApps: string[] | null;
+    installOs: InstallOs | null;
 }
 
 export type ParamsEvent =
@@ -32,12 +37,24 @@ const OS_ALIASES: Record<string, MobileOs> = {
     iphone: 'iOS',
     '2': 'iOS',
 };
+const INSTALL_OS_ALIASES: Record<string, InstallOs> = {
+    linux: 'Linux',
+    windows: 'Windows',
+    win: 'Windows',
+    mac: 'macOS',
+    macos: 'macOS',
+    osx: 'macOS',
+};
 const YES = ['y', 'yes', 's', 'sim'];
 const NO = ['n', 'no', 'nao', 'não'];
+// The opening only goes forward; a typed yes counts too.
+const PROCEED = ['proceed', 'prosseguir', ...YES];
 
 const normalize = (text: unknown): string => String(text ?? '').trim().toLowerCase();
 
 export const parseOs = (text: unknown): MobileOs | null => OS_ALIASES[normalize(text)] ?? null;
+
+export const parseInstallOs = (text: unknown): InstallOs | null => INSTALL_OS_ALIASES[normalize(text)] ?? null;
 
 export const parseVersion = (text: unknown): string | null => {
     const value = normalize(text).replace(/^v/, '');
@@ -81,6 +98,7 @@ const initialContext: ParamsContext = {
     privateDns: null,
     privateDnsHost: null,
     allowedApps: null,
+    installOs: null,
     error: null,
 };
 
@@ -98,9 +116,11 @@ export const paramsMachine = setup({
         isValidOs: ({ event }) => parseOs(answerOf(event)) !== null,
         isValidVersion: ({ event }) => parseVersion(answerOf(event)) !== null,
         isValidHostname: ({ event }) => parseHostname(answerOf(event)) !== null,
+        isValidInstallOs: ({ event }) => parseInstallOs(answerOf(event)) !== null,
         isValidAppIds: ({ event }) => parseAppIds(appsOf(event)) !== null,
         isYes: ({ event }) => parseYesNo(answerOf(event)) === true,
         isNo: ({ event }) => parseYesNo(answerOf(event)) === false,
+        isProceed: ({ event }) => PROCEED.includes(normalize(answerOf(event))),
     },
     actions: {
         saveOs: assign({ os: ({ event }) => parseOs(answerOf(event)), error: null }),
@@ -108,24 +128,44 @@ export const paramsMachine = setup({
         saveDns: assign({ privateDns: ({ event }) => parseYesNo(answerOf(event)), privateDnsHost: null, error: null }),
         saveDnsHost: assign({ privateDnsHost: ({ event }) => parseHostname(answerOf(event)), error: null }),
         saveAllowedApps: assign({ allowedApps: ({ event }) => parseAppIds(appsOf(event)), error: null }),
+        saveInstallOs: assign({ installOs: ({ event }) => parseInstallOs(answerOf(event)), error: null }),
         clearError: assign({ error: null }),
         reset: assign(() => ({ ...initialContext })),
-        rejectOs: assign({ error: 'Please choose 1 (Android) or 2 (iOS).' }),
-        rejectVersion: assign({ error: 'Please enter a version number such as 14 or 17.4.1.' }),
-        rejectHostname: assign({ error: 'Please enter the private DNS hostname, such as dns.adguard.com.' }),
-        rejectYesNo: assign({ error: 'Please answer yes or no.' }),
-        rejectAppIds: assign({ error: 'Invalid app list. Please select the allowed apps again.' }),
+        rejectOs: assign({ error: 'errors.os' }),
+        rejectVersion: assign({ error: 'errors.version' }),
+        rejectHostname: assign({ error: 'errors.hostname' }),
+        rejectInstallOs: assign({ error: 'errors.installOs' }),
+        rejectYesNo: assign({ error: 'errors.yesNo' }),
+        rejectProceed: assign({ error: 'errors.proceed' }),
+        rejectAppIds: assign({ error: 'errors.appIds' }),
         // The list comes from the web app's checklist, not from typed text.
-        rejectTypedApps: assign({ error: 'Please use the button to select the allowed apps.' }),
+        rejectTypedApps: assign({ error: 'errors.typedApps' }),
     },
 }).createMachine({
     id: 'mobileParams',
     context: { ...initialContext },
-    initial: 'askOs',
+    initial: 'askStart',
     on: {
-        RESTART: { target: '.askOs', actions: 'reset' },
+        RESTART: { target: '.askStart', actions: 'reset' },
     },
     states: {
+        askStart: {
+            on: {
+                ANSWER: [
+                    { guard: 'isProceed', target: 'intro', actions: 'clearError' },
+                    { actions: 'rejectProceed' },
+                ],
+            },
+        },
+        // What the setup needs and how it goes, before the questions.
+        intro: {
+            on: {
+                ANSWER: [
+                    { guard: 'isProceed', target: 'askOs', actions: 'clearError' },
+                    { actions: 'rejectProceed' },
+                ],
+            },
+        },
         askOs: {
             on: {
                 ANSWER: [
@@ -162,10 +202,18 @@ export const paramsMachine = setup({
         askAllowedApps: {
             on: {
                 ALLOWED_APPS: [
-                    { guard: 'isValidAppIds', target: 'confirm', actions: 'saveAllowedApps' },
+                    { guard: 'isValidAppIds', target: 'askInstallOs', actions: 'saveAllowedApps' },
                     { actions: 'rejectAppIds' },
                 ],
                 ANSWER: { actions: 'rejectTypedApps' },
+            },
+        },
+        askInstallOs: {
+            on: {
+                ANSWER: [
+                    { guard: 'isValidInstallOs', target: 'confirm', actions: 'saveInstallOs' },
+                    { actions: 'rejectInstallOs' },
+                ],
             },
         },
         confirm: {
@@ -187,7 +235,17 @@ export const paramsMachine = setup({
         privateDns: context.privateDns,
         privateDnsHost: context.privateDnsHost,
         allowedApps: context.allowedApps,
+        installOs: context.installOs,
     }),
 });
 
-export type PromptState = 'askOs' | 'askVersion' | 'askDns' | 'askDnsHost' | 'askAllowedApps' | 'confirm';
+export type PromptState =
+    | 'askStart'
+    | 'intro'
+    | 'askOs'
+    | 'askVersion'
+    | 'askDns'
+    | 'askDnsHost'
+    | 'askAllowedApps'
+    | 'askInstallOs'
+    | 'confirm';

@@ -97,7 +97,80 @@
     "userDisconnected": "{{name}} has disconnected."
   },
   "chatbot": {
-    "section": "Chatbot."
+    "section": "Chatbot.",
+    "title": "Build your own mobile block app",
+    "inputPlaceholder": "command...",
+    "inputLabel": "Message to the bot",
+    "send": "Send",
+    "you": "you",
+    "bot": "bot",
+    "typing": "typing...",
+    "selectApps": "Select apps",
+    "generateInstaller": "Generate installer",
+    "generateAgain": "Generate again",
+    "messages": {
+      "askStart": "Set up the device owner environment on your phone.",
+      "intro": "For this you will need a laptop, the phone and a USB cable.\nYou will connect the phone to the laptop over USB,\nthen install the device owner environment from your laptop.\nFirst, let's generate the executable.",
+      "askOs": "Which mobile operating system do you use?",
+      "askVersion": "Which {{os}} version? (e.g. {{example}})",
+      "askDns": "Are you using a private DNS?",
+      "askDnsHost": "What is the private DNS hostname? (e.g. dns.adguard.com)",
+      "askAllowedApps": "Which apps are allowed? Use the button below to select them.",
+      "askInstallOs": "The installation is done over USB. Which operating system will you install it from?",
+      "confirm": "Please confirm:\n{{summary}}\nIs this correct?",
+      "done": "Done! Collected params:\n{{summary}}",
+      "finished": "This conversation is over. Use \"Generate again\" to start another one.",
+      "noAppList": "There is no app list to choose right now."
+    },
+    "errors": {
+      "os": "Please choose Android or iOS.",
+      "version": "Please enter a version number such as 14 or 17.4.1.",
+      "hostname": "Please enter the private DNS hostname, such as dns.adguard.com.",
+      "installOs": "Please choose Linux, Windows or Mac.",
+      "yesNo": "Please answer yes or no.",
+      "appIds": "Invalid app list. Please select the allowed apps again.",
+      "typedApps": "Please use the button to select the allowed apps.",
+      "proceed": "Use the \"Proceed\" button to continue."
+    },
+    "summary": {
+      "os": "OS",
+      "version": "Version",
+      "privateDns": "Private DNS",
+      "allowedApps": "Allowed apps",
+      "installOs": "USB install from",
+      "no": "no",
+      "none": "none"
+    },
+    "choices": {
+      "proceed": "Proceed",
+      "yes": "Yes",
+      "no": "No",
+      "android": "Android",
+      "ios": "iOS",
+      "linux": "Linux",
+      "windows": "Windows",
+      "mac": "Mac"
+    },
+    "allowedApps": {
+      "title": "Allowed apps",
+      "selectAll": "Select all",
+      "clearAll": "Clear",
+      "searchPlaceholder": "Search Google Play...",
+      "searchLabel": "Search apps on Google Play",
+      "clearSearch": "Clear search",
+      "fromSearch": "From search",
+      "checkGroup": "Check {{group}}",
+      "uncheckGroup": "Uncheck {{group}}",
+      "checkAll": "Check all",
+      "uncheck": "Uncheck",
+      "selected_one": "{{count}} selected",
+      "selected_other": "{{count}} selected",
+      "cancel": "Cancel",
+      "submit": "Send",
+      "searchError": "Search is unavailable right now. Clear the search to use the list.",
+      "noResults": "No apps found.",
+      "searching": "Searching Google Play..."
+    }
   },
   "mediaSettings": {
     "title": "Audio and Video Settings",

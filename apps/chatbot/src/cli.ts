@@ -1,6 +1,37 @@
 import readline from 'node:readline/promises';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { stdin as input, stdout as output } from 'node:process';
 import { ChatSession, type BotReply } from './session';
+import type { BotText, Summary } from './prompts';
+
+// The bot sends i18n keys; the texts live in the web app's locales.
+const LOCALE_FILE = path.resolve(__dirname, '../../web/src/locales/en.json');
+const texts: Record<string, unknown> = JSON.parse(readFileSync(LOCALE_FILE, 'utf8')).chatbot;
+
+// Minimal i18next: nested key lookup and {{param}} interpolation.
+const t = (key: string, params: Record<string, unknown> = {}): string => {
+    const text = key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown>)?.[part], texts);
+    if (typeof text !== 'string') return key;
+    return text.replace(/{{(\w+)}}/g, (_, name: string) => String(params[name] ?? ''));
+};
+
+// Same lines as the web app's formatSummary (services/ws/chatbot-ws.ts).
+const formatSummary = ({ os, version, privateDnsHost, allowedApps, installOs }: Summary): string =>
+    [
+        [t('summary.os'), os],
+        [t('summary.version'), version],
+        [t('summary.privateDns'), privateDnsHost ?? t('summary.no')],
+        [t('summary.allowedApps'), allowedApps?.length ? allowedApps.join(', ') : t('summary.none')],
+        [t('summary.installOs'), installOs],
+    ]
+        .map(([label, value]) => `  ${label}: ${value}`)
+        .join('\n');
+
+const render = ({ key, params }: BotText): string => {
+    const summary = params?.summary as Summary | undefined;
+    return t(key, summary ? { ...params, summary: formatSummary(summary) } : params);
+};
 
 // Terminal front-end for the bot, handy for trying the flow without the web app.
 async function main(): Promise<void> {
@@ -16,10 +47,13 @@ async function main(): Promise<void> {
     const print = (replies: BotReply[]) =>
         replies.forEach((reply) => {
             if (reply.event === 'bot_message') {
-                console.log(`Bot: ${reply.message}`);
+                console.log(`Bot: ${render(reply)}`);
                 return;
             }
-            if (reply.event === 'ask_choice') return; // the prompt already lists the options
+            if (reply.event === 'ask_choice') {
+                console.log(`[options] ${reply.choices.map((c) => `${t(c.key)} (${c.value})`).join(' / ')}`);
+                return;
+            }
             if (reply.event === 'offer_restart') {
                 console.log('[done] Type /restart to generate again.');
                 return;

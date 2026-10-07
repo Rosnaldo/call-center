@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import BoardMessage from './BoardMessage';
 import AllowedAppsModal from './AllowedAppsModal';
 import { useChatbotStore } from '../../states/stores.ts';
 import { ChatbotWs } from '../../services/ws/chatbot-ws.ts';
+import type { ChatbotChoice } from '../../states/local/chatbot/state.ts';
 
 export const ChatbotHero: React.FC = () => {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
   const isProcessing = useChatbotStore(s => s.isBotTyping);
   const chatbotWs = useRef<ChatbotWs | null>(null);
@@ -25,7 +28,7 @@ export const ChatbotHero: React.FC = () => {
     if (chatbotWs.current?.sendMessage(text)) setInput('');
   };
 
-  const handleAnswer = (text: string) => chatbotWs.current?.sendMessage(text);
+  const handleAnswer = ({ value, label }: ChatbotChoice) => chatbotWs.current?.sendMessage(value, label);
   const handleRestart = () => chatbotWs.current?.restart();
   const handleAllowedApps = (apps: string[]) => chatbotWs.current?.sendAllowedApps(apps) ?? false;
   // Stable: the modal's debounce effect depends on it.
@@ -67,7 +70,7 @@ export const ChatbotHero: React.FC = () => {
                 style={{ color: '#524A3D' }}
                 className="font-normal"
               >
-                Gere seu proprio mobile block app
+                {t('chatbot.title')}
               </span>
             </span>
           </div>
@@ -86,10 +89,10 @@ export const ChatbotHero: React.FC = () => {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSend();
               }}
-              placeholder="comando..."
+              placeholder={t('chatbot.inputPlaceholder')}
               className="w-full bg-transparent border-none outline-none font-mono-terminal text-[#1F1A13] placeholder-[#A09787] text-[15px] p-0 focus:ring-0 selection:bg-[#B97204]/20"
               style={{ fontFamily: '"JetBrains Mono", Menlo, Consolas, monospace' }}
-              aria-label="Target domain or company website"
+              aria-label={t('chatbot.inputLabel')}
             />
           </div>
 
@@ -108,7 +111,7 @@ export const ChatbotHero: React.FC = () => {
               fontFamily: '"JetBrains Mono", Menlo, Consolas, monospace',
             }}
           >
-            <span>Enviar</span>
+            <span>{t('chatbot.send')}</span>
           </button>
         </div>
       </div>

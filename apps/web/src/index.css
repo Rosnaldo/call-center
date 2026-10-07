@@ -18,6 +18,15 @@
   --color-brand-border-dark: #ded5c5;
 }
 
+/* The page scrolls without showing its scrollbar, like the chatbot board. */
+html {
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
+
 .font-fraunces {
   font-family: var(--font-fraunces) !important;
 }

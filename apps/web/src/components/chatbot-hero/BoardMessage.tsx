@@ -1,10 +1,12 @@
 import React, { useRef } from 'react';
 import { Download, ListChecks, Loader2, RotateCcw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useChatbotStore } from '../../states/stores.ts';
+import type { ChatbotChoice } from '../../states/local/chatbot/state.ts';
 
 interface BoardMessageProps {
   isProcessing?: boolean;
-  onAnswer?: (text: string) => void;
+  onAnswer?: (choice: ChatbotChoice) => void;
   onRestart?: () => void;
   className?: string;
 }
@@ -15,6 +17,7 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
   onRestart,
   className = '',
 }) => {
+  const { t } = useTranslation();
   const messages = useChatbotStore(s => s.messages);
   const isAllowedAppsRequested = useChatbotStore(s => s.isAllowedAppsRequested);
   const openAllowedAppsModal = useChatbotStore(s => s.openAllowedAppsModal);
@@ -25,7 +28,7 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`w-full h-[330px] md:h-[360px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-4 md:p-5 space-y-3.5 text-left transition-colors ${className}`}
+      className={`w-full h-[330px] md:h-[360px] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-4 md:p-5 space-y-3.5 text-left transition-colors ${className}`}
       style={{
         backgroundColor: '#FAF7F1',
       }}
@@ -47,7 +50,7 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
               }`}
             >
               {!isUser && <span className="text-[9px] text-[#B97204]">◆</span>}
-              {isUser ? 'você' : 'bot'}
+              {isUser ? t('chatbot.you') : t('chatbot.bot')}
             </span>
 
             {/* Balão da mensagem: apenas o texto, com estilos distintos */}
@@ -69,7 +72,7 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
                 className="mt-2 inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-[#B97204] text-white font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)]"
               >
                 <ListChecks className="w-4 h-4" />
-                Selecionar apps
+                {t('chatbot.selectApps')}
               </button>
             )}
 
@@ -80,7 +83,7 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
                   <button
                     key={choice.value}
                     type="button"
-                    onClick={() => onAnswer(choice.value)}
+                    onClick={() => onAnswer(choice)}
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-white text-[#B97204] border border-[#B97204] font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] hover:bg-[#B97204] hover:text-white"
                   >
                     {choice.label}
@@ -98,7 +101,7 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-[#B97204] text-white font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)]"
                 >
                   <Download className="w-4 h-4" />
-                  Gerar instalador
+                  {t('chatbot.generateInstaller')}
                 </button>
                 <button
                   type="button"
@@ -106,7 +109,7 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-white text-[#B97204] border border-[#B97204] font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98]"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  Gerar novamente
+                  {t('chatbot.generateAgain')}
                 </button>
               </div>
             )}
@@ -118,11 +121,11 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
       {isProcessing && (
         <div className="flex flex-col items-start">
           <span className="text-[11px] font-mono-terminal font-semibold text-[#857967] mb-1 pl-1 flex items-center gap-1 select-none">
-            <span className="text-[9px] text-[#B97204]">◆</span> bot
+            <span className="text-[9px] text-[#B97204]">◆</span> {t('chatbot.bot')}
           </span>
           <div className="bg-white border border-[#E4D9C4] border-l-[3px] border-l-[#B97204] px-3.5 py-2 rounded-2xl rounded-tl-xs text-[12px] font-mono-terminal text-[#7E7464] flex items-center gap-2 shadow-xs">
             <Loader2 className="w-3.5 h-3.5 animate-spin text-[#B97204]" />
-            <span>digitando...</span>
+            <span>{t('chatbot.typing')}</span>
           </div>
         </div>
       )}

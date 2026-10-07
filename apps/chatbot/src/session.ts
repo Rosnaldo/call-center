@@ -1,32 +1,40 @@
 import { createActor, type Actor } from 'xstate';
 import { paramsMachine, type PromptState } from './params-machine';
-import { prompts, summary } from './prompts';
+import { prompts, summaryOf, type BotText } from './prompts';
+
+// A button: its text (i18n key, like a message's) and what it answers.
+export type Choice = { key: string; value: string };
 
 // What the bot sends back: a chat message, a request for the allowed apps
 // list, which the client picks in its checklist (answered with selectAllowedApps),
 // a question with fixed options, which the client answers with buttons (sent
 // as typed text, with the option's value),
 // or, once finished, an offer to generate again (answered with start).
-// A button's text and what it answers.
-export type Choice = { label: string; value: string };
-
 export type BotReply =
-    | { event: 'bot_message'; message: string }
+    | ({ event: 'bot_message' } & BotText)
     | { event: 'open_allowed_apps' }
     | { event: 'ask_choice'; choices: Choice[] }
     | { event: 'offer_restart' };
 
-const say = (message: string): BotReply => ({ event: 'bot_message', message });
+const say = (key: string, params?: BotText['params']): BotReply =>
+    params ? { event: 'bot_message', key, params } : { event: 'bot_message', key };
 const OPEN_ALLOWED_APPS: BotReply = { event: 'open_allowed_apps' };
 const askChoice = (...choices: Choice[]): BotReply => ({ event: 'ask_choice', choices });
-const ASK_YES_NO = askChoice({ label: 'Sim', value: 'sim' }, { label: 'Não', value: 'não' });
+const ASK_YES_NO = askChoice({ key: 'choices.yes', value: 'yes' }, { key: 'choices.no', value: 'no' });
 const OFFER_RESTART: BotReply = { event: 'offer_restart' };
 
 // Steps the client answers with buttons instead of typing.
 const BUTTONS: Partial<Record<PromptState, BotReply>> = {
-    askOs: askChoice({ label: 'Android', value: 'android' }, { label: 'iOS', value: 'ios' }),
+    askStart: askChoice({ key: 'choices.proceed', value: 'proceed' }),
+    intro: askChoice({ key: 'choices.proceed', value: 'proceed' }),
+    askOs: askChoice({ key: 'choices.android', value: 'android' }, { key: 'choices.ios', value: 'ios' }),
     askDns: ASK_YES_NO,
     askAllowedApps: OPEN_ALLOWED_APPS,
+    askInstallOs: askChoice(
+        { key: 'choices.linux', value: 'linux' },
+        { key: 'choices.windows', value: 'windows' },
+        { key: 'choices.mac', value: 'mac' },
+    ),
     confirm: ASK_YES_NO,
 };
 
@@ -48,7 +56,7 @@ export class ChatSession {
     handle(text: string): BotReply[] {
         const answer = text.trim();
         if (answer === '/restart') return this.start();
-        if (this.isDone()) return [say('Type /restart to start over.'), OFFER_RESTART];
+        if (this.isDone()) return [say('messages.finished'), OFFER_RESTART];
 
         this.actor.send({ type: 'ANSWER', value: answer });
         return this.replies();
@@ -56,9 +64,9 @@ export class ChatSession {
 
     // The list picked in the client's checklist.
     selectAllowedApps(apps: unknown): BotReply[] {
-        if (this.isDone()) return [say('Type /restart to start over.')];
+        if (this.isDone()) return [say('messages.finished'), OFFER_RESTART];
         if (!this.isPickingAllowedApps()) {
-            return [say('There is no app list to choose right now.')];
+            return [say('messages.noAppList')];
         }
 
         this.actor.send({ type: 'ALLOWED_APPS', apps });
@@ -82,7 +90,7 @@ export class ChatSession {
     private replies(): BotReply[] {
         const snapshot = this.actor.getSnapshot();
         if (snapshot.status === 'done' && snapshot.output) {
-            return [say(`Thanks! Collected params:\n${summary(snapshot.output)}`), OFFER_RESTART];
+            return [say('messages.done', { summary: summaryOf(snapshot.output) }), OFFER_RESTART];
         }
 
         const state = snapshot.value as PromptState;
@@ -91,7 +99,8 @@ export class ChatSession {
         if (snapshot.context.error) {
             replies.push(say(snapshot.context.error));
         } else if (entered) {
-            replies.push(say(prompts[state](snapshot.context)));
+            const { key, params } = prompts[state](snapshot.context);
+            replies.push(say(key, params));
         }
         // Ask again after an error too, so the buttons move to the newest bot message.
         const buttons = BUTTONS[state];

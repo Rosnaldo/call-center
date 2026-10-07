@@ -97,7 +97,80 @@
     "userDisconnected": "{{name}} desconectou."
   },
   "chatbot": {
-    "section": "Chatbot."
+    "section": "Chatbot.",
+    "title": "Gere seu próprio mobile block app",
+    "inputPlaceholder": "comando...",
+    "inputLabel": "Mensagem para o bot",
+    "send": "Enviar",
+    "you": "você",
+    "bot": "bot",
+    "typing": "digitando...",
+    "selectApps": "Selecionar apps",
+    "generateInstaller": "Gerar instalador",
+    "generateAgain": "Gerar novamente",
+    "messages": {
+      "askStart": "Configurar ambiente device owner no seu celular.",
+      "intro": "Para isso será necessário um notebook, o celular e um cabo USB.\nVocê conectará o celular ao notebook via USB,\ndepois, instalará o ambiente device owner pelo seu notebook.\nPrimeiro vamos gerar o executável.",
+      "askOs": "Qual o sistema operacional do celular?",
+      "askVersion": "Qual a versão do {{os}}? (ex.: {{example}})",
+      "askDns": "Você usa DNS privado?",
+      "askDnsHost": "Qual o hostname do DNS privado? (ex.: dns.adguard.com)",
+      "askAllowedApps": "Quais apps serão permitidos? Use o botão abaixo para selecioná-los.",
+      "askInstallOs": "A instalação é feita via USB. Em qual sistema operacional ela será feita?",
+      "confirm": "Confira os dados:\n{{summary}}\nEstá correto?",
+      "done": "Pronto! Dados coletados:\n{{summary}}",
+      "finished": "Esta conversa terminou. Use \"Gerar novamente\" para começar outra.",
+      "noAppList": "Não há lista de apps para escolher agora."
+    },
+    "errors": {
+      "os": "Escolha Android ou iOS.",
+      "version": "Informe uma versão, como 14 ou 17.4.1.",
+      "hostname": "Informe o hostname do DNS privado, como dns.adguard.com.",
+      "installOs": "Escolha Linux, Windows ou Mac.",
+      "yesNo": "Responda sim ou não.",
+      "appIds": "Lista de apps inválida. Selecione os apps permitidos novamente.",
+      "typedApps": "Use o botão para selecionar os apps permitidos.",
+      "proceed": "Use o botão \"Prosseguir\" para continuar."
+    },
+    "summary": {
+      "os": "Sistema",
+      "version": "Versão",
+      "privateDns": "DNS privado",
+      "allowedApps": "Apps permitidos",
+      "installOs": "Instalação USB a partir de",
+      "no": "não",
+      "none": "nenhum"
+    },
+    "choices": {
+      "proceed": "Prosseguir",
+      "yes": "Sim",
+      "no": "Não",
+      "android": "Android",
+      "ios": "iOS",
+      "linux": "Linux",
+      "windows": "Windows",
+      "mac": "Mac"
+    },
+    "allowedApps": {
+      "title": "Apps permitidos",
+      "selectAll": "Selecionar todos",
+      "clearAll": "Limpar",
+      "searchPlaceholder": "Buscar no Google Play...",
+      "searchLabel": "Buscar apps no Google Play",
+      "clearSearch": "Limpar busca",
+      "fromSearch": "Da busca",
+      "checkGroup": "Marcar {{group}}",
+      "uncheckGroup": "Desmarcar {{group}}",
+      "checkAll": "Marcar todos",
+      "uncheck": "Desmarcar",
+      "selected_one": "{{count}} selecionado",
+      "selected_other": "{{count}} selecionados",
+      "cancel": "Cancelar",
+      "submit": "Enviar",
+      "searchError": "Busca indisponível no momento. Limpe a busca para usar a lista.",
+      "noResults": "Nenhum app encontrado.",
+      "searching": "Buscando no Google Play..."
+    }
   },
   "mediaSettings": {
     "title": "Configurações de Áudio e Vídeo",

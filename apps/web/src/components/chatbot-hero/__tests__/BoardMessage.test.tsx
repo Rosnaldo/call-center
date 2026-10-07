@@ -81,6 +81,6 @@ describe('BoardMessage choice buttons', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Não/ }));
 
-    expect(onAnswer).toHaveBeenCalledWith('não');
+    expect(onAnswer).toHaveBeenCalledWith({ label: 'Não', value: 'não' });
   });
 });

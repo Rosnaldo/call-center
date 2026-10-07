@@ -1,16 +1,32 @@
+import i18n from 'i18next';
 import { ITransport, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
 import type { ChatbotStoreInstance } from '../../states/stores';
-import type { AppSearchResult, ChatbotChoice } from '../../states/local/chatbot/state';
+import type { AppSearchResult } from '../../states/local/chatbot/state';
 import properties from '../../properties';
 
 const RECONNECT_BASE_DELAY_MS = 1_000;
 const RECONNECT_MAX_DELAY_MS = 30_000;
 
+// Texts come as i18n keys under `chatbot.` (see apps/chatbot/src/prompts.ts).
+interface BotText {
+    key: string;
+    params?: Record<string, unknown>;
+}
+
+// The collected params, sent as the `summary` param of the confirm/done messages.
+interface BotSummary {
+    os: string | null;
+    version: string | null;
+    privateDnsHost: string | null;
+    allowedApps: string[] | null;
+    installOs: string | null;
+}
+
 // Mirrors the protocol in apps/chatbot/src/index.ts.
 type ChatbotServerMessage =
-    | { event: 'bot_message'; message: string }
+    | ({ event: 'bot_message' } & BotText)
     | { event: 'open_allowed_apps' }
-    | { event: 'ask_choice'; choices: ChatbotChoice[] }
+    | { event: 'ask_choice'; choices: { key: string; value: string }[] }
     | { event: 'offer_restart' }
     | { event: 'apps_search_results'; term: string; apps: AppSearchResult[]; failed: boolean }
     | { isError: true; message: string };
@@ -20,6 +36,25 @@ type ChatbotServerMessage =
 export const normalizeSearchTerm = (term: string): string | null => {
     const value = term.trim().replace(/\s+/g, ' ').toLowerCase();
     return value.length >= 2 && value.length <= 50 ? value : null;
+};
+
+const t = (key: string, params?: Record<string, unknown>): string => i18n.t(`chatbot.${key}`, params);
+
+// Same lines as the chatbot CLI's formatSummary (apps/chatbot/src/cli.ts).
+export const formatSummary = ({ os, version, privateDnsHost, allowedApps, installOs }: BotSummary): string =>
+    [
+        [t('summary.os'), os],
+        [t('summary.version'), version],
+        [t('summary.privateDns'), privateDnsHost ?? t('summary.no')],
+        [t('summary.allowedApps'), allowedApps?.length ? allowedApps.join(', ') : t('summary.none')],
+        [t('summary.installOs'), installOs],
+    ]
+        .map(([label, value]) => `  ${label}: ${value}`)
+        .join('\n');
+
+export const translateBotText = ({ key, params }: BotText): string => {
+    const summary = params?.summary as BotSummary | undefined;
+    return t(key, summary ? { ...params, summary: formatSummary(summary) } : params);
 };
 
 // Socket to the chatbot app. Unlike InitWs this is anonymous, per-tab and
@@ -51,11 +86,13 @@ export class ChatbotWs {
         this.ws = null;
     }
 
-    // Returns false when the message couldn't be sent (socket not open).
-    sendMessage(text: string): boolean {
+    // `shown` is what the chat shows as the user's message, e.g. a choice's
+    // label while its value is sent. Returns false when the message couldn't
+    // be sent (socket not open).
+    sendMessage(text: string, shown: string = text): boolean {
         if (this.ws?.readyState !== TRANSPORT_OPEN) return false;
         const { addMessage, fulfillChoiceRequest, setBotTyping } = this.store.getState();
-        addMessage({ autor: 'user', message: text });
+        addMessage({ autor: 'user', message: shown });
         // Typing answers a choice as well; the bot asks again if it isn't one.
         fulfillChoiceRequest();
         setBotTyping(true);
@@ -139,12 +176,12 @@ export class ChatbotWs {
                 return;
             }
             if (msg.event === 'bot_message') {
-                this.store.getState().addMessage({ autor: 'bot', message: msg.message });
+                this.store.getState().addMessage({ autor: 'bot', message: translateBotText(msg) });
             } else if (msg.event === 'open_allowed_apps') {
                 // Shows the button on the bot's question; the user opens the modal.
                 this.store.getState().requestAllowedApps();
             } else if (msg.event === 'ask_choice') {
-                this.store.getState().requestChoice(msg.choices);
+                this.store.getState().requestChoice(msg.choices.map(({ key, value }) => ({ label: t(key), value })));
             } else if (msg.event === 'offer_restart') {
                 this.store.getState().offerRestart();
             }

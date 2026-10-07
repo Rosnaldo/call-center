@@ -15,6 +15,12 @@ class FakeTransport implements ITransport {
   receive(msg: unknown) { this.onmessage?.({ data: JSON.stringify(msg) } as MessageEvent); }
 }
 
+const ASK_APPS_MESSAGE = {
+  autor: 'bot',
+  message: 'Quais apps serão permitidos? Use o botão abaixo para selecioná-los.',
+  action: 'select_allowed_apps',
+};
+
 describe('ChatbotWs allowed apps', () => {
   let transport: FakeTransport;
   let ws: ChatbotWs;
@@ -26,8 +32,8 @@ describe('ChatbotWs allowed apps', () => {
     ws.connect();
   });
 
-  const askForApps = (message = 'Which apps are allowed?') => {
-    transport.receive({ event: 'bot_message', message });
+  const askForApps = (key = 'messages.askAllowedApps') => {
+    transport.receive({ event: 'bot_message', key });
     transport.receive({ event: 'open_allowed_apps' });
   };
 
@@ -37,12 +43,12 @@ describe('ChatbotWs allowed apps', () => {
     const state = useChatbotStore.getState();
     expect(state.isAllowedAppsRequested).toBe(true);
     expect(state.isAllowedAppsModalOpen).toBe(false);
-    expect(state.messages.at(-1)).toEqual({ autor: 'bot', message: 'Which apps are allowed?', action: 'select_allowed_apps' });
+    expect(state.messages.at(-1)).toEqual(ASK_APPS_MESSAGE);
   });
 
   it('moves the button to the newest request', () => {
     askForApps();
-    askForApps('Please use the button to select the allowed apps.');
+    askForApps('errors.typedApps');
 
     const actions = useChatbotStore.getState().messages.map((m) => m.action);
     expect(actions).toEqual([undefined, 'select_allowed_apps']);
@@ -58,7 +64,7 @@ describe('ChatbotWs allowed apps', () => {
     const state = useChatbotStore.getState();
     expect(state.isAllowedAppsModalOpen).toBe(false);
     expect(state.isAllowedAppsRequested).toBe(false);
-    expect(state.messages.at(-1)).toEqual({ autor: 'bot', message: 'Which apps are allowed?', action: 'select_allowed_apps' });
+    expect(state.messages.at(-1)).toEqual(ASK_APPS_MESSAGE);
   });
 
   it('sends the normalized term and stores matching results only', () => {
@@ -93,38 +99,66 @@ describe('ChatbotWs choices', () => {
     ws.connect();
   });
 
-  const OS_CHOICES = [{ label: 'Android', value: 'android' }, { label: 'iOS', value: 'ios' }];
+  const OS_CHOICES = [{ key: 'choices.android', value: 'android' }, { key: 'choices.ios', value: 'ios' }];
+  const YES_NO = [{ key: 'choices.yes', value: 'yes' }, { key: 'choices.no', value: 'no' }];
+
+  it('translates the bot message and its params', () => {
+    transport.receive({ event: 'bot_message', key: 'messages.askVersion', params: { os: 'iOS', example: '17.4' } });
+
+    expect(useChatbotStore.getState().messages.at(-1)?.message).toBe('Qual a versão do iOS? (ex.: 17.4)');
+  });
+
+  it('formats the summary', () => {
+    const summary = { os: 'Android', version: '14', privateDnsHost: null, allowedApps: [], installOs: 'Linux' };
+    transport.receive({ event: 'bot_message', key: 'messages.confirm', params: { summary } });
+
+    expect(useChatbotStore.getState().messages.at(-1)?.message).toBe(
+      'Confira os dados:\n  Sistema: Android\n  Versão: 14\n  DNS privado: não\n' +
+        '  Apps permitidos: nenhum\n  Instalação USB a partir de: Linux\nEstá correto?',
+    );
+  });
+
+  it('translates the choice labels', () => {
+    transport.receive({ event: 'bot_message', key: 'messages.askDns' });
+    transport.receive({ event: 'ask_choice', choices: YES_NO });
+
+    expect(useChatbotStore.getState().messages.at(-1)?.choices).toEqual([
+      { label: 'Sim', value: 'yes' },
+      { label: 'Não', value: 'no' },
+    ]);
+  });
 
   it('puts the buttons on the bot question', () => {
-    transport.receive({ event: 'bot_message', message: 'Which mobile operating system do you use?' });
+    transport.receive({ event: 'bot_message', key: 'messages.askOs' });
     transport.receive({ event: 'ask_choice', choices: OS_CHOICES });
 
     const state = useChatbotStore.getState();
     expect(state.isChoiceRequested).toBe(true);
     expect(state.messages.at(-1)).toEqual({
       autor: 'bot',
-      message: 'Which mobile operating system do you use?',
+      message: 'Qual o sistema operacional do celular?',
       action: 'choice',
-      choices: OS_CHOICES,
+      choices: [{ label: 'Android', value: 'android' }, { label: 'iOS', value: 'ios' }],
     });
   });
 
   it('takes the buttons off the previous question', () => {
-    transport.receive({ event: 'bot_message', message: 'Which mobile operating system do you use?' });
+    transport.receive({ event: 'bot_message', key: 'messages.askOs' });
     transport.receive({ event: 'ask_choice', choices: OS_CHOICES });
-    transport.receive({ event: 'bot_message', message: 'Which apps are allowed?' });
+    transport.receive({ event: 'bot_message', key: 'messages.askAllowedApps' });
     transport.receive({ event: 'open_allowed_apps' });
 
-    expect(useChatbotStore.getState().messages[0]).toEqual({ autor: 'bot', message: 'Which mobile operating system do you use?' });
+    expect(useChatbotStore.getState().messages[0]).toEqual({ autor: 'bot', message: 'Qual o sistema operacional do celular?' });
   });
 
   it('ends the request once answered', () => {
-    transport.receive({ event: 'bot_message', message: 'Which mobile operating system do you use?' });
+    transport.receive({ event: 'bot_message', key: 'messages.askOs' });
     transport.receive({ event: 'ask_choice', choices: OS_CHOICES });
 
-    expect(ws.sendMessage('android')).toBe(true);
+    expect(ws.sendMessage('android', 'Android')).toBe(true);
 
     expect(transport.sent).toEqual([{ event: 'user_message', message: 'android' }]);
+    expect(useChatbotStore.getState().messages.at(-1)).toEqual({ autor: 'user', message: 'Android' });
     expect(useChatbotStore.getState().isChoiceRequested).toBe(false);
   });
 });
@@ -141,16 +175,20 @@ describe('ChatbotWs restart', () => {
   });
 
   it('puts the button on the final message', () => {
-    transport.receive({ event: 'bot_message', message: 'Thanks! Collected params' });
+    transport.receive({ event: 'bot_message', key: 'messages.finished' });
     transport.receive({ event: 'offer_restart' });
 
     const state = useChatbotStore.getState();
     expect(state.isRestartOffered).toBe(true);
-    expect(state.messages.at(-1)).toEqual({ autor: 'bot', message: 'Thanks! Collected params', action: 'restart' });
+    expect(state.messages.at(-1)).toEqual({
+      autor: 'bot',
+      message: 'Esta conversa terminou. Use "Gerar novamente" para começar outra.',
+      action: 'restart',
+    });
   });
 
   it('clears the board and asks for a new conversation', () => {
-    transport.receive({ event: 'bot_message', message: 'Thanks! Collected params' });
+    transport.receive({ event: 'bot_message', key: 'messages.finished' });
     transport.receive({ event: 'offer_restart' });
 
     expect(ws.restart()).toBe(true);

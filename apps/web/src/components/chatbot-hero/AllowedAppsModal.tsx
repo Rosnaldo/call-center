@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Check, Loader2, Search, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useChatbotStore } from '../../states/stores.ts';
 import { normalizeSearchTerm } from '../../services/ws/chatbot-ws.ts';
 import { POPULAR_APPS, POPULAR_CATEGORIES, type PopularApp } from './popular-apps.ts';
@@ -31,6 +32,7 @@ export const AllowedAppsModal: React.FC<AllowedAppsModalProps> = (props) => {
 };
 
 const AllowedAppsChecklist: React.FC<AllowedAppsModalProps> = ({ onSubmit, onSearch }) => {
+  const { t } = useTranslation();
   const close = useChatbotStore((s) => s.closeAllowedAppsModal);
   const search = useChatbotStore((s) => s.appSearch);
   // Keeps name and icon too, so apps picked from a search stay listed after it's cleared.
@@ -76,7 +78,7 @@ const AllowedAppsChecklist: React.FC<AllowedAppsModalProps> = ({ onSubmit, onSea
   const searchedApps = [...selected.values()].filter((app) => !POPULAR_IDS.has(app.id));
   // Picked search results get their own group, so they stay visible after the search.
   const groups = searchedApps.length
-    ? [{ name: 'Da busca', apps: searchedApps }, ...POPULAR_CATEGORIES]
+    ? [{ name: t('chatbot.allowedApps.fromSearch'), apps: searchedApps }, ...POPULAR_CATEGORIES]
     : POPULAR_CATEGORIES;
   const renderRow = (app: ListedApp) => (
     <ChecklistRow key={app.id} app={app} checked={selected.has(app.id)} onToggle={() => toggle(app)} />
@@ -111,7 +113,7 @@ const AllowedAppsChecklist: React.FC<AllowedAppsModalProps> = ({ onSubmit, onSea
         >
           <h4 id="allowed-apps-title" className="flex items-center gap-2 text-[12.5px] font-medium tracking-tight text-[#524A3D]">
             <span className="text-[11px] leading-none" style={{ color: '#B97204' }}>◆</span>
-            Apps permitidos
+            {t('chatbot.allowedApps.title')}
           </h4>
           {!isSearching && (
             <button
@@ -120,7 +122,7 @@ const AllowedAppsChecklist: React.FC<AllowedAppsModalProps> = ({ onSubmit, onSea
               className="text-[11px] uppercase tracking-wider font-semibold text-[#B97204] hover:underline cursor-pointer"
               style={{ fontFamily: MONO }}
             >
-              {allSelected(POPULAR_APPS) ? 'Limpar' : 'Selecionar todos'}
+              {allSelected(POPULAR_APPS) ? t('chatbot.allowedApps.clearAll') : t('chatbot.allowedApps.selectAll')}
             </button>
           )}
         </div>
@@ -136,8 +138,8 @@ const AllowedAppsChecklist: React.FC<AllowedAppsModalProps> = ({ onSubmit, onSea
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar no Google Play..."
-              aria-label="Buscar apps no Google Play"
+              placeholder={t('chatbot.allowedApps.searchPlaceholder')}
+              aria-label={t('chatbot.allowedApps.searchLabel')}
               maxLength={50}
               autoFocus
               className="w-full bg-transparent border-none outline-none text-[14px] text-[#1F1A13] placeholder-[#A09787] p-0 focus:ring-0 [&::-webkit-search-cancel-button]:hidden"
@@ -146,7 +148,7 @@ const AllowedAppsChecklist: React.FC<AllowedAppsModalProps> = ({ onSubmit, onSea
               <button
                 type="button"
                 onClick={() => setQuery('')}
-                aria-label="Limpar busca"
+                aria-label={t('chatbot.allowedApps.clearSearch')}
                 className="shrink-0 text-[#A09787] hover:text-[#524A3D] cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -156,7 +158,7 @@ const AllowedAppsChecklist: React.FC<AllowedAppsModalProps> = ({ onSubmit, onSea
           {isSearching && <SearchStatus status={search.status} hasResults={search.results.length > 0} />}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-4" style={{ backgroundColor: '#FAF7F1' }}>
+        <div className="flex-1 overflow-y-auto overscroll-contain p-3 flex flex-col gap-4" style={{ backgroundColor: '#FAF7F1' }}>
           {isSearching ? (
             <ul className={GRID}>{search.results.map(renderRow)}</ul>
           ) : (
@@ -172,11 +174,11 @@ const AllowedAppsChecklist: React.FC<AllowedAppsModalProps> = ({ onSubmit, onSea
                   <button
                     type="button"
                     onClick={() => toggleGroup(group.apps)}
-                    aria-label={`${allSelected(group.apps) ? 'Desmarcar' : 'Marcar'} ${group.name}`}
+                    aria-label={t(allSelected(group.apps) ? 'chatbot.allowedApps.uncheckGroup' : 'chatbot.allowedApps.checkGroup', { group: group.name })}
                     className="text-[11px] text-[#B97204] hover:underline cursor-pointer"
                     style={{ fontFamily: MONO }}
                   >
-                    {allSelected(group.apps) ? 'Desmarcar' : 'Marcar todos'}
+                    {allSelected(group.apps) ? t('chatbot.allowedApps.uncheck') : t('chatbot.allowedApps.checkAll')}
                   </button>
                 </div>
                 <ul className={GRID}>{group.apps.map(renderRow)}</ul>
@@ -187,7 +189,7 @@ const AllowedAppsChecklist: React.FC<AllowedAppsModalProps> = ({ onSubmit, onSea
 
         <div className="flex items-center justify-between gap-3 px-4.5 py-3.5 bg-white border-t border-[#E8DECA]">
           <span className="text-[12px] text-[#857967]" style={{ fontFamily: MONO }}>
-            {selected.size} selecionado{selected.size === 1 ? '' : 's'}
+            {t('chatbot.allowedApps.selected', { count: selected.size })}
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -196,7 +198,7 @@ const AllowedAppsChecklist: React.FC<AllowedAppsModalProps> = ({ onSubmit, onSea
               className="px-4 py-2.5 rounded-[10px] border border-[#E4D9C4] text-[#524A3D] text-[12px] uppercase font-semibold tracking-wider cursor-pointer hover:bg-[#FAF7F1]"
               style={{ fontFamily: MONO }}
             >
-              Cancelar
+              {t('chatbot.allowedApps.cancel')}
             </button>
             <button
               type="button"
@@ -204,7 +206,7 @@ const AllowedAppsChecklist: React.FC<AllowedAppsModalProps> = ({ onSubmit, onSea
               className="px-5 py-2.5 rounded-[10px] text-white text-[12px] uppercase font-bold tracking-wider cursor-pointer active:scale-[0.98]"
               style={{ backgroundColor: '#B97204', boxShadow: '0 3px 12px -1px rgba(185, 114, 4, 0.38)', fontFamily: MONO }}
             >
-              Enviar
+              {t('chatbot.allowedApps.submit')}
             </button>
           </div>
         </div>
@@ -214,10 +216,11 @@ const AllowedAppsChecklist: React.FC<AllowedAppsModalProps> = ({ onSubmit, onSea
 };
 
 const SearchStatus: React.FC<{ status: string; hasResults: boolean }> = ({ status, hasResults }) => {
+  const { t } = useTranslation();
   let text: string | null = null;
-  if (status === 'error') text = 'Busca indisponível no momento. Limpe a busca para usar a lista.';
-  else if (status === 'done' && !hasResults) text = 'Nenhum app encontrado.';
-  else if (status === 'loading' && !hasResults) text = 'Buscando no Google Play...';
+  if (status === 'error') text = t('chatbot.allowedApps.searchError');
+  else if (status === 'done' && !hasResults) text = t('chatbot.allowedApps.noResults');
+  else if (status === 'loading' && !hasResults) text = t('chatbot.allowedApps.searching');
   if (!text) return null;
   return (
     <p role="status" className="pt-3 px-1 text-[12px] text-[#857967] text-left" style={{ fontFamily: MONO }}>

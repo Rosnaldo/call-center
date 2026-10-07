@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { createActor } from 'xstate';
-import { paramsMachine, parseAppIds, parseHostname, parseOs, parseVersion, parseYesNo } from './params-machine';
+import { paramsMachine, parseAppIds, parseHostname, parseInstallOs, parseOs, parseVersion, parseYesNo } from './params-machine';
 
 // Strings are typed answers; arrays are lists picked in the checklist.
 const run = (...answers: (string | string[])[]) => {
     const actor = createActor(paramsMachine).start();
-    for (const value of answers) {
+    // Proceeds past the opening and the intro first.
+    for (const value of ['proceed', 'proceed', ...answers]) {
         actor.send(Array.isArray(value) ? { type: 'ALLOWED_APPS', apps: value } : { type: 'ANSWER', value });
     }
     return actor.getSnapshot();
@@ -29,6 +30,13 @@ describe('parsers', () => {
         expect(parseYesNo('maybe')).toBeNull();
     });
 
+    it('parses the USB install OS', () => {
+        expect(parseInstallOs(' Linux ')).toBe('Linux');
+        expect(parseInstallOs('win')).toBe('Windows');
+        expect(parseInstallOs('Mac')).toBe('macOS');
+        expect(parseInstallOs('android')).toBeNull();
+    });
+
     it('parses private DNS hostnames', () => {
         expect(parseHostname(' DNS.AdGuard.com ')).toBe('dns.adguard.com');
         expect(parseHostname('dns.google.')).toBe('dns.google');
@@ -49,7 +57,7 @@ describe('parsers', () => {
 
 describe('paramsMachine', () => {
     it('collects params and finishes', () => {
-        const snapshot = run('2', '17.4', 'yes', 'dns.adguard.com', ['com.whatsapp', 'com.Slack'], 'yes');
+        const snapshot = run('2', '17.4', 'yes', 'dns.adguard.com', ['com.whatsapp', 'com.Slack'], 'windows', 'yes');
         expect(snapshot.status).toBe('done');
         expect(snapshot.output).toEqual({
             os: 'iOS',
@@ -57,7 +65,29 @@ describe('paramsMachine', () => {
             privateDns: true,
             privateDnsHost: 'dns.adguard.com',
             allowedApps: ['com.whatsapp', 'com.Slack'],
+            installOs: 'Windows',
         });
+    });
+
+    it('only goes forward from the opening', () => {
+        const actor = createActor(paramsMachine).start();
+        actor.send({ type: 'ANSWER', value: 'não' });
+        expect(actor.getSnapshot().value).toBe('askStart');
+        expect(actor.getSnapshot().context.error).toBe('errors.proceed');
+
+        actor.send({ type: 'ANSWER', value: 'Prosseguir' });
+        expect(actor.getSnapshot().value).toBe('intro');
+
+        actor.send({ type: 'ANSWER', value: 'Prosseguir' });
+        expect(actor.getSnapshot().value).toBe('askOs');
+    });
+
+    it('asks the USB install OS after the allowed apps', () => {
+        expect(run('1', '14', 'no', []).value).toBe('askInstallOs');
+
+        const invalid = run('1', '14', 'no', [], 'android');
+        expect(invalid.value).toBe('askInstallOs');
+        expect(invalid.context.error).toBe('errors.installOs');
     });
 
     it('asks the private DNS hostname only when there is one', () => {
@@ -66,36 +96,36 @@ describe('paramsMachine', () => {
 
         const invalid = run('1', '14', 'yes', 'not a host');
         expect(invalid.value).toBe('askDnsHost');
-        expect(invalid.context.error).toMatch(/hostname/);
+        expect(invalid.context.error).toBe('errors.hostname');
     });
 
     it('rejects invalid answers without advancing', () => {
         const snapshot = run('windows');
         expect(snapshot.value).toBe('askOs');
-        expect(snapshot.context.error).toMatch(/Android/);
+        expect(snapshot.context.error).toBe('errors.os');
     });
 
     it('takes the allowed apps only from the checklist', () => {
         const typed = run('1', '14', 'no', 'com.whatsapp');
         expect(typed.value).toBe('askAllowedApps');
-        expect(typed.context.error).toMatch(/use the button to select the allowed apps/);
+        expect(typed.context.error).toBe('errors.typedApps');
 
         const invalid = run('1', '14', 'no', ['whatsapp']);
         expect(invalid.value).toBe('askAllowedApps');
-        expect(invalid.context.error).toMatch(/Invalid app list/);
+        expect(invalid.context.error).toBe('errors.appIds');
     });
 
     it('starts over when the summary is rejected', () => {
-        const snapshot = run('1', '14', 'no', [], 'no');
+        const snapshot = run('1', '14', 'no', [], 'linux', 'no');
         expect(snapshot.value).toBe('askOs');
         expect(snapshot.context.os).toBeNull();
     });
 
     it('restarts on RESTART', () => {
         const actor = createActor(paramsMachine).start();
-        actor.send({ type: 'ANSWER', value: '1' });
+        actor.send({ type: 'ANSWER', value: 'proceed' });
         actor.send({ type: 'RESTART' });
-        expect(actor.getSnapshot().value).toBe('askOs');
+        expect(actor.getSnapshot().value).toBe('askStart');
         expect(actor.getSnapshot().context.os).toBeNull();
     });
 });
