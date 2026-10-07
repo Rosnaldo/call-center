@@ -81,6 +81,23 @@ services:
     networks:
       - frontend
       - backend
+  
+  chatbot:
+    image: chatbot
+    container_name: chatbot
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: apps/chatbot/dockerfile.prod
+    expose:
+      - "5004"
+    env_file:
+      - ./apps/chatbot/.env
+      - ./apps/chatbot/.env.production
+    restart: unless-stopped
+    networks:
+      - frontend
+      - backend
 
   realtime:
     image: realtime

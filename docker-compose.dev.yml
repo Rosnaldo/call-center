@@ -63,6 +63,24 @@ services:
       start_period: 10s
     networks:
       - backend
+
+  chatbot:
+    image: chatbot
+    container_name: chatbot
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: apps/chatbot/dockerfile.dev
+    ports:
+      - "5004:5004"
+    env_file:
+      - ./apps/chatbot/.env
+      - ./apps/chatbot/.env.dev
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    networks:
+      - backend
   
   realtime:
     image: realtime

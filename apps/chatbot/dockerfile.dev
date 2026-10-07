@@ -1,0 +1,6 @@
+ARG NODE_VERSION=24.13.0
+FROM node:${NODE_VERSION}-slim
+
+WORKDIR /app/apps/chatbot
+
+CMD ["npm", "run", "dev"]

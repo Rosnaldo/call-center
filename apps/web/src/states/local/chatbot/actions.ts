@@ -2,6 +2,7 @@ import { ChatbotMessage, ChatbotState } from './state.ts';
 
 export interface ChatbotActions {
   addMessage: (message: ChatbotMessage) => void;
+  setBotTyping: (isBotTyping: boolean) => void;
   resetChatbot: () => void;
 }
 
@@ -10,6 +11,7 @@ export const createChatbotActions = (
 ): ChatbotActions => {
   return {
     addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
-    resetChatbot: () => set(() => ({ messages: [] })),
+    setBotTyping: (isBotTyping) => set(() => ({ isBotTyping })),
+    resetChatbot: () => set(() => ({ messages: [], isBotTyping: false })),
   };
 };

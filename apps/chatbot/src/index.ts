@@ -1,54 +1,77 @@
-import readline from 'node:readline/promises';
-import { stdin as input, stdout as output } from 'node:process';
-import { createActor } from 'xstate';
-import { paramsMachine, type PromptState } from './params-machine';
-import { prompts, summary } from './prompts';
+import { createServer } from 'node:http';
+import WebSocket, { WebSocketServer } from 'ws';
+import { ChatSession } from './session';
 
-async function main(): Promise<void> {
-    const rl = readline.createInterface({ input, output });
-    rl.on('SIGINT', () => {
-        console.log('\nBye!');
-        process.exit(0);
+// Wire protocol (JSON frames):
+//   client -> server  { event: 'user_message', message: string }
+//   server -> client  { event: 'bot_message', message: string }
+//                     { isError: true, message: string }
+export type ClientMessage = { event: 'user_message'; message: string };
+export type ServerMessage = { event: 'bot_message'; message: string } | { isError: true; message: string };
+
+const PORT = Number(process.env.CHATBOT_PORT ?? 5004);
+const MAX_MESSAGE_LENGTH = 1_000;
+const HEARTBEAT_INTERVAL_MS = 30_000;
+
+const send = (ws: WebSocket, msg: ServerMessage): void => {
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+};
+
+const parseClientMessage = (raw: WebSocket.RawData): ClientMessage | null => {
+    try {
+        const msg = JSON.parse(raw.toString());
+        if (msg?.event !== 'user_message' || typeof msg.message !== 'string') return null;
+        return msg;
+    } catch {
+        return null;
+    }
+};
+
+const server = createServer((_req, res) => {
+    // Plain HTTP only answers health checks; everything else goes over the socket.
+    res.writeHead(200, { 'Content-Type': 'text/plain' }).end('ok');
+});
+const wss = new WebSocketServer({ server });
+const alive = new WeakMap<WebSocket, boolean>();
+
+wss.on('connection', (ws) => {
+    // Each socket gets its own conversation; closing the socket ends it.
+    const session = new ChatSession();
+    const reply = (replies: string[]) => replies.forEach((message) => send(ws, { event: 'bot_message', message }));
+
+    alive.set(ws, true);
+    ws.on('pong', () => alive.set(ws, true));
+
+    ws.on('message', (raw) => {
+        const msg = parseClientMessage(raw);
+        if (!msg) {
+            send(ws, { isError: true, message: 'Invalid message' });
+            return;
+        }
+        if (msg.message.length > MAX_MESSAGE_LENGTH) {
+            send(ws, { isError: true, message: 'Message too long' });
+            return;
+        }
+        reply(session.handle(msg.message));
     });
 
-    const actor = createActor(paramsMachine).start();
-    console.log('Mobile params bot. Type /restart to start over or /exit to quit.\n');
+    ws.on('close', () => session.stop());
 
-    let lastState: string | null = null;
-    while (actor.getSnapshot().status !== 'done') {
-        const snapshot = actor.getSnapshot();
-        const state = snapshot.value as PromptState;
-        if (snapshot.context.error) {
-            console.log(`Bot: ${snapshot.context.error}`);
-        } else if (state !== lastState) {
-            console.log(`Bot: ${prompts[state](snapshot.context)}`);
-        }
-        lastState = state;
+    reply(session.start());
+});
 
-        let answer: string;
-        try {
-            answer = (await rl.question('You: ')).trim();
-        } catch {
-            break; // stdin closed (Ctrl+D)
-        }
-
-        if (answer === '/exit') break;
-        if (answer === '/restart') {
-            lastState = null;
-            actor.send({ type: 'RESTART' });
+// Drops sockets whose peer vanished without a close frame (network loss,
+// sleeping laptop), so their sessions don't pile up.
+const heartbeat = setInterval(() => {
+    for (const ws of wss.clients) {
+        if (!alive.get(ws)) {
+            ws.terminate();
             continue;
         }
-        actor.send({ type: 'ANSWER', value: answer });
+        alive.set(ws, false);
+        ws.ping();
     }
+}, HEARTBEAT_INTERVAL_MS);
+wss.on('close', () => clearInterval(heartbeat));
 
-    rl.close();
-    const snapshot = actor.getSnapshot();
-    if (snapshot.status === 'done' && snapshot.output) {
-        console.log(`\nBot: Thanks! Collected params:\n${summary(snapshot.output)}`);
-        console.log(JSON.stringify(snapshot.output));
-    } else {
-        console.log('Bye!');
-    }
-}
-
-main();
+server.listen(PORT, () => console.log(`chatbot ws listening on :${PORT}`));

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useChatbotStore } from '../../states/stores.ts';
 
@@ -12,15 +12,12 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
   className = '',
 }) => {
   const messages = useChatbotStore(s => s.messages);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isProcessing]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   return (
     <div
-      className={`w-full h-[330px] md:h-[360px] overflow-y-auto p-4 md:p-5 space-y-3.5 text-left transition-colors ${className}`}
+      ref={containerRef}
+      className={`w-full h-[330px] md:h-[360px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-4 md:p-5 space-y-3.5 text-left transition-colors ${className}`}
       style={{
         backgroundColor: '#FAF7F1',
       }}
@@ -71,8 +68,6 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
           </div>
         </div>
       )}
-
-      <div ref={messagesEndRef} />
     </div>
   );
 };

@@ -1,16 +1,27 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import BoardMessage from './BoardMessage';
 import { useChatbotStore } from '../../states/stores.ts';
+import { ChatbotWs } from '../../services/ws/chatbot-ws.ts';
 
 export const ChatbotHero: React.FC = () => {
   const [input, setInput] = useState('');
-  const [isProcessing] = useState(false);
+  const isProcessing = useChatbotStore(s => s.isBotTyping);
+  const chatbotWs = useRef<ChatbotWs | null>(null);
+
+  useEffect(() => {
+    const ws = new ChatbotWs(useChatbotStore);
+    chatbotWs.current = ws;
+    ws.connect();
+    return () => {
+      ws.disconnect();
+      chatbotWs.current = null;
+    };
+  }, []);
 
   const handleSend = () => {
     const text = input.trim();
     if (!text) return;
-    useChatbotStore.getState().addMessage({ autor: 'user', message: text });
-    setInput('');
+    if (chatbotWs.current?.sendMessage(text)) setInput('');
   };
 
   return (

@@ -3,6 +3,7 @@ class Properties {
 
     backendUrl: string;
     realtimeWsUrl: string;
+    chatbotWsUrl: string;
     keycloakUrl: string;
     keycloakRealm: string;
     keycloakClientId: string;
@@ -15,6 +16,7 @@ class Properties {
         const env = (import.meta as any).env ?? {};
         this.backendUrl = env.VITE_BACKEND_URL ?? '';
         this.realtimeWsUrl = env.VITE_REALTIME_WS_URL ?? '';
+        this.chatbotWsUrl = env.VITE_CHATBOT_WS_URL ?? '';
         this.keycloakUrl = env.VITE_KEYCLOAK_URL ?? '';
         this.keycloakRealm = env.VITE_KEYCLOAK_REALM ?? '';
         this.keycloakClientId = env.VITE_KEYCLOAK_CLIENT_ID ?? '';

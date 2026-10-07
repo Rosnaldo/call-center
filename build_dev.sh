@@ -7,7 +7,7 @@
 # version bump); it does not need to re-run on every code change.
 set -e
 
-APPS=(iam realtime web admin)
+APPS=(iam realtime chatbot web admin)
 
 for APP in "${APPS[@]}"; do
   echo "Building Docker image $APP using apps/$APP/dockerfile.dev..."

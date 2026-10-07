@@ -5,8 +5,10 @@ export interface ChatbotMessage {
 
 export interface ChatbotState {
   messages: ChatbotMessage[];
+  isBotTyping: boolean;
 }
 
 export const initialChatbotState: ChatbotState = {
   messages: [],
+  isBotTyping: false,
 };
