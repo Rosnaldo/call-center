@@ -31,8 +31,14 @@ export const createAuthActions = (
     async bootstrap() {
         await get().init();
 
-        const { error, email } = get();
+        const { error, email, isAuthenticated } = get();
         if (error) return;
+
+        // Anonymous visitor: the public home page renders without a user.
+        if (!isAuthenticated) {
+            set(() => ({ ready: true }));
+            return;
+        }
 
         try {
             if (!email) throw new Error('Email not found in token.');
@@ -54,7 +60,7 @@ export const createAuthActions = (
         try {
             const auth = await keycloak.init({
                 redirectUri: window.location.origin + '/',
-                onLoad: 'login-required',
+                onLoad: 'check-sso',
                 checkLoginIframe: false,
                 enableLogging: true,
             });

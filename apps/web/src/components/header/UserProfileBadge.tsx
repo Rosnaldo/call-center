@@ -5,10 +5,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LogOut, Radio, ChevronDown, Settings, Coins, LayoutDashboard, History } from 'lucide-react';
+import { LogIn, LogOut, Radio, ChevronDown, Settings, Coins, LayoutDashboard, History } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCurrentUserStore } from '@/src/states/stores.ts';
 import { getFullName } from '@/src/entities/user.ts';
+import { useAuthentication } from '@/src/hooks/auth/useAuthentication.ts';
 
 interface UserProfileBadgeProps {
   onLogout: () => void;
@@ -19,6 +20,7 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
 }) => {
   const { t } = useTranslation();
   const currentUser = useCurrentUserStore((s) => s.currentUser);
+  const { isAuthenticated } = useAuthentication();
   const navigate = useNavigate();
   const { pathname: currentPath } = useLocation();
   const [isOpen, setIsOpen] = useState(false);
@@ -35,6 +37,19 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  if (!isAuthenticated) {
+    return (
+      <button
+        id="header-login-button"
+        onClick={() => navigate('/login')}
+        className="flex items-center gap-2 bg-brand-panel hover:bg-brand-panel/85 border border-brand-border px-3 py-1.5 rounded-2xl transition-all select-none text-xs font-bold text-brand-dark hover:text-[#a36500] cursor-pointer focus:outline-none"
+      >
+        <LogIn className="w-4 h-4 text-brand-muted shrink-0" />
+        {t('header.login')}
+      </button>
+    );
+  }
 
   if (!currentUser) {
     return (

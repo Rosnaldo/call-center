@@ -9,6 +9,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "sonner";
 import { LoginPage } from './pages/LoginPage.tsx';
 import { ErrorPage } from './pages/ErrorPage.tsx';
+import { HomePageContainer } from './pages/home-page/container.tsx';
 import { CustomerPageContainer } from './pages/customer-page/container.tsx';
 import { AttendantPageContainer } from './pages/attendant-page/container.tsx';
 import { UserProfileContainer } from './pages/user-profile/container.tsx';
@@ -74,7 +75,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <Toaster />
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<HomePageContainer />} />
           <Route path="/login" element={<LoginPage />} />
 
           <Route element={<ProtectedRoute />}>

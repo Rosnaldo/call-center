@@ -6,6 +6,7 @@ import { initRealtimeEvents } from './services/sse/init-realtime-events.ts';
 export async function bootstrap(stores: Stores): Promise<void> {
     await stores.auth.getState().bootstrap();
     const token = stores.auth.getState().token;
+    if (!token) return;
     initWs.init(token, stores);
     initCallEvents.init(token, stores);
     initRealtimeEvents.init(token, stores);
