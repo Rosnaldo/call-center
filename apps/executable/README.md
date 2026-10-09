@@ -13,7 +13,19 @@ npm run build:linux  # or a single platform
 npm run build:win
 npm run build:mac
 npm run build:apk    # device owner APK template into dist/device-owner.apk
+npm run watch:installer  # dev: rebuild dist/executable-linux on every src change
 ```
+
+The installer binary (what runs on the user's PC) is the pkg output in `dist/`,
+so **a change to the installer's own code** (`src/index.ts`, `device-owner.ts`,
+`adb.ts`, `embedded-config.ts`, `terminal.ts`, `usb-permissions.ts`,
+`constants.ts`) needs a rebuild of `dist/` to take effect; a change to the
+HTTP service alone (`src/server.ts`, `apk-config.ts`, `auth.ts`) does not (in
+dev it runs from source via `npm run serve`). `npm run watch:installer`
+(nodemon) rebuilds `dist/executable-linux` automatically on each change to the
+installer sources — run `npm run build:linux` once first so the native modules
+are fetched. In prod the Dockerfile always rebuilds from source, so this only
+matters for local dev.
 
 Output in `dist/`:
 
@@ -36,11 +48,12 @@ button. The binaries and `dist/device-owner.apk` are templates. Each request:
 3. uploads it to the `BUCKET_NAME` S3 bucket (`installers/<id>/<filename>`). The
    response carries a presigned download URL, which the chatbot hands the user.
 
-The Linux and macOS binaries are delivered as a `.tar.gz`: an HTTP/S3 download
-doesn't carry the executable bit, so a raw binary would arrive without it and
-the OS would refuse to run it. tar preserves the mode (0755), so the extracted
-binary runs with no `chmod`. The Windows `.exe` needs no bit and is delivered
-as-is.
+Every installer is delivered as a `.zip` (`device-owner-installer-<os>.zip`): an
+HTTP/S3 download doesn't carry the executable bit, so a raw Linux/macOS binary
+would arrive without it and the OS would refuse to run it. zip stores the mode
+(0755), so the extracted binary runs with no `chmod`, and `.zip` opens natively
+on Windows too (unlike `.tar.gz`). The service needs the `zip` tool (installed
+in both Dockerfiles).
 
 | Route | |
 |---|---|
@@ -51,8 +64,16 @@ Env (see `.env.example`): `BUCKET_NAME` (required), `AWS_REGION`,
 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (or any other AWS credential
 source), `EXECUTABLE_PORT` (5005), `EXECUTABLE_TEMPLATES_DIR` (`dist/`),
 `EXECUTABLE_APK_TEMPLATE` (`<templates dir>/device-owner.apk`), `EXECUTABLE_OUTPUT_DIR` (temp dir, files are deleted after the upload),
-`EXECUTABLE_URL_TTL_S` (3600). The bucket needs no public access; consider a
-lifecycle rule expiring `installers/` after a day.
+`EXECUTABLE_URL_TTL_S` (3600), `EXECUTABLE_OBJECT_TTL_DAYS` (1). The bucket
+needs no public access.
+
+On startup the service installs an S3 lifecycle rule (`expire-installers`) that
+deletes everything under `installers/` after `EXECUTABLE_OBJECT_TTL_DAYS` day(s),
+so the uploaded installers are temporary (the presigned URL already expires after
+`EXECUTABLE_URL_TTL_S`; this removes the object itself). It's merged with any other
+rules on the bucket, so it needs `s3:GetLifecycleConfiguration` and
+`s3:PutLifecycleConfiguration`; without those it just warns and installers don't
+auto-expire.
 
 macOS: appending the config breaks the binary's signature, so the service signs
 it again ad hoc with `ldid` (`codesign` on a Mac) when available.

@@ -68,6 +68,11 @@ COPY --from=apk /android/output/LockdownMDM-release.apk ./dist/device-owner.apk
 
 FROM node:${NODE_VERSION}-slim AS runner
 
+# zip: the service packs each installer into a .zip (see src/server.ts).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends zip \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY --from=builder /app/build/server.js ./build/server.js

@@ -11,7 +11,14 @@
 //                           -> 201 { id, filename, url }, `url` being a presigned
 //                              download link valid for EXECUTABLE_URL_TTL_S
 //   GET  /health            200 ok (no auth, for the healthcheck)
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  GetBucketLifecycleConfigurationCommand,
+  GetObjectCommand,
+  PutBucketLifecycleConfigurationCommand,
+  PutObjectCommand,
+  S3Client,
+  type LifecycleRule,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { spawnSync } from "child_process";
 import crypto from "crypto";
@@ -28,6 +35,12 @@ const TEMPLATES_DIR = process.env.EXECUTABLE_TEMPLATES_DIR ?? path.resolve(__dir
 const APK_TEMPLATE = process.env.EXECUTABLE_APK_TEMPLATE ?? path.join(TEMPLATES_DIR, "device-owner.apk");
 const OUTPUT_DIR = process.env.EXECUTABLE_OUTPUT_DIR ?? path.join(os.tmpdir(), "executable-builds");
 const URL_TTL_S = Number(process.env.EXECUTABLE_URL_TTL_S ?? 60 * 60);
+// Uploaded installers are one-shot downloads, so S3 expires them after this
+// many days via a lifecycle rule on the `installers/` prefix (see
+// ensureLifecycleRule).
+const OBJECT_TTL_DAYS = Number(process.env.EXECUTABLE_OBJECT_TTL_DAYS ?? 1);
+const INSTALLERS_PREFIX = "installers/";
+const LIFECYCLE_RULE_ID = "expire-installers";
 const BUCKET_NAME = process.env.BUCKET_NAME;
 if (!BUCKET_NAME) throw new Error("BUCKET_NAME is not set");
 
@@ -44,17 +57,23 @@ const TEMPLATES: Record<Platform, string[]> = {
   windows: ["executable-win-x64.exe", "executable-win.exe"],
   macos: ["executable-macos-arm64"],
 };
+// The file inside the archive (what the user runs after extracting).
 const BINARY_NAMES: Record<Platform, string> = {
   linux: "device-owner-installer-linux",
   windows: "device-owner-installer.exe",
   macos: "device-owner-installer-macos",
 };
 
-// The Linux/macOS binaries are delivered as a .tar.gz, because an HTTP/S3
-// download doesn't carry the executable bit, so a raw binary arrives without
-// it and the OS refuses to run it; tar preserves the mode (0755), so the
-// extracted binary is runnable with no chmod. A Windows .exe needs no bit.
-const needsArchive = (platform: Platform): boolean => platform !== "windows";
+// Everything is delivered as a .zip: an HTTP/S3 download doesn't carry the
+// executable bit, so a raw Linux/macOS binary would arrive without it and the
+// OS would refuse to run it; zip stores the mode (0755), so the extracted
+// binary is runnable with no chmod. zip also opens natively on Windows (unlike
+// .tar.gz), which keeps the download friendly on every OS.
+const ARCHIVE_NAMES: Record<Platform, string> = {
+  linux: "device-owner-installer-linux.zip",
+  windows: "device-owner-installer-windows.zip",
+  macos: "device-owner-installer-macos.zip",
+};
 
 class HttpError extends Error {
   constructor(readonly status: number, message: string) {
@@ -126,13 +145,13 @@ async function upload(file: string, key: string, filename: string): Promise<stri
   return getSignedUrl(s3, new GetObjectCommand({ Bucket: BUCKET_NAME, Key: key }), { expiresIn: URL_TTL_S });
 }
 
-// Packs `entry` (a file in `dir`) into `<dir>/<entry>.tar.gz`, preserving its
-// mode, and returns the tarball path.
-function archive(dir: string, entry: string): string {
-  const tarball = path.join(dir, `${entry}.tar.gz`);
-  const result = spawnSync("tar", ["-czf", tarball, "-C", dir, entry], { stdio: "ignore" });
-  if (result.error || result.status !== 0) throw new HttpError(500, `Could not archive ${entry}`);
-  return tarball;
+// Zips `entry` (a file in `dir`) into `<dir>/<archiveName>`, preserving its
+// mode, and returns the archive path.
+function archive(dir: string, entry: string, archiveName: string): string {
+  const zipPath = path.join(dir, archiveName);
+  const result = spawnSync("zip", ["-q", archiveName, entry], { cwd: dir, stdio: "ignore" });
+  if (result.error || result.status !== 0) throw new HttpError(500, `Could not zip ${entry}`);
+  return zipPath;
 }
 
 async function createExecutable(
@@ -152,7 +171,7 @@ async function createExecutable(
     await fs.promises.appendFile(file, encodePayload({ config, apk }));
     await fs.promises.chmod(file, 0o755);
     if (platform === "macos") resignMac(file);
-    const artifact = needsArchive(platform) ? archive(dir, binaryName) : file;
+    const artifact = archive(dir, binaryName, ARCHIVE_NAMES[platform]);
     const filename = path.basename(artifact);
     const url = await upload(artifact, `installers/${id}/${filename}`, filename);
     return { id, filename, url };
@@ -229,8 +248,46 @@ const server = createServer((req, res) => {
   });
 });
 
-server.listen(PORT, () =>
+// Makes S3 delete uploaded installers OBJECT_TTL_DAYS after upload, by ensuring
+// a lifecycle rule on the `installers/` prefix. Idempotent and merged with any
+// other rules the bucket has. A failure (e.g. no s3:PutLifecycleConfiguration
+// permission) only warns: installers still work, they just won't auto-expire.
+async function ensureLifecycleRule(): Promise<void> {
+  const rule: LifecycleRule = {
+    ID: LIFECYCLE_RULE_ID,
+    Filter: { Prefix: INSTALLERS_PREFIX },
+    Status: "Enabled",
+    Expiration: { Days: OBJECT_TTL_DAYS },
+    AbortIncompleteMultipartUpload: { DaysAfterInitiation: OBJECT_TTL_DAYS },
+  };
+
+  let existing: LifecycleRule[] = [];
+  try {
+    const current = await s3.send(new GetBucketLifecycleConfigurationCommand({ Bucket: BUCKET_NAME }));
+    existing = current.Rules ?? [];
+  } catch (err) {
+    // No lifecycle config yet is expected (NoSuchLifecycleConfiguration).
+    if ((err as { name?: string }).name !== "NoSuchLifecycleConfiguration") throw err;
+  }
+
+  const rules = [...existing.filter((r) => r.ID !== LIFECYCLE_RULE_ID), rule];
+  await s3.send(
+    new PutBucketLifecycleConfigurationCommand({
+      Bucket: BUCKET_NAME,
+      LifecycleConfiguration: { Rules: rules },
+    }),
+  );
+}
+
+server.listen(PORT, () => {
   console.log(
     `executable service listening on :${PORT} (templates: ${TEMPLATES_DIR}, APK: ${APK_TEMPLATE}, bucket: ${BUCKET_NAME})`,
-  ),
-);
+  );
+  ensureLifecycleRule()
+    .then(() => console.log(`Installers in ${INSTALLERS_PREFIX} expire after ${OBJECT_TTL_DAYS} day(s)`))
+    .catch((err: unknown) =>
+      console.warn(
+        `Could not set the installers lifecycle rule (they won't auto-expire): ${err instanceof Error ? err.message : String(err)}`,
+      ),
+    );
+});

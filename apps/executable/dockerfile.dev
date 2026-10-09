@@ -1,6 +1,11 @@
 ARG NODE_VERSION=24.13.0
 FROM node:${NODE_VERSION}-slim
 
+# zip: the service packs each installer into a .zip (see src/server.ts).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends zip \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app/apps/executable
 
 CMD ["npm", "run", "serve"]
