@@ -12,9 +12,6 @@ export const BrandHero: React.FC = () => {
           {t('call.heroTitle')}
           <span className="text-brand-ochre italic font-normal">{t('call.heroTitleHighlight')}</span>
         </h1>
-        <p className="text-xs sm:text-sm text-brand-muted max-w-lg leading-relaxed">
-          {t('call.heroDescription')}
-        </p>
       </div>
 
       <div className="w-full max-w-2xl mx-auto px-4 py-2">
