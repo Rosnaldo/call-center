@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ClipboardList } from 'lucide-react';
 import BoardMessage from './BoardMessage';
 import AllowedAppsModal from './AllowedAppsModal';
+import SummaryModal from './SummaryModal';
 import { useChatbotStore } from '../../states/stores.ts';
 import { ChatbotWs } from '../../services/ws/chatbot-ws.ts';
 import type { ChatbotChoice } from '../../states/local/chatbot/state.ts';
@@ -11,6 +13,7 @@ export const ChatbotHero: React.FC = () => {
   const [input, setInput] = useState('');
   const isProcessing = useChatbotStore(s => s.isBotTyping);
   const isSendEnabled = useChatbotStore(s => s.isSendEnabled);
+  const openSummary = useChatbotStore(s => s.openSummaryModal);
   const chatbotWs = useRef<ChatbotWs | null>(null);
 
   useEffect(() => {
@@ -76,6 +79,16 @@ export const ChatbotHero: React.FC = () => {
               </span>
             </span>
           </div>
+
+          <button
+            type="button"
+            onClick={openSummary}
+            className="inline-flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-lg border border-[#E4D9C4] bg-white/60 text-[11px] uppercase font-semibold tracking-wider text-[#B97204] cursor-pointer hover:bg-white transition-colors"
+            style={{ fontFamily: '"JetBrains Mono", Menlo, Consolas, monospace' }}
+          >
+            <ClipboardList className="w-3.5 h-3.5" />
+            <span>{t('chatbot.summaryButton')}</span>
+          </button>
         </div>
         <BoardMessage isProcessing={isProcessing} onAnswer={handleAnswer} onRestart={handleRestart} onGenerateInstaller={handleGenerateInstaller} />
 
@@ -119,6 +132,7 @@ export const ChatbotHero: React.FC = () => {
         </div>
       </div>
       <AllowedAppsModal onSubmit={handleAllowedApps} onSearch={handleSearchApps} />
+      <SummaryModal />
     </div>
   );
 };

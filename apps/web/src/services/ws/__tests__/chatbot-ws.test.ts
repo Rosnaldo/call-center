@@ -261,3 +261,25 @@ describe('ChatbotWs send state', () => {
     expect(useChatbotStore.getState().isSendEnabled).toBe(false);
   });
 });
+
+describe('ChatbotWs params', () => {
+  let transport: FakeTransport;
+
+  beforeEach(() => {
+    useChatbotStore.getState().resetChatbot();
+    transport = new FakeTransport();
+    new ChatbotWs(useChatbotStore, 'ws://test', () => transport).connect();
+  });
+
+  it('stores the params without touching the typing state', () => {
+    const params = { os: 'Android', version: '14', privateDns: null, privateDnsHost: null, allowedApps: null, installOs: null };
+    useChatbotStore.getState().setBotTyping(true);
+
+    transport.receive({ event: 'params', params });
+
+    const state = useChatbotStore.getState();
+    expect(state.params).toEqual(params);
+    expect(state.isBotTyping).toBe(true);
+    expect(state.messages).toEqual([]);
+  });
+});

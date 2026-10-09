@@ -104,10 +104,10 @@ function errorMessage(err: unknown): string {
 }
 
 function connectionError(err: unknown): string {
-  if (err instanceof AdbDaemonWebUsbDevice.DeviceBusyError) {
+  const message = errorMessage(err);
+  if (err instanceof AdbDaemonWebUsbDevice.DeviceBusyError || /busy/i.test(message)) {
     return "busy (used by another program; if adb is installed, run `adb kill-server`)";
   }
-  const message = errorMessage(err);
   if (/permission|access/i.test(message)) return NO_PERMISSIONS;
   return `error (${message})`;
 }

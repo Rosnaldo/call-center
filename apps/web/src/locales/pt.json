@@ -109,6 +109,7 @@
     "generateInstaller": "Gerar instalador",
     "downloadInstaller": "Baixar instalador",
     "generateAgain": "Resetar",
+    "summaryButton": "Resumo",
     "messages": {
       "askStart": "Configurar ambiente device owner no seu celular.",
       "intro": "Para isso será necessário um notebook, o celular e um cabo USB.\nVocê conectará o celular ao notebook via USB,\ndepois, instalará o ambiente device owner pelo seu notebook.\nPrimeiro vamos gerar o executável.",
@@ -173,6 +174,13 @@
       "searchError": "Busca indisponível no momento. Limpe a busca para usar a lista.",
       "noResults": "Nenhum app encontrado.",
       "searching": "Buscando no Google Play..."
+    },
+    "summaryModal": {
+      "title": "Resumo da configuração",
+      "allowedApps": "Apps permitidos",
+      "pending": "a definir",
+      "noApps": "Nenhum app",
+      "close": "Fechar"
     }
   },
   "mediaSettings": {

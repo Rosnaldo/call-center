@@ -109,6 +109,7 @@
     "generateInstaller": "Generate installer",
     "downloadInstaller": "Download installer",
     "generateAgain": "Reset",
+    "summaryButton": "Summary",
     "messages": {
       "askStart": "Set up the device owner environment on your phone.",
       "intro": "For this you will need a laptop, the phone and a USB cable.\nYou will connect the phone to the laptop over USB,\nthen install the device owner environment from your laptop.\nFirst, let's generate the executable.",
@@ -173,6 +174,13 @@
       "searchError": "Search is unavailable right now. Clear the search to use the list.",
       "noResults": "No apps found.",
       "searching": "Searching Google Play..."
+    },
+    "summaryModal": {
+      "title": "Setup summary",
+      "allowedApps": "Allowed apps",
+      "pending": "not set yet",
+      "noApps": "No apps",
+      "close": "Close"
     }
   },
   "mediaSettings": {

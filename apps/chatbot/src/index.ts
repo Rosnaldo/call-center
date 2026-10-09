@@ -3,6 +3,7 @@ import WebSocket, { WebSocketServer } from 'ws';
 import { AppSearchQueue, normalizeTerm, searchGooglePlay, type AppSearchResult } from './app-search';
 import { createInstallerClient } from './installer';
 import { serviceTokenFromEnv } from './service-token';
+import type { ParamsOutput } from './params-machine';
 import { ChatSession, type BotReply } from './session';
 import { createUserAuthClient } from './user-auth';
 
@@ -20,6 +21,9 @@ import { createUserAuthClient } from './user-auth';
 //                     { event: 'offer_restart' }                 conversation finished; client shows the "reset"/"generate installer" buttons
 //                     { event: 'installer_ready', url: string }  the installer's download URL
 //                     { event: 'apps_search_results', term, apps: { id, name, iconUrl }[], failed }
+//                     { event: 'params', params: { os, version, privateDns, privateDnsHost, allowedApps, installOs } }
+//                                                                the params collected so far (null until answered),
+//                                                                sent after each batch of bot replies
 //                     { isError: true, message: string }
 export type ClientMessage =
     | { event: 'user_message'; message: string }
@@ -30,6 +34,7 @@ export type ClientMessage =
 export type ServerMessage =
     | BotReply
     | { event: 'apps_search_results'; term: string; apps: AppSearchResult[]; failed: boolean }
+    | { event: 'params'; params: ParamsOutput }
     | { isError: true; message: string };
 
 const PORT = Number(process.env.CHATBOT_PORT ?? 5004);
@@ -71,7 +76,11 @@ const alive = new WeakMap<WebSocket, boolean>();
 wss.on('connection', (ws) => {
     // Each socket gets its own conversation; closing the socket ends it.
     const session = new ChatSession(createInstaller, isLoggedIn);
-    const reply = (replies: BotReply[]) => replies.forEach((msg) => send(ws, msg));
+    // The params go after every reply, so the client's summary follows the conversation.
+    const reply = (replies: BotReply[]) => {
+        replies.forEach((msg) => send(ws, msg));
+        send(ws, { event: 'params', params: session.params() });
+    };
     // Results echo the normalized term, so the client can drop stale ones.
     const appSearch = new AppSearchQueue(searchGooglePlay, (outcome) =>
         send(ws, { event: 'apps_search_results', ...outcome }),

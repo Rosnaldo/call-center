@@ -5,6 +5,7 @@ import { useChatbotStore } from '../../states/stores.ts';
 import { normalizeSearchTerm } from '../../services/ws/chatbot-ws.ts';
 import { POPULAR_APPS, POPULAR_CATEGORIES, type PopularApp } from './popular-apps.ts';
 import AppIcon from './AppIcon.tsx';
+import { loadSavedApps, saveApps } from './saved-allowed-apps.ts';
 
 const MONO = '"JetBrains Mono", Menlo, Consolas, monospace';
 const SEARCH_DEBOUNCE_MS = 300;
@@ -24,10 +25,11 @@ interface AllowedAppsModalProps {
 
 // Checklist of popular apps, plus a Google Play search, answering the bot's
 // allowed app list question. Opened and closed through the chatbot store (the
-// bot opens it over the ws).
+// bot opens it over the ws). Starts with the list last sent checked, saved in
+// the browser.
 export const AllowedAppsModal: React.FC<AllowedAppsModalProps> = (props) => {
   const isOpen = useChatbotStore((s) => s.isAllowedAppsModalOpen);
-  // Mounted only while open, so every opening starts empty.
+  // Mounted only while open, so every opening starts from the saved list.
   return isOpen ? <AllowedAppsChecklist {...props} /> : null;
 };
 
@@ -36,7 +38,9 @@ const AllowedAppsChecklist: React.FC<AllowedAppsModalProps> = ({ onSubmit, onSea
   const close = useChatbotStore((s) => s.closeAllowedAppsModal);
   const search = useChatbotStore((s) => s.appSearch);
   // Keeps name and icon too, so apps picked from a search stay listed after it's cleared.
-  const [selected, setSelected] = useState<Map<string, ListedApp>>(() => new Map());
+  const [selected, setSelected] = useState<Map<string, ListedApp>>(
+    () => new Map(loadSavedApps().map((app) => [app.id, app])),
+  );
   const [query, setQuery] = useState('');
   const isSearching = normalizeSearchTerm(query) !== null;
 
@@ -85,8 +89,10 @@ const AllowedAppsChecklist: React.FC<AllowedAppsModalProps> = ({ onSubmit, onSea
   );
 
   // Popular apps in checklist order, then searched ones in the order they were picked.
-  const handleSubmit = () =>
-    onSubmit([...POPULAR_APPS.filter((app) => selected.has(app.id)), ...searchedApps].map((app) => app.id));
+  const handleSubmit = () => {
+    const picked = [...POPULAR_APPS.filter((app) => selected.has(app.id)), ...searchedApps];
+    if (onSubmit(picked.map((app) => app.id))) saveApps(picked);
+  };
 
   return (
     <div

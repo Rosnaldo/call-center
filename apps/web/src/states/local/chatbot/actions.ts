@@ -1,4 +1,4 @@
-import { AppSearchResult, ChatbotChoice, ChatbotMessage, ChatbotMessageAction, ChatbotState, initialAppSearch, initialChatbotState } from './state.ts';
+import { AppSearchResult, ChatbotChoice, ChatbotMessage, ChatbotMessageAction, ChatbotParams, ChatbotState, initialAppSearch, initialChatbotState } from './state.ts';
 
 export interface ChatbotActions {
   addMessage: (message: ChatbotMessage) => void;
@@ -15,6 +15,9 @@ export interface ChatbotActions {
   setAppSearchResults: (result: { term: string; apps: AppSearchResult[]; failed: boolean }) => void;
   clearAppSearch: () => void;
   setSendEnabled: (isSendEnabled: boolean) => void;
+  setParams: (params: ChatbotParams) => void;
+  openSummaryModal: () => void;
+  closeSummaryModal: () => void;
   resetChatbot: () => void;
 }
 
@@ -80,11 +83,17 @@ export const createChatbotActions = (
     setAppSearchResults: ({ term, apps, failed }) =>
       set((state) =>
         state.appSearch.term === term
-          ? { appSearch: { term, results: apps, status: failed ? 'error' : 'done' } }
+          ? {
+              appSearch: { term, results: apps, status: failed ? 'error' : 'done' },
+              searchedApps: { ...state.searchedApps, ...Object.fromEntries(apps.map((app) => [app.id, app])) },
+            }
           : {}
       ),
     clearAppSearch: () => set(() => ({ appSearch: initialAppSearch })),
     setSendEnabled: (isSendEnabled) => set(() => ({ isSendEnabled })),
+    setParams: (params) => set(() => ({ params })),
+    openSummaryModal: () => set(() => ({ isSummaryModalOpen: true })),
+    closeSummaryModal: () => set(() => ({ isSummaryModalOpen: false })),
     resetChatbot: () => set(() => ({ ...initialChatbotState })),
   };
 };

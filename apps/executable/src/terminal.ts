@@ -137,3 +137,16 @@ export function askYesNo(question: string): Promise<boolean> {
     });
   });
 }
+
+// Waits for Enter (true) or "q" (false). Returns false when there's no terminal to answer in.
+export function askRetry(question: string): Promise<boolean> {
+  if (!process.stdin.isTTY) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    process.stdout.write(`${question} `);
+    process.stdin.resume();
+    process.stdin.once("data", (data) => {
+      process.stdin.pause();
+      resolve(!/^\s*q/i.test(String(data)));
+    });
+  });
+}

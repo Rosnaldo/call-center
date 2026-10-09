@@ -150,6 +150,32 @@ describe('ChatSession finish', () => {
     });
 });
 
+describe('ChatSession params', () => {
+    const empty = { os: null, version: null, privateDns: null, privateDnsHost: null, allowedApps: null, installOs: null };
+
+    it('starts empty', () => {
+        const session = new ChatSession();
+        session.start();
+        expect(session.params()).toEqual(empty);
+    });
+
+    it('has the answers given so far', () => {
+        const { session } = atAllowedApps();
+        session.selectAllowedApps(['com.whatsapp']);
+        expect(session.params()).toEqual({ ...empty, os: 'Android', version: '14', privateDns: false, allowedApps: ['com.whatsapp'] });
+    });
+
+    it('keeps them once finished and clears them on restart', () => {
+        const { session } = atAllowedApps();
+        session.selectAllowedApps([]);
+        session.handle('mac');
+        session.handle('yes');
+        expect(session.params().installOs).toBe('macOS');
+        session.start();
+        expect(session.params()).toEqual(empty);
+    });
+});
+
 describe('ChatSession send state', () => {
     it('enables sending on the steps without buttons', () => {
         const session = new ChatSession();

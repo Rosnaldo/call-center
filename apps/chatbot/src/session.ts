@@ -1,5 +1,5 @@
 import { createActor, type Actor } from 'xstate';
-import { paramsMachine, type PromptState } from './params-machine';
+import { paramsMachine, type ParamsOutput, type PromptState } from './params-machine';
 import { prompts, summaryOf, type BotText } from './prompts';
 import type { CreateInstaller } from './installer';
 import type { IsLoggedIn } from './user-auth';
@@ -113,6 +113,12 @@ export class ChatSession {
         } finally {
             this.isGeneratingInstaller = false;
         }
+    }
+
+    // The params collected so far (null until answered), for the client's summary.
+    params(): ParamsOutput {
+        const { os, version, privateDns, privateDnsHost, allowedApps, installOs } = this.actor.getSnapshot().context;
+        return { os, version, privateDns, privateDnsHost, allowedApps, installOs };
     }
 
     // Whether the client's checklist is answering the bot right now.

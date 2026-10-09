@@ -1,7 +1,7 @@
 import i18n from 'i18next';
 import { ITransport, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
 import type { ChatbotStoreInstance } from '../../states/stores';
-import type { AppSearchResult } from '../../states/local/chatbot/state';
+import type { AppSearchResult, ChatbotParams } from '../../states/local/chatbot/state';
 import properties from '../../properties';
 import authSession from '../../auth/session';
 
@@ -30,6 +30,7 @@ type ChatbotServerMessage =
     | { event: 'offer_restart' }
     | { event: 'installer_ready'; url: string }
     | { event: 'apps_search_results'; term: string; apps: AppSearchResult[]; failed: boolean }
+    | { event: 'params'; params: ChatbotParams }
     | { isError: true; message: string };
 
 // Same rules as the chatbot's normalizeTerm (apps/chatbot/src/app-search.ts):
@@ -185,6 +186,11 @@ export class ChatbotWs {
             }
             if ('event' in msg && msg.event === 'apps_search_results') {
                 this.store.getState().setAppSearchResults(msg);
+                return;
+            }
+            // Follows every batch of replies; not a reply itself, so the typing state stays.
+            if ('event' in msg && msg.event === 'params') {
+                this.store.getState().setParams(msg.params);
                 return;
             }
             this.store.getState().setBotTyping(false);

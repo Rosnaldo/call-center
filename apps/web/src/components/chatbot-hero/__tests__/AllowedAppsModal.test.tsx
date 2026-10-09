@@ -11,7 +11,10 @@ const openWithResults = (term: string, apps: { id: string; name: string; iconUrl
   });
 
 describe('AllowedAppsModal', () => {
-  beforeEach(() => act(() => useChatbotStore.getState().resetChatbot()));
+  beforeEach(() => {
+    localStorage.clear();
+    act(() => useChatbotStore.getState().resetChatbot());
+  });
 
   it('renders only while the store has it open', () => {
     render(<AllowedAppsModal onSubmit={vi.fn()} onSearch={vi.fn()} />);
@@ -115,5 +118,45 @@ describe('AllowedAppsModal', () => {
     fireEvent.click(screen.getByLabelText('Desmarcar Mensagens'));
     fireEvent.click(screen.getByText('Enviar'));
     expect(onSubmit).toHaveBeenLastCalledWith([]);
+  });
+
+  it('saves the sent list and starts the next checklist with it checked', () => {
+    act(() => useChatbotStore.getState().openAllowedAppsModal());
+    openWithResults('spotify', [{ id: 'com.spotify.music', name: 'Spotify', iconUrl: 'https://example.test/s.png' }]);
+    const { unmount } = render(<AllowedAppsModal onSubmit={() => true} onSearch={vi.fn()} />);
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'spotify' } });
+    fireEvent.click(screen.getByText('Spotify'));
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '' } });
+    fireEvent.click(screen.getByText('WhatsApp'));
+    fireEvent.click(screen.getByText('Enviar'));
+    unmount();
+
+    const onSubmit = vi.fn(() => true);
+    act(() => useChatbotStore.getState().openAllowedAppsModal());
+    render(<AllowedAppsModal onSubmit={onSubmit} onSearch={vi.fn()} />);
+    expect(screen.getByText('Spotify')).toBeTruthy();
+    fireEvent.click(screen.getByText('Enviar'));
+    expect(onSubmit).toHaveBeenCalledWith(['com.whatsapp', 'com.spotify.music']);
+  });
+
+  it('keeps the saved list when the new one could not be sent', () => {
+    localStorage.setItem('chatbot.allowedApps', JSON.stringify([{ id: 'com.whatsapp', name: 'WhatsApp', iconUrl: '' }]));
+    act(() => useChatbotStore.getState().openAllowedAppsModal());
+    render(<AllowedAppsModal onSubmit={() => false} onSearch={vi.fn()} />);
+
+    fireEvent.click(screen.getByText('WhatsApp'));
+    fireEvent.click(screen.getByText('Enviar'));
+
+    expect(JSON.parse(localStorage.getItem('chatbot.allowedApps')!)).toEqual([{ id: 'com.whatsapp', name: 'WhatsApp', iconUrl: '' }]);
+  });
+
+  it('ignores a corrupt saved list', () => {
+    localStorage.setItem('chatbot.allowedApps', '{not json');
+    const onSubmit = vi.fn(() => true);
+    act(() => useChatbotStore.getState().openAllowedAppsModal());
+    render(<AllowedAppsModal onSubmit={onSubmit} onSearch={vi.fn()} />);
+
+    fireEvent.click(screen.getByText('Enviar'));
+    expect(onSubmit).toHaveBeenCalledWith([]);
   });
 });

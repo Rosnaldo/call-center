@@ -24,6 +24,17 @@ export interface AppSearchResult {
   iconUrl: string;
 }
 
+// The params collected so far (null until answered), as sent by the chatbot
+// with each reply.
+export interface ChatbotParams {
+  os: string | null;
+  version: string | null;
+  privateDns: boolean | null;
+  privateDnsHost: string | null;
+  allowedApps: string[] | null;
+  installOs: string | null;
+}
+
 export interface AppSearchState {
   // Normalized term of the latest search sent; results for other terms are stale.
   term: string;
@@ -48,6 +59,12 @@ export interface ChatbotState {
   // on the steps answered by typing (not buttons/checklist, nor once finished).
   isSendEnabled: boolean;
   appSearch: AppSearchState;
+  // Null until the chatbot sends them; shown in the summary modal.
+  params: ChatbotParams | null;
+  isSummaryModalOpen: boolean;
+  // Name and icon of the apps seen in searches, so the summary can show the
+  // picked ones that aren't popular apps.
+  searchedApps: Record<string, AppSearchResult>;
 }
 
 export const initialAppSearch: AppSearchState = { term: '', results: [], status: 'idle' };
@@ -61,4 +78,7 @@ export const initialChatbotState: ChatbotState = {
   isRestartOffered: false,
   isSendEnabled: false,
   appSearch: initialAppSearch,
+  params: null,
+  isSummaryModalOpen: false,
+  searchedApps: {},
 };
