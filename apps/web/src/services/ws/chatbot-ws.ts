@@ -57,17 +57,6 @@ export const translateBotText = ({ key, params }: BotText): string => {
     return t(key, summary ? { ...params, summary: formatSummary(summary) } : params);
 };
 
-// Starts the browser download of the installer (a presigned S3 URL served as
-// an attachment, so the page stays put).
-const downloadFile = (url: string): void => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = '';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-};
-
 // Socket to the chatbot app. Unlike InitWs this is anonymous, per-tab and
 // lives only while the chatbot UI is mounted: every socket is a fresh
 // conversation on the server, so there's nothing to share between tabs.
@@ -81,7 +70,6 @@ export class ChatbotWs {
         private readonly store: ChatbotStoreInstance,
         private readonly url: string = properties.chatbotWsUrl,
         private readonly factory: TransportFactory = createWsTransport,
-        private readonly download: (url: string) => void = downloadFile,
         private readonly getToken: () => Promise<string | undefined> = () => authSession.getToken(),
     ) {}
 
@@ -214,7 +202,9 @@ export class ChatbotWs {
             } else if (msg.event === 'ask_choice') {
                 this.store.getState().requestChoice(msg.choices.map(({ key, value }) => ({ label: t(key), value })));
             } else if (msg.event === 'installer_ready') {
-                this.download(msg.url);
+                // No auto-download: the installer's "ready" message gets a
+                // download button the user clicks (see BoardMessage).
+                this.store.getState().offerInstallerDownload(msg.url);
             } else if (msg.event === 'offer_restart') {
                 this.store.getState().offerRestart();
             }

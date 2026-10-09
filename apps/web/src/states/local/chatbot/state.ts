@@ -1,5 +1,5 @@
 // A button shown under a bot message.
-export type ChatbotMessageAction = 'select_allowed_apps' | 'choice' | 'restart';
+export type ChatbotMessageAction = 'select_allowed_apps' | 'choice' | 'restart' | 'download_installer';
 
 // A button's text and what it answers (sent as the user's message).
 export interface ChatbotChoice {
@@ -13,6 +13,8 @@ export interface ChatbotMessage {
   action?: ChatbotMessageAction;
   // The buttons of a `choice` action.
   choices?: ChatbotChoice[];
+  // The download URL of a `download_installer` action.
+  installerUrl?: string;
 }
 
 // A Google Play search result, as sent by the chatbot.

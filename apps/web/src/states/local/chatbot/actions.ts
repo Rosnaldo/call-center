@@ -7,6 +7,7 @@ export interface ChatbotActions {
   requestChoice: (choices: ChatbotChoice[]) => void;
   fulfillChoiceRequest: () => void;
   offerRestart: () => void;
+  offerInstallerDownload: (url: string) => void;
   fulfillAllowedAppsRequest: () => void;
   openAllowedAppsModal: () => void;
   closeAllowedAppsModal: () => void;
@@ -52,6 +53,18 @@ export const createChatbotActions = (
         isChoiceRequested: true,
       })),
     fulfillChoiceRequest: () => set(() => ({ isChoiceRequested: false })),
+    // The download button goes on the bot's "installer ready" message (the
+    // last one), without touching the restart buttons on the summary above.
+    offerInstallerDownload: (url) =>
+      set((state) => {
+        let target = state.messages.length - 1;
+        while (target >= 0 && state.messages[target].autor !== 'bot') target -= 1;
+        return {
+          messages: state.messages.map((m, i) =>
+            i === target ? { ...m, action: 'download_installer', installerUrl: url } : m
+          ),
+        };
+      }),
     // The button goes on the bot's final message (the summary).
     offerRestart: () =>
       set((state) => ({

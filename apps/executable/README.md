@@ -36,6 +36,12 @@ button. The binaries and `dist/device-owner.apk` are templates. Each request:
 3. uploads it to the `BUCKET_NAME` S3 bucket (`installers/<id>/<filename>`). The
    response carries a presigned download URL, which the chatbot hands the user.
 
+The Linux and macOS binaries are delivered as a `.tar.gz`: an HTTP/S3 download
+doesn't carry the executable bit, so a raw binary would arrive without it and
+the OS would refuse to run it. tar preserves the mode (0755), so the extracted
+binary runs with no `chmod`. The Windows `.exe` needs no bit and is delivered
+as-is.
+
 | Route | |
 |---|---|
 | `POST /executables` | `{ platform: "linux" \| "windows" \| "macos", config }` → `201 { id, filename, url }` (`url` valid for `EXECUTABLE_URL_TTL_S`, 1 h) |

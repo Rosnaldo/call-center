@@ -94,6 +94,17 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
               </div>
             )}
 
+            {/* Botão de download do instalador, na mensagem "instalador pronto" */}
+            {msg.action === 'download_installer' && msg.installerUrl && (
+              <a
+                href={msg.installerUrl}
+                className="mt-2 inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-[#B97204] text-white font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)] no-underline"
+              >
+                <Download className="w-4 h-4" />
+                {t('chatbot.downloadInstaller')}
+              </a>
+            )}
+
             {/* Botões da mensagem final: gerar o instalador ou começar uma nova conversa */}
             {msg.action === 'restart' && isRestartOffered && onRestart && (
               <div className="mt-2 flex flex-wrap gap-2">

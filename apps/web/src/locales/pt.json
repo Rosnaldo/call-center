@@ -107,6 +107,7 @@
     "typing": "gerando...",
     "selectApps": "Selecionar apps",
     "generateInstaller": "Gerar instalador",
+    "downloadInstaller": "Baixar instalador",
     "generateAgain": "Resetar",
     "messages": {
       "askStart": "Configurar ambiente device owner no seu celular.",
@@ -121,7 +122,7 @@
       "done": "Pronto! Dados coletados:\n{{summary}}",
       "finished": "Esta conversa terminou. Use \"Resetar\" para começar outra.",
       "noAppList": "Não há lista de apps para escolher agora.",
-      "installerReady": "Instalador gerado! O download vai começar em instantes.",
+      "installerReady": "Instalador gerado! Clique no botão abaixo para baixar.",
       "installerFailed": "Não foi possível gerar o instalador agora. Tente novamente.",
       "installerNotReady": "Termine a configuração antes de gerar o instalador.",
       "loginRequired": "Faça login para gerar o instalador."

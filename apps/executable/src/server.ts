@@ -44,11 +44,17 @@ const TEMPLATES: Record<Platform, string[]> = {
   windows: ["executable-win-x64.exe", "executable-win.exe"],
   macos: ["executable-macos-arm64"],
 };
-const DOWNLOAD_NAMES: Record<Platform, string> = {
+const BINARY_NAMES: Record<Platform, string> = {
   linux: "device-owner-installer-linux",
   windows: "device-owner-installer.exe",
   macos: "device-owner-installer-macos",
 };
+
+// The Linux/macOS binaries are delivered as a .tar.gz, because an HTTP/S3
+// download doesn't carry the executable bit, so a raw binary arrives without
+// it and the OS refuses to run it; tar preserves the mode (0755), so the
+// extracted binary is runnable with no chmod. A Windows .exe needs no bit.
+const needsArchive = (platform: Platform): boolean => platform !== "windows";
 
 class HttpError extends Error {
   constructor(readonly status: number, message: string) {
@@ -120,6 +126,15 @@ async function upload(file: string, key: string, filename: string): Promise<stri
   return getSignedUrl(s3, new GetObjectCommand({ Bucket: BUCKET_NAME, Key: key }), { expiresIn: URL_TTL_S });
 }
 
+// Packs `entry` (a file in `dir`) into `<dir>/<entry>.tar.gz`, preserving its
+// mode, and returns the tarball path.
+function archive(dir: string, entry: string): string {
+  const tarball = path.join(dir, `${entry}.tar.gz`);
+  const result = spawnSync("tar", ["-czf", tarball, "-C", dir, entry], { stdio: "ignore" });
+  if (result.error || result.status !== 0) throw new HttpError(500, `Could not archive ${entry}`);
+  return tarball;
+}
+
 async function createExecutable(
   platform: Platform,
   config: EmbeddedConfig,
@@ -127,19 +142,22 @@ async function createExecutable(
   const template = findTemplate(platform);
   const apk = await createApk(config);
   const id = crypto.randomUUID();
-  const file = path.join(OUTPUT_DIR, id);
-  const filename = DOWNLOAD_NAMES[platform];
+  const dir = path.join(OUTPUT_DIR, id);
+  const binaryName = BINARY_NAMES[platform];
+  const file = path.join(dir, binaryName);
 
-  await fs.promises.mkdir(OUTPUT_DIR, { recursive: true });
+  await fs.promises.mkdir(dir, { recursive: true });
   try {
     await fs.promises.copyFile(template, file);
     await fs.promises.appendFile(file, encodePayload({ config, apk }));
     await fs.promises.chmod(file, 0o755);
     if (platform === "macos") resignMac(file);
-    const url = await upload(file, `installers/${id}/${filename}`, filename);
+    const artifact = needsArchive(platform) ? archive(dir, binaryName) : file;
+    const filename = path.basename(artifact);
+    const url = await upload(artifact, `installers/${id}/${filename}`, filename);
     return { id, filename, url };
   } finally {
-    await fs.promises.rm(file, { force: true });
+    await fs.promises.rm(dir, { recursive: true, force: true });
   }
 }
 

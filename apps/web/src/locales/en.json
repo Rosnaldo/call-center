@@ -107,6 +107,7 @@
     "typing": "generating...",
     "selectApps": "Select apps",
     "generateInstaller": "Generate installer",
+    "downloadInstaller": "Download installer",
     "generateAgain": "Reset",
     "messages": {
       "askStart": "Set up the device owner environment on your phone.",
@@ -121,7 +122,7 @@
       "done": "Done! Collected params:\n{{summary}}",
       "finished": "This conversation is over. Use \"Reset\" to start another one.",
       "noAppList": "There is no app list to choose right now.",
-      "installerReady": "Installer created! The download will start shortly.",
+      "installerReady": "Installer ready! Click the button below to download.",
       "installerFailed": "Couldn't create the installer right now. Please try again.",
       "installerNotReady": "Finish the setup before generating the installer.",
       "loginRequired": "Log in to generate the installer."

@@ -204,15 +204,13 @@ describe('ChatbotWs restart', () => {
 describe('ChatbotWs installer', () => {
   let transport: FakeTransport;
   let ws: ChatbotWs;
-  let downloads: string[];
   let token: string | undefined;
 
   beforeEach(() => {
     useChatbotStore.getState().resetChatbot();
     transport = new FakeTransport();
-    downloads = [];
     token = 'user-token';
-    ws = new ChatbotWs(useChatbotStore, 'ws://test', () => transport, (url) => downloads.push(url), async () => token);
+    ws = new ChatbotWs(useChatbotStore, 'ws://test', () => transport, async () => token);
     ws.connect();
   });
 
@@ -229,14 +227,16 @@ describe('ChatbotWs installer', () => {
     expect(transport.sent).toEqual([{ event: 'generate_installer' }]);
   });
 
-  it('downloads it once ready', async () => {
+  it('puts a download button on the ready message instead of auto-downloading', async () => {
     await ws.generateInstaller();
     transport.receive({ event: 'bot_message', key: 'messages.installerReady' });
     transport.receive({ event: 'installer_ready', url: '/executable/executables/abc' });
 
-    expect(downloads).toEqual(['/executable/executables/abc']);
+    const last = useChatbotStore.getState().messages.at(-1);
+    expect(last?.action).toBe('download_installer');
+    expect(last?.installerUrl).toBe('/executable/executables/abc');
     expect(useChatbotStore.getState().isBotTyping).toBe(false);
-    expect(useChatbotStore.getState().messages.at(-1)?.message).toBe('Instalador gerado! O download vai começar em instantes.');
+    expect(last?.message).toBe('Instalador gerado! Clique no botão abaixo para baixar.');
   });
 });
 
