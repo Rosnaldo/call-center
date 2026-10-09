@@ -114,7 +114,7 @@ class LocalVpnService : VpnService() {
         readerThread = thread(start = true, name = "LockdownDnsTunReader") {
             runReadLoop(fd)
         }
-        Log.i(Constants.LOG_TAG, "VPN DNS fallback active, forwarding to ${Constants.LOCKED_PRIVATE_DNS_HOST}")
+        Log.i(Constants.LOG_TAG, "VPN DNS fallback active, forwarding to ${AllowlistStore.dnsHost(this)}")
     }
 
     private fun runReadLoop(fd: ParcelFileDescriptor) {
@@ -218,7 +218,7 @@ class LocalVpnService : VpnService() {
 
     private fun handleDns(srcIp: ByteArray, dstIp: ByteArray, srcPort: Int, dnsQuery: ByteArray, output: FileOutputStream) {
         Log.i(Constants.LOG_TAG, "DNS query captured: ${dnsQuery.size}B from port $srcPort")
-        val response = DnsOverTlsForwarder.forward(this, underlyingNetwork, Constants.LOCKED_PRIVATE_DNS_HOST, dnsQuery) ?: return
+        val response = DnsOverTlsForwarder.forward(this, underlyingNetwork, AllowlistStore.dnsHost(this), dnsQuery) ?: return
         val reply = PacketUtils.buildUdpPacket(
             srcIp = dstIp, // swapped: we reply *from* the fake DNS server
             dstIp = srcIp,

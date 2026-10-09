@@ -7,6 +7,46 @@ COPY ./apps/executable/scripts/compile-wdi-simple.sh /compile-wdi-simple.sh
 RUN bash /compile-wdi-simple.sh /out
 
 
+# Device owner APK template (src/android), installed on the phone by the
+# executable. Signed with this stage's debug key, like generate_apk.sh.
+FROM debian:bookworm AS apk
+
+ARG ANDROID_TOOLS=commandlinetools-linux-11076708_latest.zip
+ENV ANDROID_SDK_ROOT=/opt/android-sdk
+# JDK path matches org.gradle.java.home in src/android/gradle.properties.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openjdk-17-jdk-headless wget unzip ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN wget -q https://dl.google.com/android/repository/${ANDROID_TOOLS} -O /tmp/tools.zip \
+    && mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools \
+    && unzip -q /tmp/tools.zip -d ${ANDROID_SDK_ROOT}/cmdline-tools \
+    && mv ${ANDROID_SDK_ROOT}/cmdline-tools/cmdline-tools ${ANDROID_SDK_ROOT}/cmdline-tools/latest \
+    && rm /tmp/tools.zip \
+    && yes | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null \
+    && ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+WORKDIR /android
+COPY ./apps/executable/src/android ./
+# Reuse the keystore committed to the build context when it's there, so the
+# signature stays constant; the [s] makes this COPY a no-op when it's absent,
+# and generate_apk.sh then creates one at this same path. A provided secret
+# (below) takes precedence over both. Target matches DEFAULT_KEYSTORE in the
+# script (cd ../.. from /android -> /).
+COPY ./apps/executable/lockdown-release.jk[s] /lockdown-release.jks
+# Constant release signing key, passed as BuildKit secrets so it never lands in
+# an image layer or the build history (see app/build.gradle, generate_apk.sh):
+#   docker build \
+#     --secret id=android_keystore_b64,env=ANDROID_KEYSTORE_BASE64 \
+#     --secret id=android_keystore_password,env=ANDROID_KEYSTORE_PASSWORD ...
+# or, with compose, the `secrets:` on the executable service. Without them the
+# build falls back to the debug key (dev only - can't update installed apps).
+RUN --mount=type=secret,id=android_keystore_b64 \
+    --mount=type=secret,id=android_keystore_password \
+    ANDROID_KEYSTORE_BASE64="$(cat /run/secrets/android_keystore_b64 2>/dev/null || true)" \
+    ANDROID_KEYSTORE_PASSWORD="$(cat /run/secrets/android_keystore_password 2>/dev/null || true)" \
+    bash generate_apk.sh
+
+
 # Standalone package (own package-lock.json), built outside the workspace.
 FROM node:${NODE_VERSION}-slim AS builder
 
@@ -23,6 +63,7 @@ COPY --from=wdi /out/wdi-simple.exe ./vendor/wdi/wdi-simple.exe
 # Templates for every platform into dist/ (build:wdi skips: the exe exists).
 RUN npm run build
 RUN npm run bundle:server
+COPY --from=apk /android/output/LockdownMDM-release.apk ./dist/device-owner.apk
 
 
 FROM node:${NODE_VERSION}-slim AS runner

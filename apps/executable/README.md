@@ -12,6 +12,7 @@ npm run build        # build all platforms into dist/
 npm run build:linux  # or a single platform
 npm run build:win
 npm run build:mac
+npm run build:apk    # device owner APK template into dist/device-owner.apk
 ```
 
 Output in `dist/`:
@@ -26,11 +27,14 @@ Output in `dist/`:
 ## Installer service (`npm run serve`)
 
 `src/server.ts` is an HTTP service the chatbot calls from its "Gerar instalador"
-button. The binaries in `dist/` are templates: each request copies the one for
-the user's OS and appends the params collected by the chatbot (see
-`src/embedded-config.ts`), which the executable reads from itself on start, and
-uploads it to the `BUCKET_NAME` S3 bucket (`installers/<id>/<filename>`). The
-response carries a presigned download URL, which the chatbot hands the user.
+button. The binaries and `dist/device-owner.apk` are templates. Each request:
+
+1. writes the params collected by the chatbot into a copy of the APK
+   (`src/apk-config.ts`, see [Device owner APK](#device-owner-apk));
+2. appends the params and that APK to a copy of the binary for the user's OS
+   (`src/embedded-config.ts`), which the executable reads from itself on start;
+3. uploads it to the `BUCKET_NAME` S3 bucket (`installers/<id>/<filename>`). The
+   response carries a presigned download URL, which the chatbot hands the user.
 
 | Route | |
 |---|---|
@@ -40,12 +44,71 @@ response carries a presigned download URL, which the chatbot hands the user.
 Env (see `.env.example`): `BUCKET_NAME` (required), `AWS_REGION`,
 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (or any other AWS credential
 source), `EXECUTABLE_PORT` (5005), `EXECUTABLE_TEMPLATES_DIR` (`dist/`),
-`EXECUTABLE_OUTPUT_DIR` (temp dir, files are deleted after the upload),
+`EXECUTABLE_APK_TEMPLATE` (`<templates dir>/device-owner.apk`), `EXECUTABLE_OUTPUT_DIR` (temp dir, files are deleted after the upload),
 `EXECUTABLE_URL_TTL_S` (3600). The bucket needs no public access; consider a
 lifecycle rule expiring `installers/` after a day.
 
 macOS: appending the config breaks the binary's signature, so the service signs
 it again ad hoc with `ldid` (`codesign` on a Mac) when available.
+
+## Device owner APK
+
+`src/android` is the Android app (Lockdown MDM, see its README). `npm run
+build:apk` builds it with `generate_apk.sh` (needs JDK 17 and the Android SDK;
+the prod Dockerfile has a stage for it) and copies the release APK to
+`dist/device-owner.apk`.
+
+The server doesn't rebuild it per request (Gradle takes minutes, the chatbot
+waits 30 s): it stores the config JSON as an ID-value pair (ID `0x444f4346`) in
+the APK Signing Block, which APK Signature Scheme v2/v3 doesn't sign, so the
+APK needs no re-signing. The app reads it in `ProvisioningConfig.kt` and uses
+it as the default allowlist (`allowedApps`, plus the Play Store) and Private
+DNS (`privateDnsHost`; `null` leaves DNS unlocked). Without the pair, it falls
+back to `Constants.kt`.
+
+On start, the executable installs the embedded APK on every phone in the
+`device` state (`pm install -r`) and makes it the device owner
+(`dpm set-device-owner com.lockdown.mdm/.AdminReceiver`). Android only allows
+that on a phone without accounts; otherwise the error is shown and the exit
+code is 1. A phone already provisioned blocks installs (`DISALLOW_INSTALL_APPS`)
+until `unlock_installs` is sent with the admin password.
+
+### Signing key (constant across builds)
+
+Updating an installed device owner (`pm install -r`) only works if the new APK
+is signed with the same key, so the key must be a fixed input, not generated per
+build. `app/build.gradle` reads a release keystore from the environment:
+
+| Var | |
+|---|---|
+| `ANDROID_KEYSTORE_PATH` | path to the `.jks`, or | 
+| `ANDROID_KEYSTORE_BASE64` | the `.jks` base64 (decoded by `generate_apk.sh`), to travel as one secret |
+| `ANDROID_KEYSTORE_PASSWORD` | the keystore password |
+| `ANDROID_KEY_ALIAS` | key alias (default `lockdown`) |
+| `ANDROID_KEY_PASSWORD` | key password (default: the keystore password) |
+
+In Docker these come in as BuildKit secrets (`android_keystore_b64`,
+`android_keystore_password`), wired on the `executable` service in
+`docker-compose.prod.yml` and sourced from `ANDROID_KEYSTORE_BASE64` /
+`ANDROID_KEYSTORE_PASSWORD` in the environment, so the key never lands in an
+image layer. Generate the keystore once:
+
+```bash
+keytool -genkeypair -keystore lockdown-release.jks -alias lockdown \
+    -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Lockdown MDM, O=Lockdown, C=BR"
+export ANDROID_KEYSTORE_BASE64="$(base64 -w0 lockdown-release.jks)"
+export ANDROID_KEYSTORE_PASSWORD=...
+```
+
+`generate_apk.sh` resolves the key in this order: `ANDROID_KEYSTORE_PATH` ->
+`ANDROID_KEYSTORE_BASE64` -> the default file `apps/executable/lockdown-release.jks`
+(reused across builds, kept out of git by `.gitignore`) -> and, only if none of
+those exist, it **generates** the keystore at that default path the first time
+and prints its base64 + password to save as secrets. `dockerfile.prod` copies
+that default file into the build when it's present (so the committed key is
+reused), and generates one otherwise. Either way the key then stays put, so the
+signature is constant. An existing keystore still needs its
+`ANDROID_KEYSTORE_PASSWORD`.
 
 ## How the build works
 

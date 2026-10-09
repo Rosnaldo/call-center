@@ -5,6 +5,7 @@ import os from "os";
 import path from "path";
 import { WebUSB } from "usb";
 import {
+  Adb,
   AdbDaemonTransport,
   type AdbCredentialStore,
   type AdbPrivateKey,
@@ -38,6 +39,9 @@ export interface DeviceInfo {
   /** `device`, `unauthorized`, `no permissions`, `no driver`, `busy (...)` or `error (...)`. */
   state: string;
 }
+
+/** Runs on each device found in the `device` state, while it's connected. */
+export type OnReady = (adb: Adb, device: string) => Promise<void>;
 
 function configDir(): string {
   const home = os.homedir();
@@ -134,7 +138,11 @@ async function authenticate(
   }
 }
 
-async function deviceState(device: AdbDaemonWebUsbDevice, credentialStore: AdbCredentialStore): Promise<string> {
+async function deviceState(
+  device: AdbDaemonWebUsbDevice,
+  credentialStore: AdbCredentialStore,
+  onReady?: OnReady
+): Promise<string> {
   let connection: AdbDaemonWebUsbConnection;
   try {
     connection = await device.connect();
@@ -147,13 +155,20 @@ async function deviceState(device: AdbDaemonWebUsbDevice, credentialStore: AdbCr
   let transport: AdbDaemonTransport | undefined;
   try {
     transport = await authenticate(connection, device, credentialStore);
-    return "device";
   } catch (err) {
+    await device.raw.close().catch(() => {});
     return errorMessage(err) === "unauthorized" ? "unauthorized" : connectionError(err);
+  }
+
+  try {
+    if (onReady) await onReady(new Adb(transport), describe(device));
+  } catch (err) {
+    console.log(`Error on ${describe(device)}: ${errorMessage(err)}`);
   } finally {
-    if (transport) await transport.close();
+    await transport.close();
     await device.raw.close().catch(() => {});
   }
+  return "device";
 }
 
 function describe(device: { name: string; serial: string }): string {
@@ -202,25 +217,40 @@ async function ensureWindowsDrivers(devices: AdbDaemonWebUsbDevice[], states: st
   return installed;
 }
 
-async function getStates(manager: AdbDaemonWebUsbDeviceManager, credentialStore: AdbCredentialStore) {
+async function getStates(
+  manager: AdbDaemonWebUsbDeviceManager,
+  credentialStore: AdbCredentialStore,
+  onReady?: OnReady
+) {
   const devices = await manager.getDevices();
   const states: string[] = [];
-  for (const device of devices) states.push(await deviceState(device, credentialStore));
+  for (const device of devices) states.push(await deviceState(device, credentialStore, onReady));
   return { devices, states };
 }
 
-// Equivalent of `adb devices`. Asks the user to fix missing USB permissions
-// (Linux) or drivers (Windows) along the way.
-export async function listDevices(): Promise<DeviceInfo[]> {
+// Equivalent of `adb devices`, running `onReady` on each ready device. Asks
+// the user to fix missing USB permissions (Linux) or drivers (Windows) along
+// the way.
+export async function listDevices(onReady?: OnReady): Promise<DeviceInfo[]> {
   const blocked = await ensureLinuxAccess();
   const manager = new AdbDaemonWebUsbDeviceManager(new ReadableDevicesUSB({ allowAllDevices: true }));
   const credentialStore = new CredentialStore();
 
-  let { devices, states } = await getStates(manager, credentialStore);
+  // Devices are checked again after a driver install; act on each one once.
+  const done = new Set<string>();
+  const onReadyOnce: OnReady | undefined =
+    onReady &&
+    (async (adb, device) => {
+      if (done.has(device)) return;
+      done.add(device);
+      await onReady(adb, device);
+    });
+
+  let { devices, states } = await getStates(manager, credentialStore, onReadyOnce);
   if (await ensureWindowsDrivers(devices, states)) {
     // The device re-enumerates with its new driver.
     await new Promise((resolve) => setTimeout(resolve, DRIVER_SETTLE_MS));
-    ({ devices, states } = await getStates(manager, credentialStore));
+    ({ devices, states } = await getStates(manager, credentialStore, onReadyOnce));
   }
 
   return [

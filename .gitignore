@@ -40,3 +40,6 @@ yarn-error.log*
 *.pem
 
 error.log
+# Android release signing keystore (apps/executable) - never commit
+*.jks
+*.keystore

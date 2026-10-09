@@ -43,9 +43,9 @@ export const UserProfileBadge: React.FC<UserProfileBadgeProps> = ({
       <button
         id="header-login-button"
         onClick={() => navigate('/login')}
-        className="flex items-center gap-2 bg-brand-panel hover:bg-brand-panel/85 border border-brand-border px-3 py-1.5 rounded-2xl transition-all select-none text-xs font-bold text-brand-dark hover:text-[#a36500] cursor-pointer focus:outline-none"
+        className="group flex items-center gap-2 bg-brand-panel hover:bg-brand-panel/85 border border-brand-border px-3 py-1.5 rounded-2xl transition-all select-none text-xs font-bold text-brand-dark hover:text-[#a36500] cursor-pointer focus:outline-none"
       >
-        <LogIn className="w-4 h-4 text-brand-muted shrink-0" />
+        <LogIn className="w-4 h-4 text-brand-muted group-hover:text-[#a36500] transition-colors shrink-0" />
         {t('header.login')}
       </button>
     );

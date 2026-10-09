@@ -16,7 +16,8 @@
     "build:linux": "npm run prepare-build && pkg . --no-bytecode --public-packages \"*\" --public --targets node22-linux-x64 --output dist/executable-linux",
     "build:win": "npm run build:wdi && npm run prepare-build && pkg . --no-bytecode --public-packages \"*\" --public --targets node22-win-x64 --output dist/executable-win.exe",
     "build:mac": "npm run prepare-build && pkg . --no-bytecode --public-packages \"*\" --public --targets node22-macos-x64,node22-macos-arm64 --out-path dist",
-    "build:wdi": "bash scripts/build-wdi-simple.sh"
+    "build:wdi": "bash scripts/build-wdi-simple.sh",
+    "build:apk": "bash src/android/generate_apk.sh && mkdir -p dist && cp src/android/output/LockdownMDM-release.apk dist/device-owner.apk"
   },
   "pkg": {
     "targets": [
@@ -43,6 +44,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1147.0",
     "@yume-chan/adb": "^2.6.4",
     "@yume-chan/adb-daemon-webusb": "^2.3.2",
+    "@yume-chan/stream-extra": "^2.6.1",
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^3.2.2",
     "usb": "^3.2.1"

@@ -1,8 +1,10 @@
 // HTTP service that creates executables for the chatbot's "generate installer"
-// button. The binaries are built once (`npm run build`) and used as
-// templates: each request copies the one for the user's OS, embeds the
-// collected params at its end (see embedded-config.ts) and uploads it to the
-// BUCKET_NAME S3 bucket.
+// button. The binaries and the device owner APK are built once (`npm run build`,
+// `npm run build:apk`) and used as templates: each request writes the collected
+// params into a copy of the APK (see apk-config.ts), embeds both at the end of a
+// copy of the binary for the user's OS (see embedded-config.ts), which installs
+// the APK on the phone connected over USB, and uploads it to the BUCKET_NAME
+// S3 bucket.
 //
 //   POST /executables       { platform: 'linux' | 'windows' | 'macos', config }
 //                           Authorization: a Keycloak service token (see auth.ts)
@@ -18,10 +20,12 @@ import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import os from "os";
 import path from "path";
 import { authenticate } from "./auth";
-import { encodeConfig, MAX_CONFIG_BYTES, type EmbeddedConfig } from "./embedded-config";
+import { embedApkConfig } from "./apk-config";
+import { encodePayload, MAX_CONFIG_BYTES, type EmbeddedConfig } from "./embedded-config";
 
 const PORT = Number(process.env.EXECUTABLE_PORT ?? 5005);
 const TEMPLATES_DIR = process.env.EXECUTABLE_TEMPLATES_DIR ?? path.resolve(__dirname, "../dist");
+const APK_TEMPLATE = process.env.EXECUTABLE_APK_TEMPLATE ?? path.join(TEMPLATES_DIR, "device-owner.apk");
 const OUTPUT_DIR = process.env.EXECUTABLE_OUTPUT_DIR ?? path.join(os.tmpdir(), "executable-builds");
 const URL_TTL_S = Number(process.env.EXECUTABLE_URL_TTL_S ?? 60 * 60);
 const BUCKET_NAME = process.env.BUCKET_NAME;
@@ -72,6 +76,16 @@ function parseConfig(value: unknown): EmbeddedConfig {
   return { os: mobileOs, version, privateDnsHost, allowedApps };
 }
 
+async function createApk(config: EmbeddedConfig): Promise<Buffer> {
+  let template: Buffer;
+  try {
+    template = await fs.promises.readFile(APK_TEMPLATE);
+  } catch {
+    throw new HttpError(503, `No APK template at ${APK_TEMPLATE}; run npm run build:apk`);
+  }
+  return embedApkConfig(template, config);
+}
+
 function findTemplate(platform: Platform): string {
   for (const name of TEMPLATES[platform]) {
     const file = path.join(TEMPLATES_DIR, name);
@@ -111,6 +125,7 @@ async function createExecutable(
   config: EmbeddedConfig,
 ): Promise<{ id: string; filename: string; url: string }> {
   const template = findTemplate(platform);
+  const apk = await createApk(config);
   const id = crypto.randomUUID();
   const file = path.join(OUTPUT_DIR, id);
   const filename = DOWNLOAD_NAMES[platform];
@@ -118,7 +133,7 @@ async function createExecutable(
   await fs.promises.mkdir(OUTPUT_DIR, { recursive: true });
   try {
     await fs.promises.copyFile(template, file);
-    await fs.promises.appendFile(file, encodeConfig(config));
+    await fs.promises.appendFile(file, encodePayload({ config, apk }));
     await fs.promises.chmod(file, 0o755);
     if (platform === "macos") resignMac(file);
     const url = await upload(file, `installers/${id}/${filename}`, filename);
@@ -197,5 +212,7 @@ const server = createServer((req, res) => {
 });
 
 server.listen(PORT, () =>
-  console.log(`executable service listening on :${PORT} (templates: ${TEMPLATES_DIR}, bucket: ${BUCKET_NAME})`),
+  console.log(
+    `executable service listening on :${PORT} (templates: ${TEMPLATES_DIR}, APK: ${APK_TEMPLATE}, bucket: ${BUCKET_NAME})`,
+  ),
 );

@@ -86,7 +86,8 @@ services:
       - backend
 
   # Creates the installers for the chatbot (apps/executable/src/server.ts).
-  # Templates come from apps/executable/dist: run `npm run build` there first.
+  # Templates come from apps/executable/dist: run `npm run build` and
+  # `npm run build:apk` there first.
   executable:
     image: executable
     container_name: executable

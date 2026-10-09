@@ -2,3 +2,8 @@
 **/node_modules
 **/.env
 .git
+# Android build output and the machine-specific SDK path (apps/executable)
+**/android/.gradle
+**/android/**/build
+**/android/output
+**/android/local.properties
