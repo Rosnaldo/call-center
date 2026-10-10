@@ -3,7 +3,15 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { SummaryModal } from '../SummaryModal.tsx';
 import { useChatbotStore } from '../../../states/stores.ts';
 
-const EMPTY = { os: null, version: null, privateDns: null, privateDnsHost: null, allowedApps: null, installOs: null };
+const EMPTY = {
+  os: null,
+  version: null,
+  privateDns: null,
+  privateDnsHost: null,
+  allowedApps: null,
+  installOs: null,
+  appVersion: null,
+};
 
 describe('SummaryModal', () => {
   beforeEach(() => {
@@ -27,7 +35,7 @@ describe('SummaryModal', () => {
     render(<SummaryModal />);
 
     expect(screen.getByText('Android')).toBeTruthy();
-    expect(screen.getAllByText('a definir')).toHaveLength(4);
+    expect(screen.getAllByText('a definir')).toHaveLength(5);
   });
 
   it('shows the answered params with the allowed apps by name', () => {
@@ -46,6 +54,7 @@ describe('SummaryModal', () => {
         privateDnsHost: 'dns.adguard.com',
         allowedApps: ['com.whatsapp', 'com.spotify.music', 'com.example.unknown'],
         installOs: 'Linux',
+        appVersion: '1.2.0',
       });
       store.openSummaryModal();
     });
@@ -56,6 +65,7 @@ describe('SummaryModal', () => {
     expect(screen.getByText('Spotify')).toBeTruthy();
     expect(screen.getByText('com.example.unknown')).toBeTruthy();
     expect(screen.getByText('Linux')).toBeTruthy();
+    expect(screen.getByText('1.2.0')).toBeTruthy();
     expect(screen.queryByText('a definir')).toBeNull();
   });
 

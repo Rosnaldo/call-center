@@ -41,6 +41,7 @@ object PolicyEnforcer {
     /** Runs once, right after the app becomes device owner. */
     fun activateLockdown(context: Context) {
         if (!isDeviceOwner(context)) return
+        applyOrganizationName(context)
         applyDnsPolicy(context, AllowlistStore.isDnsLocked(context))
         applyInstallPolicy(context, AllowlistStore.isInstallsLocked(context))
         sweepDisallowedApps(context)
@@ -51,12 +52,32 @@ object PolicyEnforcer {
     /** Runs on every boot to make sure policy survived and to catch anything installed offline. */
     fun reapplyPolicy(context: Context) {
         if (!isDeviceOwner(context)) return
+        applyOrganizationName(context)
         applyDnsPolicy(context, AllowlistStore.isDnsLocked(context))
         applyInstallPolicy(context, AllowlistStore.isInstallsLocked(context))
         sweepDisallowedApps(context)
         ScheduleEnforcer.enforce(context)
         enableBrowserGuard(context)
         startControlChannel(context)
+    }
+
+    /**
+     * Names the managing organization after the app and the configuration version typed in
+     * the chatbot (see ProvisioningConfig), e.g. "Lockdown MDM 1.2.0". Android shows it in
+     * Settings (Security / "This device is managed by ..." in the device admin info), so the
+     * installed configuration can be checked without opening the app.
+     */
+    fun applyOrganizationName(context: Context) {
+        val appName = context.getString(R.string.app_name)
+        val version = ProvisioningConfig.get(context)?.appVersion
+        try {
+            dpm(context).setOrganizationName(
+                adminComponent(context),
+                if (version != null) "$appName $version" else appName,
+            )
+        } catch (e: SecurityException) {
+            Log.w(Constants.LOG_TAG, "Could not set the organization name", e)
+        }
     }
 
     /**

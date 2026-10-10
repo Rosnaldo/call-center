@@ -33,6 +33,7 @@ export interface ChatbotParams {
   privateDnsHost: string | null;
   allowedApps: string[] | null;
   installOs: string | null;
+  appVersion: string | null;
 }
 
 export interface AppSearchState {

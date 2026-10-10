@@ -119,6 +119,7 @@
       "askDnsHost": "What is the private DNS hostname? (e.g. dns.adguard.com)",
       "askAllowedApps": "Which apps are allowed? Use the button below to select them.",
       "askInstallOs": "The installation is done over USB. Which operating system will you install it from?",
+      "askAppVersion": "What version is this configuration? It will show in the phone app. Use the default or type another (e.g. 1.2.0).",
       "confirm": "Please confirm:\n{{summary}}\nIs this correct?",
       "done": "Done! Collected params:\n{{summary}}",
       "finished": "This conversation is over. Use \"Reset\" to start another one.",
@@ -133,6 +134,7 @@
       "version": "Please enter a version number such as 14 or 17.4.1.",
       "hostname": "Please enter the private DNS hostname, such as dns.adguard.com.",
       "installOs": "Please choose Linux, Windows or Mac.",
+      "appVersion": "Enter a version like 1.0 or 2.1.3.",
       "yesNo": "Please answer yes or no.",
       "appIds": "Invalid app list. Please select the allowed apps again.",
       "typedApps": "Please use the button to select the allowed apps.",
@@ -143,6 +145,7 @@
       "version": "Version",
       "privateDns": "Private DNS",
       "installOs": "USB install from",
+      "appVersion": "Configuration version",
       "no": "no"
     },
     "choices": {
@@ -153,7 +156,8 @@
       "ios": "iOS",
       "linux": "Linux",
       "windows": "Windows",
-      "mac": "Mac"
+      "mac": "Mac",
+      "defaultAppVersion": "1.0.0 (default)"
     },
     "allowedApps": {
       "title": "Allowed apps",

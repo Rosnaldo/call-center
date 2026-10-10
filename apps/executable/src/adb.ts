@@ -26,9 +26,10 @@ import {
   type BlockedDevice,
 } from "./usb-permissions";
 
-const AUTH_TIMEOUT_MS = 60_000;
 const AUTH_PROMPT_DELAY_MS = 1_500;
 const DRIVER_SETTLE_MS = 3_000;
+// USB read timeout: the max the usb module takes (~49 days), i.e. never.
+const READ_TIMEOUT_MS = 0xffff_ffff;
 
 const NO_PERMISSIONS = "no permissions";
 const NO_DRIVER = "no driver";
@@ -36,7 +37,7 @@ const NO_DRIVER = "no driver";
 export interface DeviceInfo {
   serial: string;
   name: string;
-  /** `device`, `unauthorized`, `no permissions`, `no driver`, `busy (...)` or `error (...)`. */
+  /** `device`, `no permissions`, `no driver`, `busy (...)` or `error (...)`. */
   state: string;
 }
 
@@ -85,17 +86,31 @@ class CredentialStore implements AdbCredentialStore {
   }
 }
 
+type TransferIn = (endpointNumber: number, length: number, timeout?: number) => Promise<USBInTransferResult>;
+
+// Unlike WebUSB, the usb module gives every read a timeout (1 s by default),
+// failing with "Cancelled", and a cancelled read loses the data in transit:
+// the ADB connection then hangs. The ADB library expects reads to wait for
+// data, so they get a timeout that never expires.
+function withoutReadTimeout<T extends USBDevice>(device: T): T {
+  const transferIn = (device.transferIn as TransferIn).bind(device);
+  device.transferIn = (endpointNumber: number, length: number) =>
+    transferIn(endpointNumber, length, READ_TIMEOUT_MS);
+  return device;
+}
+
 // The ADB library reads every USB device's descriptors to find ADB interfaces,
 // and one device we can't open (e.g. a webcam) would make the whole lookup fail.
 class ReadableDevicesUSB extends WebUSB {
   async getDevices() {
-    return (await super.getDevices()).filter((device) => {
+    const devices = (await super.getDevices()).filter((device) => {
       try {
         return device.configurations.length >= 0;
       } catch {
         return false;
       }
     });
+    return devices.map(withoutReadTimeout);
   }
 }
 
@@ -112,34 +127,60 @@ function connectionError(err: unknown): string {
   return `error (${message})`;
 }
 
-// Connects and authenticates, telling the user to check the phone if the
-// "Allow USB debugging?" prompt is waiting on them.
-async function authenticate(
-  connection: AdbDaemonWebUsbConnection,
-  device: AdbDaemonWebUsbDevice,
-  credentialStore: AdbCredentialStore
-): Promise<AdbDaemonTransport> {
-  const promptTimer = setTimeout(() => {
-    console.log(`Waiting for "Allow USB debugging" to be accepted on ${device.name} (${device.serial})...`);
-  }, AUTH_PROMPT_DELAY_MS);
-  let timeoutTimer: NodeJS.Timeout | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timeoutTimer = setTimeout(() => reject(new Error("unauthorized")), AUTH_TIMEOUT_MS);
-  });
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// Releases the claimed ADB interface and closes the device, so it can be
+// opened again in this process. Two usb module quirks:
+// - `close()` alone keeps the interface claimed until the object is garbage
+//   collected, so the next open would find the device busy;
+// - it refuses to touch a device while a read is in flight, throwing
+//   synchronously (so `close().catch()` doesn't catch it). After the ADB
+//   connection is up its read loop always has one, so the device then stays
+//   open until the process exits.
+// Never throws: there's nothing left to do with a device that won't close.
+async function closeDevice(device: AdbDaemonWebUsbDevice): Promise<void> {
   try {
-    return await Promise.race([
-      AdbDaemonTransport.authenticate({ serial: device.serial, connection, credentialStore }),
-      timeout,
-    ]);
-  } finally {
-    clearTimeout(promptTimer);
-    clearTimeout(timeoutTimer);
+    if (!device.raw.opened) return;
+    for (const iface of device.raw.configuration?.interfaces ?? []) {
+      if (iface.claimed) await device.raw.releaseInterface(iface.interfaceNumber);
+    }
+    await device.raw.close();
+  } catch {
+    // Left open.
   }
 }
 
+// Connects and authenticates, telling the user to check the phone if the
+// "Allow USB debugging?" prompt is waiting on them. Waits until it's accepted:
+// giving up would leave the device unusable in this process (its read can't
+// be cancelled, see closeDevice). Unplugging the phone ends the wait.
+async function authenticate(
+  connection: AdbDaemonWebUsbConnection,
+  device: AdbDaemonWebUsbDevice,
+  label: string,
+  credentialStore: AdbCredentialStore
+): Promise<AdbDaemonTransport> {
+  const promptTimer = setTimeout(() => {
+    console.log(
+      [
+        `Waiting for USB debugging to be allowed on ${label}:`,
+        '  unlock the phone and tap "Allow" on the "Allow USB debugging?" prompt',
+        '  (check "Always allow from this computer"). No prompt? Unplug and replug the cable.',
+      ].join("\n"),
+    );
+  }, AUTH_PROMPT_DELAY_MS);
+
+  try {
+    return await AdbDaemonTransport.authenticate({ serial: device.serial, connection, credentialStore });
+  } finally {
+    clearTimeout(promptTimer);
+  }
+}
+
+// `label` is read before connecting (see FoundDevice).
 async function deviceState(
   device: AdbDaemonWebUsbDevice,
+  label: string,
   credentialStore: AdbCredentialStore,
   onReady?: OnReady
 ): Promise<string> {
@@ -154,19 +195,23 @@ async function deviceState(
 
   let transport: AdbDaemonTransport | undefined;
   try {
-    transport = await authenticate(connection, device, credentialStore);
+    transport = await authenticate(connection, device, label, credentialStore);
   } catch (err) {
-    await device.raw.close().catch(() => {});
-    return errorMessage(err) === "unauthorized" ? "unauthorized" : connectionError(err);
+    await closeDevice(device);
+    return connectionError(err);
   }
 
   try {
-    if (onReady) await onReady(new Adb(transport), describe(device));
+    if (onReady) await onReady(new Adb(transport), label);
   } catch (err) {
-    console.log(`Error on ${describe(device)}: ${errorMessage(err)}`);
+    console.log(`Error on ${label}: ${errorMessage(err)}`);
   } finally {
-    await transport.close();
-    await device.raw.close().catch(() => {});
+    try {
+      await transport.close();
+    } catch {
+      // The device is closed below either way.
+    }
+    await closeDevice(device);
   }
   return "device";
 }
@@ -195,8 +240,8 @@ async function ensureLinuxAccess(): Promise<BlockedDevice[]> {
 
 // Windows: offers to install the WinUSB driver on devices that lack one.
 // Returns true when at least one driver was installed.
-async function ensureWindowsDrivers(devices: AdbDaemonWebUsbDevice[], states: string[]): Promise<boolean> {
-  const missing = devices.filter((_, i) => states[i] === NO_DRIVER);
+async function ensureWindowsDrivers(found: FoundDevice[]): Promise<boolean> {
+  const missing = found.filter(({ state }) => state === NO_DRIVER);
   if (!missing.length) return false;
 
   console.log(`A USB driver is needed for: ${missing.map(describe).join(", ")}`);
@@ -207,7 +252,7 @@ async function ensureWindowsDrivers(devices: AdbDaemonWebUsbDevice[], states: st
   let installed = false;
   for (const device of missing) {
     console.log(`Installing driver for ${describe(device)}...`);
-    if (installWindowsDriver(device.raw, device.name)) {
+    if (installWindowsDriver(device.device.raw, device.name)) {
       installed = true;
     } else {
       console.log(`Driver installation failed for ${describe(device)}.`);
@@ -217,15 +262,34 @@ async function ensureWindowsDrivers(devices: AdbDaemonWebUsbDevice[], states: st
   return installed;
 }
 
+// The name is read up front: the usb module reads it from the device on first
+// access, which throws while the ADB connection has a transfer in flight.
+interface FoundDevice {
+  device: AdbDaemonWebUsbDevice;
+  serial: string;
+  name: string;
+  state: string;
+}
+
+function productName(device: AdbDaemonWebUsbDevice): string {
+  try {
+    return device.name ?? "";
+  } catch {
+    return "";
+  }
+}
+
 async function getStates(
   manager: AdbDaemonWebUsbDeviceManager,
   credentialStore: AdbCredentialStore,
   onReady?: OnReady
-) {
-  const devices = await manager.getDevices();
-  const states: string[] = [];
-  for (const device of devices) states.push(await deviceState(device, credentialStore, onReady));
-  return { devices, states };
+): Promise<FoundDevice[]> {
+  const found: FoundDevice[] = [];
+  for (const device of await manager.getDevices()) {
+    const info = { device, serial: device.serial, name: productName(device) };
+    found.push({ ...info, state: await deviceState(device, describe(info), credentialStore, onReady) });
+  }
+  return found;
 }
 
 // Equivalent of `adb devices`, running `onReady` on each ready device. Asks
@@ -246,15 +310,15 @@ export async function listDevices(onReady?: OnReady): Promise<DeviceInfo[]> {
       await onReady(adb, device);
     });
 
-  let { devices, states } = await getStates(manager, credentialStore, onReadyOnce);
-  if (await ensureWindowsDrivers(devices, states)) {
+  let found = await getStates(manager, credentialStore, onReadyOnce);
+  if (await ensureWindowsDrivers(found)) {
     // The device re-enumerates with its new driver.
-    await new Promise((resolve) => setTimeout(resolve, DRIVER_SETTLE_MS));
-    ({ devices, states } = await getStates(manager, credentialStore, onReadyOnce));
+    await sleep(DRIVER_SETTLE_MS);
+    found = await getStates(manager, credentialStore, onReadyOnce);
   }
 
   return [
     ...blocked.map(({ serial, name }) => ({ serial, name, state: NO_PERMISSIONS })),
-    ...devices.map((device, i) => ({ serial: device.serial, name: device.name, state: states[i] })),
+    ...found.map(({ serial, name, state }) => ({ serial, name, state })),
   ];
 }

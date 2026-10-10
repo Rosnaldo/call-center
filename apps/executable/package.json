@@ -7,6 +7,7 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "serve": "tsx src/server.ts",
+    "serve:watch": "tsx watch src/server.ts",
     "check-types": "tsc -p tsconfig.json --noEmit",
     "bundle": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=cjs --external:usb --outfile=build/app.js",
     "bundle:server": "esbuild src/server.ts --bundle --platform=node --target=node22 --format=cjs --outfile=build/server.js",
@@ -18,7 +19,7 @@
     "build:mac": "npm run prepare-build && pkg . --no-bytecode --public-packages \"*\" --public --targets node22-macos-x64,node22-macos-arm64 --out-path dist",
     "build:wdi": "bash scripts/build-wdi-simple.sh",
     "build:apk": "bash src/android/generate_apk.sh && mkdir -p dist && cp src/android/output/LockdownMDM-release.apk dist/device-owner.apk",
-    "build:installer-linux": "npm run bundle && pkg . --no-bytecode --public-packages \"*\" --public --targets node22-linux-x64 --output dist/executable-linux",
+    "build:installer-linux": "npm run bundle && pkg . --no-bytecode --public-packages \"*\" --public --targets node22-linux-x64 --output dist/.executable-linux.tmp && mv dist/.executable-linux.tmp dist/executable-linux",
     "watch:installer": "nodemon --watch src --ext ts --ignore \"src/**/*.test.ts\" --ignore src/server.ts --ignore src/apk-config.ts --ignore src/auth.ts --exec \"npm run build:installer-linux\""
   },
   "pkg": {

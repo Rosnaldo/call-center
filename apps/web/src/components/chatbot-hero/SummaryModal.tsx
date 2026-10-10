@@ -84,6 +84,7 @@ const Summary: React.FC = () => {
             </dd>
           </div>
           <Row label={t('chatbot.summary.installOs')} value={params?.installOs} />
+          <Row label={t('chatbot.summary.appVersion')} value={params?.appVersion} />
         </dl>
       </div>
     </div>

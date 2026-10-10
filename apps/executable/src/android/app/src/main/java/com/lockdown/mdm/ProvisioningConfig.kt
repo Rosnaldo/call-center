@@ -15,8 +15,16 @@ import java.nio.ByteOrder
  *
  * They seed [AllowlistStore]'s defaults; commands sent later still override them. An APK
  * without the block (e.g. built by generate_apk.sh) falls back to [Constants].
+ *
+ * [appVersion] is the configuration's version as typed in the chatbot (e.g. 1.2.0). The
+ * APK's own versionName can't carry it (changing the manifest means re-signing), so the
+ * app shows it itself (see MainActivity and PolicyEnforcer.applyOrganizationName).
  */
-data class ProvisioningConfig(val privateDnsHost: String?, val allowedApps: Set<String>?) {
+data class ProvisioningConfig(
+    val privateDnsHost: String?,
+    val allowedApps: Set<String>?,
+    val appVersion: String?,
+) {
     companion object {
         // Must match CONFIG_BLOCK_ID in apk-config.ts.
         private const val CONFIG_BLOCK_ID = 0x444f4346 // "DOCF"
@@ -51,7 +59,9 @@ data class ProvisioningConfig(val privateDnsHost: String?, val allowedApps: Set<
                 val array = obj.getJSONArray("allowedApps")
                 (0 until array.length()).map(array::getString).toSet()
             }
-            return ProvisioningConfig(host, apps)
+            // Absent in configs made before the chatbot asked for it.
+            val appVersion = if (obj.isNull("appVersion")) null else obj.getString("appVersion")
+            return ProvisioningConfig(host, apps, appVersion)
         }
 
         private fun readBlock(apkPath: String): String? = RandomAccessFile(apkPath, "r").use { file ->

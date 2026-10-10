@@ -19,6 +19,8 @@ export interface EmbeddedConfig {
   version: string | null;
   privateDnsHost: string | null;
   allowedApps: string[] | null;
+  /** Version of this configuration, shown by the device owner app (e.g. 1.2.0). */
+  appVersion: string | null;
 }
 
 export interface EmbeddedPayload {

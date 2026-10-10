@@ -12,6 +12,8 @@ export interface ParamsContext {
     privateDnsHost: string | null;
     allowedApps: string[] | null;
     installOs: InstallOs | null;
+    // Version of this configuration, shown by the device owner app (e.g. 1.2.0).
+    appVersion: string | null;
     // i18n key (under `chatbot.`) of the last answer's error.
     error: string | null;
 }
@@ -23,6 +25,7 @@ export interface ParamsOutput {
     privateDnsHost: string | null;
     allowedApps: string[] | null;
     installOs: InstallOs | null;
+    appVersion: string | null;
 }
 
 export type ParamsEvent =
@@ -61,7 +64,13 @@ export const parseVersion = (text: unknown): string | null => {
     return /^\d{1,2}(\.\d{1,3}){0,2}$/.test(value) ? value : null;
 };
 
-export const parseYesNo = (text: unknown): boolean | null => {
+// Semantic version of the configuration: 1 to 4 numbers separated by dots.
+export const parseAppVersion = (text: unknown): string | null => {
+    const value = normalize(text).replace(/^v/, '');
+    return /^\d{1,4}(\.\d{1,4}){0,3}$/.test(value) ? value : null;
+};
+
+export const parseYesNo =(text: unknown): boolean | null => {
     const value = normalize(text);
     if (YES.includes(value)) return true;
     if (NO.includes(value)) return false;
@@ -99,6 +108,7 @@ const initialContext: ParamsContext = {
     privateDnsHost: null,
     allowedApps: null,
     installOs: null,
+    appVersion: null,
     error: null,
 };
 
@@ -117,6 +127,7 @@ export const paramsMachine = setup({
         isValidVersion: ({ event }) => parseVersion(answerOf(event)) !== null,
         isValidHostname: ({ event }) => parseHostname(answerOf(event)) !== null,
         isValidInstallOs: ({ event }) => parseInstallOs(answerOf(event)) !== null,
+        isValidAppVersion: ({ event }) => parseAppVersion(answerOf(event)) !== null,
         isValidAppIds: ({ event }) => parseAppIds(appsOf(event)) !== null,
         isYes: ({ event }) => parseYesNo(answerOf(event)) === true,
         isNo: ({ event }) => parseYesNo(answerOf(event)) === false,
@@ -129,12 +140,14 @@ export const paramsMachine = setup({
         saveDnsHost: assign({ privateDnsHost: ({ event }) => parseHostname(answerOf(event)), error: null }),
         saveAllowedApps: assign({ allowedApps: ({ event }) => parseAppIds(appsOf(event)), error: null }),
         saveInstallOs: assign({ installOs: ({ event }) => parseInstallOs(answerOf(event)), error: null }),
+        saveAppVersion: assign({ appVersion: ({ event }) => parseAppVersion(answerOf(event)), error: null }),
         clearError: assign({ error: null }),
         reset: assign(() => ({ ...initialContext })),
         rejectOs: assign({ error: 'errors.os' }),
         rejectVersion: assign({ error: 'errors.version' }),
         rejectHostname: assign({ error: 'errors.hostname' }),
         rejectInstallOs: assign({ error: 'errors.installOs' }),
+        rejectAppVersion: assign({ error: 'errors.appVersion' }),
         rejectYesNo: assign({ error: 'errors.yesNo' }),
         rejectProceed: assign({ error: 'errors.proceed' }),
         rejectAppIds: assign({ error: 'errors.appIds' }),
@@ -211,8 +224,16 @@ export const paramsMachine = setup({
         askInstallOs: {
             on: {
                 ANSWER: [
-                    { guard: 'isValidInstallOs', target: 'confirm', actions: 'saveInstallOs' },
+                    { guard: 'isValidInstallOs', target: 'askAppVersion', actions: 'saveInstallOs' },
                     { actions: 'rejectInstallOs' },
+                ],
+            },
+        },
+        askAppVersion: {
+            on: {
+                ANSWER: [
+                    { guard: 'isValidAppVersion', target: 'confirm', actions: 'saveAppVersion' },
+                    { actions: 'rejectAppVersion' },
                 ],
             },
         },
@@ -236,6 +257,7 @@ export const paramsMachine = setup({
         privateDnsHost: context.privateDnsHost,
         allowedApps: context.allowedApps,
         installOs: context.installOs,
+        appVersion: context.appVersion,
     }),
 });
 
@@ -248,4 +270,5 @@ export type PromptState =
     | 'askDnsHost'
     | 'askAllowedApps'
     | 'askInstallOs'
+    | 'askAppVersion'
     | 'confirm';

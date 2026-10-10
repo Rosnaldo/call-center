@@ -32,7 +32,10 @@ const askChoice = (...choices: Choice[]): BotReply => ({ event: 'ask_choice', ch
 const ASK_YES_NO = askChoice({ key: 'choices.yes', value: 'yes' }, { key: 'choices.no', value: 'no' });
 const OFFER_RESTART: BotReply = { event: 'offer_restart' };
 
-// Steps the client answers with buttons instead of typing.
+// The configuration version offered as a button; any other is typed.
+export const DEFAULT_APP_VERSION = '1.0.0';
+
+// Steps the client answers with buttons instead of typing (unless in TYPED_TOO).
 const BUTTONS: Partial<Record<PromptState, BotReply>> = {
     askStart: askChoice({ key: 'choices.proceed', value: 'proceed' }),
     intro: askChoice({ key: 'choices.proceed', value: 'proceed' }),
@@ -44,8 +47,12 @@ const BUTTONS: Partial<Record<PromptState, BotReply>> = {
         { key: 'choices.windows', value: 'windows' },
         { key: 'choices.mac', value: 'mac' },
     ),
+    askAppVersion: askChoice({ key: 'choices.defaultAppVersion', value: DEFAULT_APP_VERSION }),
     confirm: ASK_YES_NO,
 };
+
+// Steps with buttons that can also be answered by typing.
+const TYPED_TOO = new Set<PromptState>(['askAppVersion']);
 
 // One conversation with the params machine. Transport-agnostic: callers feed
 // user input in and get the bot replies back, so the same logic serves the
@@ -117,8 +124,9 @@ export class ChatSession {
 
     // The params collected so far (null until answered), for the client's summary.
     params(): ParamsOutput {
-        const { os, version, privateDns, privateDnsHost, allowedApps, installOs } = this.actor.getSnapshot().context;
-        return { os, version, privateDns, privateDnsHost, allowedApps, installOs };
+        const { os, version, privateDns, privateDnsHost, allowedApps, installOs, appVersion } =
+            this.actor.getSnapshot().context;
+        return { os, version, privateDns, privateDnsHost, allowedApps, installOs, appVersion };
     }
 
     // Whether the client's checklist is answering the bot right now.
@@ -130,10 +138,11 @@ export class ChatSession {
         this.actor?.stop();
     }
 
-    // Typing is only for the steps without buttons, while not finished.
+    // Typing is for the steps without buttons (or that take both), while not finished.
     private isSendEnabled(): boolean {
         if (this.isDone()) return false;
-        return !BUTTONS[this.actor.getSnapshot().value as PromptState];
+        const state = this.actor.getSnapshot().value as PromptState;
+        return !BUTTONS[state] || TYPED_TOO.has(state);
     }
 
     private withSendState(replies: Reply[]): BotReply[] {

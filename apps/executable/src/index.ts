@@ -1,4 +1,4 @@
-import { openInTerminal, launchedWithoutTerminal, shouldPauseOnExit, waitForEnter, askRetry } from "./terminal";
+import { openInTerminal, launchedWithoutTerminal, shouldPauseOnExit, waitForEnter, askRetry, askYesNo } from "./terminal";
 import { listDevices, type DeviceInfo, type OnReady } from "./adb";
 import { installDeviceOwner } from "./device-owner";
 import { readEmbeddedPayload } from "./embedded-config";
@@ -12,6 +12,13 @@ async function main(): Promise<void> {
   let failed = false;
   const onReady: OnReady | undefined = payload
     ? async (adb, device) => {
+        // Nothing is changed on the phone without the user's go-ahead (also
+        // skipped without a terminal to answer in).
+        const version = payload.config.appVersion ? ` (configuration ${payload.config.appVersion})` : "";
+        if (!(await askYesNo(`Phone found: ${device}. Install the device owner app${version} on it?`))) {
+          console.log(`Skipped ${device}.`);
+          return;
+        }
         if (!(await installDeviceOwner(adb, device, payload.apk))) failed = true;
       }
     : undefined;
@@ -44,15 +51,6 @@ function printDevices(devices: DeviceInfo[]): void {
 }
 
 function connectInstructions(devices: DeviceInfo[]): string {
-  if (devices.some(({ state }) => state === "unauthorized")) {
-    return [
-      "",
-      "The phone didn't allow USB debugging from this computer.",
-      'Unlock it and tap "Allow" on the "Allow USB debugging?" prompt',
-      '(check "Always allow from this computer"). If no prompt shows up, unplug and replug the cable.',
-      "",
-    ].join("\n");
-  }
   if (devices.length) {
     return "\nA phone was found but can't be used yet (see its state above). Fix that, then try again.\n";
   }
@@ -78,6 +76,9 @@ async function run(): Promise<void> {
   }
 
   if (shouldPauseOnExit()) await waitForEnter();
+  // A connected phone's USB read never times out (see adb.ts) and keeps the
+  // event loop alive, so the process wouldn't end on its own.
+  process.exit();
 }
 
 run();

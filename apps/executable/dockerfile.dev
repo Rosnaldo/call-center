@@ -6,6 +6,12 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends zip \
     && rm -rf /var/lib/apt/lists/*
 
+# The repo is bind-mounted at /app: run as `node` (UID 1000, usually the host
+# user) so the rebuilt dist/executable-linux isn't owned by root.
+USER node
+
 WORKDIR /app/apps/executable
 
-CMD ["npm", "run", "serve"]
+# The service, restarted on changes, plus the watcher rebuilding the Linux
+# installer template it serves (dist/executable-linux) on installer changes.
+CMD ["sh", "-c", "npm run watch:installer & exec npm run serve:watch"]

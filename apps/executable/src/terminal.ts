@@ -118,10 +118,12 @@ export function waitForEnter(message = "\nPress Enter to close..."): Promise<voi
   return new Promise((resolve) => {
     process.stdout.write(message);
     process.stdin.resume();
-    process.stdin.once("data", () => {
-      process.stdin.pause();
+    // Also on end of input (no terminal), which would otherwise wait forever.
+    const done = () => {
+      process.stdin.off("data", done).off("end", done).pause();
       resolve();
-    });
+    };
+    process.stdin.once("data", done).once("end", done);
   });
 }
 

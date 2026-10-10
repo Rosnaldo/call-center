@@ -31,6 +31,8 @@ class MainActivity : AppCompatActivity() {
     private fun refreshStatus() {
         val isOwner = PolicyEnforcer.isDeviceOwner(this)
         binding.statusText.text = buildString {
+            val configVersion = ProvisioningConfig.get(this@MainActivity)?.appVersion
+            appendLine("Configuration version: ${configVersion ?: "none"}")
             appendLine("Device owner active: $isOwner")
             if (!PolicyEnforcer.isDnsLockSupported()) {
                 appendLine("Private DNS lock: via VPN fallback (native API needs Android 10+)")

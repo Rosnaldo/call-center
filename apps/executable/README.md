@@ -14,6 +14,7 @@ npm run build:win
 npm run build:mac
 npm run build:apk    # device owner APK template into dist/device-owner.apk
 npm run watch:installer  # dev: rebuild dist/executable-linux on every src change
+npm run serve:watch  # dev: the installer service, restarted on changes
 ```
 
 The installer binary (what runs on the user's PC) is the pkg output in `dist/`,
@@ -24,8 +25,17 @@ HTTP service alone (`src/server.ts`, `apk-config.ts`, `auth.ts`) does not (in
 dev it runs from source via `npm run serve`). `npm run watch:installer`
 (nodemon) rebuilds `dist/executable-linux` automatically on each change to the
 installer sources — run `npm run build:linux` once first so the native modules
-are fetched. In prod the Dockerfile always rebuilds from source, so this only
-matters for local dev.
+are fetched. The binary is written to a temp file and renamed, so a download
+never picks up a half-written template. In prod the Dockerfile always rebuilds
+from source, so this only matters for local dev.
+
+In docker compose dev, the `executable` container runs both: the service with
+`npm run serve:watch` (restarts on changes) and `npm run watch:installer`, so
+the next installer downloaded from the chat already has the latest code (wait
+for nodemon's "clean exit" after a change). It runs as the `node` user (UID
+1000) so `dist/` stays owned by the host user. The service prefers
+`dist/executable-linux-x64` (from `npm run build`) over `executable-linux`:
+delete it, or the watcher's rebuilds won't be served.
 
 Output in `dist/`:
 
@@ -91,10 +101,16 @@ the APK Signing Block, which APK Signature Scheme v2/v3 doesn't sign, so the
 APK needs no re-signing. The app reads it in `ProvisioningConfig.kt` and uses
 it as the default allowlist (`allowedApps`, plus the Play Store) and Private
 DNS (`privateDnsHost`; `null` leaves DNS unlocked). Without the pair, it falls
-back to `Constants.kt`.
+back to `Constants.kt`. `appVersion` (the configuration version typed in the
+chatbot, e.g. `1.2.0`) can't go in the APK's `versionName` (the manifest is
+signed), so the app shows it on its main screen and, as device owner, sets the
+organization name to `Lockdown MDM <appVersion>`, which Android shows in
+Settings (device admin / "managed by" info).
 
-On start, the executable installs the embedded APK on every phone in the
-`device` state (`pm install -r`) and makes it the device owner
+On start, the executable looks for a phone, asking the user to connect it
+(USB cable, developer options, USB debugging) and retrying until one is ready
+or the user quits. For each phone in the `device` state it asks whether to
+install (naming the configuration version typed in the chatbot), then installs the embedded APK (`pm install -r`) and makes it the device owner
 (`dpm set-device-owner com.lockdown.mdm/.AdminReceiver`). Android only allows
 that on a phone without accounts; otherwise the error is shown and the exit
 code is 1. A phone already provisioned blocks installs (`DISALLOW_INSTALL_APPS`)
@@ -156,8 +172,18 @@ The app lists Android devices like `adb devices`, but talks to them directly ove
 USB with [`@yume-chan/adb`](https://github.com/yume-chan/ya-webadb) and
 [`usb`](https://github.com/node-usb/node-usb). **Users don't need adb installed.**
 
-States: `device` (ready), `unauthorized` (the "Allow USB debugging" prompt on the
-phone wasn't accepted within 60 s), `no permissions`, `busy`.
+States: `device` (ready), `no permissions`, `no driver`, `busy`, `error (...)`.
+While the phone's "Allow USB debugging" prompt is pending, the app waits for it
+(with instructions) until it's accepted or the phone is unplugged.
+
+`usb` quirks handled in `src/adb.ts`:
+- Reads get a timeout (1 s by default) unlike WebUSB, and a cancelled read loses
+  the data in transit, hanging the ADB connection: reads use the max timeout.
+- A device with a read in flight can't be closed (the error, "The same native
+  value cannot be borrowed mutably...", is thrown synchronously). Once
+  connected, ADB always has one, so the phone stays claimed until the process
+  exits, which `index.ts` does explicitly (the pending read keeps Node alive).
+- Reading the product name also fails mid-read, so it's read before connecting.
 
 - **Authorization**: if `~/.android/adbkey` exists (adb was used before), that key
   is reused, so already-trusted phones don't prompt again. Otherwise a key is

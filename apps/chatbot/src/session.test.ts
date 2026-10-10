@@ -106,16 +106,39 @@ describe('ChatSession choice buttons', () => {
         });
     });
 
+    it('offers the default configuration version and still takes a typed one', () => {
+        const atVersion = () => {
+            const { session } = atAllowedApps();
+            session.selectAllowedApps(['com.whatsapp']);
+            return { session, replies: session.handle('linux') };
+        };
+
+        const { replies } = atVersion();
+        expect(replies).toEqual([
+            { event: 'bot_message', key: 'messages.askAppVersion', sendEnabled: true },
+            { event: 'ask_choice', choices: [{ key: 'choices.defaultAppVersion', value: '1.0.0' }] },
+        ]);
+
+        const clicked = atVersion().session;
+        clicked.handle('1.0.0');
+        expect(clicked.params().appVersion).toBe('1.0.0');
+
+        const typed = atVersion().session;
+        typed.handle('2.3');
+        expect(typed.params().appVersion).toBe('2.3');
+    });
+
     it('shows them on the confirmation', () => {
         const { session } = atAllowedApps();
         session.selectAllowedApps(['com.whatsapp']);
-        const replies = session.handle('linux');
+        session.handle('linux');
+        const replies = session.handle('1.0');
         expect(replies).toEqual([
             {
                 event: 'bot_message',
                 key: 'messages.confirm',
                 params: {
-                    summary: { os: 'Android', version: '14', privateDnsHost: null, installOs: 'Linux' },
+                    summary: { os: 'Android', version: '14', privateDnsHost: null, installOs: 'Linux', appVersion: '1.0' },
                 },
                 sendEnabled: false,
             },
@@ -129,6 +152,7 @@ describe('ChatSession finish', () => {
         const { session } = atAllowedApps();
         session.selectAllowedApps(['com.whatsapp']);
         session.handle('mac');
+        session.handle('1.0');
         return { session, replies: session.handle('yes') };
     };
 
@@ -151,7 +175,15 @@ describe('ChatSession finish', () => {
 });
 
 describe('ChatSession params', () => {
-    const empty = { os: null, version: null, privateDns: null, privateDnsHost: null, allowedApps: null, installOs: null };
+    const empty = {
+        os: null,
+        version: null,
+        privateDns: null,
+        privateDnsHost: null,
+        allowedApps: null,
+        installOs: null,
+        appVersion: null,
+    };
 
     it('starts empty', () => {
         const session = new ChatSession();
@@ -169,8 +201,9 @@ describe('ChatSession params', () => {
         const { session } = atAllowedApps();
         session.selectAllowedApps([]);
         session.handle('mac');
+        session.handle('2.0');
         session.handle('yes');
-        expect(session.params().installOs).toBe('macOS');
+        expect(session.params()).toMatchObject({ installOs: 'macOS', appVersion: '2.0' });
         session.start();
         expect(session.params()).toEqual(empty);
     });
@@ -202,7 +235,9 @@ describe('ChatSession send state', () => {
         expect(replies[0]).toMatchObject({ sendEnabled: false });
         const { session } = atAllowedApps();
         session.selectAllowedApps(['com.whatsapp']);
-        session.handle('mac');
+        // The configuration version is typed.
+        expect(session.handle('mac')[0]).toMatchObject({ key: 'messages.askAppVersion', sendEnabled: true });
+        session.handle('1.0');
         expect(session.handle('yes')[0]).toMatchObject({ sendEnabled: false });
     });
 });
@@ -217,6 +252,7 @@ describe('ChatSession installer', () => {
         for (const answer of ['proceed', 'proceed', '1', '14', 'yes', 'dns.google']) session.handle(answer);
         session.selectAllowedApps(['com.whatsapp']);
         session.handle('windows');
+        session.handle('1.2.3');
         session.handle('yes');
         return { session, createInstaller };
     };
@@ -234,6 +270,7 @@ describe('ChatSession installer', () => {
             privateDnsHost: 'dns.google',
             allowedApps: ['com.whatsapp'],
             installOs: 'Windows',
+            appVersion: '1.2.3',
         });
     });
 

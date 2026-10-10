@@ -109,12 +109,12 @@ describe('ChatbotWs choices', () => {
   });
 
   it('formats the summary', () => {
-    const summary = { os: 'Android', version: '14', privateDnsHost: null, installOs: 'Linux' };
+    const summary = { os: 'Android', version: '14', privateDnsHost: null, installOs: 'Linux', appVersion: '1.0.0' };
     transport.receive({ event: 'bot_message', key: 'messages.confirm', params: { summary } });
 
     expect(useChatbotStore.getState().messages.at(-1)?.message).toBe(
       'Confira os dados:\n  Sistema: Android\n  Versão: 14\n  DNS privado: não\n' +
-        '  Instalação USB a partir de: Linux\nEstá correto?',
+        '  Instalação USB a partir de: Linux\n  Versão da configuração: 1.0.0\nEstá correto?',
     );
   });
 
@@ -272,7 +272,15 @@ describe('ChatbotWs params', () => {
   });
 
   it('stores the params without touching the typing state', () => {
-    const params = { os: 'Android', version: '14', privateDns: null, privateDnsHost: null, allowedApps: null, installOs: null };
+    const params = {
+      os: 'Android',
+      version: '14',
+      privateDns: null,
+      privateDnsHost: null,
+      allowedApps: null,
+      installOs: null,
+      appVersion: null,
+    };
     useChatbotStore.getState().setBotTyping(true);
 
     transport.receive({ event: 'params', params });

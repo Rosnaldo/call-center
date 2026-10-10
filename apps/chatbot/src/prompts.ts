@@ -9,13 +9,14 @@ export interface BotText {
 
 // The collected params, as shown in the confirm/done messages (`summary` param).
 // The allowed apps aren't shown.
-export type Summary = Pick<ParamsContext, 'os' | 'version' | 'privateDnsHost' | 'installOs'>;
+export type Summary = Pick<ParamsContext, 'os' | 'version' | 'privateDnsHost' | 'installOs' | 'appVersion'>;
 
-export const summaryOf = ({ os, version, privateDnsHost, installOs }: Summary): Summary => ({
+export const summaryOf = ({ os, version, privateDnsHost, installOs, appVersion }: Summary): Summary => ({
     os,
     version,
     privateDnsHost,
     installOs,
+    appVersion,
 });
 
 export const prompts: Record<PromptState, (ctx: ParamsContext) => BotText> = {
@@ -27,5 +28,6 @@ export const prompts: Record<PromptState, (ctx: ParamsContext) => BotText> = {
     askDnsHost: () => ({ key: 'messages.askDnsHost' }),
     askAllowedApps: () => ({ key: 'messages.askAllowedApps' }),
     askInstallOs: () => ({ key: 'messages.askInstallOs' }),
+    askAppVersion: () => ({ key: 'messages.askAppVersion' }),
     confirm: (ctx) => ({ key: 'messages.confirm', params: { summary: summaryOf(ctx) } }),
 };

@@ -20,6 +20,7 @@ interface BotSummary {
     version: string | null;
     privateDnsHost: string | null;
     installOs: string | null;
+    appVersion: string | null;
 }
 
 // Mirrors the protocol in apps/chatbot/src/index.ts.
@@ -43,12 +44,13 @@ export const normalizeSearchTerm = (term: string): string | null => {
 const t = (key: string, params?: Record<string, unknown>): string => i18n.t(`chatbot.${key}`, params);
 
 // Same lines as the chatbot CLI's formatSummary (apps/chatbot/src/cli.ts).
-export const formatSummary = ({ os, version, privateDnsHost, installOs }: BotSummary): string =>
+export const formatSummary = ({ os, version, privateDnsHost, installOs, appVersion }: BotSummary): string =>
     [
         [t('summary.os'), os],
         [t('summary.version'), version],
         [t('summary.privateDns'), privateDnsHost ?? t('summary.no')],
         [t('summary.installOs'), installOs],
+        [t('summary.appVersion'), appVersion],
     ]
         .map(([label, value]) => `  ${label}: ${value}`)
         .join('\n');

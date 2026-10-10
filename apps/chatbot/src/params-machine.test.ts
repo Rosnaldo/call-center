@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createActor } from 'xstate';
-import { paramsMachine, parseAppIds, parseHostname, parseInstallOs, parseOs, parseVersion, parseYesNo } from './params-machine';
+import { paramsMachine, parseAppIds, parseAppVersion, parseHostname, parseInstallOs, parseOs, parseVersion, parseYesNo } from './params-machine';
 
 // Strings are typed answers; arrays are lists picked in the checklist.
 const run = (...answers: (string | string[])[]) => {
@@ -22,6 +22,15 @@ describe('parsers', () => {
     it('parses versions', () => {
         expect(parseVersion('v17.4.1')).toBe('17.4.1');
         expect(parseVersion('abc')).toBeNull();
+    });
+
+    it('parses semantic configuration versions', () => {
+        expect(parseAppVersion(' v1.2.0 ')).toBe('1.2.0');
+        expect(parseAppVersion('2')).toBe('2');
+        expect(parseAppVersion('1.2.3.4')).toBe('1.2.3.4');
+        expect(parseAppVersion('1.2.3.4.5')).toBeNull();
+        expect(parseAppVersion('1.2-beta')).toBeNull();
+        expect(parseAppVersion('latest')).toBeNull();
     });
 
     it('parses yes/no in en and pt', () => {
@@ -57,7 +66,7 @@ describe('parsers', () => {
 
 describe('paramsMachine', () => {
     it('collects params and finishes', () => {
-        const snapshot = run('2', '17.4', 'yes', 'dns.adguard.com', ['com.whatsapp', 'com.Slack'], 'windows', 'yes');
+        const snapshot = run('2', '17.4', 'yes', 'dns.adguard.com', ['com.whatsapp', 'com.Slack'], 'windows', 'v1.2.0', 'yes');
         expect(snapshot.status).toBe('done');
         expect(snapshot.output).toEqual({
             os: 'iOS',
@@ -66,6 +75,7 @@ describe('paramsMachine', () => {
             privateDnsHost: 'dns.adguard.com',
             allowedApps: ['com.whatsapp', 'com.Slack'],
             installOs: 'Windows',
+            appVersion: '1.2.0',
         });
     });
 
@@ -88,6 +98,16 @@ describe('paramsMachine', () => {
         const invalid = run('1', '14', 'no', [], 'android');
         expect(invalid.value).toBe('askInstallOs');
         expect(invalid.context.error).toBe('errors.installOs');
+    });
+
+    it('asks the configuration version after the USB install OS', () => {
+        expect(run('1', '14', 'no', [], 'linux').value).toBe('askAppVersion');
+
+        const invalid = run('1', '14', 'no', [], 'linux', 'first');
+        expect(invalid.value).toBe('askAppVersion');
+        expect(invalid.context.error).toBe('errors.appVersion');
+
+        expect(run('1', '14', 'no', [], 'linux', '2.0.1').value).toBe('confirm');
     });
 
     it('asks the private DNS hostname only when there is one', () => {
@@ -116,7 +136,7 @@ describe('paramsMachine', () => {
     });
 
     it('starts over when the summary is rejected', () => {
-        const snapshot = run('1', '14', 'no', [], 'linux', 'no');
+        const snapshot = run('1', '14', 'no', [], 'linux', '1.0', 'no');
         expect(snapshot.value).toBe('askOs');
         expect(snapshot.context.os).toBeNull();
     });
