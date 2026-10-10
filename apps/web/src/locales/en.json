@@ -15,7 +15,8 @@
     "logout": "Log Out",
     "roleCustomer": "Customer",
     "roleAttendant": "Attendant",
-    "roleAdmin": "Admin"
+    "roleAdmin": "Admin",
+    "language": "Language"
   },
   "error": {
     "restrictedAccess": "Restricted Access",

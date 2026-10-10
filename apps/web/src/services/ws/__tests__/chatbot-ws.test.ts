@@ -18,6 +18,7 @@ class FakeTransport implements ITransport {
 const ASK_APPS_MESSAGE = {
   autor: 'bot',
   message: 'Quais apps serão permitidos? Use o botão abaixo para selecioná-los.',
+  text: { key: 'messages.askAllowedApps' },
   action: 'select_allowed_apps',
 };
 
@@ -123,8 +124,8 @@ describe('ChatbotWs choices', () => {
     transport.receive({ event: 'ask_choice', choices: YES_NO });
 
     expect(useChatbotStore.getState().messages.at(-1)?.choices).toEqual([
-      { label: 'Sim', value: 'yes' },
-      { label: 'Não', value: 'no' },
+      { label: 'Sim', value: 'yes', key: 'choices.yes' },
+      { label: 'Não', value: 'no', key: 'choices.no' },
     ]);
   });
 
@@ -137,8 +138,12 @@ describe('ChatbotWs choices', () => {
     expect(state.messages.at(-1)).toEqual({
       autor: 'bot',
       message: 'Qual o sistema operacional do celular?',
+      text: { key: 'messages.askOs' },
       action: 'choice',
-      choices: [{ label: 'Android', value: 'android' }, { label: 'iOS', value: 'ios' }],
+      choices: [
+        { label: 'Android', value: 'android', key: 'choices.android' },
+        { label: 'iOS', value: 'ios', key: 'choices.ios' },
+      ],
     });
   });
 
@@ -148,7 +153,11 @@ describe('ChatbotWs choices', () => {
     transport.receive({ event: 'bot_message', key: 'messages.askAllowedApps' });
     transport.receive({ event: 'open_allowed_apps' });
 
-    expect(useChatbotStore.getState().messages[0]).toEqual({ autor: 'bot', message: 'Qual o sistema operacional do celular?' });
+    expect(useChatbotStore.getState().messages[0]).toEqual({
+      autor: 'bot',
+      message: 'Qual o sistema operacional do celular?',
+      text: { key: 'messages.askOs' },
+    });
   });
 
   it('ends the request once answered', () => {
@@ -183,6 +192,7 @@ describe('ChatbotWs restart', () => {
     expect(state.messages.at(-1)).toEqual({
       autor: 'bot',
       message: 'Esta conversa terminou. Use "Resetar" para começar outra.',
+      text: { key: 'messages.finished' },
       action: 'restart',
     });
   });

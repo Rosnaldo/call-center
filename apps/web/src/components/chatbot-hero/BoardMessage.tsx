@@ -2,7 +2,11 @@ import React, { useRef } from 'react';
 import { Download, ListChecks, Loader2, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChatbotStore } from '../../states/stores.ts';
-import type { ChatbotChoice } from '../../states/local/chatbot/state.ts';
+import type { ChatbotChoice, ChatbotMessage } from '../../states/local/chatbot/state.ts';
+import { translateBotText } from '../../services/ws/chatbot-ws.ts';
+
+// Translated on render (not on arrival), so the chat follows language changes.
+const messageText = ({ text, message }: ChatbotMessage): string => (text ? translateBotText(text) : message);
 
 interface BoardMessageProps {
   isProcessing?: boolean;
@@ -63,7 +67,7 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
                   : 'bg-white text-[#1E1913] font-sans-ui rounded-2xl rounded-tl-xs border border-[#E4D9C4] border-l-[3px] border-l-[#B97204] shadow-[0_2px_8px_rgba(0,0,0,0.03)]'
               }`}
             >
-              <p>{msg.message}</p>
+              <p>{messageText(msg)}</p>
             </div>
 
             {/* Botão da mensagem: abre a checklist de apps enquanto o bot espera a lista */}
@@ -88,7 +92,7 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
                     onClick={() => onAnswer(choice)}
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-white text-[#B97204] border border-[#B97204] font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] hover:bg-[#B97204] hover:text-white"
                   >
-                    {choice.label}
+                    {choice.key ? t(`chatbot.${choice.key}`) : choice.label}
                   </button>
                 ))}
               </div>

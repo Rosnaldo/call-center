@@ -1,7 +1,7 @@
 import i18n from 'i18next';
 import { ITransport, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
 import type { ChatbotStoreInstance } from '../../states/stores';
-import type { AppSearchResult, ChatbotParams } from '../../states/local/chatbot/state';
+import type { AppSearchResult, BotText, ChatbotParams } from '../../states/local/chatbot/state';
 import properties from '../../properties';
 import authSession from '../../auth/session';
 
@@ -9,10 +9,6 @@ const RECONNECT_BASE_DELAY_MS = 1_000;
 const RECONNECT_MAX_DELAY_MS = 30_000;
 
 // Texts come as i18n keys under `chatbot.` (see apps/chatbot/src/prompts.ts).
-interface BotText {
-    key: string;
-    params?: Record<string, unknown>;
-}
 
 // The collected params, sent as the `summary` param of the confirm/done messages.
 interface BotSummary {
@@ -93,10 +89,11 @@ export class ChatbotWs {
     // `shown` is what the chat shows as the user's message, e.g. a choice's
     // label while its value is sent. Returns false when the message couldn't
     // be sent (socket not open).
-    sendMessage(text: string, shown: string = text): boolean {
+    // `shownKey` (under `chatbot.`) translates `shown` again on language changes.
+    sendMessage(text: string, shown: string = text, shownKey?: string): boolean {
         if (this.ws?.readyState !== TRANSPORT_OPEN) return false;
         const { addMessage, fulfillChoiceRequest, setBotTyping } = this.store.getState();
-        addMessage({ autor: 'user', message: shown });
+        addMessage(shownKey ? { autor: 'user', message: shown, text: { key: shownKey } } : { autor: 'user', message: shown });
         // Typing answers a choice as well; the bot asks again if it isn't one.
         fulfillChoiceRequest();
         setBotTyping(true);
@@ -202,13 +199,14 @@ export class ChatbotWs {
             }
             if (msg.event === 'bot_message') {
                 const { addMessage, setSendEnabled } = this.store.getState();
-                addMessage({ autor: 'bot', message: translateBotText(msg) });
+                const { key, params } = msg;
+                addMessage({ autor: 'bot', message: translateBotText(msg), text: params ? { key, params } : { key } });
                 setSendEnabled(msg.sendEnabled);
             } else if (msg.event === 'open_allowed_apps') {
                 // Shows the button on the bot's question; the user opens the modal.
                 this.store.getState().requestAllowedApps();
             } else if (msg.event === 'ask_choice') {
-                this.store.getState().requestChoice(msg.choices.map(({ key, value }) => ({ label: t(key), value })));
+                this.store.getState().requestChoice(msg.choices.map(({ key, value }) => ({ label: t(key), value, key })));
             } else if (msg.event === 'installer_ready') {
                 // No auto-download: the installer's "ready" message gets a
                 // download button the user clicks (see BoardMessage).

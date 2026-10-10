@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { UserProfileBadge } from './UserProfileBadge.tsx';
+import { LanguageSelect } from './LanguageSelect.tsx';
 
 interface HeaderProps {
   onLogout: () => void;
@@ -27,8 +28,11 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Active profile badge actions */}
-        <UserProfileBadge onLogout={onLogout} />
+        <div className="flex items-center gap-2">
+          <LanguageSelect />
+          {/* Active profile badge actions */}
+          <UserProfileBadge onLogout={onLogout} />
+        </div>
       </div>
     </header>
   );

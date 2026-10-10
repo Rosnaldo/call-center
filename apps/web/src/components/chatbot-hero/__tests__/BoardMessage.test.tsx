@@ -87,3 +87,34 @@ describe('BoardMessage choice buttons', () => {
     expect(onAnswer).toHaveBeenCalledWith({ label: 'Não', value: 'não' });
   });
 });
+
+describe('BoardMessage language', () => {
+  beforeEach(() => act(() => useChatbotStore.getState().resetChatbot()));
+
+  it('translates bot messages and clicked answers again when the language changes', async () => {
+    const { default: i18n } = await import('../../../i18n.ts');
+    const initial = i18n.language;
+    await act(() => i18n.changeLanguage('pt'));
+    act(() => {
+      const store = useChatbotStore.getState();
+      store.addMessage({ autor: 'bot', message: 'Você usa DNS privado?', text: { key: 'messages.askDns' } });
+      store.requestChoice([
+        { label: 'Sim', value: 'yes', key: 'choices.yes' },
+        { label: 'Não', value: 'no', key: 'choices.no' },
+      ]);
+      store.addMessage({ autor: 'user', message: 'Sim', text: { key: 'choices.yes' } });
+      store.addMessage({ autor: 'user', message: 'meu texto' });
+    });
+    render(<BoardMessage onAnswer={vi.fn()} />);
+    expect(screen.getByText('Você usa DNS privado?')).toBeTruthy();
+
+    await act(() => i18n.changeLanguage('en'));
+
+    expect(screen.getByText('Are you using a private DNS?')).toBeTruthy();
+    expect(screen.getAllByText('Yes')).toHaveLength(2); // the button and the clicked answer
+    expect(screen.getByRole('button', { name: 'No' })).toBeTruthy();
+    expect(screen.getByText('meu texto')).toBeTruthy(); // typed text stays as typed
+
+    await act(() => i18n.changeLanguage(initial));
+  });
+});

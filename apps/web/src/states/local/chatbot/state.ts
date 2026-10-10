@@ -1,15 +1,26 @@
 // A button shown under a bot message.
 export type ChatbotMessageAction = 'select_allowed_apps' | 'choice' | 'restart' | 'download_installer';
 
-// A button's text and what it answers (sent as the user's message).
+// A text from the bot: an i18n key under `chatbot.` and its params.
+export interface BotText {
+  key: string;
+  params?: Record<string, unknown>;
+}
+
+// A button's text and what it answers (sent as the user's message). `key`
+// (under `chatbot.`) translates it again when the language changes.
 export interface ChatbotChoice {
   label: string;
   value: string;
+  key?: string;
 }
 
 export interface ChatbotMessage {
   autor: string;
+  // As translated on arrival; shown when there's no `text` (typed by the user).
   message: string;
+  // Translated on render, so the message follows the selected language.
+  text?: BotText;
   action?: ChatbotMessageAction;
   // The buttons of a `choice` action.
   choices?: ChatbotChoice[];

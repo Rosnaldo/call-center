@@ -32,7 +32,7 @@ export const ChatbotHero: React.FC = () => {
     if (chatbotWs.current?.sendMessage(text)) setInput('');
   };
 
-  const handleAnswer = ({ value, label }: ChatbotChoice) => chatbotWs.current?.sendMessage(value, label);
+  const handleAnswer = ({ value, label, key }: ChatbotChoice) => chatbotWs.current?.sendMessage(value, label, key);
   const handleGenerateInstaller = () => chatbotWs.current?.generateInstaller();
   const handleRestart = () => chatbotWs.current?.restart();
   const handleAllowedApps = (apps: string[]) => chatbotWs.current?.sendAllowedApps(apps) ?? false;

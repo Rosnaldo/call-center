@@ -15,7 +15,8 @@
     "logout": "Sair / Desconectar",
     "roleCustomer": "Cliente",
     "roleAttendant": "Atendente",
-    "roleAdmin": "Admin"
+    "roleAdmin": "Admin",
+    "language": "Idioma"
   },
   "error": {
     "restrictedAccess": "Acesso Restrito",
