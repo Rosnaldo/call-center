@@ -3,11 +3,13 @@
   Keep packageNames in sync with MonitoredBrowsers.PACKAGES (Kotlin) - this file can't reference
   that object directly, and Android requires the event-source filter to be declared statically
   here rather than set at runtime.
+  typeWindowContentChanged + flagReportViewIds: the address bar is read by view id after a page
+  loads, to catch raw-IP addresses reached by a link (see BrowserGuardAccessibilityService).
 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:accessibilityEventTypes="typeViewTextChanged|typeViewFocused|typeWindowStateChanged"
+    android:accessibilityEventTypes="typeViewTextChanged|typeViewFocused|typeWindowStateChanged|typeWindowContentChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagRetrieveInteractiveWindows"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds"
     android:canRetrieveWindowContent="true"
     android:notificationTimeout="100"
     android:packageNames="com.android.chrome,com.chrome.beta,com.chrome.dev,com.chrome.canary,com.android.browser,com.mi.globalbrowser,org.mozilla.firefox,com.sec.android.app.sbrowser,com.microsoft.emmx,com.opera.browser,com.brave.browser" />
