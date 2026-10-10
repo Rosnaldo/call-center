@@ -37,7 +37,14 @@ export const DEFAULT_APP_VERSION = '1.0.0';
 
 // Steps the client answers with buttons instead of typing (unless in TYPED_TOO).
 const BUTTONS: Partial<Record<PromptState, BotReply>> = {
-    askStart: askChoice({ key: 'choices.proceed', value: 'proceed' }),
+    askStart: askChoice({ key: 'choices.proceed', value: 'proceed' }, { key: 'choices.learnMore', value: 'learn' }),
+    learnMore: askChoice(
+        { key: 'choices.learnPrivateDns', value: 'privateDns' },
+        { key: 'choices.learnDeviceOwner', value: 'deviceOwner' },
+        { key: 'choices.learnSchedule', value: 'schedule' },
+        { key: 'choices.learnUsbDebugging', value: 'usbDebugging' },
+        { key: 'choices.startSetup', value: 'proceed' },
+    ),
     intro: askChoice({ key: 'choices.proceed', value: 'proceed' }),
     askOs: askChoice({ key: 'choices.android', value: 'android' }, { key: 'choices.ios', value: 'ios' }),
     askDns: ASK_YES_NO,
@@ -60,6 +67,9 @@ const TYPED_TOO = new Set<PromptState>(['askAppVersion']);
 export class ChatSession {
     private actor!: Actor<typeof paramsMachine>;
     private lastState: PromptState | null = null;
+    // learnCount at the last reply: a new pick in the "learn more" menu stays
+    // in the same step but has its own explanation to send.
+    private lastLearnCount = 0;
     private isGeneratingInstaller = false;
 
     // Without `isLoggedIn` (the terminal CLI) anyone may generate the installer.
@@ -73,6 +83,7 @@ export class ChatSession {
         this.actor?.stop();
         this.actor = createActor(paramsMachine).start();
         this.lastState = null;
+        this.lastLearnCount = 0;
         return this.withSendState(this.replies());
     }
 
@@ -163,17 +174,18 @@ export class ChatSession {
 
         const state = snapshot.value as PromptState;
         const replies: Reply[] = [];
-        const entered = state !== this.lastState;
+        const { learnCount } = snapshot.context;
+        const entered = state !== this.lastState || learnCount !== this.lastLearnCount;
         if (snapshot.context.error) {
             replies.push(say(snapshot.context.error));
         } else if (entered) {
-            const { key, params } = prompts[state](snapshot.context);
-            replies.push(say(key, params));
+            for (const { key, params } of [prompts[state](snapshot.context)].flat()) replies.push(say(key, params));
         }
         // Ask again after an error too, so the buttons move to the newest bot message.
         const buttons = BUTTONS[state];
         if (buttons && (entered || snapshot.context.error)) replies.push(buttons);
         this.lastState = state;
+        this.lastLearnCount = learnCount;
         return replies;
     }
 }

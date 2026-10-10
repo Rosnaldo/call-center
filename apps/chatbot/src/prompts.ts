@@ -19,8 +19,12 @@ export const summaryOf = ({ os, version, privateDnsHost, installOs, appVersion }
     appVersion,
 });
 
-export const prompts: Record<PromptState, (ctx: ParamsContext) => BotText> = {
+// One message per step, or several in order.
+export const prompts: Record<PromptState, (ctx: ParamsContext) => BotText | BotText[]> = {
     askStart: () => ({ key: 'messages.askStart' }),
+    // The menu, then each picked concept followed by the menu's options again.
+    learnMore: (ctx) =>
+        ctx.learnTopic ? [{ key: `learn.${ctx.learnTopic}` }, { key: 'messages.learnMoreNext' }] : { key: 'messages.learnMore' },
     intro: () => ({ key: 'messages.intro' }),
     askOs: () => ({ key: 'messages.askOs' }),
     askVersion: (ctx) => ({ key: 'messages.askVersion', params: { os: ctx.os, example: ctx.os === 'iOS' ? '17.4' : '14' } }),

@@ -3,6 +3,9 @@ import { assign, setup } from 'xstate';
 export type MobileOs = 'Android' | 'iOS';
 // The computer the device owner is installed from, over USB.
 export type InstallOs = 'Linux' | 'Windows' | 'macOS';
+// Concepts the "learn more" menu explains before the setup.
+export const LEARN_TOPICS = ['privateDns', 'deviceOwner', 'schedule', 'usbDebugging'] as const;
+export type LearnTopic = (typeof LEARN_TOPICS)[number];
 
 export interface ParamsContext {
     os: MobileOs | null;
@@ -14,6 +17,10 @@ export interface ParamsContext {
     installOs: InstallOs | null;
     // Version of this configuration, shown by the device owner app (e.g. 1.2.0).
     appVersion: string | null;
+    // The concept last explained in the "learn more" menu (null: the menu itself),
+    // and how many were picked, so picking the same one again explains it again.
+    learnTopic: LearnTopic | null;
+    learnCount: number;
     // i18n key (under `chatbot.`) of the last answer's error.
     error: string | null;
 }
@@ -52,8 +59,14 @@ const YES = ['y', 'yes', 's', 'sim'];
 const NO = ['n', 'no', 'nao', 'não'];
 // The opening only goes forward; a typed yes counts too.
 const PROCEED = ['proceed', 'prosseguir', ...YES];
+const LEARN_MORE = ['learn', 'learn more', 'saber mais'];
 
 const normalize = (text: unknown): string => String(text ?? '').trim().toLowerCase();
+
+export const parseLearnTopic = (text: unknown): LearnTopic | null => {
+    const value = String(text ?? '').trim();
+    return (LEARN_TOPICS as readonly string[]).includes(value) ? (value as LearnTopic) : null;
+};
 
 export const parseOs = (text: unknown): MobileOs | null => OS_ALIASES[normalize(text)] ?? null;
 
@@ -109,6 +122,8 @@ const initialContext: ParamsContext = {
     allowedApps: null,
     installOs: null,
     appVersion: null,
+    learnTopic: null,
+    learnCount: 0,
     error: null,
 };
 
@@ -132,6 +147,8 @@ export const paramsMachine = setup({
         isYes: ({ event }) => parseYesNo(answerOf(event)) === true,
         isNo: ({ event }) => parseYesNo(answerOf(event)) === false,
         isProceed: ({ event }) => PROCEED.includes(normalize(answerOf(event))),
+        isLearnMore: ({ event }) => LEARN_MORE.includes(normalize(answerOf(event))),
+        isLearnTopic: ({ event }) => parseLearnTopic(answerOf(event)) !== null,
     },
     actions: {
         saveOs: assign({ os: ({ event }) => parseOs(answerOf(event)), error: null }),
@@ -141,6 +158,12 @@ export const paramsMachine = setup({
         saveAllowedApps: assign({ allowedApps: ({ event }) => parseAppIds(appsOf(event)), error: null }),
         saveInstallOs: assign({ installOs: ({ event }) => parseInstallOs(answerOf(event)), error: null }),
         saveAppVersion: assign({ appVersion: ({ event }) => parseAppVersion(answerOf(event)), error: null }),
+        openLearnMore: assign({ learnTopic: null, error: null }),
+        explainTopic: assign({
+            learnTopic: ({ event }) => parseLearnTopic(answerOf(event)),
+            learnCount: ({ context }) => context.learnCount + 1,
+            error: null,
+        }),
         clearError: assign({ error: null }),
         reset: assign(() => ({ ...initialContext })),
         rejectOs: assign({ error: 'errors.os' }),
@@ -150,6 +173,7 @@ export const paramsMachine = setup({
         rejectAppVersion: assign({ error: 'errors.appVersion' }),
         rejectYesNo: assign({ error: 'errors.yesNo' }),
         rejectProceed: assign({ error: 'errors.proceed' }),
+        rejectLearnMore: assign({ error: 'errors.learnMore' }),
         rejectAppIds: assign({ error: 'errors.appIds' }),
         // The list comes from the web app's checklist, not from typed text.
         rejectTypedApps: assign({ error: 'errors.typedApps' }),
@@ -166,7 +190,19 @@ export const paramsMachine = setup({
             on: {
                 ANSWER: [
                     { guard: 'isProceed', target: 'intro', actions: 'clearError' },
+                    { guard: 'isLearnMore', target: 'learnMore', actions: 'openLearnMore' },
                     { actions: 'rejectProceed' },
+                ],
+            },
+        },
+        // Explains the concepts behind the setup, one per pick, as many times as
+        // the user wants, until they start the setup.
+        learnMore: {
+            on: {
+                ANSWER: [
+                    { guard: 'isLearnTopic', actions: 'explainTopic' },
+                    { guard: 'isProceed', target: 'intro', actions: 'clearError' },
+                    { actions: 'rejectLearnMore' },
                 ],
             },
         },
@@ -263,6 +299,7 @@ export const paramsMachine = setup({
 
 export type PromptState =
     | 'askStart'
+    | 'learnMore'
     | 'intro'
     | 'askOs'
     | 'askVersion'

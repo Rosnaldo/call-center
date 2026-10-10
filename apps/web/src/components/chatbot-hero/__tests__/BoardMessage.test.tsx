@@ -118,3 +118,53 @@ describe('BoardMessage language', () => {
     await act(() => i18n.changeLanguage(initial));
   });
 });
+
+describe('BoardMessage scrolling', () => {
+  beforeEach(() => act(() => useChatbotStore.getState().resetChatbot()));
+
+  // happy-dom has no layout: give the board a size and track scrollTo calls.
+  const sized = (scrollTop: number) => {
+    const board = screen.getByRole('log');
+    Object.defineProperty(board, 'scrollHeight', { configurable: true, value: 1000 });
+    Object.defineProperty(board, 'clientHeight', { configurable: true, value: 300 });
+    board.scrollTop = scrollTop;
+    const scrollTo = vi.fn();
+    board.scrollTo = scrollTo as unknown as typeof board.scrollTo;
+    fireEvent.scroll(board);
+    return { board, scrollTo };
+  };
+  const botSays = (message: string) => act(() => useChatbotStore.getState().addMessage({ autor: 'bot', message }));
+
+  it('follows new messages while at the end', () => {
+    render(<BoardMessage />);
+    const { scrollTo } = sized(700);
+
+    botSays('hello');
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'smooth' });
+    expect(screen.queryByText('Novas mensagens')).toBeNull();
+  });
+
+  it('leaves a reader where they are and offers a jump to the new messages', () => {
+    render(<BoardMessage />);
+    const { scrollTo } = sized(100);
+
+    botSays('hello');
+
+    expect(scrollTo).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /Novas mensagens/ }));
+    expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'smooth' });
+    expect(screen.queryByText('Novas mensagens')).toBeNull();
+  });
+
+  it('hides the jump once the reader scrolls back to the end', () => {
+    render(<BoardMessage />);
+    const { board } = sized(100);
+    botSays('hello');
+
+    board.scrollTop = 690;
+    fireEvent.scroll(board);
+
+    expect(screen.queryByText('Novas mensagens')).toBeNull();
+  });
+});

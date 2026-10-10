@@ -53,11 +53,17 @@ describe('ChatSession choice buttons', () => {
 
     const YES_NO = { event: 'ask_choice', choices: [{ key: 'choices.yes', value: 'yes' }, { key: 'choices.no', value: 'no' }] };
 
-    it('opens with a single proceed button', () => {
+    it('opens with proceed and learn more buttons', () => {
         const replies = new ChatSession().start();
         expect(replies).toEqual([
             { event: 'bot_message', key: 'messages.askStart', sendEnabled: false },
-            { event: 'ask_choice', choices: [{ key: 'choices.proceed', value: 'proceed' }] },
+            {
+                event: 'ask_choice',
+                choices: [
+                    { key: 'choices.proceed', value: 'proceed' },
+                    { key: 'choices.learnMore', value: 'learn' },
+                ],
+            },
         ]);
     });
 
@@ -312,5 +318,56 @@ describe('ChatSession installer', () => {
         const session = new ChatSession(vi.fn());
         session.start();
         expect(await session.generateInstaller()).toEqual([{ event: 'bot_message', key: 'messages.installerNotReady', sendEnabled: false }]);
+    });
+});
+
+describe('ChatSession learn more', () => {
+    const MENU = {
+        event: 'ask_choice',
+        choices: [
+            { key: 'choices.learnPrivateDns', value: 'privateDns' },
+            { key: 'choices.learnDeviceOwner', value: 'deviceOwner' },
+            { key: 'choices.learnSchedule', value: 'schedule' },
+            { key: 'choices.learnUsbDebugging', value: 'usbDebugging' },
+            { key: 'choices.startSetup', value: 'proceed' },
+        ],
+    };
+    const atMenu = () => {
+        const session = new ChatSession();
+        session.start();
+        return { session, replies: session.handle('learn') };
+    };
+
+    it('opens the topics menu', () => {
+        expect(atMenu().replies).toEqual([{ event: 'bot_message', key: 'messages.learnMore', sendEnabled: false }, MENU]);
+    });
+
+    it('explains each topic and offers the menu again', () => {
+        const { session } = atMenu();
+        expect(session.handle('deviceOwner')).toEqual([
+            { event: 'bot_message', key: 'learn.deviceOwner', sendEnabled: false },
+            { event: 'bot_message', key: 'messages.learnMoreNext', sendEnabled: false },
+            MENU,
+        ]);
+        expect(session.handle('schedule')[0]).toMatchObject({ key: 'learn.schedule' });
+    });
+
+    it('explains the same topic again when asked twice', () => {
+        const { session } = atMenu();
+        session.handle('privateDns');
+        expect(session.handle('privateDns')[0]).toMatchObject({ key: 'learn.privateDns' });
+    });
+
+    it('rejects anything else and shows the menu again', () => {
+        const { session } = atMenu();
+        expect(session.handle('what?')).toEqual([{ event: 'bot_message', key: 'errors.learnMore', sendEnabled: false }, MENU]);
+    });
+
+    it('starts the setup from the menu, with nothing collected', () => {
+        const { session } = atMenu();
+        session.handle('usbDebugging');
+        expect(session.handle('proceed')[0]).toMatchObject({ key: 'messages.intro' });
+        expect(session.handle('proceed')[0]).toMatchObject({ key: 'messages.askOs' });
+        expect(session.params().os).toBeNull();
     });
 });

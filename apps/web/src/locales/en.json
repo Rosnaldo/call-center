@@ -113,7 +113,7 @@
     "summaryButton": "Summary",
     "messages": {
       "askStart": "Set up the device owner environment on your phone.",
-      "intro": "For this you will need a laptop, the phone and a USB cable.\nYou will connect the phone to the laptop over USB,\nthen install the device owner environment from your laptop.\nFirst, let's generate the executable.",
+      "intro": "You will need:\n1. Notebook\n2. USB cable\n3. Mobile phone\n4. Generate the installer",
       "askOs": "Which mobile operating system do you use?",
       "askVersion": "Which {{os}} version? (e.g. {{example}})",
       "askDns": "Are you using a private DNS?",
@@ -128,7 +128,9 @@
       "installerReady": "Installer ready! Click the button below to download.",
       "installerFailed": "Couldn't create the installer right now. Please try again.",
       "installerNotReady": "Finish the setup before generating the installer.",
-      "loginRequired": "Log in to generate the installer."
+      "loginRequired": "Log in to generate the installer.",
+      "learnMore": "What would you like to know before starting?",
+      "learnMoreNext": "Want to learn about another topic or start the setup?"
     },
     "errors": {
       "os": "Please choose Android or iOS.",
@@ -139,7 +141,8 @@
       "yesNo": "Please answer yes or no.",
       "appIds": "Invalid app list. Please select the allowed apps again.",
       "typedApps": "Please use the button to select the allowed apps.",
-      "proceed": "Use the \"Proceed\" button to continue."
+      "proceed": "Use the \"Proceed\" button to continue.",
+      "learnMore": "Pick a topic or \"Start setup\"."
     },
     "summary": {
       "os": "OS",
@@ -158,7 +161,13 @@
       "linux": "Linux",
       "windows": "Windows",
       "mac": "Mac",
-      "defaultAppVersion": "1.0.0 (default)"
+      "defaultAppVersion": "1.0.0 (default)",
+      "learnMore": "Learn more",
+      "learnPrivateDns": "Private DNS",
+      "learnDeviceOwner": "Device owner",
+      "learnSchedule": "Schedules",
+      "learnUsbDebugging": "Developer Mode (USB)",
+      "startSetup": "Start setup"
     },
     "allowedApps": {
       "title": "Allowed apps",
@@ -186,7 +195,14 @@
       "pending": "not set yet",
       "noApps": "No apps",
       "close": "Close"
-    }
+    },
+    "learn": {
+      "privateDns": "Private DNS is the service that blocks a list of unwanted domains and URLs.\n\nWe suggest using NextDNS: by default, it already blocks a list of known toxic content, plus your own custom list.",
+      "deviceOwner": "Device owner is Android's fully managed mode. It's important to keep your phone free of unwanted distractions.\n\nYou'll need to format your Android to apply device owner.",
+      "schedule": "Schedules set when each app can be used, for example \"only from 3 PM to 6 PM\" or \"only on weekends\".\n\nOutside its schedule, the app stays installed but turns grey, and Android says it isn't available right now. Its notifications are blocked too until the schedule opens again.",
+      "usbDebugging": "The installation runs from your computer, with the phone connected by USB cable. For that, you need to give some permissions on your mobile:\n\n1. Activate developer mode\n2. Turn on USB debugging\n3. When you plug in the cable, unlock the phone and tap \"Allow\""
+    },
+    "newMessages": "New messages"
   },
   "mediaSettings": {
     "title": "Audio and Video Settings",

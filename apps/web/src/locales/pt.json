@@ -113,7 +113,7 @@
     "summaryButton": "Resumo",
     "messages": {
       "askStart": "Configurar ambiente device owner no seu celular.",
-      "intro": "Para isso será necessário um notebook, o celular e um cabo USB.\nVocê conectará o celular ao notebook via USB,\ndepois, instalará o ambiente device owner pelo seu notebook.\nPrimeiro vamos gerar o executável.",
+      "intro": "Você vai precisar de:\n1. Notebook\n2. Cabo USB\n3. Celular\n4. Gerar o instalador",
       "askOs": "Qual o sistema operacional do celular?",
       "askVersion": "Qual a versão do {{os}}? (ex.: {{example}})",
       "askDns": "Você usa DNS privado?",
@@ -128,7 +128,9 @@
       "installerReady": "Instalador gerado! Clique no botão abaixo para baixar.",
       "installerFailed": "Não foi possível gerar o instalador agora. Tente novamente.",
       "installerNotReady": "Termine a configuração antes de gerar o instalador.",
-      "loginRequired": "Faça login para gerar o instalador."
+      "loginRequired": "Faça login para gerar o instalador.",
+      "learnMore": "Sobre o que você quer saber antes de começar?",
+      "learnMoreNext": "Quer saber sobre outro tema ou começar a configuração?"
     },
     "errors": {
       "os": "Escolha Android ou iOS.",
@@ -139,7 +141,8 @@
       "yesNo": "Responda sim ou não.",
       "appIds": "Lista de apps inválida. Selecione os apps permitidos novamente.",
       "typedApps": "Use o botão para selecionar os apps permitidos.",
-      "proceed": "Use o botão \"Prosseguir\" para continuar."
+      "proceed": "Use o botão \"Prosseguir\" para continuar.",
+      "learnMore": "Escolha um tema ou \"Começar configuração\"."
     },
     "summary": {
       "os": "Sistema",
@@ -158,7 +161,13 @@
       "linux": "Linux",
       "windows": "Windows",
       "mac": "Mac",
-      "defaultAppVersion": "1.0.0 (padrão)"
+      "defaultAppVersion": "1.0.0 (padrão)",
+      "learnMore": "Saber mais",
+      "learnPrivateDns": "DNS privado",
+      "learnDeviceOwner": "Device owner",
+      "learnSchedule": "Horários",
+      "learnUsbDebugging": "Modo Desenvolvedor (USB)",
+      "startSetup": "Começar configuração"
     },
     "allowedApps": {
       "title": "Apps permitidos",
@@ -186,7 +195,14 @@
       "pending": "a definir",
       "noApps": "Nenhum app",
       "close": "Fechar"
-    }
+    },
+    "learn": {
+      "privateDns": "DNS privado é o serviço que bloqueia uma lista de domínios e URLs indesejados.\n\nSugerimos usar o NextDNS: por padrão, ele já bloqueia uma lista de conteúdos tóxicos conhecidos, além da sua lista personalizada.",
+      "deviceOwner": "Device owner é o modo de gerenciamento total do Android. Ele é importante para proteger seu celular de distrações indesejadas.\n\nPara aplicar o device owner, será necessário formatar seu Android.",
+      "schedule": "Horários definem quando cada app pode ser usado, por exemplo: \"só das 15h às 18h\" ou \"só nos fins de semana\".\n\nFora do horário, o app continua instalado, mas fica cinza e o Android mostra que ele não está disponível no momento. As notificações dele também ficam bloqueadas até o horário voltar.",
+      "usbDebugging": "A instalação é feita pelo seu computador, com o celular conectado por cabo USB. Para isso, você precisa dar algumas permissões no celular:\n\n1. Ative o modo desenvolvedor\n2. Ligue a depuração USB\n3. Ao conectar o cabo, desbloqueie o celular e toque em \"Permitir\""
+    },
+    "newMessages": "Novas mensagens"
   },
   "mediaSettings": {
     "title": "Configurações de Áudio e Vídeo",

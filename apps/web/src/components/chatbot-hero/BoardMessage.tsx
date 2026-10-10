@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Download, ListChecks, Loader2, RotateCcw } from 'lucide-react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
+import { ArrowDown, Download, ListChecks, Loader2, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChatbotStore } from '../../states/stores.ts';
 import type { ChatbotChoice, ChatbotMessage } from '../../states/local/chatbot/state.ts';
@@ -7,6 +7,10 @@ import { translateBotText } from '../../services/ws/chatbot-ws.ts';
 
 // Translated on render (not on arrival), so the chat follows language changes.
 const messageText = ({ text, message }: ChatbotMessage): string => (text ? translateBotText(text) : message);
+
+// Within this distance of the end, the board counts as "at the bottom" and
+// follows new messages.
+const FOLLOW_THRESHOLD_PX = 48;
 
 interface BoardMessageProps {
   isProcessing?: boolean;
@@ -30,11 +34,47 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
   const isChoiceRequested = useChatbotStore(s => s.isChoiceRequested);
   const isRestartOffered = useChatbotStore(s => s.isRestartOffered);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Whether the user is at the end of the board. Scrolling up to reread stops
+  // the following; new messages then show the "new messages" pill instead.
+  const followRef = useRef(true);
+  const [hasUnseen, setHasUnseen] = useState(false);
+
+  const scrollToEnd = (smooth: boolean) => {
+    const el = containerRef.current;
+    if (!el) return;
+    followRef.current = true;
+    setHasUnseen(false);
+    el.scrollTo?.({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  };
+
+  const handleScroll = () => {
+    const el = containerRef.current;
+    if (!el) return;
+    const atEnd = el.scrollHeight - el.scrollTop - el.clientHeight <= FOLLOW_THRESHOLD_PX;
+    followRef.current = atEnd;
+    if (atEnd) setHasUnseen(false);
+  };
+
+  // New messages (and the typing indicator) are followed only when the user
+  // is already at the end; a new conversation starts at the end again.
+  useLayoutEffect(() => {
+    if (messages.length === 0) {
+      followRef.current = true;
+      setHasUnseen(false);
+      return;
+    }
+    if (followRef.current) scrollToEnd(true);
+    else setHasUnseen(true);
+  }, [messages, isProcessing]);
 
   return (
+    <div className="relative">
     <div
       ref={containerRef}
-      className={`w-full h-[330px] md:h-[360px] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-4 md:p-5 space-y-3.5 text-left transition-colors ${className}`}
+      role="log"
+      aria-label={t('chatbot.title')}
+      onScroll={handleScroll}
+      className={`w-full h-[min(480px,60vh)] min-h-[260px] overflow-y-auto [scrollbar-width:thin] [scrollbar-color:#D9C9A8_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#D9C9A8] [&::-webkit-scrollbar-track]:bg-transparent p-4 md:p-5 space-y-3.5 text-left transition-colors ${className}`}
       style={{
         backgroundColor: '#FAF7F1',
       }}
@@ -146,6 +186,19 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
             <span>{t('chatbot.typing')}</span>
           </div>
         </div>
+      )}
+    </div>
+
+      {/* Shown when messages arrived while the user was reading further up */}
+      {hasUnseen && (
+        <button
+          type="button"
+          onClick={() => scrollToEnd(true)}
+          className="absolute bottom-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#B97204] text-white font-mono-terminal text-[11px] uppercase font-bold tracking-wider cursor-pointer shadow-[0_3px_12px_-1px_rgba(185,114,4,0.45)]"
+        >
+          <ArrowDown className="w-3.5 h-3.5" />
+          {t('chatbot.newMessages')}
+        </button>
       )}
     </div>
   );
