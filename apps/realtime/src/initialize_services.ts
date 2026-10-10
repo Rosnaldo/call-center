@@ -50,9 +50,11 @@ class WebhookServer {
         const health = require('./routes/health').default;
         const realtimeEvents = require('./routes/realtime_events').default;
         const callEvents = require('./routes/call_events').default;
+        const publicAttendants = require('./routes/public_attendants').default;
         health(this.app);
         realtimeEvents(this.app);
         callEvents(this.app);
+        publicAttendants(this.app);
     }
 
     setupWebhooks(): void {

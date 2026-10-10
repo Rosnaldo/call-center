@@ -5,6 +5,7 @@
 
 import React from 'react';
 import {
+  LogIn,
   Video
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +20,9 @@ interface AttendantListProps {
   currentUser: IUser | null;
   call: CallState | null;
   onCompleteCall: (attendantId: string) => void;
+  // For visitors who aren't logged in: each attendant offers this instead of a
+  // call (calling needs an account).
+  onLoginToCall?: () => void;
 }
 
 export const AttendantList: React.FC<AttendantListProps> = ({
@@ -26,6 +30,7 @@ export const AttendantList: React.FC<AttendantListProps> = ({
   currentUser,
   call,
   onCompleteCall: _onCompleteCall,
+  onLoginToCall,
 }) => {
 
   const { t } = useTranslation();
@@ -185,6 +190,17 @@ export const AttendantList: React.FC<AttendantListProps> = ({
                         >
                           <Video className="w-3.5 h-3.5" />
                           {t('attendantList.statusReconnecting')}
+                        </button>
+                      ) : onLoginToCall ? (
+                        <button
+                          id={`call-login-${at.id}`}
+                          type="button"
+                          onClick={onLoginToCall}
+                          className="px-4 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 bg-brand-ochre text-white hover:bg-brand-ochre-hover cursor-pointer"
+                          title={t('attendantList.loginToCallHint')}
+                        >
+                          <LogIn className="w-3.5 h-3.5" />
+                          {t('attendantList.loginToCall')}
                         </button>
                       ) : currentUser?.role === 'customer' ? (
                         currentCustInActiveWithThisAtt ? (

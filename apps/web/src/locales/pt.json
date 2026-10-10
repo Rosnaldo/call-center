@@ -244,7 +244,9 @@
     "closeLobby": "Fechar lobby",
     "alreadyConnected": "Você já está conectado",
     "attendantBusy": "Atendente está ocupado em outra chamada",
-    "enterLobby": "Entrar no lobby do atendente"
+    "enterLobby": "Entrar no lobby do atendente",
+    "loginToCall": "Entrar para ligar",
+    "loginToCallHint": "Faça login para ligar para um atendente"
   },
   "customerList": {
     "active": "Ativos",
