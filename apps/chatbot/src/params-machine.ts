@@ -4,7 +4,7 @@ export type MobileOs = 'Android' | 'iOS';
 // The computer the device owner is installed from, over USB.
 export type InstallOs = 'Linux' | 'Windows' | 'macOS';
 // Concepts the "learn more" menu explains before the setup.
-export const LEARN_TOPICS = ['privateDns', 'deviceOwner', 'schedule', 'usbDebugging'] as const;
+export const LEARN_TOPICS = ['privateDns', 'deviceOwner', 'browserGuard', 'rawIp', 'schedule', 'usbDebugging'] as const;
 export type LearnTopic = (typeof LEARN_TOPICS)[number];
 
 export interface ParamsContext {
@@ -17,6 +17,10 @@ export interface ParamsContext {
     installOs: InstallOs | null;
     // Version of this configuration, shown by the device owner app (e.g. 1.2.0).
     appVersion: string | null;
+    // Browser guard: whether addresses with a raw IP host are blocked, and the
+    // words that block an address containing them.
+    blockRawIp: boolean | null;
+    blockedTerms: string[] | null;
     // The concept last explained in the "learn more" menu (null: the menu itself),
     // and how many were picked, so picking the same one again explains it again.
     learnTopic: LearnTopic | null;
@@ -33,11 +37,14 @@ export interface ParamsOutput {
     allowedApps: string[] | null;
     installOs: InstallOs | null;
     appVersion: string | null;
+    blockRawIp: boolean | null;
+    blockedTerms: string[] | null;
 }
 
 export type ParamsEvent =
     | { type: 'ANSWER'; value: string }
     | { type: 'ALLOWED_APPS'; apps: unknown }
+    | { type: 'BLOCKED_TERMS'; terms: unknown }
     | { type: 'RESTART' };
 
 const OS_ALIASES: Record<string, MobileOs> = {
@@ -83,6 +90,30 @@ export const parseAppVersion = (text: unknown): string | null => {
     return /^\d{1,4}(\.\d{1,4}){0,3}$/.test(value) ? value : null;
 };
 
+// Words that block an address containing them: comma-separated, or one of
+// NO_TERMS for none. Each is 2-40 letters, digits, '.', '-' or '_' (no spaces:
+// it's matched inside URLs). Lowercased and deduplicated; null when invalid.
+export const MAX_BLOCKED_TERMS = 100;
+const NO_TERMS = ['none', 'nenhuma', 'nenhum', '-'];
+const TERM = /^[\p{L}\p{N}._-]{2,40}$/u;
+
+export const parseBlockedTerms = (text: unknown): string[] | null => {
+    const value = normalize(text);
+    if (NO_TERMS.includes(value)) return [];
+    const terms = value.split(',').map((term) => term.trim()).filter(Boolean);
+    if (!terms.length || terms.length > MAX_BLOCKED_TERMS || !terms.every((term) => TERM.test(term))) return null;
+    return [...new Set(terms)];
+};
+
+// The words added in the web modal's tag input, lowercased and deduplicated.
+// An empty list is valid (no word); null when it isn't a list of valid words.
+export const parseBlockedTermsList = (terms: unknown): string[] | null => {
+    if (!Array.isArray(terms) || terms.length > MAX_BLOCKED_TERMS) return null;
+    const normalized = terms.map((term) => normalize(term));
+    if (!normalized.every((term) => TERM.test(term))) return null;
+    return [...new Set(normalized)];
+};
+
 export const parseYesNo =(text: unknown): boolean | null => {
     const value = normalize(text);
     if (YES.includes(value)) return true;
@@ -122,6 +153,8 @@ const initialContext: ParamsContext = {
     allowedApps: null,
     installOs: null,
     appVersion: null,
+    blockRawIp: null,
+    blockedTerms: null,
     learnTopic: null,
     learnCount: 0,
     error: null,
@@ -130,6 +163,7 @@ const initialContext: ParamsContext = {
 // Guards/actions are typed with every event, so they read payloads defensively.
 const answerOf = (event: ParamsEvent): string => (event.type === 'ANSWER' ? event.value : '');
 const appsOf = (event: ParamsEvent): unknown => (event.type === 'ALLOWED_APPS' ? event.apps : undefined);
+const termsOf = (event: ParamsEvent): unknown => (event.type === 'BLOCKED_TERMS' ? event.terms : undefined);
 
 export const paramsMachine = setup({
     types: {
@@ -144,6 +178,7 @@ export const paramsMachine = setup({
         isValidInstallOs: ({ event }) => parseInstallOs(answerOf(event)) !== null,
         isValidAppVersion: ({ event }) => parseAppVersion(answerOf(event)) !== null,
         isValidAppIds: ({ event }) => parseAppIds(appsOf(event)) !== null,
+        isValidBlockedTerms: ({ event }) => parseBlockedTermsList(termsOf(event)) !== null,
         isYes: ({ event }) => parseYesNo(answerOf(event)) === true,
         isNo: ({ event }) => parseYesNo(answerOf(event)) === false,
         isProceed: ({ event }) => PROCEED.includes(normalize(answerOf(event))),
@@ -158,6 +193,9 @@ export const paramsMachine = setup({
         saveAllowedApps: assign({ allowedApps: ({ event }) => parseAppIds(appsOf(event)), error: null }),
         saveInstallOs: assign({ installOs: ({ event }) => parseInstallOs(answerOf(event)), error: null }),
         saveAppVersion: assign({ appVersion: ({ event }) => parseAppVersion(answerOf(event)), error: null }),
+        saveBlockRawIp: assign({ blockRawIp: ({ event }) => parseYesNo(answerOf(event)), error: null }),
+        saveBlockedTerms: assign({ blockedTerms: ({ event }) => parseBlockedTermsList(termsOf(event)), error: null }),
+        saveNoBlockedTerms: assign({ blockedTerms: () => [], error: null }),
         openLearnMore: assign({ learnTopic: null, error: null }),
         explainTopic: assign({
             learnTopic: ({ event }) => parseLearnTopic(answerOf(event)),
@@ -175,6 +213,8 @@ export const paramsMachine = setup({
         rejectProceed: assign({ error: 'errors.proceed' }),
         rejectLearnMore: assign({ error: 'errors.learnMore' }),
         rejectAppIds: assign({ error: 'errors.appIds' }),
+        rejectBlockedTerms: assign({ error: 'errors.blockedTerms' }),
+        rejectTypedTerms: assign({ error: 'errors.typedTerms' }),
         // The list comes from the web app's checklist, not from typed text.
         rejectTypedApps: assign({ error: 'errors.typedApps' }),
     },
@@ -251,10 +291,39 @@ export const paramsMachine = setup({
         askAllowedApps: {
             on: {
                 ALLOWED_APPS: [
-                    { guard: 'isValidAppIds', target: 'askInstallOs', actions: 'saveAllowedApps' },
+                    { guard: 'isValidAppIds', target: 'askBlockRawIp', actions: 'saveAllowedApps' },
                     { actions: 'rejectAppIds' },
                 ],
                 ANSWER: { actions: 'rejectTypedApps' },
+            },
+        },
+        askBlockRawIp: {
+            on: {
+                ANSWER: [
+                    { guard: 'isYes', target: 'askBlockTerms', actions: 'saveBlockRawIp' },
+                    { guard: 'isNo', target: 'askBlockTerms', actions: 'saveBlockRawIp' },
+                    { actions: 'rejectYesNo' },
+                ],
+            },
+        },
+        // Yes opens the web modal (collectBlockedTerms); no means no words.
+        askBlockTerms: {
+            on: {
+                ANSWER: [
+                    { guard: 'isYes', target: 'collectBlockedTerms', actions: 'clearError' },
+                    { guard: 'isNo', target: 'askInstallOs', actions: 'saveNoBlockedTerms' },
+                    { actions: 'rejectYesNo' },
+                ],
+            },
+        },
+        // The words come from the web modal's tag input, not typed text.
+        collectBlockedTerms: {
+            on: {
+                BLOCKED_TERMS: [
+                    { guard: 'isValidBlockedTerms', target: 'askInstallOs', actions: 'saveBlockedTerms' },
+                    { actions: 'rejectBlockedTerms' },
+                ],
+                ANSWER: { actions: 'rejectTypedTerms' },
             },
         },
         askInstallOs: {
@@ -294,6 +363,8 @@ export const paramsMachine = setup({
         allowedApps: context.allowedApps,
         installOs: context.installOs,
         appVersion: context.appVersion,
+        blockRawIp: context.blockRawIp,
+        blockedTerms: context.blockedTerms,
     }),
 });
 
@@ -306,6 +377,9 @@ export type PromptState =
     | 'askDns'
     | 'askDnsHost'
     | 'askAllowedApps'
+    | 'askBlockRawIp'
+    | 'askBlockTerms'
+    | 'collectBlockedTerms'
     | 'askInstallOs'
     | 'askAppVersion'
     | 'confirm';

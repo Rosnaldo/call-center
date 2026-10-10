@@ -167,6 +167,44 @@ describe('BoardMessage scrolling', () => {
 
     expect(screen.queryByText('Novas mensagens')).toBeNull();
   });
+
+  const wheelDown = (board: HTMLElement) => {
+    const ev = new WheelEvent('wheel', { deltaY: 40, cancelable: true, bubbles: true });
+    board.dispatchEvent(ev);
+    return ev;
+  };
+
+  it('holds the page when the wheel pushes past the bottom right after scrolling', () => {
+    render(<BoardMessage />);
+    const board = screen.getByRole('log');
+    Object.defineProperty(board, 'scrollHeight', { configurable: true, value: 1000 });
+    Object.defineProperty(board, 'clientHeight', { configurable: true, value: 300 });
+    board.scrollTop = 700; // at the bottom
+    fireEvent.scroll(board); // just moved here
+
+    expect(wheelDown(board).defaultPrevented).toBe(true);
+  });
+
+  it('lets the wheel through when the board is not at the bottom', () => {
+    render(<BoardMessage />);
+    const board = screen.getByRole('log');
+    Object.defineProperty(board, 'scrollHeight', { configurable: true, value: 1000 });
+    Object.defineProperty(board, 'clientHeight', { configurable: true, value: 300 });
+    board.scrollTop = 200; // mid-scroll
+    fireEvent.scroll(board);
+
+    expect(wheelDown(board).defaultPrevented).toBe(false);
+  });
+
+  it('lets the wheel through at the bottom when no recent scroll', () => {
+    render(<BoardMessage />);
+    const board = screen.getByRole('log');
+    Object.defineProperty(board, 'scrollHeight', { configurable: true, value: 1000 });
+    Object.defineProperty(board, 'clientHeight', { configurable: true, value: 300 });
+    board.scrollTop = 700; // at the bottom, but no scroll event fired recently
+
+    expect(wheelDown(board).defaultPrevented).toBe(false);
+  });
 });
 
 describe('BoardMessage grouping', () => {

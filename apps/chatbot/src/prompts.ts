@@ -33,5 +33,8 @@ export const prompts: Record<PromptState, (ctx: ParamsContext) => BotText | BotT
     askAllowedApps: () => ({ key: 'messages.askAllowedApps' }),
     askInstallOs: () => ({ key: 'messages.askInstallOs' }),
     askAppVersion: () => ({ key: 'messages.askAppVersion' }),
+    askBlockRawIp: () => ({ key: 'messages.askBlockRawIp' }),
+    askBlockTerms: () => ({ key: 'messages.askBlockTerms' }),
+    collectBlockedTerms: () => ({ key: 'messages.collectBlockedTerms' }),
     confirm: (ctx) => ({ key: 'messages.confirm', params: { summary: summaryOf(ctx) } }),
 };

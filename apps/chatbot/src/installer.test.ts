@@ -9,6 +9,8 @@ const params = {
     allowedApps: [],
     installOs: 'macOS' as const,
     appVersion: '1.0.0',
+    blockRawIp: true,
+    blockedTerms: ['semi'],
 };
 
 const getToken = async () => 'service-token';
@@ -31,7 +33,7 @@ describe('createInstallerClient', () => {
         expect((init.headers as Record<string, string>).Authorization).toBe('Bearer service-token');
         expect(JSON.parse(init.body as string)).toEqual({
             platform: 'macos',
-            config: { os: 'Android', version: '14', privateDnsHost: null, allowedApps: [], appVersion: '1.0.0' },
+            config: { os: 'Android', version: '14', privateDnsHost: null, allowedApps: [], appVersion: '1.0.0', blockRawIp: true, blockedTerms: ['semi'] },
         });
     });
 

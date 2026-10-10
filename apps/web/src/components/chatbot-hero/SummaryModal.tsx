@@ -73,7 +73,7 @@ const Summary: React.FC = () => {
           </button>
         </div>
 
-        <dl className="flex-1 overflow-y-auto overscroll-contain p-4.5 flex flex-col gap-3.5 text-left" style={{ backgroundColor: '#FAF7F1' }}>
+        <dl className="flex-1 overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:#D9C9A8_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#D9C9A8] [&::-webkit-scrollbar-track]:bg-transparent p-4.5 flex flex-col gap-3.5 text-left" style={{ backgroundColor: '#FAF7F1' }}>
           <Row label={t('chatbot.summary.os')} value={params?.os} />
           <Row label={t('chatbot.summary.version')} value={params?.version} />
           <Row label={t('chatbot.summary.privateDns')} value={privateDnsText(params, t)} />
@@ -83,6 +83,8 @@ const Summary: React.FC = () => {
               <AllowedApps ids={params?.allowedApps ?? null} knownApps={knownApps} />
             </dd>
           </div>
+          <Row label={t('chatbot.summary.blockRawIp')} value={boolText(params?.blockRawIp, t)} />
+          <Row label={t('chatbot.summary.blockedTerms')} value={blockedTermsText(params, t)} />
           <Row label={t('chatbot.summary.installOs')} value={params?.installOs} />
           <Row label={t('chatbot.summary.appVersion')} value={params?.appVersion} />
         </dl>
@@ -98,6 +100,15 @@ const privateDnsText = (params: ChatbotParams | null, t: T): string | null => {
   if (!params.privateDns) return t('chatbot.choices.no');
   // Answered yes, hostname still to come.
   return params.privateDnsHost ?? t('chatbot.choices.yes');
+};
+
+const boolText = (value: boolean | null | undefined, t: T): string | null =>
+  value === null || value === undefined ? null : t(value ? 'chatbot.summary.yes' : 'chatbot.summary.no');
+
+const blockedTermsText = (params: ChatbotParams | null, t: T): string | null => {
+  const terms = params?.blockedTerms;
+  if (!terms) return null;
+  return terms.length ? terms.join(', ') : t('chatbot.summary.none');
 };
 
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (

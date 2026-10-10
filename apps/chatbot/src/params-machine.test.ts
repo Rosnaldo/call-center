@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { createActor } from 'xstate';
-import { paramsMachine, parseAppIds, parseAppVersion, parseHostname, parseInstallOs, parseOs, parseVersion, parseYesNo } from './params-machine';
+import { paramsMachine, parseAppIds, parseAppVersion, parseBlockedTermsList, parseHostname, parseInstallOs, parseOs, parseVersion, parseYesNo } from './params-machine';
 
-// Strings are typed answers; arrays are lists picked in the checklist.
-const run = (...answers: (string | string[])[]) => {
+// Strings are typed answers; arrays are the apps picked in the checklist;
+// { terms } is the words added in the blocked-words modal.
+type Answer = string | string[] | { terms: string[] };
+const run = (...answers: Answer[]) => {
     const actor = createActor(paramsMachine).start();
     // Proceeds past the opening and the intro first.
-    for (const value of ['proceed', 'proceed', ...answers]) {
-        actor.send(Array.isArray(value) ? { type: 'ALLOWED_APPS', apps: value } : { type: 'ANSWER', value });
+    for (const value of ['proceed', 'proceed', ...answers] as Answer[]) {
+        if (Array.isArray(value)) actor.send({ type: 'ALLOWED_APPS', apps: value });
+        else if (typeof value === 'object') actor.send({ type: 'BLOCKED_TERMS', terms: value.terms });
+        else actor.send({ type: 'ANSWER', value });
     }
     return actor.getSnapshot();
 };
@@ -31,6 +35,15 @@ describe('parsers', () => {
         expect(parseAppVersion('1.2.3.4.5')).toBeNull();
         expect(parseAppVersion('1.2-beta')).toBeNull();
         expect(parseAppVersion('latest')).toBeNull();
+    });
+
+    it('parses the blocked words from the modal', () => {
+        expect(parseBlockedTermsList(['semi', ' BOKUP ', 'atashira'])).toEqual(['semi', 'bokup', 'atashira']);
+        expect(parseBlockedTermsList(['semi', 'semi'])).toEqual(['semi']);
+        expect(parseBlockedTermsList([])).toEqual([]);
+        expect(parseBlockedTermsList(['a'])).toBeNull(); // too short
+        expect(parseBlockedTermsList(['has space'])).toBeNull();
+        expect(parseBlockedTermsList('semi')).toBeNull(); // not a list
     });
 
     it('parses yes/no in en and pt', () => {
@@ -66,7 +79,7 @@ describe('parsers', () => {
 
 describe('paramsMachine', () => {
     it('collects params and finishes', () => {
-        const snapshot = run('2', '17.4', 'yes', 'dns.adguard.com', ['com.whatsapp', 'com.Slack'], 'windows', 'v1.2.0', 'yes');
+        const snapshot = run('2', '17.4', 'yes', 'dns.adguard.com', ['com.whatsapp', 'com.Slack'], 'yes', 'yes', { terms: ['bokup', 'semi'] }, 'windows', 'v1.2.0', 'yes');
         expect(snapshot.status).toBe('done');
         expect(snapshot.output).toEqual({
             os: 'iOS',
@@ -76,6 +89,8 @@ describe('paramsMachine', () => {
             allowedApps: ['com.whatsapp', 'com.Slack'],
             installOs: 'Windows',
             appVersion: '1.2.0',
+            blockRawIp: true,
+            blockedTerms: ['bokup', 'semi'],
         });
     });
 
@@ -92,22 +107,39 @@ describe('paramsMachine', () => {
         expect(actor.getSnapshot().value).toBe('askOs');
     });
 
-    it('asks the USB install OS after the allowed apps', () => {
-        expect(run('1', '14', 'no', []).value).toBe('askInstallOs');
+    it('asks about raw IPs, then whether to add blocked words, after the allowed apps', () => {
+        expect(run('1', '14', 'no', []).value).toBe('askBlockRawIp');
+        expect(run('1', '14', 'no', [], 'yes').value).toBe('askBlockTerms');
 
-        const invalid = run('1', '14', 'no', [], 'android');
-        expect(invalid.value).toBe('askInstallOs');
-        expect(invalid.context.error).toBe('errors.installOs');
+        // No words: skips the modal straight to the install OS, empty list.
+        const none = run('1', '14', 'no', [], 'no', 'no');
+        expect(none.value).toBe('askInstallOs');
+        expect(none.context.blockRawIp).toBe(false);
+        expect(none.context.blockedTerms).toEqual([]);
+
+        // Yes: the modal collects the words (a BLOCKED_TERMS event).
+        expect(run('1', '14', 'no', [], 'yes', 'yes').value).toBe('collectBlockedTerms');
+        const filled = run('1', '14', 'no', [], 'yes', 'yes', { terms: ['semi', 'bokup'] });
+        expect(filled.value).toBe('askInstallOs');
+        expect(filled.context.blockedTerms).toEqual(['semi', 'bokup']);
+
+        // A typed answer in the modal step is rejected; bad words are rejected.
+        expect(run('1', '14', 'no', [], 'yes', 'yes', 'semi').context.error).toBe('errors.typedTerms');
+        expect(run('1', '14', 'no', [], 'yes', 'yes', { terms: ['a'] }).context.error).toBe('errors.blockedTerms');
+    });
+
+    it('asks the USB install OS after the blocked words', () => {
+        expect(run('1', '14', 'no', [], 'no', 'no', 'android').context.error).toBe('errors.installOs');
     });
 
     it('asks the configuration version after the USB install OS', () => {
-        expect(run('1', '14', 'no', [], 'linux').value).toBe('askAppVersion');
+        expect(run('1', '14', 'no', [], 'no', 'no', 'linux').value).toBe('askAppVersion');
 
-        const invalid = run('1', '14', 'no', [], 'linux', 'first');
+        const invalid = run('1', '14', 'no', [], 'no', 'no', 'linux', 'first');
         expect(invalid.value).toBe('askAppVersion');
         expect(invalid.context.error).toBe('errors.appVersion');
 
-        expect(run('1', '14', 'no', [], 'linux', '2.0.1').value).toBe('confirm');
+        expect(run('1', '14', 'no', [], 'no', 'no', 'linux', '2.0.1').value).toBe('confirm');
     });
 
     it('asks the private DNS hostname only when there is one', () => {
@@ -136,7 +168,7 @@ describe('paramsMachine', () => {
     });
 
     it('starts over when the summary is rejected', () => {
-        const snapshot = run('1', '14', 'no', [], 'linux', '1.0', 'no');
+        const snapshot = run('1', '14', 'no', [], 'no', 'no', 'linux', '1.0', 'no');
         expect(snapshot.value).toBe('askOs');
         expect(snapshot.context.os).toBeNull();
     });

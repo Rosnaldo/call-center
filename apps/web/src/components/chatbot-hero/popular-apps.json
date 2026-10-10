@@ -226,5 +226,35 @@
     "id": "br.gov.caixa.tem",
     "category": "Gov.br",
     "iconUrl": "https://play-lh.googleusercontent.com/5Ygm3vsi2PcaZKpFdHhnQS-xE_iS075x6jon3kfXMyvwvqyihruXO88cbw9YKCq_MpWsIzzygQ16n6tYCIyfQQ"
+  },
+  {
+    "name": "Google Authenticator",
+    "id": "com.google.android.apps.authenticator2",
+    "category": "Autenticadores",
+    "iconUrl": "https://play-lh.googleusercontent.com/4qyuLCJkVpVfoIeu6b0ld6LkKzPHHby9ZilLbxhUZLK4f64o65oHGW-ZsuVe3LAWDVuIZpkQISmmVvA4-qnofw"
+  },
+  {
+    "name": "Microsoft Authenticator",
+    "id": "com.azure.authenticator",
+    "category": "Autenticadores",
+    "iconUrl": "https://play-lh.googleusercontent.com/7Qf6PPkO5HPtxkkGdI56KAXonEzgzyUvQARaDWP3dUsmwweJEHAI1oiZf6tSZn1wkSKKj7SO-eemScUh9a5k"
+  },
+  {
+    "name": "Authy",
+    "id": "com.authy.authy",
+    "category": "Autenticadores",
+    "iconUrl": "https://play-lh.googleusercontent.com/zSwzBRRZ2ZRStFCCeDUnlcvdy8lhzwp6268PPQ1pgzEDDs70rzs7QjPBP7qnkD3X9s4IJMIA6nEZOHcd7PI-zg"
+  },
+  {
+    "name": "2FAS Auth",
+    "id": "com.twofasapp",
+    "category": "Autenticadores",
+    "iconUrl": "https://play-lh.googleusercontent.com/MFWba8AFyEqcXUmctYq3BV8gsTnw5V5PkQPiAtlUGhYSzMKK7NTT8mnmHFemapsXycAFnQPv-NjcL6Vs9V2n"
+  },
+  {
+    "name": "Aegis Authenticator",
+    "id": "com.beemdevelopment.aegis",
+    "category": "Autenticadores",
+    "iconUrl": "https://play-lh.googleusercontent.com/GhU7cN5VdtJP-mexJupSZoQdSnLeCXIymY1IaxnPS4VM-qD3bpH4Q63RJHblhrK1XWLR3zYLaUEUVt52cKFSOQ"
   }
 ]

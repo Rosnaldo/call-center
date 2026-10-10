@@ -164,7 +164,7 @@ const AllowedAppsChecklist: React.FC<AllowedAppsModalProps> = ({ onSubmit, onSea
           {isSearching && <SearchStatus status={search.status} hasResults={search.results.length > 0} />}
         </div>
 
-        <div className="flex-1 overflow-y-auto overscroll-contain p-3 flex flex-col gap-4" style={{ backgroundColor: '#FAF7F1' }}>
+        <div className="flex-1 overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:#D9C9A8_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#D9C9A8] [&::-webkit-scrollbar-track]:bg-transparent p-3 flex flex-col gap-4" style={{ backgroundColor: '#FAF7F1' }}>
           {isSearching ? (
             <ul className={GRID}>{search.results.map(renderRow)}</ul>
           ) : (

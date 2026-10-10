@@ -1,5 +1,5 @@
 // A button shown under a bot message.
-export type ChatbotMessageAction = 'select_allowed_apps' | 'choice' | 'restart' | 'download_installer';
+export type ChatbotMessageAction = 'select_allowed_apps' | 'add_blocked_terms' | 'choice' | 'restart' | 'download_installer';
 
 // A text from the bot: an i18n key under `chatbot.` and its params.
 export interface BotText {
@@ -45,6 +45,8 @@ export interface ChatbotParams {
   allowedApps: string[] | null;
   installOs: string | null;
   appVersion: string | null;
+  blockRawIp: boolean | null;
+  blockedTerms: string[] | null;
 }
 
 export interface AppSearchState {
@@ -61,6 +63,10 @@ export interface ChatbotState {
   // bot message asking for it shows a button that opens the modal.
   isAllowedAppsRequested: boolean;
   isAllowedAppsModalOpen: boolean;
+  // Set by the bot's `open_blocked_terms` event until the words are sent; the
+  // bot message asking for them shows a button that opens the modal.
+  isBlockedTermsRequested: boolean;
+  isBlockedTermsModalOpen: boolean;
   // Set by the bot's `ask_choice` ws event until the user answers; the bot
   // question shows a button per choice.
   isChoiceRequested: boolean;
@@ -86,6 +92,8 @@ export const initialChatbotState: ChatbotState = {
   isBotTyping: false,
   isAllowedAppsRequested: false,
   isAllowedAppsModalOpen: false,
+  isBlockedTermsRequested: false,
+  isBlockedTermsModalOpen: false,
   isChoiceRequested: false,
   isRestartOffered: false,
   isSendEnabled: false,

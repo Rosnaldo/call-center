@@ -1,5 +1,5 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
-import { ArrowDown, Download, ListChecks, Loader2, RotateCcw } from 'lucide-react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ArrowDown, Ban, Download, ListChecks, Loader2, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChatbotStore } from '../../states/stores.ts';
 import type { ChatbotChoice, ChatbotMessage } from '../../states/local/chatbot/state.ts';
@@ -11,6 +11,10 @@ const messageText = ({ text, message }: ChatbotMessage): string => (text ? trans
 // Within this distance of the end, the board counts as "at the bottom" and
 // follows new messages.
 const FOLLOW_THRESHOLD_PX = 48;
+// After the board reaches an edge, wheel movement pushing further is held back
+// from the page for this long, so overshooting while reading doesn't jump the
+// whole page. A short pause past it lets the page scroll as usual.
+const EDGE_HOLD_MS = 400;
 
 interface BoardMessageProps {
   isProcessing?: boolean;
@@ -31,6 +35,8 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
   const messages = useChatbotStore(s => s.messages);
   const isAllowedAppsRequested = useChatbotStore(s => s.isAllowedAppsRequested);
   const openAllowedAppsModal = useChatbotStore(s => s.openAllowedAppsModal);
+  const isBlockedTermsRequested = useChatbotStore(s => s.isBlockedTermsRequested);
+  const openBlockedTermsModal = useChatbotStore(s => s.openBlockedTermsModal);
   const isChoiceRequested = useChatbotStore(s => s.isChoiceRequested);
   const isRestartOffered = useChatbotStore(s => s.isRestartOffered);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -38,6 +44,8 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
   // the following; new messages then show the "new messages" pill instead.
   const followRef = useRef(true);
   const [hasUnseen, setHasUnseen] = useState(false);
+  // When the board last moved, for the edge hold below.
+  const lastScrollAt = useRef(0);
 
   const scrollToEnd = (smooth: boolean) => {
     const el = containerRef.current;
@@ -50,10 +58,31 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
   const handleScroll = () => {
     const el = containerRef.current;
     if (!el) return;
+    lastScrollAt.current = performance.now();
     const atEnd = el.scrollHeight - el.scrollTop - el.clientHeight <= FOLLOW_THRESHOLD_PX;
     followRef.current = atEnd;
     if (atEnd) setHasUnseen(false);
   };
+
+  // Hold the page still for a moment when the board is at an edge and the wheel
+  // keeps pushing past it, so an overshoot while scrolling the chat doesn't jump
+  // the page. Native (non-passive) listener, since preventDefault needs it. Only
+  // the mouse wheel / trackpad; touch keeps the browser's own edge behavior.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY === 0) return;
+      const atTop = el.scrollTop <= 1;
+      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= 1;
+      const pushingPastEdge = (e.deltaY > 0 && atBottom) || (e.deltaY < 0 && atTop);
+      if (pushingPastEdge && performance.now() - lastScrollAt.current < EDGE_HOLD_MS) {
+        e.preventDefault();
+      }
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
 
   // New messages (and the typing indicator) are followed only when the user
   // is already at the end; a new conversation starts at the end again.
@@ -121,6 +150,18 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
               >
                 <ListChecks className="w-3.5 h-3.5" />
                 {t('chatbot.selectApps')}
+              </button>
+            )}
+
+            {/* Botão que abre o modal de palavras proibidas enquanto o bot as espera */}
+            {msg.action === 'add_blocked_terms' && isBlockedTermsRequested && (
+              <button
+                type="button"
+                onClick={openBlockedTermsModal}
+                className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#B97204] text-white font-mono-terminal text-[11px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)]"
+              >
+                <Ban className="w-3.5 h-3.5" />
+                {t('chatbot.addBlockedTerms')}
               </button>
             )}
 

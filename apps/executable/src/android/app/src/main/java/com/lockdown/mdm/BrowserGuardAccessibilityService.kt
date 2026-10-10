@@ -35,17 +35,26 @@ class BrowserGuardAccessibilityService : AccessibilityService() {
         val packageName = event.packageName?.toString() ?: return
         if (packageName !in MonitoredBrowsers.PACKAGES) return
 
+        val rawIp = blockRawIpEnabled()
         val blocked = when (event.eventType) {
             AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED, AccessibilityEvent.TYPE_VIEW_FOCUSED ->
-                extractTypedText(event)?.let { isDeniedTerm(it) || IpUrlDetector.isPublicIpUrl(it) } ?: false
-            else -> addressBarText(packageName)?.let(IpUrlDetector::isPublicIpUrl) ?: false
+                extractTypedText(event)?.let { isDeniedTerm(it) || (rawIp && IpUrlDetector.isPublicIpUrl(it)) } ?: false
+            else -> rawIp && (addressBarText(packageName)?.let(IpUrlDetector::isPublicIpUrl) ?: false)
         }
         if (blocked) PolicyEnforcer.blockAppNow(applicationContext, packageName)
     }
 
+    // The built-in terms plus any configured in the chatbot (see ProvisioningConfig).
+    private fun deniedTerms(): Set<String> =
+        UrlTermDenyList.TERMS + (ProvisioningConfig.get(applicationContext)?.blockedTerms ?: emptySet())
+
+    // Raw-IP blocking is on unless the chatbot config turned it off (also on for
+    // configless builds, matching the built-in term list always being active).
+    private fun blockRawIpEnabled(): Boolean = ProvisioningConfig.get(applicationContext)?.blockRawIp ?: true
+
     private fun isDeniedTerm(text: String): Boolean {
         val normalized = text.lowercase()
-        return UrlTermDenyList.TERMS.any { term -> normalized.contains(term.lowercase()) }
+        return deniedTerms().any { term -> normalized.contains(term.lowercase()) }
     }
 
     private fun extractTypedText(event: AccessibilityEvent): String? {

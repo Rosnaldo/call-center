@@ -290,6 +290,8 @@ describe('ChatbotWs params', () => {
       allowedApps: null,
       installOs: null,
       appVersion: null,
+      blockRawIp: null,
+      blockedTerms: null,
     };
     useChatbotStore.getState().setBotTyping(true);
 
@@ -299,5 +301,44 @@ describe('ChatbotWs params', () => {
     expect(state.params).toEqual(params);
     expect(state.isBotTyping).toBe(true);
     expect(state.messages).toEqual([]);
+  });
+});
+
+describe('ChatbotWs blocked terms', () => {
+  let transport: FakeTransport;
+  let ws: ChatbotWs;
+
+  beforeEach(() => {
+    useChatbotStore.getState().resetChatbot();
+    transport = new FakeTransport();
+    ws = new ChatbotWs(useChatbotStore, 'ws://test', () => transport);
+    ws.connect();
+  });
+
+  const askForTerms = () => {
+    transport.receive({ event: 'bot_message', key: 'messages.collectBlockedTerms' });
+    transport.receive({ event: 'open_blocked_terms' });
+  };
+
+  it('puts the button on the bot question instead of opening the modal', () => {
+    askForTerms();
+
+    const state = useChatbotStore.getState();
+    expect(state.isBlockedTermsRequested).toBe(true);
+    expect(state.isBlockedTermsModalOpen).toBe(false);
+    expect(state.messages.at(-1)?.action).toBe('add_blocked_terms');
+  });
+
+  it('sends the words and ends the request', () => {
+    askForTerms();
+    useChatbotStore.getState().openBlockedTermsModal();
+
+    expect(ws.sendBlockedTerms(['semi', 'bokup'])).toBe(true);
+
+    expect(transport.sent).toEqual([{ event: 'blocked_terms', terms: ['semi', 'bokup'] }]);
+    const state = useChatbotStore.getState();
+    expect(state.isBlockedTermsModalOpen).toBe(false);
+    expect(state.isBlockedTermsRequested).toBe(false);
+    expect(state.isBotTyping).toBe(true);
   });
 });

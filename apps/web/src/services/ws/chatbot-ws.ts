@@ -23,6 +23,7 @@ interface BotSummary {
 type ChatbotServerMessage =
     | ({ event: 'bot_message'; sendEnabled: boolean } & BotText)
     | { event: 'open_allowed_apps' }
+    | { event: 'open_blocked_terms' }
     | { event: 'ask_choice'; choices: { key: string; value: string }[] }
     | { event: 'offer_restart' }
     | { event: 'installer_ready'; url: string }
@@ -110,6 +111,17 @@ export class ChatbotWs {
         fulfillAllowedAppsRequest();
         setBotTyping(true);
         this.ws.send(JSON.stringify({ event: 'allowed_apps', apps }));
+        return true;
+    }
+
+    // Answers the bot's `open_blocked_terms` with the words added in the modal.
+    // Returns false when the words couldn't be sent (socket not open).
+    sendBlockedTerms(terms: string[]): boolean {
+        if (this.ws?.readyState !== TRANSPORT_OPEN) return false;
+        const { fulfillBlockedTermsRequest, setBotTyping } = this.store.getState();
+        fulfillBlockedTermsRequest();
+        setBotTyping(true);
+        this.ws.send(JSON.stringify({ event: 'blocked_terms', terms }));
         return true;
     }
 
@@ -205,6 +217,8 @@ export class ChatbotWs {
             } else if (msg.event === 'open_allowed_apps') {
                 // Shows the button on the bot's question; the user opens the modal.
                 this.store.getState().requestAllowedApps();
+            } else if (msg.event === 'open_blocked_terms') {
+                this.store.getState().requestBlockedTerms();
             } else if (msg.event === 'ask_choice') {
                 this.store.getState().requestChoice(msg.choices.map(({ key, value }) => ({ label: t(key), value, key })));
             } else if (msg.event === 'installer_ready') {

@@ -94,13 +94,25 @@ function parseConfig(value: unknown): EmbeddedConfig {
     nullableString(config.os) &&
     nullableString(config.version) &&
     nullableString(config.privateDnsHost) &&
-    // Optional, so a chatbot that doesn't send it yet still works.
+    // Optional, so a chatbot that doesn't send them yet still works.
     (config.appVersion === undefined || nullableString(config.appVersion)) &&
+    (config.blockRawIp === undefined || config.blockRawIp === null || typeof config.blockRawIp === "boolean") &&
+    (config.blockedTerms === undefined ||
+      config.blockedTerms === null ||
+      (Array.isArray(config.blockedTerms) && config.blockedTerms.every((term) => typeof term === "string"))) &&
     (config.allowedApps === null ||
       (Array.isArray(config.allowedApps) && config.allowedApps.every((app) => typeof app === "string")));
   if (!valid) throw new HttpError(400, "Invalid config");
-  const { os: mobileOs, version, privateDnsHost, allowedApps, appVersion = null } = config as EmbeddedConfig;
-  return { os: mobileOs, version, privateDnsHost, allowedApps, appVersion };
+  const {
+    os: mobileOs,
+    version,
+    privateDnsHost,
+    allowedApps,
+    appVersion = null,
+    blockRawIp = null,
+    blockedTerms = null,
+  } = config as EmbeddedConfig;
+  return { os: mobileOs, version, privateDnsHost, allowedApps, appVersion, blockRawIp, blockedTerms };
 }
 
 async function createApk(config: EmbeddedConfig): Promise<Buffer> {

@@ -24,6 +24,10 @@ data class ProvisioningConfig(
     val privateDnsHost: String?,
     val allowedApps: Set<String>?,
     val appVersion: String?,
+    // Browser guard: block addresses with a raw IP host (null: use the app default),
+    // and extra words that block a URL containing them (merged with UrlTermDenyList).
+    val blockRawIp: Boolean?,
+    val blockedTerms: Set<String>?,
 ) {
     companion object {
         // Must match CONFIG_BLOCK_ID in apk-config.ts.
@@ -61,7 +65,14 @@ data class ProvisioningConfig(
             }
             // Absent in configs made before the chatbot asked for it.
             val appVersion = if (obj.isNull("appVersion")) null else obj.getString("appVersion")
-            return ProvisioningConfig(host, apps, appVersion)
+            val blockRawIp = if (obj.isNull("blockRawIp")) null else obj.getBoolean("blockRawIp")
+            val blockedTerms = if (obj.isNull("blockedTerms")) {
+                null
+            } else {
+                val array = obj.getJSONArray("blockedTerms")
+                (0 until array.length()).map(array::getString).toSet()
+            }
+            return ProvisioningConfig(host, apps, appVersion, blockRawIp, blockedTerms)
         }
 
         private fun readBlock(apkPath: String): String? = RandomAccessFile(apkPath, "r").use { file ->

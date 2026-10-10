@@ -11,6 +11,8 @@ const EMPTY = {
   allowedApps: null,
   installOs: null,
   appVersion: null,
+  blockRawIp: null,
+  blockedTerms: null,
 };
 
 describe('SummaryModal', () => {
@@ -35,7 +37,7 @@ describe('SummaryModal', () => {
     render(<SummaryModal />);
 
     expect(screen.getByText('Android')).toBeTruthy();
-    expect(screen.getAllByText('a definir')).toHaveLength(5);
+    expect(screen.getAllByText('a definir')).toHaveLength(7);
   });
 
   it('shows the answered params with the allowed apps by name', () => {
@@ -55,6 +57,8 @@ describe('SummaryModal', () => {
         allowedApps: ['com.whatsapp', 'com.spotify.music', 'com.example.unknown'],
         installOs: 'Linux',
         appVersion: '1.2.0',
+        blockRawIp: true,
+        blockedTerms: ['semi', 'bokup'],
       });
       store.openSummaryModal();
     });
@@ -66,6 +70,7 @@ describe('SummaryModal', () => {
     expect(screen.getByText('com.example.unknown')).toBeTruthy();
     expect(screen.getByText('Linux')).toBeTruthy();
     expect(screen.getByText('1.2.0')).toBeTruthy();
+    expect(screen.getByText('semi, bokup')).toBeTruthy();
     expect(screen.queryByText('a definir')).toBeNull();
   });
 

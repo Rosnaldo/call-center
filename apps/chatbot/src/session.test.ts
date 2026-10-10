@@ -26,10 +26,10 @@ describe('ChatSession allowed apps', () => {
         ]);
     });
 
-    it('moves on to the USB install OS once picked', () => {
+    it('asks about raw IPs once the apps are picked', () => {
         const { session } = atAllowedApps();
         const [reply] = session.selectAllowedApps(['com.whatsapp']);
-        expect(reply).toEqual({ event: 'bot_message', key: 'messages.askInstallOs', sendEnabled: false });
+        expect(reply).toEqual({ event: 'bot_message', key: 'messages.askBlockRawIp', sendEnabled: false });
     });
 
     it('ignores a list outside the allowed apps step', () => {
@@ -37,6 +37,14 @@ describe('ChatSession allowed apps', () => {
         session.start();
         expect(session.selectAllowedApps(['com.whatsapp'])).toEqual([
             { event: 'bot_message', key: 'messages.noAppList', sendEnabled: false },
+        ]);
+    });
+
+    it('ignores blocked words outside their modal step', () => {
+        const session = new ChatSession();
+        session.start();
+        expect(session.selectBlockedTerms(['semi'])).toEqual([
+            { event: 'bot_message', key: 'messages.noTermList', sendEnabled: false },
         ]);
     });
 });
@@ -100,9 +108,40 @@ describe('ChatSession choice buttons', () => {
         ]);
     });
 
+    it('asks raw-IP, then whether to add words, and opens the modal on yes', () => {
+        const { session } = atAllowedApps();
+        expect(session.selectAllowedApps(['com.whatsapp'])).toEqual([
+            { event: 'bot_message', key: 'messages.askBlockRawIp', sendEnabled: false },
+            YES_NO,
+        ]);
+        expect(session.handle('yes')).toEqual([
+            { event: 'bot_message', key: 'messages.askBlockTerms', sendEnabled: false },
+            YES_NO,
+        ]);
+        expect(session.params().blockRawIp).toBe(true);
+        // Yes opens the modal; the words come back through selectBlockedTerms.
+        expect(session.handle('yes')).toEqual([
+            { event: 'bot_message', key: 'messages.collectBlockedTerms', sendEnabled: false },
+            { event: 'open_blocked_terms' },
+        ]);
+        session.selectBlockedTerms(['semi', 'bokup']);
+        expect(session.params().blockedTerms).toEqual(['semi', 'bokup']);
+    });
+
+    it('skips the modal and stores no words when the user declines', () => {
+        const { session } = atAllowedApps();
+        session.selectAllowedApps(['com.whatsapp']);
+        session.handle('no'); // raw IP
+        const [reply] = session.handle('no'); // don't add words
+        expect(reply).toEqual({ event: 'bot_message', key: 'messages.askInstallOs', sendEnabled: false });
+        expect(session.params().blockedTerms).toEqual([]);
+    });
+
     it('offers the USB install OS options', () => {
         const { session } = atAllowedApps();
-        expect(session.selectAllowedApps(['com.whatsapp'])[1]).toEqual({
+        session.selectAllowedApps(['com.whatsapp']);
+        session.handle('no');
+        expect(session.handle('no')[1]).toEqual({
             event: 'ask_choice',
             choices: [
                 { key: 'choices.linux', value: 'linux' },
@@ -116,6 +155,8 @@ describe('ChatSession choice buttons', () => {
         const atVersion = () => {
             const { session } = atAllowedApps();
             session.selectAllowedApps(['com.whatsapp']);
+            session.handle('no');
+            session.handle('no');
             return { session, replies: session.handle('linux') };
         };
 
@@ -137,6 +178,8 @@ describe('ChatSession choice buttons', () => {
     it('shows them on the confirmation', () => {
         const { session } = atAllowedApps();
         session.selectAllowedApps(['com.whatsapp']);
+        session.handle('no');
+        session.handle('no');
         session.handle('linux');
         const replies = session.handle('1.0');
         expect(replies).toEqual([
@@ -157,6 +200,8 @@ describe('ChatSession finish', () => {
     const finished = () => {
         const { session } = atAllowedApps();
         session.selectAllowedApps(['com.whatsapp']);
+        session.handle('no');
+        session.handle('no');
         session.handle('mac');
         session.handle('1.0');
         return { session, replies: session.handle('yes') };
@@ -189,6 +234,8 @@ describe('ChatSession params', () => {
         allowedApps: null,
         installOs: null,
         appVersion: null,
+        blockRawIp: null,
+        blockedTerms: null,
     };
 
     it('starts empty', () => {
@@ -206,10 +253,12 @@ describe('ChatSession params', () => {
     it('keeps them once finished and clears them on restart', () => {
         const { session } = atAllowedApps();
         session.selectAllowedApps([]);
+        session.handle('no');
+        session.handle('no');
         session.handle('mac');
         session.handle('2.0');
         session.handle('yes');
-        expect(session.params()).toMatchObject({ installOs: 'macOS', appVersion: '2.0' });
+        expect(session.params()).toMatchObject({ installOs: 'macOS', appVersion: '2.0', blockRawIp: false, blockedTerms: [] });
         session.start();
         expect(session.params()).toEqual(empty);
     });
@@ -240,8 +289,10 @@ describe('ChatSession send state', () => {
         const { replies } = atAllowedApps();
         expect(replies[0]).toMatchObject({ sendEnabled: false });
         const { session } = atAllowedApps();
-        session.selectAllowedApps(['com.whatsapp']);
-        // The configuration version is typed.
+        // Raw-IP is a button step (disabled); blocked terms and version are typed.
+        expect(session.selectAllowedApps(['com.whatsapp'])[0]).toMatchObject({ key: 'messages.askBlockRawIp', sendEnabled: false });
+        expect(session.handle('no')[0]).toMatchObject({ key: 'messages.askBlockTerms', sendEnabled: false });
+        session.handle('no');
         expect(session.handle('mac')[0]).toMatchObject({ key: 'messages.askAppVersion', sendEnabled: true });
         session.handle('1.0');
         expect(session.handle('yes')[0]).toMatchObject({ sendEnabled: false });
@@ -257,6 +308,9 @@ describe('ChatSession installer', () => {
         session.start();
         for (const answer of ['proceed', 'proceed', '1', '14', 'yes', 'dns.google']) session.handle(answer);
         session.selectAllowedApps(['com.whatsapp']);
+        session.handle('yes');
+        session.handle('yes');
+        session.selectBlockedTerms(['semi']);
         session.handle('windows');
         session.handle('1.2.3');
         session.handle('yes');
@@ -277,6 +331,8 @@ describe('ChatSession installer', () => {
             allowedApps: ['com.whatsapp'],
             installOs: 'Windows',
             appVersion: '1.2.3',
+            blockRawIp: true,
+            blockedTerms: ['semi'],
         });
     });
 
@@ -327,6 +383,8 @@ describe('ChatSession learn more', () => {
         choices: [
             { key: 'choices.learnPrivateDns', value: 'privateDns' },
             { key: 'choices.learnDeviceOwner', value: 'deviceOwner' },
+            { key: 'choices.learnBrowserGuard', value: 'browserGuard' },
+            { key: 'choices.learnRawIp', value: 'rawIp' },
             { key: 'choices.learnSchedule', value: 'schedule' },
             { key: 'choices.learnUsbDebugging', value: 'usbDebugging' },
             { key: 'choices.startSetup', value: 'proceed' },

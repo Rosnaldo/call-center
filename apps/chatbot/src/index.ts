@@ -10,6 +10,7 @@ import { createUserAuthClient } from './user-auth';
 // Wire protocol (JSON frames):
 //   client -> server  { event: 'user_message', message: string }
 //                     { event: 'allowed_apps', apps: string[] }   answers open_allowed_apps
+//                     { event: 'blocked_terms', terms: string[] } answers open_blocked_terms
 //                     { event: 'search_apps', term: string }      Google Play search, while the checklist is open
 //                     { event: 'restart' }                       starts a new conversation (answers offer_restart)
 //                     { event: 'generate_installer', token? }    creates the installer once the conversation is done;
@@ -17,6 +18,7 @@ import { createUserAuthClient } from './user-auth';
 //   server -> client  { event: 'bot_message', key: string, params?, sendEnabled: boolean }  i18n key under `chatbot.` (web locales);
 //                                                                sendEnabled: whether the client's send button is enabled
 //                     { event: 'open_allowed_apps' }             client shows a button opening its app checklist
+//                     { event: 'open_blocked_terms' }            client shows a button opening its blocked-words modal
 //                     { event: 'ask_choice', choices: { key, value }[] }  client shows a button per choice (answered as user_message with its value)
 //                     { event: 'offer_restart' }                 conversation finished; client shows the "reset"/"generate installer" buttons
 //                     { event: 'installer_ready', url: string }  the installer's download URL
@@ -28,6 +30,7 @@ import { createUserAuthClient } from './user-auth';
 export type ClientMessage =
     | { event: 'user_message'; message: string }
     | { event: 'allowed_apps'; apps: unknown[] }
+    | { event: 'blocked_terms'; terms: unknown[] }
     | { event: 'search_apps'; term: string }
     | { event: 'restart' }
     | { event: 'generate_installer'; token?: string };
@@ -55,6 +58,7 @@ const parseClientMessage = (raw: WebSocket.RawData): ClientMessage | null => {
         if (msg?.event === 'user_message' && typeof msg.message === 'string') return msg;
         // Ids are validated by the session.
         if (msg?.event === 'allowed_apps' && Array.isArray(msg.apps)) return msg;
+        if (msg?.event === 'blocked_terms' && Array.isArray(msg.terms)) return msg;
         if (msg?.event === 'search_apps' && typeof msg.term === 'string') return msg;
         if (msg?.event === 'restart') return { event: 'restart' };
         if (msg?.event === 'generate_installer') {
@@ -97,6 +101,10 @@ wss.on('connection', (ws) => {
         }
         if (msg.event === 'allowed_apps') {
             reply(session.selectAllowedApps(msg.apps));
+            return;
+        }
+        if (msg.event === 'blocked_terms') {
+            reply(session.selectBlockedTerms(msg.terms));
             return;
         }
         if (msg.event === 'restart') {

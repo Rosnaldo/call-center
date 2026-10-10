@@ -4,6 +4,7 @@ import { ClipboardList } from 'lucide-react';
 import BoardMessage from './BoardMessage';
 import AllowedAppsModal from './AllowedAppsModal';
 import SummaryModal from './SummaryModal';
+import BlockedTermsModal from './BlockedTermsModal';
 import { useChatbotStore } from '../../states/stores.ts';
 import { ChatbotWs } from '../../services/ws/chatbot-ws.ts';
 import type { ChatbotChoice } from '../../states/local/chatbot/state.ts';
@@ -36,6 +37,7 @@ export const ChatbotHero: React.FC = () => {
   const handleGenerateInstaller = () => chatbotWs.current?.generateInstaller();
   const handleRestart = () => chatbotWs.current?.restart();
   const handleAllowedApps = (apps: string[]) => chatbotWs.current?.sendAllowedApps(apps) ?? false;
+  const handleBlockedTerms = (terms: string[]) => chatbotWs.current?.sendBlockedTerms(terms) ?? false;
   // Stable: the modal's debounce effect depends on it.
   const handleSearchApps = useCallback((term: string) => chatbotWs.current?.searchApps(term), []);
 
@@ -132,6 +134,7 @@ export const ChatbotHero: React.FC = () => {
         </div>
       </div>
       <AllowedAppsModal onSubmit={handleAllowedApps} onSearch={handleSearchApps} />
+      <BlockedTermsModal onSubmit={handleBlockedTerms} />
       <SummaryModal />
     </div>
   );

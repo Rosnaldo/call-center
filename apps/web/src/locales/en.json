@@ -120,6 +120,10 @@
       "askDnsHost": "What is the private DNS hostname? (e.g. dns.adguard.com)",
       "askAllowedApps": "Which apps are allowed? Use the button below to select them.",
       "askInstallOs": "The installation is done over USB. Which operating system will you install it from?",
+      "askBlockRawIp": "Block raw IP websites? (Ex: 102.119.217.84)",
+      "askBlockTerms": "Add forbidden words in the browser URLs?",
+      "collectBlockedTerms": "Use the button below to add the forbidden words.",
+      "noTermList": "There's no word list to fill in right now.",
       "askAppVersion": "What version is this configuration? It will show in the phone app. Use the default or type another (e.g. 1.2.0).",
       "confirm": "Please confirm:\n{{summary}}\nIs this correct?",
       "done": "Done! Collected params:\n{{summary}}",
@@ -142,7 +146,9 @@
       "appIds": "Invalid app list. Please select the allowed apps again.",
       "typedApps": "Please use the button to select the allowed apps.",
       "proceed": "Use the \"Proceed\" button to continue.",
-      "learnMore": "Pick a topic or \"Start setup\"."
+      "learnMore": "Pick a topic or \"Start setup\".",
+      "blockedTerms": "Enter comma-separated words (2 to 40 characters, no spaces), or \"none\".",
+      "typedTerms": "Use the button to add the forbidden words."
     },
     "summary": {
       "os": "OS",
@@ -150,7 +156,11 @@
       "privateDns": "Private DNS",
       "installOs": "USB install from",
       "appVersion": "Configuration version",
-      "no": "no"
+      "no": "no",
+      "blockRawIp": "Block raw IP",
+      "blockedTerms": "Blocked words",
+      "yes": "yes",
+      "none": "none"
     },
     "choices": {
       "proceed": "Proceed",
@@ -165,6 +175,8 @@
       "learnMore": "Learn more",
       "learnPrivateDns": "Private DNS",
       "learnDeviceOwner": "Device owner",
+      "learnBrowserGuard": "Browser Guard",
+      "learnRawIp": "Raw IP address",
       "learnSchedule": "Schedules",
       "learnUsbDebugging": "Developer Mode (USB)",
       "startSetup": "Start setup"
@@ -199,10 +211,28 @@
     "learn": {
       "privateDns": "Private DNS is the service that blocks a list of unwanted domains and URLs.\n\nWe suggest using NextDNS: by default, it already blocks a list of known toxic content, plus your own custom list.",
       "deviceOwner": "Device owner is Android's fully managed mode. It's important to keep your phone free of unwanted distractions.\n\nYou'll need to format your Android to apply device owner.",
+      "browserGuard": "Browser Guard is a forbidden-keyword filter: it blocks any URL containing one or more terms you define.",
+      "rawIp": "A raw IP address is when the website is accessed directly through its numerical IP address (e.g. 102.119.217.84) rather than its domain name.",
       "schedule": "Schedules set when each app can be used, for example \"only from 3 PM to 6 PM\" or \"only on weekends\".\n\nOutside its schedule, the app stays installed but turns grey, and Android says it isn't available right now. Its notifications are blocked too until the schedule opens again.",
       "usbDebugging": "The installation runs from your computer, with the phone connected by USB cable. For that, you need to give some permissions on your mobile:\n\n1. Activate developer mode\n2. Turn on USB debugging\n3. When you plug in the cable, unlock the phone and tap \"Allow\""
     },
-    "newMessages": "New messages"
+    "newMessages": "New messages",
+    "addBlockedTerms": "Add words",
+    "blockedTermsModal": {
+      "title": "Forbidden words",
+      "inputPlaceholder": "Type a word and press Enter",
+      "inputLabel": "New forbidden word",
+      "add": "Add",
+      "remove": "Remove {{term}}",
+      "empty": "No words added yet.",
+      "hint": "A URL containing any of these words blocks the browser.",
+      "count_one": "{{count}} word",
+      "count_other": "{{count}} words",
+      "cancel": "Cancel",
+      "submit": "Save",
+      "duplicate": "Word already added.",
+      "invalid": "Use 2 to 40 characters, no spaces."
+    }
   },
   "mediaSettings": {
     "title": "Audio and Video Settings",

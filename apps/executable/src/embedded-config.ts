@@ -21,6 +21,10 @@ export interface EmbeddedConfig {
   allowedApps: string[] | null;
   /** Version of this configuration, shown by the device owner app (e.g. 1.2.0). */
   appVersion: string | null;
+  // Browser guard: block addresses with a raw IP host, and words that block a
+  // URL containing them (see the Android app's IpUrlDetector / UrlTermDenyList).
+  blockRawIp: boolean | null;
+  blockedTerms: string[] | null;
 }
 
 export interface EmbeddedPayload {
