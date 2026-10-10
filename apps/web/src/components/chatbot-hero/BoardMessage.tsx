@@ -74,37 +74,39 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
       role="log"
       aria-label={t('chatbot.title')}
       onScroll={handleScroll}
-      className={`w-full h-[min(480px,60vh)] min-h-[260px] overflow-y-auto [scrollbar-width:thin] [scrollbar-color:#D9C9A8_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#D9C9A8] [&::-webkit-scrollbar-track]:bg-transparent p-4 md:p-5 space-y-3.5 text-left transition-colors ${className}`}
+      className={`w-full h-[min(480px,60vh)] min-h-[260px] overflow-y-auto [scrollbar-width:thin] [scrollbar-color:#D9C9A8_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#D9C9A8] [&::-webkit-scrollbar-track]:bg-transparent p-3 md:p-4 space-y-1.5 text-left transition-colors ${className}`}
       style={{
         backgroundColor: '#FAF7F1',
       }}
     >
       {messages.map((msg, index) => {
         const isUser = msg.autor !== 'bot';
+        // Consecutive messages from the same author share one label.
+        const startsGroup = index === 0 || messages[index - 1].autor !== msg.autor;
 
         return (
           <div
             key={index}
-            className={`flex flex-col ${
-              isUser ? 'items-end' : 'items-start'
-            }`}
+            className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} ${startsGroup && index > 0 ? 'pt-2' : ''}`}
           >
-            {/* Indicador de remetente: 'bot' vs 'você' */}
-            <span
-              className={`text-[11px] font-mono-terminal font-semibold mb-1 tracking-tight select-none flex items-center gap-1 ${
-                isUser ? 'text-[#B97204] pr-1' : 'text-[#857967] pl-1'
-              }`}
-            >
-              {!isUser && <span className="text-[9px] text-[#B97204]">◆</span>}
-              {isUser ? t('chatbot.you') : t('chatbot.bot')}
-            </span>
+            {/* Indicador de remetente: 'bot' vs 'você', uma vez por grupo */}
+            {startsGroup && (
+              <span
+                className={`text-[11px] font-mono-terminal font-semibold mb-0.5 tracking-tight select-none flex items-center gap-1 ${
+                  isUser ? 'text-[#B97204] pr-1' : 'text-[#857967] pl-1'
+                }`}
+              >
+                {!isUser && <span className="text-[9px] text-[#B97204]">◆</span>}
+                {isUser ? t('chatbot.you') : t('chatbot.bot')}
+              </span>
+            )}
 
             {/* Balão da mensagem: apenas o texto, com estilos distintos */}
             <div
-              className={`max-w-[85%] md:max-w-[78%] px-4 py-3 text-[14px] leading-relaxed whitespace-pre-wrap transition-all ${
+              className={`max-w-[90%] md:max-w-[82%] px-3 py-1.5 text-[13.5px] leading-snug whitespace-pre-wrap transition-all ${
                 isUser
-                  ? 'bg-[#B97204] text-white font-sans-ui rounded-2xl rounded-tr-xs border border-[#A76503] shadow-[0_2px_10px_rgba(185,114,4,0.22)]'
-                  : 'bg-white text-[#1E1913] font-sans-ui rounded-2xl rounded-tl-xs border border-[#E4D9C4] border-l-[3px] border-l-[#B97204] shadow-[0_2px_8px_rgba(0,0,0,0.03)]'
+                  ? 'bg-[#B97204] text-white font-sans-ui rounded-xl rounded-tr-xs border border-[#A76503] shadow-[0_2px_10px_rgba(185,114,4,0.22)]'
+                  : 'bg-white text-[#1E1913] font-sans-ui rounded-xl rounded-tl-xs border border-[#E4D9C4] border-l-[3px] border-l-[#B97204] shadow-[0_2px_8px_rgba(0,0,0,0.03)]'
               }`}
             >
               <p>{messageText(msg)}</p>
@@ -115,22 +117,22 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
               <button
                 type="button"
                 onClick={openAllowedAppsModal}
-                className="mt-2 inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-[#B97204] text-white font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)]"
+                className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#B97204] text-white font-mono-terminal text-[11px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)]"
               >
-                <ListChecks className="w-4 h-4" />
+                <ListChecks className="w-3.5 h-3.5" />
                 {t('chatbot.selectApps')}
               </button>
             )}
 
             {/* Botões de escolha: respondem a pergunta do bot com o valor da opção */}
             {msg.action === 'choice' && isChoiceRequested && onAnswer && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {msg.choices?.map((choice) => (
                   <button
                     key={choice.value}
                     type="button"
                     onClick={() => onAnswer(choice)}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-white text-[#B97204] border border-[#B97204] font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] hover:bg-[#B97204] hover:text-white"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-[#B97204] border border-[#B97204] font-mono-terminal text-[11px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] hover:bg-[#B97204] hover:text-white"
                   >
                     {choice.key ? t(`chatbot.${choice.key}`) : choice.label}
                   </button>
@@ -142,31 +144,31 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
             {msg.action === 'download_installer' && msg.installerUrl && (
               <a
                 href={msg.installerUrl}
-                className="mt-2 inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-[#B97204] text-white font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)] no-underline"
+                className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#B97204] text-white font-mono-terminal text-[11px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)] no-underline"
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-3.5 h-3.5" />
                 {t('chatbot.downloadInstaller')}
               </a>
             )}
 
             {/* Botões da mensagem final: gerar o instalador ou começar uma nova conversa */}
             {msg.action === 'restart' && isRestartOffered && onRestart && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
                 <button
                   type="button"
                   onClick={onGenerateInstaller}
                   disabled={isProcessing}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-[#B97204] text-white font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)] disabled:opacity-60 disabled:cursor-wait"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#B97204] text-white font-mono-terminal text-[11px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)] disabled:opacity-60 disabled:cursor-wait"
                 >
-                  <Download className="w-4 h-4" />
+                  <Download className="w-3.5 h-3.5" />
                   {t('chatbot.generateInstaller')}
                 </button>
                 <button
                   type="button"
                   onClick={onRestart}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-white text-[#B97204] border border-[#B97204] font-mono-terminal text-[12px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98]"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-[#B97204] border border-[#B97204] font-mono-terminal text-[11px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98]"
                 >
-                  <RotateCcw className="w-4 h-4" />
+                  <RotateCcw className="w-3.5 h-3.5" />
                   {t('chatbot.generateAgain')}
                 </button>
               </div>
@@ -177,11 +179,13 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
 
       {/* Indicador de carregamento em tempo real */}
       {isProcessing && (
-        <div className="flex flex-col items-start">
-          <span className="text-[11px] font-mono-terminal font-semibold text-[#857967] mb-1 pl-1 flex items-center gap-1 select-none">
-            <span className="text-[9px] text-[#B97204]">◆</span> {t('chatbot.bot')}
-          </span>
-          <div className="bg-white border border-[#E4D9C4] border-l-[3px] border-l-[#B97204] px-3.5 py-2 rounded-2xl rounded-tl-xs text-[12px] font-mono-terminal text-[#7E7464] flex items-center gap-2 shadow-xs">
+        <div className={`flex flex-col items-start ${messages.at(-1)?.autor === 'bot' ? '' : 'pt-2'}`}>
+          {messages.at(-1)?.autor !== 'bot' && (
+            <span className="text-[11px] font-mono-terminal font-semibold text-[#857967] mb-0.5 pl-1 flex items-center gap-1 select-none">
+              <span className="text-[9px] text-[#B97204]">◆</span> {t('chatbot.bot')}
+            </span>
+          )}
+          <div className="bg-white border border-[#E4D9C4] border-l-[3px] border-l-[#B97204] px-3 py-1.5 rounded-xl rounded-tl-xs text-[12px] font-mono-terminal text-[#7E7464] flex items-center gap-2 shadow-xs">
             <Loader2 className="w-3.5 h-3.5 animate-spin text-[#B97204]" />
             <span>{t('chatbot.typing')}</span>
           </div>

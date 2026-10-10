@@ -168,3 +168,22 @@ describe('BoardMessage scrolling', () => {
     expect(screen.queryByText('Novas mensagens')).toBeNull();
   });
 });
+
+describe('BoardMessage grouping', () => {
+  beforeEach(() => act(() => useChatbotStore.getState().resetChatbot()));
+
+  it('labels each run of messages from the same author once', () => {
+    act(() => {
+      const { addMessage } = useChatbotStore.getState();
+      addMessage({ autor: 'bot', message: 'one' });
+      addMessage({ autor: 'bot', message: 'two' });
+      addMessage({ autor: 'user', message: 'three' });
+      addMessage({ autor: 'user', message: 'four' });
+      addMessage({ autor: 'bot', message: 'five' });
+    });
+    render(<BoardMessage />);
+
+    expect(screen.getAllByText('bot')).toHaveLength(2);
+    expect(screen.getAllByText('você')).toHaveLength(1);
+  });
+});
