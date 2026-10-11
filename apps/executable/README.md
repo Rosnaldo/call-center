@@ -113,8 +113,9 @@ or the user quits. For each phone in the `device` state it asks whether to
 install (naming the configuration version typed in the chatbot), then installs the embedded APK (`pm install -r`) and makes it the device owner
 (`dpm set-device-owner com.lockdown.mdm/.AdminReceiver`). Android only allows
 that on a phone without accounts; otherwise the error is shown and the exit
-code is 1. A phone already provisioned blocks installs (`DISALLOW_INSTALL_APPS`)
-until `unlock_installs` is sent with the admin password.
+code is 1. A phone provisioned by an older build blocks installs (`DISALLOW_INSTALL_APPS`);
+the executable then asks for the admin password, sends `unlock_installs`,
+retries and sends `lock_installs`.
 
 ### Signing key (constant across builds)
 

@@ -15,13 +15,9 @@ import java.security.MessageDigest
  *   unlock_dns      - remove the private-DNS lock so the user/adb can change it
  *   lock_dns        - re-apply the DNS lock (arg = optional new hostname, defaults to the
  *                     configured one)
- *   unlock_installs - lift the install/update lock: allow sideloading (incl. `adb install`/
- *                     `adb install -r`, which bypass the unknown-sources consent flow
- *                     entirely) and let any app stay installed. Required before *any* APK can
- *                     be installed or updated on the device, including this app's own APK -
- *                     see PolicyEnforcer.applyInstallPolicy for why that also means Play
- *                     Store's own background updates for allowlisted apps pause while locked
- *   lock_installs   - go back to allowlist-only enforcement and block all installs/updates
+ *   unlock_installs - lift the install lock: allow sideloading through the unknown-sources
+ *                     consent flow and let any app stay installed
+ *   lock_installs   - go back to allowlist-only enforcement and block sideloading
  *                     again (the default state)
  *   add_app         - arg = package name to add to the allowlist
  *   remove_app      - arg = package name to remove from the allowlist (also uninstalls it

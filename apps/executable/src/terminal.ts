@@ -152,3 +152,32 @@ export function askRetry(question: string): Promise<boolean> {
     });
   });
 }
+
+// Reads a line without echoing it. Returns null when there's no terminal to
+// answer in or on Ctrl+C.
+export function askSecret(question: string): Promise<string | null> {
+  const stdin = process.stdin;
+  if (!stdin.isTTY) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    process.stdout.write(`${question} `);
+    let input = "";
+    const finish = (value: string | null) => {
+      stdin.off("data", onData);
+      stdin.setRawMode(false);
+      stdin.pause();
+      process.stdout.write("\n");
+      resolve(value);
+    };
+    const onData = (data: Buffer) => {
+      for (const char of data.toString("utf8")) {
+        if (char === "\r" || char === "\n" || char === "\u0004") return finish(input);
+        if (char === "\u0003") return finish(null);
+        if (char === "\u007f" || char === "\b") input = input.slice(0, -1);
+        else input += char;
+      }
+    };
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.on("data", onData);
+  });
+}

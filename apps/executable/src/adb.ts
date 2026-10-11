@@ -1,4 +1,5 @@
 // ADB over USB implemented in TypeScript (no adb binary or adb server needed).
+import { spawnSync } from "child_process";
 import crypto from "crypto";
 import fs from "fs";
 import os from "os";
@@ -28,6 +29,7 @@ import {
 
 const AUTH_PROMPT_DELAY_MS = 1_500;
 const DRIVER_SETTLE_MS = 3_000;
+const ADB_RELEASE_MS = 1_000;
 // USB read timeout: the max the usb module takes (~49 days), i.e. never.
 const READ_TIMEOUT_MS = 0xffff_ffff;
 
@@ -292,6 +294,15 @@ async function getStates(
   return found;
 }
 
+// An adb server (started by `adb`, Android Studio, ...) holds the phone's USB
+// interface, so it shows as busy here. Returns false when adb isn't installed.
+function stopAdbServer(): boolean {
+  const result = spawnSync("adb", ["kill-server"], { stdio: "ignore", timeout: 10_000 });
+  if (result.error) return false;
+  console.log("The phone was in use by an adb server; stopped it (adb kill-server).");
+  return true;
+}
+
 // Equivalent of `adb devices`, running `onReady` on each ready device. Asks
 // the user to fix missing USB permissions (Linux) or drivers (Windows) along
 // the way.
@@ -314,6 +325,11 @@ export async function listDevices(onReady?: OnReady): Promise<DeviceInfo[]> {
   if (await ensureWindowsDrivers(found)) {
     // The device re-enumerates with its new driver.
     await sleep(DRIVER_SETTLE_MS);
+    found = await getStates(manager, credentialStore, onReadyOnce);
+  }
+  if (found.some(({ state }) => state.startsWith("busy")) && stopAdbServer()) {
+    // Give the phone's USB interface a moment to be released.
+    await sleep(ADB_RELEASE_MS);
     found = await getStates(manager, credentialStore, onReadyOnce);
   }
 

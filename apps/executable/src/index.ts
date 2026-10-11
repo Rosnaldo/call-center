@@ -1,13 +1,13 @@
-import { openInTerminal, launchedWithoutTerminal, shouldPauseOnExit, waitForEnter, askRetry, askYesNo } from "./terminal";
+import { openInTerminal, launchedWithoutTerminal, shouldPauseOnExit, waitForEnter, askRetry, askYesNo, askSecret } from "./terminal";
+import type { Adb } from "@yume-chan/adb";
 import { listDevices, type DeviceInfo, type OnReady } from "./adb";
-import { installDeviceOwner } from "./device-owner";
+import { installDeviceOwner, InstallBlockedError, sendControlCommand } from "./device-owner";
 import { readEmbeddedPayload } from "./embedded-config";
 
 async function main(): Promise<void> {
   // Params collected by the chatbot and the APK made with them, embedded by
   // the server on download.
   const payload = readEmbeddedPayload();
-  console.log(payload ? `Config: ${JSON.stringify(payload.config)}` : "No embedded config");
 
   let failed = false;
   const onReady: OnReady | undefined = payload
@@ -19,7 +19,7 @@ async function main(): Promise<void> {
           console.log(`Skipped ${device}.`);
           return;
         }
-        if (!(await installDeviceOwner(adb, device, payload.apk))) failed = true;
+        if (!(await install(adb, device, payload.apk))) failed = true;
       }
     : undefined;
 
@@ -41,6 +41,51 @@ async function main(): Promise<void> {
 
   printDevices(devices);
   if (failed) process.exitCode = 1;
+}
+
+// Installs the app; on a phone whose installs are locked, asks for the admin
+// password, unlocks, retries and locks again.
+async function install(adb: Adb, device: string, apk: Uint8Array): Promise<boolean> {
+  try {
+    return await installDeviceOwner(adb, device, apk);
+  } catch (err) {
+    if (!(err instanceof InstallBlockedError)) throw err;
+    console.error(`Error: ${err.message}`);
+  }
+
+  let password: string;
+  for (;;) {
+    const answer = await askSecret("Admin password (empty to skip this phone):");
+    if (!answer) {
+      console.log(`Skipped ${device}: installs are still locked.`);
+      return false;
+    }
+    const result = await sendControlCommand(adb, answer, "unlock_installs");
+    if (result === null) {
+      console.log(`The app on ${device} didn't answer the unlock request; try again in a moment.`);
+      return false;
+    }
+    if (/invalid password/i.test(result)) {
+      console.log("Wrong password.");
+      continue;
+    }
+    if (!result.startsWith("OK")) {
+      console.log(`Could not unlock installs on ${device}: ${result}`);
+      return false;
+    }
+    password = answer;
+    break;
+  }
+
+  console.log(`Installs unlocked on ${device}, retrying...`);
+  try {
+    return await installDeviceOwner(adb, device, apk);
+  } finally {
+    // The update restarts the app, so its control channel may take a while to answer.
+    const result = await sendControlCommand(adb, password, "lock_installs", 30_000);
+    if (result?.startsWith("OK")) console.log(`Installs locked again on ${device}.`);
+    else console.log(`Warning: installs are still UNLOCKED on ${device} (${result ?? "no answer"}); send lock_installs to lock them.`);
+  }
 }
 
 function printDevices(devices: DeviceInfo[]): void {

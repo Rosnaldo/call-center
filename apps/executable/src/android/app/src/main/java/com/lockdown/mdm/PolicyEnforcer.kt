@@ -250,26 +250,18 @@ object PolicyEnforcer {
             // Force all installs through the Play Store; the allowlist sweep then decides
             // which of those installs are actually allowed to remain.
             manager.addUserRestriction(admin, unknownSourcesRestriction)
-            // DISALLOW_INSTALL_UNKNOWN_SOURCES[_GLOBALLY] only gates the consent flow a
-            // foreground app triggers (ACTION_INSTALL_PACKAGE) - `adb install`/`adb install -r`
-            // goes through a different, privileged path (shell UID) that ignores it entirely,
-            // confirmed by this app's own APK still being updatable via `adb install -r` while
-            // "locked". That's a real gap: it would let `adb install -r` silently replace this
-            // app's own APK (e.g. with the lockdown code stripped out) with no password
-            // involved, since PackageEventReceiver deliberately ignores updates (see its
-            // comment) and there is no in-app UI in the install path to prompt for one anyway.
-            // DISALLOW_INSTALL_APPS is checked deeper in PackageManagerService, unconditionally
-            // for every caller including shell/adb, so it also blocks that path. The trade-off:
-            // it blocks ALL installs *and updates*, from every source - Android has no
-            // per-package or per-source variant - so Play Store's own silent updates for
-            // allowlisted apps also pause while locked. Accepted deliberately: the only way to
-            // require the password before *any* APK update (this app's own included) is to
-            // default to blocking every update and require unlock_installs to lift it.
-            manager.addUserRestriction(admin, UserManager.DISALLOW_INSTALL_APPS)
         } else {
             manager.clearUserRestriction(admin, unknownSourcesRestriction)
-            manager.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_APPS)
         }
+        // DISALLOW_INSTALL_APPS is NOT used: it blocks every install and update from every
+        // source (Play Store included - Android has no per-package or per-source variant), so
+        // allowlisted apps could never be installed while locked. `adb install`/`adb install -r`
+        // ignore the unknown-sources restriction above, but anything they install that isn't
+        // allowlisted is removed by the sweep, and replacing this app's own APK needs the
+        // release signing key (a differently signed update is refused with
+        // INSTALL_FAILED_UPDATE_INCOMPATIBLE, and a device owner can't be uninstalled first).
+        // Explicitly cleared because older builds set it while locked.
+        manager.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_APPS)
         // Explicitly cleared (not just "no longer set") so an install that already applied it
         // via an older build - which blocked this app's own silent uninstalls of disallowed
         // apps, see updateUninstallProtection - gets fixed automatically, not just future ones.

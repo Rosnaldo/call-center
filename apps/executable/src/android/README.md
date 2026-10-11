@@ -27,16 +27,15 @@ How it enforces each requirement:
   VPN-based fallback for that case, see below.
 - **App allowlist** — Play Store stays usable; `PackageEventReceiver` watches every install and
   silently uninstalls anything not in the allowlist (the apps listed in `Constants.kt`, plus
-  the Play Store package itself so it can keep functioning). Sideloading is also blocked
-  (`DISALLOW_INSTALL_UNKNOWN_SOURCES[_GLOBALLY]`), and on top of that **all installs and
-  updates are blocked outright** (`DISALLOW_INSTALL_APPS`) — the unknown-sources restriction
-  alone doesn't cover `adb install`/`adb install -r`, which bypass it entirely, so without this
-  second restriction the app's own APK could be silently replaced via adb with no password
-  involved. Both restrictions lift only via the password-gated `unlock_installs` command (see
-  below), which is what makes *any* APK install or update — including updates to this app
-  itself — require the password. The trade-off: allowlisted apps also stop getting silent Play
-  Store updates while locked, since Android has no way to scope either restriction to a single
-  package or source.
+  the Play Store package itself so it can keep functioning). The app's main screen lists the
+  allowed apps, the ones not installed yet first, each with an **Install** button that opens
+  its Play Store page (installing needs a Google account on the phone). Sideloading is also blocked
+  (`DISALLOW_INSTALL_UNKNOWN_SOURCES[_GLOBALLY]`), lifted only via the password-gated
+  `unlock_installs` command (see below). `adb install`/`adb install -r` bypass that
+  restriction, but anything they add that isn't allowlisted is swept the same way, and
+  replacing this app's own APK requires the release signing key (see Known constraints).
+  `DISALLOW_INSTALL_APPS` is deliberately not used: it blocks every install and update from
+  every source, Play Store included, so allowlisted apps could never be installed.
 - **Admin control channel** — `CommandProcessor` holds the actual command logic (password
   check + dispatch), reachable two ways:
   - **`ControlChannelService`** (primary) — polls a command file dropped via `adb push`,
@@ -325,8 +324,9 @@ lockdownEnabled = true)` alone was not enough:
   (`DevicePolicyManager.clearDeviceOwnerApp`, not currently wired to a command) or a factory
   reset. That built-in protection only covers *uninstall*, though — `adb install -r` (an
   in-place update) is a different code path that the OS does **not** block for a device-owner
-  package on its own; that's why `DISALLOW_INSTALL_APPS` (see the app allowlist section above)
-  is needed to require the password before an update can land too.
+  package on its own. What stops a tampered build from landing that way is the signature
+  check: Android refuses an update signed with a different key
+  (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`), so it requires the release keystore - keep it secret.
 
 
 adb -s da994377 install -r output/LockdownMDM-release.apk
