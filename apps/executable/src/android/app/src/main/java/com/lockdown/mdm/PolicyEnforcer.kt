@@ -82,28 +82,35 @@ object PolicyEnforcer {
 
     /**
      * Silently turns on BrowserGuardAccessibilityService (see UrlTermDenyList) without the
-     * normal user-facing Settings > Accessibility consent flow - a device owner is allowed to
-     * write ENABLED_ACCESSIBILITY_SERVICES directly via setSecureSetting, which is the standard
-     * way MDM apps enable an accessibility service unattended. setPermittedAccessibilityServices
-     * additionally guarantees the user can't disable it from Settings, matching how DNS/VPN
-     * lock already can't be turned off manually.
+     * normal user-facing Settings > Accessibility consent flow. A device owner can NOT do this
+     * through setSecureSetting - it is refused with "Device owners cannot update
+     * enabled_accessibility_services" (confirmed on a real device) - so the app writes the
+     * setting itself, using WRITE_SECURE_SETTINGS granted over adb by the installer
+     * (`pm grant com.lockdown.mdm android.permission.WRITE_SECURE_SETTINGS`). Called by the
+     * watchdog too, so the guard is switched back on if it's turned off in Settings.
+     * setPermittedAccessibilityServices keeps any other accessibility service from being enabled.
      */
     fun enableBrowserGuard(context: Context) {
         if (!isDeviceOwner(context)) return
-        val manager = dpm(context)
-        val admin = adminComponent(context)
         val component = ComponentName(context, BrowserGuardAccessibilityService::class.java)
         val flatComponent = component.flattenToString()
         try {
-            manager.setPermittedAccessibilityServices(admin, listOf(context.packageName))
-            val enabledServices = Settings.Secure.getString(
-                context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-            ) ?: ""
+            dpm(context).setPermittedAccessibilityServices(adminComponent(context), listOf(context.packageName))
+            if (context.checkSelfPermission(android.Manifest.permission.WRITE_SECURE_SETTINGS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                Log.w(Constants.LOG_TAG, "enableBrowserGuard: WRITE_SECURE_SETTINGS not granted (run the installer)")
+                return
+            }
+            val resolver = context.contentResolver
+            val enabledServices = Settings.Secure.getString(resolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: ""
             if (!enabledServices.split(':').contains(flatComponent)) {
                 val updated = if (enabledServices.isBlank()) flatComponent else "$enabledServices:$flatComponent"
-                manager.setSecureSetting(admin, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, updated)
+                Settings.Secure.putString(resolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, updated)
             }
-            manager.setSecureSetting(admin, Settings.Secure.ACCESSIBILITY_ENABLED, "1")
+            if (Settings.Secure.getInt(resolver, Settings.Secure.ACCESSIBILITY_ENABLED, 0) != 1) {
+                Settings.Secure.putInt(resolver, Settings.Secure.ACCESSIBILITY_ENABLED, 1)
+            }
         } catch (e: Exception) {
             Log.w(Constants.LOG_TAG, "enableBrowserGuard failed: ${e.message}")
         }

@@ -4,11 +4,12 @@ import type { Adb } from "@yume-chan/adb";
 import { ReadableStream } from "@yume-chan/stream-extra";
 
 // Release build of apps/executable/src/android (`npm run build:apk`).
-const ADMIN_COMPONENT = "com.lockdown.mdm/.AdminReceiver";
+const PACKAGE = "com.lockdown.mdm";
+const ADMIN_COMPONENT = `${PACKAGE}/.AdminReceiver`;
 const REMOTE_APK = "/data/local/tmp/device-owner.apk";
 // The app's control channel (ControlChannelService): it polls command.txt and
 // writes the answer to result.txt.
-const CONTROL_DIR = "/sdcard/Android/data/com.lockdown.mdm/files";
+const CONTROL_DIR = `/sdcard/Android/data/${PACKAGE}/files`;
 
 // Thrown when the phone was provisioned by an older build whose install lock
 // (DISALLOW_INSTALL_APPS) rejects the APK; lifted only by `unlock_installs`.
@@ -63,6 +64,11 @@ export async function installDeviceOwner(adb: Adb, device: string, apk: Uint8Arr
     console.log(`Install failed on ${device}: ${output}`);
     return false;
   }
+
+  // Lets the app turn on its browser guard (an accessibility service), which a
+  // device owner can't do by itself; see PolicyEnforcer.enableBrowserGuard.
+  output = await shell(adb, `pm grant ${PACKAGE} android.permission.WRITE_SECURE_SETTINGS`);
+  if (output) console.log(`Could not enable the browser guard on ${device}: ${output}`);
 
   output = await shell(adb, `dpm set-device-owner ${ADMIN_COMPONENT}`);
   if (output.includes("Success")) {

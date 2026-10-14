@@ -10,6 +10,13 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!--
+      Lets PolicyEnforcer.enableBrowserGuard turn on the browser guard accessibility service,
+      which a device owner can't do via setSecureSetting. Not grantable at runtime: the
+      installer grants it over adb (`pm grant ... WRITE_SECURE_SETTINGS`).
+    -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
 
     <!--
       Without this, PackageManager.getInstalledApplications() (used by PolicyEnforcer's
