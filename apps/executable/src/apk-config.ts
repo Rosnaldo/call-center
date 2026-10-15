@@ -73,3 +73,21 @@ export function embedApkConfig(apk: Buffer, config: unknown): Buffer {
   tail.writeUInt32LE(blockStart + block.length, eocd - centralDir + EOCD_CD_OFFSET);
   return Buffer.concat([apk.subarray(0, blockStart), block, tail]);
 }
+
+// The config `embedApkConfig` wrote into `apk`, or undefined if it has none
+// (e.g. a plain gradle build).
+export function readApkConfig(apk: Buffer): unknown {
+  const eocd = findEocd(apk);
+  const centralDir = apk.readUInt32LE(eocd + EOCD_CD_OFFSET);
+  if (!apk.subarray(centralDir - 16, centralDir).equals(SIGNING_BLOCK_MAGIC)) return undefined;
+  const blockStart = centralDir - Number(apk.readBigUInt64LE(centralDir - 24)) - 8;
+
+  for (let offset = blockStart + 8; offset < centralDir - 24; ) {
+    const length = Number(apk.readBigUInt64LE(offset));
+    if (apk.readUInt32LE(offset + 8) === CONFIG_BLOCK_ID) {
+      return JSON.parse(apk.subarray(offset + 12, offset + 8 + length).toString("utf8"));
+    }
+    offset += 8 + length;
+  }
+  return undefined;
+}

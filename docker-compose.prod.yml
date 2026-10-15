@@ -5,9 +5,18 @@ services:
     container_name: callcenter_nginx-http
     ports:
       - "80:80"
+    # BASE_DOMAIN / CDN_HOST come from .env.prod. nginx.conf is mounted read-only
+    # as the source; the command renders it with envsubst to /etc/nginx/nginx.conf
+    # on start. ENVSUBST_VARS restricts substitution to our two vars, so nginx's
+    # own $host/$request_uri etc. are left untouched.
+    env_file:
+      - ./apps/nginx/.env.prod
+    environment:
+      ENVSUBST_VARS: "$${BASE_DOMAIN} $${CDN_HOST}"
     volumes:
-      - ./apps/nginx/prod/http/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./apps/nginx/prod/http/nginx.conf:/etc/nginx/nginx.conf.in:ro
       - ./certbot/www:/var/www/certbot
+    command: "/bin/sh -c 'envsubst \"$$ENVSUBST_VARS\" < /etc/nginx/nginx.conf.in > /etc/nginx/nginx.conf; nginx -g \"daemon off;\"'"
     networks:
       - frontend
       - backend
@@ -32,13 +41,22 @@ services:
         restart: true
       nginx-http:
         condition: service_started
+    # BASE_DOMAIN / CDN_HOST come from .env.prod. nginx.conf is mounted read-only
+    # as the source and rendered with envsubst to /etc/nginx/nginx.conf at start.
+    # ENVSUBST_VARS restricts substitution to our two vars, leaving nginx's own
+    # $host/$remote_addr/$scheme/... untouched.
+    env_file:
+      - ./apps/nginx/.env.prod
+    environment:
+      ENVSUBST_VARS: "$${BASE_DOMAIN} $${CDN_HOST}"
     volumes:
-      # Main nginx config
-      - ./apps/nginx/prod/https/nginx.conf:/etc/nginx/nginx.conf:ro
+      # Main nginx config (envsubst source -> /etc/nginx/nginx.conf on start)
+      - ./apps/nginx/prod/https/nginx.conf:/etc/nginx/nginx.conf.in:ro
       - ./letsencrypt:/etc/letsencrypt:ro  # certificados
       - ./certbot/www:/var/www/certbot
-    # Reload every 6h so renewed certificates (see certbot-renew) are picked up.
-    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+    # Render the config from the mounted source, then reload every 6h so renewed
+    # certificates (see certbot-renew) are picked up.
+    command: "/bin/sh -c 'envsubst \"$$ENVSUBST_VARS\" < /etc/nginx/nginx.conf.in > /etc/nginx/nginx.conf; while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
     restart: unless-stopped
     networks:
       - frontend
