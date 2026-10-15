@@ -2,7 +2,7 @@
 services:
   nginx-http:
     image: nginx:1.27-alpine
-    container_name: nginx-http
+    container_name: callcenter_nginx-http
     ports:
       - "80:80"
     volumes:
@@ -14,7 +14,7 @@ services:
 
   nginx-https:
     image: nginx:1.27-alpine
-    container_name: nginx-https
+    container_name: callcenter_nginx-https
     ports:
       - "443:443"
     depends_on:
@@ -47,6 +47,7 @@ services:
   # One-shot: obtains (or expands to include www) the certificate, then exits.
   certbot:
     image: certbot/certbot:v2.11.0
+    container_name: callcenter_cerbot
     volumes:
       - ./certbot/www:/var/www/certbot
       - ./letsencrypt:/etc/letsencrypt
@@ -60,6 +61,7 @@ services:
   # within 30 days of expiry); nginx-https reloads on its own 6h loop.
   certbot-renew:
     image: certbot/certbot:v2.11.0
+    container_name: callcenter_cerbot-renew
     volumes:
       - ./certbot/www:/var/www/certbot
       - ./letsencrypt:/etc/letsencrypt
@@ -69,8 +71,8 @@ services:
     restart: unless-stopped
 
   iam:
-    image: iam
-    container_name: iam
+    image: callcenter_iam
+    container_name: callcenter_iam
     pull_policy: build
     build:
       context: .
@@ -96,8 +98,8 @@ services:
       - backend
   
   chatbot:
-    image: chatbot
-    container_name: chatbot
+    image: callcenter_chatbot
+    container_name: callcenter_chatbot
     pull_policy: build
     build:
       context: .
@@ -121,8 +123,8 @@ services:
 
   # Creates the installers for the chatbot (apps/executable/src/server.ts).
   executable:
-    image: executable
-    container_name: executable
+    image: callcenter_executable
+    container_name: callcenter_executable
     pull_policy: build
     build:
       context: .
@@ -152,8 +154,8 @@ services:
       - backend
 
   realtime:
-    image: realtime
-    container_name: realtime
+    image: callcenter_realtime
+    container_name: callcenter_realtime
     pull_policy: build
     build:
       context: .
@@ -179,6 +181,7 @@ services:
 
   postgres:
     image: postgres:18rc1
+    container_name: callcenter_postgress
     pull_policy: always
     restart: unless-stopped
     expose:
@@ -198,7 +201,7 @@ services:
       - backend
 
   keycloak:
-    container_name: keycloak
+    container_name: callcenter_keycloak
     image: quay.io/keycloak/keycloak:26.4
     pull_policy: always
     restart: unless-stopped
@@ -243,6 +246,7 @@ services:
       - backend
 
   mongo:
+    container_name: callcenter_mongo
     image: mongo:8.0.14-noble
     pull_policy: always
     restart: unless-stopped
@@ -263,6 +267,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: callcenter_redis
     pull_policy: always
     restart: unless-stopped
     command: redis-server --appendonly yes --appendfsync everysec
@@ -281,7 +286,7 @@ services:
 
   loki:
     image: grafana/loki:3.6.12
-    container_name: loki
+    container_name: callcenter_loki
     restart: unless-stopped
     expose:
       - "3100"
@@ -294,7 +299,7 @@ services:
 
   promtail:
     image: grafana/promtail:3.6.11
-    container_name: promtail
+    container_name: callcenter_promtail
     restart: unless-stopped
     volumes:
       - ./monitoring/promtail/promtail-config.yml:/etc/promtail/config.yml
@@ -308,7 +313,7 @@ services:
 
   grafana:
     image: grafana/grafana:11.6.0
-    container_name: grafana
+    container_name: callcenter_grafana
     restart: unless-stopped
     ports:
       - 127.0.0.1:3000:3000
