@@ -8,6 +8,16 @@
     <h3 class="text-sm font-bold tracking-tight text-brand-dark">
       Acessar Sua Conta
     </h3>
+    <#-- Back to the app that sent the user here (the client's Base URL). -->
+    <#if client?? && client.baseUrl?has_content>
+      <a href="${client.baseUrl}" class="text-xs text-brand-ochre hover:text-brand-ochre-hover flex items-center gap-1 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l-7-7 7-7" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5" />
+        </svg>
+        <span>Voltar</span>
+      </a>
+    </#if>
   </div>
 
   <!-- Global Error Alert -->

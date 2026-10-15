@@ -133,6 +133,8 @@
       "installerFailed": "Não foi possível gerar o instalador agora. Tente novamente.",
       "installerNotReady": "Termine a configuração antes de gerar o instalador.",
       "loginRequired": "Faça login para gerar o instalador.",
+      "proceedLoginRequired": "Faça login para começar a configuração. Sem login, você ainda pode saber mais sobre os temas.",
+      "loginCheckFailed": "Não foi possível verificar seu login agora. Tente novamente.",
       "learnMore": "Sobre o que você quer saber antes de começar?",
       "learnMoreNext": "Quer saber sobre outro tema ou começar a configuração?"
     },

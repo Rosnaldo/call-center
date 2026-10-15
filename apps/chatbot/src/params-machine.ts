@@ -70,6 +70,8 @@ const LEARN_MORE = ['learn', 'learn more', 'saber mais'];
 
 const normalize = (text: unknown): string => String(text ?? '').trim().toLowerCase();
 
+export const isProceedAnswer = (text: unknown): boolean => PROCEED.includes(normalize(text));
+
 export const parseLearnTopic = (text: unknown): LearnTopic | null => {
     const value = String(text ?? '').trim();
     return (LEARN_TOPICS as readonly string[]).includes(value) ? (value as LearnTopic) : null;
@@ -181,7 +183,7 @@ export const paramsMachine = setup({
         isValidBlockedTerms: ({ event }) => parseBlockedTermsList(termsOf(event)) !== null,
         isYes: ({ event }) => parseYesNo(answerOf(event)) === true,
         isNo: ({ event }) => parseYesNo(answerOf(event)) === false,
-        isProceed: ({ event }) => PROCEED.includes(normalize(answerOf(event))),
+        isProceed: ({ event }) => isProceedAnswer(answerOf(event)),
         isLearnMore: ({ event }) => LEARN_MORE.includes(normalize(answerOf(event))),
         isLearnTopic: ({ event }) => parseLearnTopic(answerOf(event)) !== null,
     },

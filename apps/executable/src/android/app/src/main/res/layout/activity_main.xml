@@ -42,6 +42,13 @@
             android:layout_marginTop="12dp"
             android:text="Refresh status" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/blockedTermsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Show blocked search terms" />
+
         <TextView
             android:id="@+id/allowlistTitle"
             android:layout_width="wrap_content"

@@ -20,6 +20,11 @@ object MonitoredBrowsers {
         "com.microsoft.emmx",
         "com.opera.browser",
         "com.brave.browser",
+        // Not a browser, but a search surface users reach terms through: the Google app /
+        // home-screen search bar. Typing a denied term here suspends the whole Google app
+        // (which also takes down the home-screen search bar / Assistant until an admin
+        // unsuspends it) - accepted tradeoff for covering this entry point.
+        "com.google.android.googlequicksearchbox",
     )
 
     /**

@@ -29,6 +29,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.setupButton.setOnClickListener { showSetupCommand() }
         binding.refreshButton.setOnClickListener { refreshStatus() }
+        binding.blockedTermsButton.setOnClickListener { showBlockedTerms() }
 
         refreshStatus()
     }
@@ -129,6 +130,15 @@ class MainActivity : AppCompatActivity() {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 clipboard.setPrimaryClip(ClipData.newPlainText("adb command", command))
             }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
+    private fun showBlockedTerms() {
+        val terms = UrlTermDenyList.deniedTerms(this).sorted()
+        AlertDialog.Builder(this)
+            .setTitle("Blocked search terms")
+            .setMessage(if (terms.isEmpty()) "No blocked search terms." else terms.joinToString("\n"))
             .setNegativeButton("Close", null)
             .show()
     }

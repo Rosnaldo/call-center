@@ -1,5 +1,6 @@
 package com.lockdown.mdm
 
+import android.app.ActivityManager
 import android.app.PendingIntent
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
@@ -117,23 +118,21 @@ object PolicyEnforcer {
     }
 
     /**
-     * Immediately suspends [packageName], independent of the schedule system (see
-     * ScheduleEnforcer) - used by BrowserGuardAccessibilityService to shut a browser down the
-     * moment a denied term is typed into it. Stays suspended until an admin command unsuspends
-     * it (CommandProcessor's unsuspend_app), same "greyed-out icon, blocked launch" behavior a
-     * schedule produces.
+     * Immediately kills [packageName] - used by BrowserGuardAccessibilityService the moment a
+     * denied term is typed into a browser. Unlike the schedule system (see ScheduleEnforcer),
+     * this does NOT suspend the app: it force-stops it so the current search/page is torn down,
+     * but the app is left launchable so the user can reopen it normally (no admin unsuspend
+     * needed). killBackgroundProcesses only kills a process that is already in the background, so
+     * the caller must send the app there first (GLOBAL_ACTION_HOME) before calling this.
+     * Needs KILL_BACKGROUND_PROCESSES (a normal, install-time permission).
      */
-    fun blockAppNow(context: Context, packageName: String) {
-        if (!isDeviceOwner(context)) return
+    fun killAppNow(context: Context, packageName: String) {
         try {
-            val failed = dpm(context).setPackagesSuspended(adminComponent(context), arrayOf(packageName), true)
-            if (failed.isNullOrEmpty()) {
-                Log.i(Constants.LOG_TAG, "Blocked $packageName: denied term detected in address bar")
-            } else {
-                Log.w(Constants.LOG_TAG, "blockAppNow($packageName) rejected: ${failed.joinToString()}")
-            }
+            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            am.killBackgroundProcesses(packageName)
+            Log.i(Constants.LOG_TAG, "Killed $packageName: denied term detected in address bar")
         } catch (e: Exception) {
-            Log.w(Constants.LOG_TAG, "blockAppNow($packageName) failed: ${e.message}")
+            Log.w(Constants.LOG_TAG, "killAppNow($packageName) failed: ${e.message}")
         }
     }
 

@@ -133,6 +133,8 @@
       "installerFailed": "Couldn't create the installer right now. Please try again.",
       "installerNotReady": "Finish the setup before generating the installer.",
       "loginRequired": "Log in to generate the installer.",
+      "proceedLoginRequired": "Log in to start the setup. Without logging in, you can still learn more about the topics.",
+      "loginCheckFailed": "Couldn't check your login right now. Try again.",
       "learnMore": "What would you like to know before starting?",
       "learnMoreNext": "Want to learn about another topic or start the setup?"
     },

@@ -98,8 +98,38 @@
   {
     "name": "Google Chrome",
     "id": "com.android.chrome",
-    "category": "Trabalho e produtividade",
+    "category": "Navegadores",
     "iconUrl": "https://play-lh.googleusercontent.com/gbkzfC3R1fXcGR4Uag1uRSN_123Tpo_KxhVZFLFCatmthFuO1bzPczUomFtxI42YYEQMJeAaZuIFVrTF58gZYg"
+  },
+  {
+    "name": "Samsung Internet",
+    "id": "com.sec.android.app.sbrowser",
+    "category": "Navegadores",
+    "iconUrl": "https://play-lh.googleusercontent.com/mOALIZAY5JGaI1txlkeVvluM3QTRGmTbjGZcmrjqYdlz2f7asSPko05A5xCHZ_uczulElA_kOJq2rfjgoCyN"
+  },
+  {
+    "name": "Firefox",
+    "id": "org.mozilla.firefox",
+    "category": "Navegadores",
+    "iconUrl": "https://play-lh.googleusercontent.com/jQAmlGUkuJGc4TjZs2OEUeB5Gy3dCpKCWqfgVmab5NvM_43oed2qhVhrlEajccjJV6VkDFCEXws_6t6StKKLTY4"
+  },
+  {
+    "name": "Microsoft Edge",
+    "id": "com.microsoft.emmx",
+    "category": "Navegadores",
+    "iconUrl": "https://play-lh.googleusercontent.com/4Z1Nt1I9HUDevt5VJ7BmgpqSTUpsC0Ei1K-IiXSmkH5Dzorz_isDzq4qdpb75RA1SfOV7v6csav-atWBur1wJQM"
+  },
+  {
+    "name": "Opera",
+    "id": "com.opera.browser",
+    "category": "Navegadores",
+    "iconUrl": "https://play-lh.googleusercontent.com/ClFQAxLPGuKdEp4YwGiEiaUVrujYcKSLVZVKWNwmMsmffL29yMUeuLa0sY54mZ3Cwa5zcSJpqbsj_wwxsiUrhA"
+  },
+  {
+    "name": "Brave",
+    "id": "com.brave.browser",
+    "category": "Navegadores",
+    "iconUrl": "https://play-lh.googleusercontent.com/UBrZnuXGb-QACU0uUdF5r_n5nx5oBbdfPyEbtsr0xXv00RN7rpaTVu3GjLeE90aHFmNlbaCmm8vNcmY0eE98U9E"
   },
   {
     "name": "Google Maps",
@@ -129,7 +159,7 @@
     "name": "Shopee",
     "id": "com.shopee.br",
     "category": "Compras",
-    "iconUrl": "https://play-lh.googleusercontent.com/tA8qSQQAio0zRHgKQQfr-gJConNJcY8vvQWLHLS85lUC_6dV4r9bYcv1lmg56rpznGoJ6cb1-8cEDD1-WHOcXgA"
+    "iconUrl": "https://play-lh.googleusercontent.com/xNlw5-7jtuUnSbad0aTCK8KouoIXSpc0R0gutUv4Zomjvv1D9WZNjd-TaqsdFnbSRB6NQo9hc374aZj-IS7WgQ"
   },
   {
     "name": "Amazon",

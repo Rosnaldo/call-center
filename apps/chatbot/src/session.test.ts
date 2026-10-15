@@ -429,3 +429,70 @@ describe('ChatSession learn more', () => {
         expect(session.params().os).toBeNull();
     });
 });
+
+describe('ChatSession login to start the setup', () => {
+    const START = {
+        event: 'ask_choice',
+        choices: [
+            { key: 'choices.proceed', value: 'proceed' },
+            { key: 'choices.learnMore', value: 'learn' },
+        ],
+    };
+    const opened = (isLoggedIn: IsLoggedIn = async (token) => token === 'user-token') => {
+        const session = new ChatSession(vi.fn(), isLoggedIn);
+        session.start();
+        return session;
+    };
+
+    it('asks a logged-out user to log in and stays at the opening', async () => {
+        const session = opened();
+        expect(await session.answer('proceed')).toEqual([
+            { event: 'bot_message', key: 'messages.proceedLoginRequired', sendEnabled: false },
+            START,
+        ]);
+        expect(await session.answer('sim', 'expired')).toEqual([
+            { event: 'bot_message', key: 'messages.proceedLoginRequired', sendEnabled: false },
+            START,
+        ]);
+    });
+
+    it('lets a logged-out user learn more, but not start from the menu', async () => {
+        const session = opened();
+        expect((await session.answer('learn'))[0]).toMatchObject({ key: 'messages.learnMore' });
+        expect((await session.answer('deviceOwner'))[0]).toMatchObject({ key: 'learn.deviceOwner' });
+        const [reply, menu] = await session.answer('proceed');
+        expect(reply).toMatchObject({ key: 'messages.proceedLoginRequired' });
+        expect(menu).toMatchObject({ event: 'ask_choice' });
+    });
+
+    it('starts the setup for a logged-in user', async () => {
+        const session = opened();
+        expect((await session.answer('proceed', 'user-token'))[0]).toMatchObject({ key: 'messages.intro' });
+    });
+
+    it('only checks the login when starting the setup', async () => {
+        const isLoggedIn = vi.fn(async () => true);
+        const session = opened(isLoggedIn);
+        await session.answer('learn');
+        await session.answer('rawIp');
+        expect(isLoggedIn).not.toHaveBeenCalled();
+        await session.answer('proceed', 'user-token');
+        await session.answer('proceed');
+        expect(isLoggedIn).toHaveBeenCalledOnce();
+    });
+
+    it('says it failed when the login cannot be checked', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const session = opened(async () => Promise.reject(new Error('iam down')));
+        expect(await session.answer('proceed', 'user-token')).toEqual([
+            { event: 'bot_message', key: 'messages.loginCheckFailed', sendEnabled: false },
+            START,
+        ]);
+    });
+
+    it('needs no login without a login check (the CLI)', async () => {
+        const session = new ChatSession();
+        session.start();
+        expect((await session.answer('proceed'))[0]).toMatchObject({ key: 'messages.intro' });
+    });
+});

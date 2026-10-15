@@ -1,5 +1,5 @@
 import { createActor, type Actor } from 'xstate';
-import { paramsMachine, type ParamsOutput, type PromptState } from './params-machine';
+import { isProceedAnswer, paramsMachine, type ParamsOutput, type PromptState } from './params-machine';
 import { prompts, summaryOf, type BotText } from './prompts';
 import type { CreateInstaller } from './installer';
 import type { IsLoggedIn } from './user-auth';
@@ -65,6 +65,9 @@ const BUTTONS: Partial<Record<PromptState, BotReply>> = {
     confirm: ASK_YES_NO,
 };
 
+// The opening steps, open to anyone; going on to the setup needs a logged-in user.
+const OPENING = new Set<PromptState>(['askStart', 'learnMore']);
+
 // Steps with buttons that can also be answered by typing.
 const TYPED_TOO = new Set<PromptState>(['askAppVersion']);
 
@@ -79,7 +82,7 @@ export class ChatSession {
     private lastLearnCount = 0;
     private isGeneratingInstaller = false;
 
-    // Without `isLoggedIn` (the terminal CLI) anyone may generate the installer.
+    // Without `isLoggedIn` (the terminal CLI) anyone may set up and generate the installer.
     constructor(
         private readonly createInstaller?: CreateInstaller,
         private readonly isLoggedIn?: IsLoggedIn,
@@ -101,6 +104,20 @@ export class ChatSession {
 
         this.actor.send({ type: 'ANSWER', value: answer });
         return this.withSendState(this.replies());
+    }
+
+    // Like handle, but starting the setup from the opening needs a logged-in
+    // user (`token` is their access token); learning more doesn't.
+    async answer(text: string, token?: string): Promise<BotReply[]> {
+        if (this.isLoggedIn && this.isStartingSetup(text)) {
+            try {
+                if (!(await this.isLoggedIn(token))) return this.withSendState(this.askAgain('messages.proceedLoginRequired'));
+            } catch (err) {
+                console.error('[login]', err);
+                return this.withSendState(this.askAgain('messages.loginCheckFailed'));
+            }
+        }
+        return this.handle(text);
     }
 
     // The list picked in the client's checklist.
@@ -170,6 +187,17 @@ export class ChatSession {
 
     stop(): void {
         this.actor?.stop();
+    }
+
+    private isStartingSetup(text: string): boolean {
+        if (this.isDone()) return false;
+        return OPENING.has(this.actor.getSnapshot().value as PromptState) && isProceedAnswer(text);
+    }
+
+    // A message, then the current step's buttons again, so they move to it.
+    private askAgain(key: string): Reply[] {
+        const buttons = BUTTONS[this.actor.getSnapshot().value as PromptState];
+        return buttons ? [say(key), buttons] : [say(key)];
     }
 
     // Typing is for the steps without buttons (or that take both), while not finished.

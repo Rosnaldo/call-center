@@ -8,7 +8,9 @@ import { ChatSession, type BotReply } from './session';
 import { createUserAuthClient } from './user-auth';
 
 // Wire protocol (JSON frames):
-//   client -> server  { event: 'user_message', message: string }
+//   client -> server  { event: 'user_message', message: string, token? }
+//                                                                token: the logged-in user's access token, required
+//                                                                to start the setup (learning more is anonymous)
 //                     { event: 'allowed_apps', apps: string[] }   answers open_allowed_apps
 //                     { event: 'blocked_terms', terms: string[] } answers open_blocked_terms
 //                     { event: 'search_apps', term: string }      Google Play search, while the checklist is open
@@ -28,7 +30,7 @@ import { createUserAuthClient } from './user-auth';
 //                                                                sent after each batch of bot replies
 //                     { isError: true, message: string }
 export type ClientMessage =
-    | { event: 'user_message'; message: string }
+    | { event: 'user_message'; message: string; token?: string }
     | { event: 'allowed_apps'; apps: unknown[] }
     | { event: 'blocked_terms'; terms: unknown[] }
     | { event: 'search_apps'; term: string }
@@ -55,7 +57,11 @@ const send = (ws: WebSocket, msg: ServerMessage): void => {
 const parseClientMessage = (raw: WebSocket.RawData): ClientMessage | null => {
     try {
         const msg = JSON.parse(raw.toString());
-        if (msg?.event === 'user_message' && typeof msg.message === 'string') return msg;
+        if (msg?.event === 'user_message' && typeof msg.message === 'string') {
+            return typeof msg.token === 'string'
+                ? { event: 'user_message', message: msg.message, token: msg.token }
+                : { event: 'user_message', message: msg.message };
+        }
         // Ids are validated by the session.
         if (msg?.event === 'allowed_apps' && Array.isArray(msg.apps)) return msg;
         if (msg?.event === 'blocked_terms' && Array.isArray(msg.terms)) return msg;
@@ -89,6 +95,9 @@ wss.on('connection', (ws) => {
     const appSearch = new AppSearchQueue(searchGooglePlay, (outcome) =>
         send(ws, { event: 'apps_search_results', ...outcome }),
     );
+
+    // Answers may wait on IAM (login check), so they're chained to keep their order.
+    let answers = Promise.resolve();
 
     alive.set(ws, true);
     ws.on('pong', () => alive.set(ws, true));
@@ -125,7 +134,11 @@ wss.on('connection', (ws) => {
             send(ws, { isError: true, message: 'Message too long' });
             return;
         }
-        reply(session.handle(msg.message));
+        const { message, token } = msg;
+        answers = answers
+            .then(() => session.answer(message, token))
+            .then(reply)
+            .catch((err) => console.error('[answer]', err));
     });
 
     ws.on('close', () => session.stop());

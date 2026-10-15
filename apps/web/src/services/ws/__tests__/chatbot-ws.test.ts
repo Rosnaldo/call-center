@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ChatbotWs } from '../chatbot-ws.ts';
 import { ITransport, TRANSPORT_OPEN } from '../transport.ts';
 import { useChatbotStore } from '../../../states/stores.ts';
@@ -160,13 +160,13 @@ describe('ChatbotWs choices', () => {
     });
   });
 
-  it('ends the request once answered', () => {
+  it('ends the request once answered', async () => {
     transport.receive({ event: 'bot_message', key: 'messages.askOs' });
     transport.receive({ event: 'ask_choice', choices: OS_CHOICES });
 
     expect(ws.sendMessage('android', 'Android')).toBe(true);
 
-    expect(transport.sent).toEqual([{ event: 'user_message', message: 'android' }]);
+    await vi.waitFor(() => expect(transport.sent).toEqual([{ event: 'user_message', message: 'android' }]));
     expect(useChatbotStore.getState().messages.at(-1)).toEqual({ autor: 'user', message: 'Android' });
     expect(useChatbotStore.getState().isChoiceRequested).toBe(false);
   });
@@ -229,6 +229,17 @@ describe('ChatbotWs installer', () => {
 
     expect(transport.sent).toEqual([{ event: 'generate_installer', token: 'user-token' }]);
     expect(useChatbotStore.getState().isBotTyping).toBe(true);
+  });
+
+  it('sends messages with the user token, in order', async () => {
+    ws.sendMessage('proceed');
+    ws.sendMessage('android');
+    await vi.waitFor(() =>
+      expect(transport.sent).toEqual([
+        { event: 'user_message', message: 'proceed', token: 'user-token' },
+        { event: 'user_message', message: 'android', token: 'user-token' },
+      ]),
+    );
   });
 
   it('asks without a token when logged out', async () => {

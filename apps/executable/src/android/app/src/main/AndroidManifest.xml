@@ -11,6 +11,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!--
+      Lets BrowserGuardAccessibilityService force-stop a browser (via
+      PolicyEnforcer.killAppNow) the moment a denied term is typed, instead of suspending it.
+      A normal, install-time permission.
+    -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+    <!--
       Lets PolicyEnforcer.enableBrowserGuard turn on the browser guard accessibility service,
       which a device owner can't do via setSecureSetting. Not grantable at runtime: the
       installer grants it over adb (`pm grant ... WRITE_SECURE_SETTINGS`).

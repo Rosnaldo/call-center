@@ -11,7 +11,7 @@ Ex:
 | Type | Name/Host             | Value            |
 | ---- | --------------------- | ---------------- |
 | A    | `@`                   | `177.131.75.180` |
-| A    | `nanithefuck.com.br`     | `177.131.75.180` |
+| A    | `free-porn-block.tech`     | `177.131.75.180` |
 
 
 - Certbot ACME challenge:

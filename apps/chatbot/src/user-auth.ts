@@ -1,7 +1,7 @@
 // Whether a web user is logged in: their Keycloak access token is checked by
 // IAM (POST /auth/validate-token), same as realtime's auth/verify_token.ts.
 // The chatbot is anonymous, so the web sends the token only with the requests
-// that need a logged-in user (the installer).
+// that need a logged-in user (starting the setup, the installer).
 
 const REQUEST_TIMEOUT_MS = 10_000;
 

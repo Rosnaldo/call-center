@@ -57,14 +57,17 @@ export const translateBotText = ({ key, params }: BotText): string => {
     return t(key, summary ? { ...params, summary: formatSummary(summary) } : params);
 };
 
-// Socket to the chatbot app. Unlike InitWs this is anonymous, per-tab and
-// lives only while the chatbot UI is mounted: every socket is a fresh
+// Socket to the chatbot app. Unlike InitWs this is anonymous (the token goes
+// with the messages that may need it), per-tab and lives only while the
+// chatbot UI is mounted: every socket is a fresh
 // conversation on the server, so there's nothing to share between tabs.
 export class ChatbotWs {
     private ws: ITransport | null = null;
     private running = false;
     private reconnectAttempts = 0;
     private reconnectRef: ReturnType<typeof setTimeout> | null = null;
+    // Messages wait for the token, so they're chained to keep their order.
+    private outbox: Promise<void> = Promise.resolve();
 
     constructor(
         private readonly store: ChatbotStoreInstance,
@@ -91,6 +94,7 @@ export class ChatbotWs {
     // label while its value is sent. Returns false when the message couldn't
     // be sent (socket not open).
     // `shownKey` (under `chatbot.`) translates `shown` again on language changes.
+    // The token goes along: starting the setup needs a logged-in user.
     sendMessage(text: string, shown: string = text, shownKey?: string): boolean {
         if (this.ws?.readyState !== TRANSPORT_OPEN) return false;
         const { addMessage, fulfillChoiceRequest, setBotTyping } = this.store.getState();
@@ -98,7 +102,15 @@ export class ChatbotWs {
         // Typing answers a choice as well; the bot asks again if it isn't one.
         fulfillChoiceRequest();
         setBotTyping(true);
-        this.ws.send(JSON.stringify({ event: 'user_message', message: text }));
+        const ws = this.ws;
+        this.outbox = this.outbox.then(async () => {
+            const token = await this.getToken().catch(() => undefined);
+            if (this.ws !== ws || ws.readyState !== TRANSPORT_OPEN) {
+                this.store.getState().setBotTyping(false);
+                return;
+            }
+            ws.send(JSON.stringify(token ? { event: 'user_message', message: text, token } : { event: 'user_message', message: text }));
+        });
         return true;
     }
 

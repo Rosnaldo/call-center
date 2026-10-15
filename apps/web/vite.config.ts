@@ -26,7 +26,7 @@ export default defineConfig(() => {
       // Vite blocks requests whose Host header isn't in this list (DNS-rebinding
       // protection) — nginx forwards the original Host, so it must be allowed here.
       allowedHosts: [
-        "nanithefuck.com.br",
+        "free-porn-block.tech",
         "free-porn-block.com",
         "localhost",
         "127.0.0.1"
