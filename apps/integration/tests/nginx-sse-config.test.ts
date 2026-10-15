@@ -20,15 +20,16 @@ function extractLocationBlock(conf: string, locationPath: string): string {
     if (start === -1) {
         throw new Error(`location ${locationPath} not found in nginx conf`);
     }
-    const end = conf.indexOf('\n        }', start);
+    // A location block has no nested braces: it ends at the first closing one.
+    const end = conf.indexOf('}', start);
     return conf.slice(start, end);
 }
 
 describe.each([
-    ['dev', path.resolve(__dirname, '../../nginx/dev/nginx.conf'), '/realtime/call-events/', 'http://realtime:5003/call-events/'],
-    ['prod', path.resolve(__dirname, '../../nginx/prod/https/nginx.conf'), '/realtime/call-events/', 'http://realtime:5003/call-events/'],
-    ['dev', path.resolve(__dirname, '../../nginx/dev/nginx.conf'), '/realtime/realtime-events/', 'http://realtime:5003/realtime-events/'],
-    ['prod', path.resolve(__dirname, '../../nginx/prod/https/nginx.conf'), '/realtime/realtime-events/', 'http://realtime:5003/realtime-events/'],
+    ['dev', path.resolve(__dirname, '../../nginx/dev/nginx.conf'), '/realtime/call-events/', 'http://realtime/call-events/'],
+    ['prod', path.resolve(__dirname, '../../nginx/prod/https/nginx.conf'), '/realtime/call-events/', 'http://callcenter_realtime/call-events/'],
+    ['dev', path.resolve(__dirname, '../../nginx/dev/nginx.conf'), '/realtime/realtime-events/', 'http://realtime/realtime-events/'],
+    ['prod', path.resolve(__dirname, '../../nginx/prod/https/nginx.conf'), '/realtime/realtime-events/', 'http://callcenter_realtime/realtime-events/'],
 ])('%s nginx config — %s SSE location', (_env, confPath, locationPath, expectedProxyPass) => {
     let block: string;
 

@@ -1,94 +1,16 @@
-
+# Production stack:  docker compose -f docker-compose.prod.yml up -d --build
+#
+# Nothing is published on 80/443: the server's central proxy (proxy-hostinger) owns
+# them, gets the certificate and routes this domain with apps/nginx/prod/https/nginx.conf
+# (filled from apps/nginx/.env.prod). It reaches callcenter-iam, callcenter-chatbot,
+# callcenter-realtime and callcenter-keycloak over the external `edge` network,
+# shared with the other apps on the server.
+#
+# Every service is prefixed with callcenter- so names never clash on `edge`. Inside
+# this stack each one also keeps its short name (iam, redis, keycloak, ...) as an
+# alias on frontend/backend only, which is what the .env files and monitoring/ use.
 services:
-  nginx-http:
-    image: nginx:1.27-alpine
-    container_name: callcenter_nginx-http
-    ports:
-      - "80:80"
-    # BASE_DOMAIN / CDN_HOST come from .env.prod. nginx.conf is mounted read-only
-    # as the source; the command renders it with envsubst to /etc/nginx/nginx.conf
-    # on start. ENVSUBST_VARS restricts substitution to our two vars, so nginx's
-    # own $host/$request_uri etc. are left untouched.
-    env_file:
-      - ./apps/nginx/.env.prod
-    environment:
-      ENVSUBST_VARS: "$${BASE_DOMAIN} $${CDN_HOST}"
-    volumes:
-      - ./apps/nginx/prod/http/nginx.conf:/etc/nginx/nginx.conf.in:ro
-      - ./certbot/www:/var/www/certbot
-    command: "/bin/sh -c 'envsubst \"$$ENVSUBST_VARS\" < /etc/nginx/nginx.conf.in > /etc/nginx/nginx.conf; nginx -g \"daemon off;\"'"
-    networks:
-      - frontend
-      - backend
-
-  nginx-https:
-    image: nginx:1.27-alpine
-    container_name: callcenter_nginx-https
-    ports:
-      - "443:443"
-    depends_on:
-      iam:
-        condition: service_healthy
-        restart: true
-      realtime:
-        condition: service_healthy
-        restart: true
-      chatbot:
-        condition: service_started
-        restart: true
-      keycloak:
-        condition: service_healthy
-        restart: true
-      nginx-http:
-        condition: service_started
-    # BASE_DOMAIN / CDN_HOST come from .env.prod. nginx.conf is mounted read-only
-    # as the source and rendered with envsubst to /etc/nginx/nginx.conf at start.
-    # ENVSUBST_VARS restricts substitution to our two vars, leaving nginx's own
-    # $host/$remote_addr/$scheme/... untouched.
-    env_file:
-      - ./apps/nginx/.env.prod
-    environment:
-      ENVSUBST_VARS: "$${BASE_DOMAIN} $${CDN_HOST}"
-    volumes:
-      # Main nginx config (envsubst source -> /etc/nginx/nginx.conf on start)
-      - ./apps/nginx/prod/https/nginx.conf:/etc/nginx/nginx.conf.in:ro
-      - ./letsencrypt:/etc/letsencrypt:ro  # certificados
-      - ./certbot/www:/var/www/certbot
-    # Render the config from the mounted source, then reload every 6h so renewed
-    # certificates (see certbot-renew) are picked up.
-    command: "/bin/sh -c 'envsubst \"$$ENVSUBST_VARS\" < /etc/nginx/nginx.conf.in > /etc/nginx/nginx.conf; while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
-    restart: unless-stopped
-    networks:
-      - frontend
-      - backend
-
-  # One-shot: obtains (or expands to include www) the certificate, then exits.
-  certbot:
-    image: certbot/certbot:v2.11.0
-    container_name: callcenter_cerbot
-    volumes:
-      - ./certbot/www:/var/www/certbot
-      - ./letsencrypt:/etc/letsencrypt
-    depends_on:
-      - nginx-http
-    entrypoint: "/bin/sh -c 'certbot certonly --non-interactive --agree-tos --keep-until-expiring --expand -m $$ADMIN_EMAIL --webroot -w /var/www/certbot -d $$BASE_DOMAIN -d www.$$BASE_DOMAIN'"
-    env_file:
-      - ./apps/nginx/.env.prod
-
-  # Long-running: renews the certificate every 12h (certbot no-ops until it's
-  # within 30 days of expiry); nginx-https reloads on its own 6h loop.
-  certbot-renew:
-    image: certbot/certbot:v2.11.0
-    container_name: callcenter_cerbot-renew
-    volumes:
-      - ./certbot/www:/var/www/certbot
-      - ./letsencrypt:/etc/letsencrypt
-    depends_on:
-      - nginx-https
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot; sleep 12h & wait $${!}; done'"
-    restart: unless-stopped
-
-  iam:
+  callcenter-iam:
     image: callcenter_iam
     container_name: callcenter_iam
     pull_policy: build
@@ -102,7 +24,7 @@ services:
       - ./apps/iam/.env.production
     restart: unless-stopped
     depends_on:
-      mongo:
+      callcenter-mongo:
         condition: service_healthy
         restart: true
     healthcheck:
@@ -112,10 +34,13 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - frontend
-      - backend
+      frontend:
+        aliases: [iam]
+      backend:
+        aliases: [iam]
+      edge:
   
-  chatbot:
+  callcenter-chatbot:
     image: callcenter_chatbot
     container_name: callcenter_chatbot
     pull_policy: build
@@ -132,15 +57,18 @@ services:
       - IAM_URI=http://iam:5002
     restart: unless-stopped
     depends_on:
-      executable:
+      callcenter-executable:
         condition: service_healthy
         restart: true
     networks:
-      - frontend
-      - backend
+      frontend:
+        aliases: [chatbot]
+      backend:
+        aliases: [chatbot]
+      edge:
 
   # Creates the installers for the chatbot (apps/executable/src/server.ts).
-  executable:
+  callcenter-executable:
     image: callcenter_executable
     container_name: callcenter_executable
     pull_policy: build
@@ -169,9 +97,10 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - backend
+      backend:
+        aliases: [executable]
 
-  realtime:
+  callcenter-realtime:
     image: callcenter_realtime
     container_name: callcenter_realtime
     pull_policy: build
@@ -185,7 +114,7 @@ services:
       - ./apps/realtime/.env.production
     restart: unless-stopped
     depends_on:
-      iam:
+      callcenter-iam:
         condition: service_healthy
         restart: true
     healthcheck:
@@ -195,9 +124,11 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - backend
+      backend:
+        aliases: [realtime]
+      edge:
 
-  postgres:
+  callcenter-postgres:
     image: postgres:18rc1
     container_name: callcenter_postgress
     pull_policy: always
@@ -216,9 +147,10 @@ services:
       start_period: 30s
       timeout: 10s
     networks:
-      - backend
+      backend:
+        aliases: [postgres]
 
-  keycloak:
+  callcenter-keycloak:
     container_name: callcenter_keycloak
     image: quay.io/keycloak/keycloak:26.4
     pull_policy: always
@@ -250,7 +182,7 @@ services:
       "--import-realm",
     ]
     depends_on:
-      postgres:
+      callcenter-postgres:
         condition: service_healthy
         restart: true
     healthcheck:
@@ -260,10 +192,13 @@ services:
       retries: 5
       start_period: 90s
     networks:
-      - frontend
-      - backend
+      frontend:
+        aliases: [keycloak]
+      backend:
+        aliases: [keycloak]
+      edge:
 
-  mongo:
+  callcenter-mongo:
     container_name: callcenter_mongo
     image: mongo:8.0.14-noble
     pull_policy: always
@@ -281,9 +216,10 @@ services:
       retries: 5
       start_period: 40s
     networks:
-      - backend
+      backend:
+        aliases: [mongo]
 
-  redis:
+  callcenter-redis:
     image: redis:7-alpine
     container_name: callcenter_redis
     pull_policy: always
@@ -300,9 +236,10 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - backend
+      backend:
+        aliases: [redis]
 
-  loki:
+  callcenter-loki:
     image: grafana/loki:3.6.12
     container_name: callcenter_loki
     restart: unless-stopped
@@ -313,9 +250,10 @@ services:
       - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml
     networks:
-      - backend
+      backend:
+        aliases: [loki]
 
-  promtail:
+  callcenter-promtail:
     image: grafana/promtail:3.6.11
     container_name: callcenter_promtail
     restart: unless-stopped
@@ -324,12 +262,13 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     command: -config.file=/etc/promtail/config.yml
     depends_on:
-      loki:
+      callcenter-loki:
         condition: service_started
     networks:
-      - backend
+      backend:
+        aliases: [promtail]
 
-  grafana:
+  callcenter-grafana:
     image: grafana/grafana:11.6.0
     container_name: callcenter_grafana
     restart: unless-stopped
@@ -342,7 +281,7 @@ services:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
       - grafana_data:/var/lib/grafana
     depends_on:
-      loki:
+      callcenter-loki:
         condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
@@ -351,8 +290,10 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - frontend
-      - backend
+      frontend:
+        aliases: [grafana]
+      backend:
+        aliases: [grafana]
 
 volumes:
   keycloak_postgres:
@@ -369,6 +310,9 @@ volumes:
 networks:
   frontend:
   backend:
+  # Shared with the central proxy; created once with `docker network create edge`.
+  edge:
+    external: true
 # Release signing key for the device owner APK (apps/executable), sourced from
 # the environment so it stays constant across rebuilds without living in git:
 #   export ANDROID_KEYSTORE_BASE64="$(base64 -w0 lockdown-release.jks)"
