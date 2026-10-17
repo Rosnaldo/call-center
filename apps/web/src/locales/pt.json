@@ -105,7 +105,8 @@
     "send": "Enviar",
     "you": "você",
     "bot": "bot",
-    "typing": "gerando...",
+    "processing": "processando...",
+    "generating": "gerando...",
     "selectApps": "Selecionar apps",
     "generateInstaller": "Gerar instalador",
     "downloadInstaller": "Baixar instalador",
@@ -113,7 +114,9 @@
     "summaryButton": "Resumo",
     "messages": {
       "askStart": "Configurar ambiente device owner no seu celular.",
-      "intro": "Você vai precisar de:\n1. Notebook\n2. Cabo USB\n3. Celular\n4. Gerar o instalador",
+      "intro": "Você vai precisar de:\n1. Um notebook\n2. Um cabo USB\n3. Seu celular (onde será instalado Device Owner)\n4. Formatar o celular\n5. Gerar o instalador",
+      "askReuse": "Encontrei uma configuração anterior salva neste navegador.",
+      "askReuseQuestion": "Quer reutilizá-la?",
       "askOs": "Qual o sistema operacional do celular?",
       "askVersion": "Qual a versão do {{os}}? (ex.: {{example}})",
       "askDns": "Você usa DNS privado?",
@@ -125,8 +128,9 @@
       "collectBlockedTerms": "Use o botão abaixo para adicionar as palavras proibidas.",
       "noTermList": "Não há lista de palavras para preencher agora.",
       "askAppVersion": "Qual a versão desta configuração? Ela aparecerá no app do celular. Use a padrão ou digite outra (ex.: 1.2.0).",
-      "confirm": "Confira os dados:\n{{summary}}\nEstá correto?",
-      "done": "Pronto! Dados coletados:\n{{summary}}",
+      "confirm": "Confira o resumo antes de prosseguir.",
+      "confirmQuestion": "Os dados coletados estão corretos?",
+      "done": "Gerar instalador do celular para configurar ambiente Device Owner.\nLembre-se de formatar o celular antes de executar o instalador.",
       "finished": "Esta conversa terminou. Use \"Resetar\" para começar outra.",
       "noAppList": "Não há lista de apps para escolher agora.",
       "installerReady": "Instalador gerado! Clique no botão abaixo para baixar.",
@@ -136,7 +140,8 @@
       "proceedLoginRequired": "Faça login para começar a configuração. Sem login, você ainda pode saber mais sobre os temas.",
       "loginCheckFailed": "Não foi possível verificar seu login agora. Tente novamente.",
       "learnMore": "Sobre o que você quer saber antes de começar?",
-      "learnMoreNext": "Quer saber sobre outro tema ou começar a configuração?"
+      "learnMoreNext": "Quer saber sobre outro tema ou começar a configuração?",
+      "noted": "Anotei:\n{{noted}}"
     },
     "errors": {
       "os": "Escolha Android ou iOS.",
@@ -217,6 +222,17 @@
       "rawIp": "Endereço IP direto é quando o site é acessado diretamente pelo seu número de IP (ex.: 102.119.217.84), em vez do nome do domínio.",
       "schedule": "Horários definem quando cada app pode ser usado, por exemplo: \"só das 15h às 18h\" ou \"só nos fins de semana\".\n\nFora do horário, o app continua instalado, mas fica cinza e o Android mostra que ele não está disponível no momento. As notificações dele também ficam bloqueadas até o horário voltar.",
       "usbDebugging": "A instalação é feita pelo seu computador, com o celular conectado por cabo USB. Para isso, você precisa dar algumas permissões no celular:\n\n1. Ative o modo desenvolvedor\n2. Ligue a depuração USB\n3. Ao conectar o cabo, desbloqueie o celular e toque em \"Permitir\""
+    },
+    "help": {
+      "askOs": "É o sistema do celular que será configurado. iPhones usam iOS; os demais celulares (Samsung, Motorola, Xiaomi, Pixel…) usam Android.",
+      "askVersion": "No Android: Configurações → Sobre o telefone → Versão do Android. No iPhone: Ajustes → Geral → Sobre → Versão do iOS. O caminho pode variar conforme o fabricante.",
+      "askDns": "Para conferir no Android: Configurações → Rede e internet → DNS privado (o caminho pode variar conforme o fabricante). Se estiver \"Desativado\" ou \"Automático\", você não usa um.",
+      "askDnsHost": "É o endereço que aparece em DNS privado → \"Nome do host do provedor de DNS privado\", como dns.adguard.com ou o endereço do seu perfil no NextDNS. Informe só o nome, sem https://.",
+      "askAllowedApps": "São os apps que poderão ser usados no celular. Use o botão abaixo para buscar e marcar cada um.",
+      "askBlockRawIp": "Bloquear impede que um site seja aberto pelo número de IP para escapar dos bloqueios feitos pelo nome do domínio.",
+      "askInstallOs": "É o sistema do computador em que você vai rodar o instalador, com o celular conectado por cabo USB. O instalador é gerado para esse sistema.",
+      "askAppVersion": "É um rótulo para você identificar esta configuração: ele aparece no app do celular. Se não tiver preferência, use a versão padrão.",
+      "confirm": "Confira os dados acima. Responda sim para concluir, não para recomeçar, ou escreva o que quer corrigir (ex.: \"a versão é 15\")."
     },
     "newMessages": "Novas mensagens",
     "addBlockedTerms": "Adicionar palavras",

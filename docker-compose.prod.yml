@@ -68,6 +68,44 @@ services:
       edge:
 
   # Creates the installers for the chatbot (apps/executable/src/server.ts).
+  # Local LLM that reads the chatbot's free-text answers (apps/chatbot/src/extractor.ts).
+  # The chatbot doesn't wait for it: until it's up, answers go through each
+  # step's own parser.
+  callcenter-ollama:
+    image: ollama/ollama:0.34.4
+    container_name: callcenter_ollama
+    restart: unless-stopped
+    environment:
+      # Keeps the model loaded: loading it takes seconds on CPU.
+      - OLLAMA_KEEP_ALIVE=-1
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      backend:
+        aliases: [ollama]
+
+  # Downloads the chatbot's model (OLLAMA_MODEL) into the ollama volume, then exits.
+  callcenter-ollama-pull:
+    image: ollama/ollama:0.34.4
+    container_name: callcenter_ollama_pull
+    restart: "no"
+    env_file:
+      - ./apps/chatbot/.env.production
+    environment:
+      - OLLAMA_HOST=ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull \"$$OLLAMA_MODEL\""]
+    depends_on:
+      callcenter-ollama:
+        condition: service_healthy
+    networks:
+      - backend
+
   callcenter-executable:
     image: callcenter_executable
     container_name: callcenter_executable
@@ -306,6 +344,8 @@ volumes:
     name: call_center_prod_grafana_data
   redis_data:
     name: call_center_prod_redis_data
+  ollama_data:
+    name: call_center_prod_ollama_data
 
 networks:
   frontend:

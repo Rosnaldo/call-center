@@ -56,9 +56,14 @@ export interface AppSearchState {
   status: 'idle' | 'loading' | 'done' | 'error';
 }
 
+// What the bot is busy with while isBotTyping: creating the installer, or
+// any other reply (including the LLM reading a free-text answer).
+export type BotActivity = 'processing' | 'generating';
+
 export interface ChatbotState {
   messages: ChatbotMessage[];
   isBotTyping: boolean;
+  botActivity: BotActivity;
   // Set by the bot's `open_allowed_apps` ws event until the list is sent; the
   // bot message asking for it shows a button that opens the modal.
   isAllowedAppsRequested: boolean;
@@ -80,6 +85,13 @@ export interface ChatbotState {
   // Null until the chatbot sends them; shown in the summary modal.
   params: ChatbotParams | null;
   isSummaryModalOpen: boolean;
+  // Shown in the summary modal instead of `params`, e.g. the configuration
+  // kept from an earlier conversation; null shows `params`.
+  summaryParams: ChatbotParams | null;
+  // The params of the last finished conversation, kept in localStorage and
+  // loaded with the store: the summary shows them until the conversation
+  // collects its own, and the forms start with them.
+  savedParams: ChatbotParams | null;
   // Name and icon of the apps seen in searches, so the summary can show the
   // picked ones that aren't popular apps.
   searchedApps: Record<string, AppSearchResult>;
@@ -90,6 +102,7 @@ export const initialAppSearch: AppSearchState = { term: '', results: [], status:
 export const initialChatbotState: ChatbotState = {
   messages: [],
   isBotTyping: false,
+  botActivity: 'processing',
   isAllowedAppsRequested: false,
   isAllowedAppsModalOpen: false,
   isBlockedTermsRequested: false,
@@ -100,5 +113,7 @@ export const initialChatbotState: ChatbotState = {
   appSearch: initialAppSearch,
   params: null,
   isSummaryModalOpen: false,
+  summaryParams: null,
+  savedParams: null,
   searchedApps: {},
 };

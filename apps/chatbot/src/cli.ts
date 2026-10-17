@@ -5,6 +5,7 @@ import { stdin as input, stdout as output } from 'node:process';
 import { ChatSession, type BotReply } from './session';
 import type { BotText, Summary } from './prompts';
 import { createInstallerClient } from './installer';
+import { extractorFromEnv } from './extractor';
 import { serviceTokenFromEnv } from './service-token';
 
 // The bot sends i18n keys; the texts live in the web app's locales.
@@ -30,8 +31,27 @@ const formatSummary = ({ os, version, privateDnsHost, installOs, appVersion }: S
         .map(([label, value]) => `  ${label}: ${value}`)
         .join('\n');
 
+// Same lines as the web app's formatNoted (services/ws/chatbot-ws.ts).
+const formatNoted = (noted: Record<string, unknown>): string =>
+    Object.entries(noted)
+        .map(([field, value]) => {
+            const label = t(`summary.${field === 'privateDnsHost' ? 'privateDns' : field}`);
+            const shown =
+                typeof value === 'boolean'
+                    ? t(value ? 'summary.yes' : 'summary.no')
+                    : Array.isArray(value)
+                      ? value.length ? value.join(', ') : t('summary.none')
+                      : String(value);
+            return `  ${label}: ${shown}`;
+        })
+        .join('\n');
+
 const render = ({ key, params }: BotText): string => {
     const summary = params?.summary as Summary | undefined;
+    const noted = params?.noted as Record<string, unknown> | undefined;
+    if (noted) return t(key, { ...params, noted: formatNoted(noted) });
+    // The web app shows the summary in a modal; the terminal lists it under the confirmation.
+    if (key === 'messages.confirm' && summary) return `${t(key)}\n${formatSummary(summary)}`;
     return t(key, summary ? { ...params, summary: formatSummary(summary) } : params);
 };
 
@@ -43,10 +63,11 @@ async function main(): Promise<void> {
         process.exit(0);
     });
 
-    const session = new ChatSession(createInstallerClient(
-        process.env.EXECUTABLE_URL ?? 'http://127.0.0.1:5005',
-        serviceTokenFromEnv(),
-    ));
+    const session = new ChatSession(
+        createInstallerClient(process.env.EXECUTABLE_URL ?? 'http://127.0.0.1:5005', serviceTokenFromEnv()),
+        undefined,
+        extractorFromEnv(),
+    );
     // The terminal has no checklist, so the app list is typed as comma-separated ids.
     let pickingApps = false;
     const print = (replies: BotReply[]) =>
@@ -92,7 +113,7 @@ async function main(): Promise<void> {
             continue;
         }
         pickingApps = false;
-        print(session.handle(answer));
+        print(await session.answer(answer));
     }
 
     rl.close();

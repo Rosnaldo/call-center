@@ -22,14 +22,18 @@ interface BlockedTermsModalProps {
 // closed through the chatbot store (the bot opens it over the ws).
 export const BlockedTermsModal: React.FC<BlockedTermsModalProps> = ({ onSubmit }) => {
   const isOpen = useChatbotStore((s) => s.isBlockedTermsModalOpen);
-  // Mounted only while open, so every opening starts empty.
+  // Mounted only while open, so every opening starts from the words given so far.
   return isOpen ? <TermsEditor onSubmit={onSubmit} /> : null;
 };
 
 const TermsEditor: React.FC<BlockedTermsModalProps> = ({ onSubmit }) => {
   const { t } = useTranslation();
   const close = useChatbotStore((s) => s.closeBlockedTermsModal);
-  const [terms, setTerms] = useState<string[]>([]);
+  // The conversation's words, else the kept configuration's.
+  const [terms, setTerms] = useState<string[]>(() => {
+    const { params, savedParams } = useChatbotStore.getState();
+    return params?.blockedTerms ?? savedParams?.blockedTerms ?? [];
+  });
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
 

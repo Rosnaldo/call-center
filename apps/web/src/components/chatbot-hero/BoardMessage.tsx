@@ -1,12 +1,21 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowDown, Ban, Download, ListChecks, Loader2, RotateCcw } from 'lucide-react';
+import { ArrowDown, Ban, ClipboardList, Download, ListChecks, Loader2, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChatbotStore } from '../../states/stores.ts';
-import type { ChatbotChoice, ChatbotMessage } from '../../states/local/chatbot/state.ts';
+import type { ChatbotChoice, ChatbotMessage, ChatbotParams } from '../../states/local/chatbot/state.ts';
 import { translateBotText } from '../../services/ws/chatbot-ws.ts';
 
 // Translated on render (not on arrival), so the chat follows language changes.
 const messageText = ({ text, message }: ChatbotMessage): string => (text ? translateBotText(text) : message);
+
+// The confirmation and the offer to reuse the kept configuration show a
+// button opening the summary under their text.
+const hasSummaryButton = ({ text }: ChatbotMessage): boolean =>
+  text?.key === 'messages.confirm' || text?.key === 'messages.askReuse';
+
+// The offer to reuse carries the kept configuration, shown instead of the conversation's.
+const summaryParamsOf = ({ text }: ChatbotMessage): ChatbotParams | undefined =>
+  (text?.params?.saved as ChatbotParams | undefined) ?? undefined;
 
 // Within this distance of the end, the board counts as "at the bottom" and
 // follows new messages.
@@ -33,11 +42,13 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
 }) => {
   const { t } = useTranslation();
   const messages = useChatbotStore(s => s.messages);
+  const botActivity = useChatbotStore(s => s.botActivity);
   const isAllowedAppsRequested = useChatbotStore(s => s.isAllowedAppsRequested);
   const openAllowedAppsModal = useChatbotStore(s => s.openAllowedAppsModal);
   const isBlockedTermsRequested = useChatbotStore(s => s.isBlockedTermsRequested);
   const openBlockedTermsModal = useChatbotStore(s => s.openBlockedTermsModal);
   const isChoiceRequested = useChatbotStore(s => s.isChoiceRequested);
+  const openSummaryModal = useChatbotStore(s => s.openSummaryModal);
   const isRestartOffered = useChatbotStore(s => s.isRestartOffered);
   const containerRef = useRef<HTMLDivElement>(null);
   // Whether the user is at the end of the board. Scrolling up to reread stops
@@ -165,6 +176,19 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
               </button>
             )}
 
+            {/* Botão da confirmação (e da oferta de reutilizar): abre o resumo completo,
+                com os apps permitidos. A margem de baixo o separa da pergunta seguinte. */}
+            {hasSummaryButton(msg) && (
+              <button
+                type="button"
+                onClick={() => openSummaryModal(summaryParamsOf(msg))}
+                className="mt-1.5 mb-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#B97204] text-white font-mono-terminal text-[11px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)]"
+              >
+                <ClipboardList className="w-3.5 h-3.5" />
+                {t('chatbot.summaryButton')}
+              </button>
+            )}
+
             {/* Botões de escolha: respondem a pergunta do bot com o valor da opção */}
             {msg.action === 'choice' && isChoiceRequested && onAnswer && (
               <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -228,7 +252,7 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
           )}
           <div className="bg-white border border-[#E4D9C4] border-l-[3px] border-l-[#B97204] px-3 py-1.5 rounded-xl rounded-tl-xs text-[12px] font-mono-terminal text-[#7E7464] flex items-center gap-2 shadow-xs">
             <Loader2 className="w-3.5 h-3.5 animate-spin text-[#B97204]" />
-            <span>{t('chatbot.typing')}</span>
+            <span>{t(botActivity === 'generating' ? 'chatbot.generating' : 'chatbot.processing')}</span>
           </div>
         </div>
       )}

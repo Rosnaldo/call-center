@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import WebSocket, { WebSocketServer } from 'ws';
 import { AppSearchQueue, normalizeTerm, searchGooglePlay, type AppSearchResult } from './app-search';
+import { extractorFromEnv } from './extractor';
 import { createInstallerClient } from './installer';
 import { serviceTokenFromEnv } from './service-token';
 import type { ParamsOutput } from './params-machine';
@@ -15,6 +16,9 @@ import { createUserAuthClient } from './user-auth';
 //                     { event: 'blocked_terms', terms: string[] } answers open_blocked_terms
 //                     { event: 'search_apps', term: string }      Google Play search, while the checklist is open
 //                     { event: 'restart' }                       starts a new conversation (answers offer_restart)
+//                     { event: 'saved_params', params }           the params the client kept from an earlier conversation,
+//                                                                offered for reuse after the intro; sent on connecting and
+//                                                                after restart (no reply)
 //                     { event: 'generate_installer', token? }    creates the installer once the conversation is done;
 //                                                                token: the logged-in user's access token (required)
 //   server -> client  { event: 'bot_message', key: string, params?, sendEnabled: boolean }  i18n key under `chatbot.` (web locales);
@@ -35,6 +39,7 @@ export type ClientMessage =
     | { event: 'blocked_terms'; terms: unknown[] }
     | { event: 'search_apps'; term: string }
     | { event: 'restart' }
+    | { event: 'saved_params'; params: unknown }
     | { event: 'generate_installer'; token?: string };
 export type ServerMessage =
     | BotReply
@@ -49,6 +54,7 @@ const EXECUTABLE_URL = process.env.EXECUTABLE_URL ?? 'http://127.0.0.1:5005';
 const IAM_URI = process.env.IAM_URI ?? 'http://127.0.0.1:5002';
 const createInstaller = createInstallerClient(EXECUTABLE_URL, serviceTokenFromEnv());
 const isLoggedIn = createUserAuthClient(IAM_URI);
+const extractFields = extractorFromEnv();
 
 const send = (ws: WebSocket, msg: ServerMessage): void => {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
@@ -67,6 +73,8 @@ const parseClientMessage = (raw: WebSocket.RawData): ClientMessage | null => {
         if (msg?.event === 'blocked_terms' && Array.isArray(msg.terms)) return msg;
         if (msg?.event === 'search_apps' && typeof msg.term === 'string') return msg;
         if (msg?.event === 'restart') return { event: 'restart' };
+        // Validated by the session, like any answer.
+        if (msg?.event === 'saved_params' && msg.params && typeof msg.params === 'object') return { event: 'saved_params', params: msg.params };
         if (msg?.event === 'generate_installer') {
             return typeof msg.token === 'string' ? { event: 'generate_installer', token: msg.token } : { event: 'generate_installer' };
         }
@@ -85,7 +93,7 @@ const alive = new WeakMap<WebSocket, boolean>();
 
 wss.on('connection', (ws) => {
     // Each socket gets its own conversation; closing the socket ends it.
-    const session = new ChatSession(createInstaller, isLoggedIn);
+    const session = new ChatSession(createInstaller, isLoggedIn, extractFields);
     // The params go after every reply, so the client's summary follows the conversation.
     const reply = (replies: BotReply[]) => {
         replies.forEach((msg) => send(ws, msg));
@@ -96,7 +104,7 @@ wss.on('connection', (ws) => {
         send(ws, { event: 'apps_search_results', ...outcome }),
     );
 
-    // Answers may wait on IAM (login check), so they're chained to keep their order.
+    // Answers may wait on IAM (login check) or the LLM, so they're chained to keep their order.
     let answers = Promise.resolve();
 
     alive.set(ws, true);
@@ -118,6 +126,10 @@ wss.on('connection', (ws) => {
         }
         if (msg.event === 'restart') {
             reply(session.start());
+            return;
+        }
+        if (msg.event === 'saved_params') {
+            session.useSaved(msg.params);
             return;
         }
         if (msg.event === 'generate_installer') {

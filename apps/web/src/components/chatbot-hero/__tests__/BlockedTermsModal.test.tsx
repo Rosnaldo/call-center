@@ -11,7 +11,30 @@ const typeWord = (word: string) => {
 };
 
 describe('BlockedTermsModal', () => {
-  beforeEach(() => act(() => useChatbotStore.getState().resetChatbot()));
+  beforeEach(() =>
+    act(() => {
+      useChatbotStore.setState({ savedParams: null });
+      useChatbotStore.getState().resetChatbot();
+    }),
+  );
+
+  it('starts with the kept words, or the conversation ones once given', () => {
+    const empty = {
+      os: null, version: null, privateDns: null, privateDnsHost: null, allowedApps: null,
+      installOs: null, appVersion: null, blockRawIp: null, blockedTerms: null,
+    };
+    useChatbotStore.setState({ savedParams: { ...empty, blockedTerms: ['cassino', 'bet'] } });
+    open();
+    const { unmount } = render(<BlockedTermsModal onSubmit={vi.fn(() => true)} />);
+    expect(screen.getByText('cassino')).toBeTruthy();
+    expect(screen.getByText('bet')).toBeTruthy();
+    unmount();
+
+    act(() => useChatbotStore.getState().setParams({ ...empty, blockedTerms: ['poker'] }));
+    render(<BlockedTermsModal onSubmit={vi.fn(() => true)} />);
+    expect(screen.getByText('poker')).toBeTruthy();
+    expect(screen.queryByText('cassino')).toBeNull();
+  });
 
   it('renders only while the store has it open', () => {
     render(<BlockedTermsModal onSubmit={vi.fn(() => true)} />);

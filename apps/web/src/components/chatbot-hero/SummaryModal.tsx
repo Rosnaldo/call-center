@@ -10,7 +10,11 @@ const MONO = '"JetBrains Mono", Menlo, Consolas, monospace';
 
 const POPULAR_BY_ID = new Map(POPULAR_APPS.map((app) => [app.id, app]));
 
-// The params collected so far in the conversation, opened from the chat header.
+const hasAny = (params: ChatbotParams | null): boolean => !!params && Object.values(params).some((value) => value !== null);
+
+// The params collected so far in the conversation, opened from the chat header,
+// or the ones the modal was opened with (the kept configuration). Until the
+// conversation collects any, the kept ones show.
 // Opened and closed through the chatbot store.
 export const SummaryModal: React.FC = () => {
   const isOpen = useChatbotStore((s) => s.isSummaryModalOpen);
@@ -20,7 +24,7 @@ export const SummaryModal: React.FC = () => {
 const Summary: React.FC = () => {
   const { t } = useTranslation();
   const close = useChatbotStore((s) => s.closeSummaryModal);
-  const params = useChatbotStore((s) => s.params);
+  const params = useChatbotStore((s) => s.summaryParams ?? (hasAny(s.params) ? s.params : (s.savedParams ?? s.params)));
   const searchedApps = useChatbotStore((s) => s.searchedApps);
   // Saved picks cover apps searched before a reload.
   const [knownApps] = useState(() => ({

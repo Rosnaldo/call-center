@@ -1,8 +1,10 @@
-import { AppSearchResult, ChatbotChoice, ChatbotMessage, ChatbotMessageAction, ChatbotParams, ChatbotState, initialAppSearch, initialChatbotState } from './state.ts';
+import { AppSearchResult, BotActivity, ChatbotChoice, ChatbotMessage, ChatbotMessageAction, ChatbotParams, ChatbotState, initialAppSearch, initialChatbotState } from './state.ts';
+import { saveParams } from '../../../components/chatbot-hero/saved-params.ts';
 
 export interface ChatbotActions {
   addMessage: (message: ChatbotMessage) => void;
-  setBotTyping: (isBotTyping: boolean) => void;
+  // `activity` says what the indicator shows while typing.
+  setBotTyping: (isBotTyping: boolean, activity?: BotActivity) => void;
   requestAllowedApps: () => void;
   requestBlockedTerms: () => void;
   requestChoice: (choices: ChatbotChoice[]) => void;
@@ -20,7 +22,10 @@ export interface ChatbotActions {
   clearAppSearch: () => void;
   setSendEnabled: (isSendEnabled: boolean) => void;
   setParams: (params: ChatbotParams) => void;
-  openSummaryModal: () => void;
+  // Keeps the finished conversation's params, in the store and localStorage.
+  setSavedParams: (params: ChatbotParams) => void;
+  // `params` shows other params than the conversation's.
+  openSummaryModal: (params?: ChatbotParams) => void;
   closeSummaryModal: () => void;
   resetChatbot: () => void;
 }
@@ -46,7 +51,8 @@ export const createChatbotActions = (
 ): ChatbotActions => {
   return {
     addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
-    setBotTyping: (isBotTyping) => set(() => ({ isBotTyping })),
+    setBotTyping: (isBotTyping, activity = 'processing') =>
+      set(() => (isBotTyping ? { isBotTyping, botActivity: activity } : { isBotTyping })),
     // The button goes on the bot message asking for the list.
     requestAllowedApps: () =>
       set((state) => ({
@@ -105,8 +111,13 @@ export const createChatbotActions = (
     clearAppSearch: () => set(() => ({ appSearch: initialAppSearch })),
     setSendEnabled: (isSendEnabled) => set(() => ({ isSendEnabled })),
     setParams: (params) => set(() => ({ params })),
-    openSummaryModal: () => set(() => ({ isSummaryModalOpen: true })),
-    closeSummaryModal: () => set(() => ({ isSummaryModalOpen: false })),
-    resetChatbot: () => set(() => ({ ...initialChatbotState })),
+    setSavedParams: (savedParams) => {
+      saveParams(savedParams);
+      set(() => ({ savedParams }));
+    },
+    openSummaryModal: (params) => set(() => ({ isSummaryModalOpen: true, summaryParams: params ?? null })),
+    closeSummaryModal: () => set(() => ({ isSummaryModalOpen: false, summaryParams: null })),
+    // A new conversation; the kept params stay, for it to reuse.
+    resetChatbot: () => set((state) => ({ ...initialChatbotState, savedParams: state.savedParams })),
   };
 };

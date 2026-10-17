@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ChatSession } from './session';
+import type { ExtractFields, Extraction } from './extractor';
 import type { IsLoggedIn } from './user-auth';
 
 const atAllowedApps = () => {
@@ -191,6 +192,7 @@ describe('ChatSession choice buttons', () => {
                 },
                 sendEnabled: false,
             },
+            { event: 'bot_message', key: 'messages.confirmQuestion', sendEnabled: false },
             YES_NO,
         ]);
     });
@@ -496,3 +498,231 @@ describe('ChatSession login to start the setup', () => {
         expect((await session.answer('proceed'))[0]).toMatchObject({ key: 'messages.intro' });
     });
 });
+
+describe('ChatSession free text (LLM)', () => {
+    const YES_NO = { event: 'ask_choice', choices: [{ key: 'choices.yes', value: 'yes' }, { key: 'choices.no', value: 'no' }] };
+    const OS_CHOICES = { event: 'ask_choice', choices: [{ key: 'choices.android', value: 'android' }, { key: 'choices.ios', value: 'ios' }] };
+    const answer = (fields: Extraction['fields']): Extraction => ({ intent: 'set', fields });
+    const atOs = (extract: ExtractFields) => {
+        const session = new ChatSession(undefined, undefined, extract);
+        session.start();
+        session.handle('proceed');
+        session.handle('proceed');
+        return session;
+    };
+
+    it("answers with the step's own parser without calling the model", async () => {
+        const extract = vi.fn(async () => answer({}));
+        const session = atOs(extract);
+        expect((await session.answer('android'))[0]).toMatchObject({ key: 'messages.askVersion' });
+        expect(extract).not.toHaveBeenCalled();
+    });
+
+    it('says what it read, fills it and asks the first missing param', async () => {
+        const extract = vi.fn(async () => answer({ os: 'iOS', version: '17.4' }));
+        const session = atOs(extract);
+        expect(await session.answer('tenho um iphone com ios 17.4')).toEqual([
+            { event: 'bot_message', key: 'messages.noted', params: { noted: { os: 'iOS', version: '17.4' } }, sendEnabled: true },
+            { event: 'bot_message', key: 'messages.askDns', sendEnabled: true },
+            YES_NO,
+        ]);
+        expect(extract).toHaveBeenCalledWith('tenho um iphone com ios 17.4', 'askOs');
+        expect(session.params()).toMatchObject({ os: 'iOS', version: '17.4' });
+    });
+
+    it('notes only the valid values, then the error, then the next question', async () => {
+        const session = atOs(async () => answer({ os: 'Android', version: 'quatorze' }));
+        expect(await session.answer('android quatorze')).toEqual([
+            { event: 'bot_message', key: 'messages.noted', params: { noted: { os: 'Android' } }, sendEnabled: true },
+            { event: 'bot_message', key: 'errors.version', sendEnabled: true },
+            { event: 'bot_message', key: 'messages.askVersion', params: { os: 'Android', example: '14' }, sendEnabled: true },
+        ]);
+    });
+
+    it('notes a private DNS hostname without a separate yes', async () => {
+        const session = atOs(async () => answer({ privateDns: true, privateDnsHost: 'dns.google' }));
+        const [noted] = await session.answer('uso o dns.google');
+        expect(noted).toMatchObject({ params: { noted: { privateDnsHost: 'dns.google' } } });
+    });
+
+    it('answers a question with the step help and asks the step again, saving nothing', async () => {
+        const session = atOs(async () => ({ intent: 'question', fields: {} }));
+        for (const answer of ['android', '14']) session.handle(answer);
+        expect(await session.answer('o que é dns privado?')).toEqual([
+            { event: 'bot_message', key: 'learn.privateDns', sendEnabled: true },
+            { event: 'bot_message', key: 'help.askDns', sendEnabled: true },
+            { event: 'bot_message', key: 'messages.askDns', sendEnabled: true },
+            YES_NO,
+        ]);
+        expect(session.params().privateDns).toBeNull();
+    });
+
+    it('helps on the confirmation with its summary again', async () => {
+        const session = atOs(async () => ({ intent: 'question', fields: {} }));
+        for (const answer of ['android', '14', 'no']) session.handle(answer);
+        session.selectAllowedApps([]);
+        for (const answer of ['no', 'no', 'linux', '1.0']) session.handle(answer);
+        const replies = await session.answer('e agora?');
+        expect(replies.map((r) => (r.event === 'bot_message' ? r.key : r.event))).toEqual(['help.confirm', 'messages.confirm', 'messages.confirmQuestion', 'ask_choice']);
+    });
+
+    it("falls back to the step's error when the model reads nothing or fails", async () => {
+        expect(await atOs(async () => ({ intent: 'other', fields: {} })).answer('hello')).toEqual([
+            { event: 'bot_message', key: 'errors.os', sendEnabled: true },
+            OS_CHOICES,
+        ]);
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const failed = atOs(async () => Promise.reject(new Error('ollama down')));
+        expect((await failed.answer('tenho um iphone'))[0]).toMatchObject({ key: 'errors.os' });
+    });
+
+    it('asks the current step again after filling other params', async () => {
+        const later = new ChatSession(undefined, undefined, async () => answer({ installOs: 'macOS' }));
+        later.start();
+        for (const text of ['proceed', 'proceed', 'android', '14', 'no']) later.handle(text);
+        expect(await later.answer('vou instalar pelo mac')).toEqual([
+            { event: 'bot_message', key: 'messages.noted', params: { noted: { installOs: 'macOS' } }, sendEnabled: true },
+            { event: 'bot_message', key: 'messages.askAllowedApps', sendEnabled: true },
+            { event: 'open_allowed_apps' },
+        ]);
+        expect(later.params().installOs).toBe('macOS');
+    });
+
+    it('enables typing on button steps', async () => {
+        const session = atOs(async () => answer({}));
+        expect((await session.answer('android'))[0]).toMatchObject({ sendEnabled: true });
+        expect((await session.answer('14'))[0]).toMatchObject({ key: 'messages.askDns', sendEnabled: true });
+    });
+
+    it('keeps the opening deterministic', async () => {
+        const extract = vi.fn(async () => answer({ os: 'Android' }));
+        const session = new ChatSession(undefined, undefined, extract);
+        session.start();
+        expect((await session.answer('tenho um android'))[0]).toMatchObject({ key: 'errors.proceed' });
+        expect(extract).not.toHaveBeenCalled();
+    });
+
+    it('drops the replies of a conversation restarted while the model was reading', async () => {
+        let resolve!: (extraction: Extraction) => void;
+        const session = atOs(() => new Promise((r) => (resolve = r)));
+        const pending = session.answer('tenho um iphone');
+        session.start();
+        resolve(answer({ os: 'iOS' }));
+        expect(await pending).toEqual([]);
+        expect(session.params().os).toBeNull();
+    });
+});
+
+describe('ChatSession saved configuration', () => {
+    const SAVED = {
+        os: 'Android',
+        version: '14',
+        privateDns: false,
+        privateDnsHost: null,
+        allowedApps: ['com.whatsapp'],
+        installOs: 'Linux',
+        appVersion: '1.0.0',
+        blockRawIp: false,
+        blockedTerms: [],
+    };
+    const YES_NO = { event: 'ask_choice', choices: [{ key: 'choices.yes', value: 'yes' }, { key: 'choices.no', value: 'no' }] };
+
+    it('asks to reuse it after the intro, sending it for the summary', () => {
+        const session = new ChatSession();
+        session.start();
+        session.useSaved(SAVED);
+        session.handle('proceed');
+        expect(session.handle('proceed')).toEqual([
+            { event: 'bot_message', key: 'messages.askReuse', params: { saved: SAVED }, sendEnabled: false },
+            { event: 'bot_message', key: 'messages.askReuseQuestion', sendEnabled: false },
+            YES_NO,
+        ]);
+        // Straight to the installer: the kept configuration was confirmed when kept.
+        expect(session.handle('yes').map((r) => (r.event === 'bot_message' ? r.key : r.event))).toEqual([
+            'messages.done',
+            'offer_restart',
+        ]);
+        expect(session.params()).toEqual(SAVED);
+    });
+
+    it('generates the installer with it', async () => {
+        const createInstaller = vi.fn(async () => 'http://dl.test/executables/1');
+        const session = new ChatSession(createInstaller);
+        session.start();
+        session.useSaved(SAVED);
+        for (const answer of ['proceed', 'proceed', 'yes']) session.handle(answer);
+        expect((await session.generateInstaller()).map((r) => r.event)).toEqual(['bot_message', 'installer_ready']);
+        expect(createInstaller).toHaveBeenCalledWith(SAVED);
+    });
+
+    it('only offers it when it arrives before the intro is done', () => {
+        const session = new ChatSession();
+        session.start();
+        session.handle('proceed');
+        session.handle('proceed');
+        session.useSaved(SAVED);
+        expect(session.params().os).toBeNull();
+    });
+});
+
+describe('ChatSession asking for a modal\'s list again (LLM)', () => {
+    const flow = (target: 'allowedApps' | 'blockedTerms') => async () => ({ intent: 'flow' as const, fields: {}, flow: target });
+    const atConfirm = (session: ChatSession) => {
+        session.start();
+        for (const text of ['proceed', 'proceed', 'android', '14', 'no']) session.handle(text);
+        session.selectAllowedApps(['com.whatsapp']);
+        for (const text of ['no', 'no', 'linux', '1.0']) session.handle(text);
+    };
+
+    it('asks for the apps again without leaving the confirmation, then shows it again', async () => {
+        const session = new ChatSession(undefined, undefined, flow('allowedApps'));
+        atConfirm(session);
+
+        expect(await session.answer('quero trocar os apps')).toEqual([
+            { event: 'bot_message', key: 'messages.askAllowedApps', sendEnabled: true },
+            { event: 'open_allowed_apps' },
+        ]);
+        expect(session.isPickingAllowedApps()).toBe(true);
+        expect(session.selectAllowedApps(['com.whatsapp', 'com.Slack'])[0]).toMatchObject({ key: 'messages.confirm' });
+        expect(session.params().allowedApps).toEqual(['com.whatsapp', 'com.Slack']);
+    });
+
+    it('still confirms with the buttons after asking for the list', async () => {
+        const session = new ChatSession(undefined, undefined, flow('allowedApps'));
+        atConfirm(session);
+        await session.answer('quero trocar os apps');
+        expect(session.handle('yes')[0]).toMatchObject({ key: 'messages.done' });
+    });
+
+    it('asks for the words again, even after saying no words', async () => {
+        const session = new ChatSession(undefined, undefined, flow('blockedTerms'));
+        atConfirm(session);
+        expect(await session.answer('quero bloquear sites')).toEqual([
+            { event: 'bot_message', key: 'messages.collectBlockedTerms', sendEnabled: true },
+            { event: 'open_blocked_terms' },
+        ]);
+        expect(session.selectBlockedTerms(['bet'])[0]).toMatchObject({ key: 'messages.confirm' });
+        expect(session.params().blockedTerms).toEqual(['bet']);
+    });
+
+    it('asks the current question again once the list is sent at an earlier step', async () => {
+        const session = new ChatSession(undefined, undefined, flow('allowedApps'));
+        session.start();
+        for (const text of ['proceed', 'proceed', 'android']) session.handle(text);
+        await session.answer('quero escolher os apps');
+        expect(session.selectAllowedApps(['com.whatsapp'])).toEqual([
+            { event: 'bot_message', key: 'messages.askVersion', params: { os: 'Android', example: '14' }, sendEnabled: true },
+        ]);
+    });
+
+    it('asks for the apps again when already at their question', async () => {
+        const session = new ChatSession(undefined, undefined, flow('allowedApps'));
+        session.start();
+        for (const text of ['proceed', 'proceed', 'android', '14', 'no']) session.handle(text);
+        expect(await session.answer('quero mudar os apps')).toEqual([
+            { event: 'bot_message', key: 'messages.askAllowedApps', sendEnabled: true },
+            { event: 'open_allowed_apps' },
+        ]);
+    });
+});
+

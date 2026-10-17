@@ -18,7 +18,25 @@ const EMPTY = {
 describe('SummaryModal', () => {
   beforeEach(() => {
     localStorage.clear();
-    act(() => useChatbotStore.getState().resetChatbot());
+    act(() => {
+      useChatbotStore.setState({ savedParams: null });
+      useChatbotStore.getState().resetChatbot();
+    });
+  });
+
+  it('shows the kept params until the conversation collects its own', () => {
+    act(() => {
+      useChatbotStore.setState({ savedParams: { ...EMPTY, os: 'iOS', version: '17.4' } });
+      useChatbotStore.getState().setParams(EMPTY);
+      useChatbotStore.getState().openSummaryModal();
+    });
+    render(<SummaryModal />);
+    expect(screen.getByText('iOS')).toBeTruthy();
+    expect(screen.getByText('17.4')).toBeTruthy();
+
+    act(() => useChatbotStore.getState().setParams({ ...EMPTY, os: 'Android' }));
+    expect(screen.getByText('Android')).toBeTruthy();
+    expect(screen.queryByText('17.4')).toBeNull();
   });
 
   it('renders only while the store has it open', () => {

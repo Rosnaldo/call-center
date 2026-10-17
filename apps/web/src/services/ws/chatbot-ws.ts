@@ -52,8 +52,27 @@ export const formatSummary = ({ os, version, privateDnsHost, installOs, appVersi
         .map(([label, value]) => `  ${label}: ${value}`)
         .join('\n');
 
+// The params the bot read from free text (`noted` param of messages.noted),
+// one line each. Same lines as the chatbot CLI's formatNoted.
+export const formatNoted = (noted: Record<string, unknown>): string =>
+    Object.entries(noted)
+        .map(([field, value]) => {
+            // A hostname stands for "private DNS: yes", under the same label.
+            const label = t(`summary.${field === 'privateDnsHost' ? 'privateDns' : field}`);
+            const shown =
+                typeof value === 'boolean'
+                    ? t(value ? 'summary.yes' : 'summary.no')
+                    : Array.isArray(value)
+                      ? value.length ? value.join(', ') : t('summary.none')
+                      : String(value);
+            return `  ${label}: ${shown}`;
+        })
+        .join('\n');
+
 export const translateBotText = ({ key, params }: BotText): string => {
     const summary = params?.summary as BotSummary | undefined;
+    const noted = params?.noted as Record<string, unknown> | undefined;
+    if (noted) return t(key, { ...params, noted: formatNoted(noted) });
     return t(key, summary ? { ...params, summary: formatSummary(summary) } : params);
 };
 
@@ -146,7 +165,15 @@ export class ChatbotWs {
         resetChatbot();
         setBotTyping(true);
         this.ws.send(JSON.stringify({ event: 'restart' }));
+        this.sendSavedParams();
         return true;
+    }
+
+    // The configuration kept from the last finished conversation, which the
+    // bot offers to reuse; each socket and restart is a new conversation.
+    private sendSavedParams(): void {
+        const params = this.store.getState().savedParams;
+        if (params && this.ws?.readyState === TRANSPORT_OPEN) this.ws.send(JSON.stringify({ event: 'saved_params', params }));
     }
 
     // Answers the "generate installer" button: the bot replies with a message
@@ -155,7 +182,7 @@ export class ChatbotWs {
     // Resolves to false when the request couldn't be sent.
     async generateInstaller(): Promise<boolean> {
         if (this.ws?.readyState !== TRANSPORT_OPEN) return false;
-        this.store.getState().setBotTyping(true);
+        this.store.getState().setBotTyping(true, 'generating');
         const token = await this.getToken().catch(() => undefined);
         if (this.ws?.readyState !== TRANSPORT_OPEN) {
             this.store.getState().setBotTyping(false);
@@ -198,6 +225,7 @@ export class ChatbotWs {
             // The server starts a new conversation per socket and greets
             // right away, so any history from a previous socket is stale.
             this.store.getState().resetChatbot();
+            this.sendSavedParams();
         };
 
         ws.onmessage = (event) => {
@@ -214,6 +242,8 @@ export class ChatbotWs {
             // Follows every batch of replies; not a reply itself, so the typing state stays.
             if ('event' in msg && msg.event === 'params') {
                 this.store.getState().setParams(msg.params);
+                // They follow the finished conversation's offer_restart: keep them for the next one.
+                if (this.store.getState().isRestartOffered) this.store.getState().setSavedParams(msg.params);
                 return;
             }
             this.store.getState().setBotTyping(false);

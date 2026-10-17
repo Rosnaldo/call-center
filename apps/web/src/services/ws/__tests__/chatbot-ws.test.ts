@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ChatbotWs } from '../chatbot-ws.ts';
+import { ChatbotWs, formatSummary, translateBotText } from '../chatbot-ws.ts';
 import { ITransport, TRANSPORT_OPEN } from '../transport.ts';
 import { useChatbotStore } from '../../../states/stores.ts';
 
@@ -111,12 +111,27 @@ describe('ChatbotWs choices', () => {
 
   it('formats the summary', () => {
     const summary = { os: 'Android', version: '14', privateDnsHost: null, installOs: 'Linux', appVersion: '1.0.0' };
-    transport.receive({ event: 'bot_message', key: 'messages.confirm', params: { summary } });
+
+    expect(formatSummary(summary)).toBe(
+      '  Sistema: Android\n  Versão: 14\n  DNS privado: não\n' +
+        '  Instalação USB a partir de: Linux\n  Versão da configuração: 1.0.0',
+    );
+  });
+
+  it('offers the installer once finished, without listing the data', () => {
+    const summary = { os: 'Android', version: '14', privateDnsHost: null, installOs: 'Linux', appVersion: '1.0.0' };
+    transport.receive({ event: 'bot_message', key: 'messages.done', params: { summary } });
 
     expect(useChatbotStore.getState().messages.at(-1)?.message).toBe(
-      'Confira os dados:\n  Sistema: Android\n  Versão: 14\n  DNS privado: não\n' +
-        '  Instalação USB a partir de: Linux\n  Versão da configuração: 1.0.0\nEstá correto?',
+      'Gerar instalador do celular para configurar ambiente Device Owner.\nLembre-se de formatar o celular antes de executar o instalador.',
     );
+  });
+
+  it('asks to check the summary before confirming, without listing the data', () => {
+    const summary = { os: 'Android', version: '14', privateDnsHost: null, installOs: 'Linux', appVersion: '1.0.0' };
+    transport.receive({ event: 'bot_message', key: 'messages.confirm', params: { summary } });
+
+    expect(useChatbotStore.getState().messages.at(-1)?.message).toBe('Confira o resumo antes de prosseguir.');
   });
 
   it('translates the choice labels', () => {
@@ -208,6 +223,7 @@ describe('ChatbotWs restart', () => {
     expect(state.messages).toEqual([]);
     expect(state.isRestartOffered).toBe(false);
     expect(state.isBotTyping).toBe(true);
+    expect(state.botActivity).toBe('processing');
   });
 });
 
@@ -229,6 +245,15 @@ describe('ChatbotWs installer', () => {
 
     expect(transport.sent).toEqual([{ event: 'generate_installer', token: 'user-token' }]);
     expect(useChatbotStore.getState().isBotTyping).toBe(true);
+    expect(useChatbotStore.getState().botActivity).toBe('generating');
+  });
+
+  it('shows processing again for the next message', async () => {
+    await ws.generateInstaller();
+    transport.receive({ event: 'bot_message', key: 'messages.loginRequired', sendEnabled: false });
+    ws.sendMessage('oi');
+
+    expect(useChatbotStore.getState().botActivity).toBe('processing');
   });
 
   it('sends messages with the user token, in order', async () => {
@@ -353,3 +378,61 @@ describe('ChatbotWs blocked terms', () => {
     expect(state.isBotTyping).toBe(true);
   });
 });
+
+describe('translateBotText noted params', () => {
+  it('shows what the bot read from free text, one line each', () => {
+    const text = translateBotText({
+      key: 'messages.noted',
+      params: { noted: { os: 'iOS', privateDnsHost: 'dns.google', blockRawIp: false, blockedTerms: [] } },
+    });
+    expect(text).toBe('Anotei:\n  Sistema: iOS\n  DNS privado: dns.google\n  Bloquear IP direto: não\n  Palavras bloqueadas: nenhuma');
+  });
+});
+
+describe('ChatbotWs saved params', () => {
+  const PARAMS = {
+    os: 'Android', version: '14', privateDns: false, privateDnsHost: null, allowedApps: ['com.whatsapp'],
+    installOs: 'Linux', appVersion: '1.0.0', blockRawIp: false, blockedTerms: [],
+  };
+  let transport: FakeTransport;
+  let ws: ChatbotWs;
+
+  beforeEach(() => {
+    localStorage.clear();
+    useChatbotStore.setState({ savedParams: null });
+    useChatbotStore.getState().resetChatbot();
+    transport = new FakeTransport();
+    ws = new ChatbotWs(useChatbotStore, 'ws://test', () => transport);
+    ws.connect();
+  });
+
+  it('keeps the params of a finished conversation, in the store and localStorage', () => {
+    transport.receive({ event: 'params', params: { ...PARAMS, appVersion: null } });
+    expect(localStorage.getItem('chatbot.params')).toBeNull();
+
+    transport.receive({ event: 'bot_message', key: 'messages.done', sendEnabled: false });
+    transport.receive({ event: 'offer_restart' });
+    transport.receive({ event: 'params', params: PARAMS });
+
+    expect(JSON.parse(localStorage.getItem('chatbot.params')!)).toEqual(PARAMS);
+    expect(useChatbotStore.getState().savedParams).toEqual(PARAMS);
+    // A new conversation keeps them, to offer them again.
+    ws.restart();
+    expect(useChatbotStore.getState().savedParams).toEqual(PARAMS);
+  });
+
+  it('sends the kept params on connecting and after a restart', () => {
+    useChatbotStore.setState({ savedParams: PARAMS });
+    transport.onopen?.({} as Event);
+    expect(transport.sent).toEqual([{ event: 'saved_params', params: PARAMS }]);
+
+    ws.restart();
+    expect(transport.sent.slice(1)).toEqual([{ event: 'restart' }, { event: 'saved_params', params: PARAMS }]);
+  });
+
+  it('sends nothing without kept params', () => {
+    transport.onopen?.({} as Event);
+    expect(transport.sent).toEqual([]);
+  });
+});
+

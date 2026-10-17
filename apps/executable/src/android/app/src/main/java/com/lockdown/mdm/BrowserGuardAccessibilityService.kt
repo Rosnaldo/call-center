@@ -62,6 +62,15 @@ class BrowserGuardAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         val packageName = event.packageName?.toString() ?: return
         if (packageName !in MonitoredBrowsers.PACKAGES) return
+        // TEMP debug: trace what the browser emits around a search submit.
+        run {
+            val s = event.source
+            val f = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            android.util.Log.d("BrowserGuardDbg", "${AccessibilityEvent.eventTypeToString(event.eventType)} " +
+                "src=${s?.viewIdResourceName} editable=${s?.isEditable} focused=${s?.isFocused} text=${s?.text} " +
+                "evText=${event.text} before=${event.beforeText} from=${event.fromIndex} rm=${event.removedCount} add=${event.addedCount} " +
+                "inputFocus=${f?.viewIdResourceName}/${f?.isEditable} bar=${readAddressBar(packageName)} pending=${pendingTerm[packageName]}")
+        }
 
         val rawIp = blockRawIpEnabled()
         val isTyping = event.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED ||

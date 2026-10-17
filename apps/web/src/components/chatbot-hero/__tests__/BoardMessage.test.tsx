@@ -71,6 +71,51 @@ describe('BoardMessage restart button', () => {
   });
 });
 
+describe('BoardMessage summary button', () => {
+  beforeEach(() => act(() => useChatbotStore.getState().resetChatbot()));
+
+  it('opens the kept configuration from the offer to reuse it', () => {
+    const saved = {
+      os: 'iOS', version: '17.4', privateDns: false, privateDnsHost: null, allowedApps: [],
+      installOs: 'macOS', appVersion: '1.0.0', blockRawIp: true, blockedTerms: [],
+    };
+    render(<BoardMessage />);
+    act(() => {
+      useChatbotStore.getState().addMessage({ autor: 'bot', message: 'Encontrei', text: { key: 'messages.askReuse', params: { saved } } });
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Resumo/ }));
+
+    expect(useChatbotStore.getState()).toMatchObject({ isSummaryModalOpen: true, summaryParams: saved });
+    act(() => useChatbotStore.getState().closeSummaryModal());
+    expect(useChatbotStore.getState().summaryParams).toBeNull();
+  });
+
+  it('keeps the question after it in the same bot group', () => {
+    render(<BoardMessage />);
+    act(() => {
+      useChatbotStore.getState().addMessage({ autor: 'bot', message: 'Confira o resumo', text: { key: 'messages.confirm' } });
+      useChatbotStore.getState().addMessage({ autor: 'bot', message: 'Os dados coletados estão corretos?', text: { key: 'messages.confirmQuestion' } });
+    });
+
+    expect(screen.getAllByText('bot')).toHaveLength(1);
+  });
+
+  it('opens the summary from the confirmation', () => {
+    render(<BoardMessage />);
+    act(() => {
+      useChatbotStore.getState().addMessage({ autor: 'bot', message: 'Dados coletados', text: { key: 'messages.confirm' } });
+      useChatbotStore.getState().addMessage({ autor: 'bot', message: 'Você usa DNS privado?', text: { key: 'messages.askDns' } });
+    });
+
+    const buttons = screen.getAllByRole('button', { name: /Resumo/ });
+    expect(buttons).toHaveLength(1);
+    fireEvent.click(buttons[0]);
+
+    expect(useChatbotStore.getState().isSummaryModalOpen).toBe(true);
+  });
+});
+
 describe('BoardMessage choice buttons', () => {
   beforeEach(() => act(() => useChatbotStore.getState().resetChatbot()));
 

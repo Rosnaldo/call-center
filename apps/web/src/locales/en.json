@@ -105,7 +105,8 @@
     "send": "Send",
     "you": "you",
     "bot": "bot",
-    "typing": "generating...",
+    "processing": "processing...",
+    "generating": "generating...",
     "selectApps": "Select apps",
     "generateInstaller": "Generate installer",
     "downloadInstaller": "Download installer",
@@ -113,7 +114,9 @@
     "summaryButton": "Summary",
     "messages": {
       "askStart": "Set up the device owner environment on your phone.",
-      "intro": "You will need:\n1. Notebook\n2. USB cable\n3. Mobile phone\n4. Generate the installer",
+      "intro": "You will need:\n1. A notebook\n2. A USB cable\n3. Your phone (where Device Owner will be installed)\n4. Format the phone\n5. Generate the installer",
+      "askReuse": "There is a previous configuration saved in this browser.",
+      "askReuseQuestion": "Do you want to reuse it?",
       "askOs": "Which mobile operating system do you use?",
       "askVersion": "Which {{os}} version? (e.g. {{example}})",
       "askDns": "Are you using a private DNS?",
@@ -125,8 +128,9 @@
       "collectBlockedTerms": "Use the button below to add the forbidden words.",
       "noTermList": "There's no word list to fill in right now.",
       "askAppVersion": "What version is this configuration? It will show in the phone app. Use the default or type another (e.g. 1.2.0).",
-      "confirm": "Please confirm:\n{{summary}}\nIs this correct?",
-      "done": "Done! Collected params:\n{{summary}}",
+      "confirm": "Check the summary before proceeding.",
+      "confirmQuestion": "Is the collected data correct?",
+      "done": "Generate the phone installer to set up the Device Owner environment.\nRemember to format the phone before running the installer.",
       "finished": "This conversation is over. Use \"Reset\" to start another one.",
       "noAppList": "There is no app list to choose right now.",
       "installerReady": "Installer ready! Click the button below to download.",
@@ -136,7 +140,8 @@
       "proceedLoginRequired": "Log in to start the setup. Without logging in, you can still learn more about the topics.",
       "loginCheckFailed": "Couldn't check your login right now. Try again.",
       "learnMore": "What would you like to know before starting?",
-      "learnMoreNext": "Want to learn about another topic or start the setup?"
+      "learnMoreNext": "Want to learn about another topic or start the setup?",
+      "noted": "Got it:\n{{noted}}"
     },
     "errors": {
       "os": "Please choose Android or iOS.",
@@ -217,6 +222,17 @@
       "rawIp": "A raw IP address is when the website is accessed directly through its numerical IP address (e.g. 102.119.217.84) rather than its domain name.",
       "schedule": "Schedules set when each app can be used, for example \"only from 3 PM to 6 PM\" or \"only on weekends\".\n\nOutside its schedule, the app stays installed but turns grey, and Android says it isn't available right now. Its notifications are blocked too until the schedule opens again.",
       "usbDebugging": "The installation runs from your computer, with the phone connected by USB cable. For that, you need to give some permissions on your mobile:\n\n1. Activate developer mode\n2. Turn on USB debugging\n3. When you plug in the cable, unlock the phone and tap \"Allow\""
+    },
+    "help": {
+      "askOs": "It's the system of the phone being set up. iPhones run iOS; other phones (Samsung, Motorola, Xiaomi, Pixel…) run Android.",
+      "askVersion": "On Android: Settings → About phone → Android version. On iPhone: Settings → General → About → iOS Version. The path may vary by manufacturer.",
+      "askDns": "To check on Android: Settings → Network & internet → Private DNS (the path may vary by manufacturer). If it says \"Off\" or \"Automatic\", you don't use one.",
+      "askDnsHost": "It's the address shown under Private DNS → \"Private DNS provider hostname\", such as dns.adguard.com or your NextDNS profile address. Enter the name only, without https://.",
+      "askAllowedApps": "They're the apps that can be used on the phone. Use the button below to search and check each one.",
+      "askBlockRawIp": "Blocking it stops a website from being opened by its IP number to get around the blocks made by domain name.",
+      "askInstallOs": "It's the system of the computer you'll run the installer on, with the phone connected by USB cable. The installer is made for that system.",
+      "askAppVersion": "It's a label for you to identify this configuration: it shows in the phone app. If you have no preference, use the default version.",
+      "confirm": "Check the data above. Answer yes to finish, no to start over, or write what you want to fix (e.g. \"the version is 15\")."
     },
     "newMessages": "New messages",
     "addBlockedTerms": "Add words",
