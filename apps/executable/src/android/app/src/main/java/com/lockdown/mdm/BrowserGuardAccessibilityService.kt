@@ -1,6 +1,8 @@
 package com.lockdown.mdm
 
 import android.accessibilityservice.AccessibilityService
+import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -28,13 +30,14 @@ import android.view.accessibility.AccessibilityNodeInfo
  *
  * Deliberately does NOT try to close just the current tab: there is no reliable, version- and
  * browser-independent way to do that through the Accessibility API (it would mean simulating
- * browser-specific UI gestures that break on every UI redesign). Instead the browser first goes
- * back (GLOBAL_ACTION_BACK) - so the tab it restores on reopen is the previous page, not the
- * flagged one - and then the whole browser is force-stopped: sent to the background
- * (GLOBAL_ACTION_HOME) and then killed. Unlike a schedule
- * block (ScheduleEnforcer), it is NOT suspended, so the user can reopen the browser right away -
- * the tradeoff is that this tears down the whole browser (all tabs), not just the flagged one,
- * and only aborts the current session rather than preventing a retry.
+ * browser-specific UI gestures that break on every UI redesign). Instead the flagged tab is
+ * blanked: about:blank is typed into its address bar and submitted, so the tab the browser
+ * restores on reopen is blank, not the flagged page (killing the process doesn't close tabs:
+ * browsers restore them all). A browser whose address bar can't be found or submitted goes back
+ * (GLOBAL_ACTION_BACK) instead. Then the browser is sent to the background (GLOBAL_ACTION_HOME)
+ * and killed. Unlike a schedule block (ScheduleEnforcer), it is NOT suspended, so the user can
+ * reopen the browser right away - the tradeoff is that this only aborts the current session
+ * rather than preventing a retry.
  *
  * Never reads the loaded page's own content, so a webpage that happens to mention a denied
  * term or an IP does not trigger this.
@@ -44,12 +47,13 @@ class BrowserGuardAccessibilityService : AccessibilityService() {
     // Last address-bar read per browser, for the throttle.
     private val lastAddressBarCheck = mutableMapOf<String, Long>()
 
-    // Per browser: whether the address bar currently holds a denied term (set while typing,
-    // consumed on submit), the query text at the moment the term was seen (to tell a submit from
-    // continued typing), and whether an editable field was focused at the last event (to detect
-    // the submit, i.e. the transition from "editing the address bar" to "not").
+    // Per browser: whether a typed field (the address bar, or a search box in the page) holds a
+    // denied term (set while typing, consumed on submit), the address bar's text at the moment
+    // the term was seen (to tell a submit, which changes it, from continued typing), and whether
+    // an editable field was focused at the last event (to detect the submit, i.e. the transition
+    // from "editing the address bar" to "not").
     private val pendingTerm = mutableMapOf<String, Boolean>()
-    private val pendingQuery = mutableMapOf<String, String>()
+    private val pendingBar = mutableMapOf<String, String>()
     private val inputFocused = mutableMapOf<String, Boolean>()
 
     // Browsers with a kill in flight, so events arriving during the back/home delays (the
@@ -95,7 +99,7 @@ class BrowserGuardAccessibilityService : AccessibilityService() {
                 val query = source.text.toString()
                 if (isDeniedTerm(query)) {
                     pendingTerm[packageName] = true
-                    pendingQuery[packageName] = query
+                    readAddressBar(packageName)?.let { pendingBar[packageName] = it } ?: pendingBar.remove(packageName)
                 } else {
                     pendingTerm[packageName] = false
                 }
@@ -109,52 +113,101 @@ class BrowserGuardAccessibilityService : AccessibilityService() {
         //     focus on submit, but NOT Chrome: its omnibox is a persistently editable field that
         //     keeps accessibility input-focus after a search loads, so this transition never fires
         //     there (and killBrowser was never reached - the bug this guards against).
-        //   - A window-state change (results page / next page loading, keyboard dismissed on
-        //     submit) where the address bar no longer shows the query we flagged. Typing emits
-        //     TYPE_VIEW_TEXT_CHANGED / content-changed, not state-changed, and while the user keeps
-        //     editing the bar still holds the query - so this still does not kill mid-word. Once a
-        //     search commits the bar shows the domain (e.g. google.com), hiding the query, so a
-        //     changed/absent bar text at a state change means the search was submitted.
+        //   - The address bar no longer shows what it did when the term was seen: the search
+        //     loaded. Typed in the address bar, it held the query, and a committed search shows the
+        //     results' address instead (e.g. google.com/search?q=..., or just the domain). Typed in
+        //     a search box in the page (google.com's own), it held the page's address, which the
+        //     results page changes - and that box never takes input focus nor changes the window,
+        //     so this is its only signal. While the user keeps typing, the bar holds the same text
+        //     (each keystroke in the address bar records it again, above), so this does not kill
+        //     mid-word. Checked on content changes too: a search in the page loads in place.
         val editableFocused = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.isEditable == true
         val wasEditableFocused = inputFocused[packageName] ?: false
         inputFocused[packageName] = editableFocused
 
         if (pendingTerm[packageName] == true) {
             val submittedViaFocus = wasEditableFocused && !editableFocused
-            val submittedViaWindow = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
-                readAddressBar(packageName) != pendingQuery[packageName]
-            if (submittedViaFocus || submittedViaWindow) {
+            val isWindowChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+                event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+            val flaggedBar = pendingBar[packageName]
+            val submittedViaAddressBar = isWindowChange && flaggedBar != null &&
+                readAddressBar(packageName)?.let { it != flaggedBar } == true
+            if (submittedViaFocus || submittedViaAddressBar) {
                 pendingTerm[packageName] = false
-                pendingQuery.remove(packageName)
+                pendingBar.remove(packageName)
                 killBrowser(packageName)
             }
         }
     }
 
-    // Goes back one page (so the browser's saved tab state no longer points at the flagged page),
-    // then sends the browser to the background (HOME) and force-stops it. Each step is delayed:
-    // the browser needs time to navigate back and persist its tabs, killBackgroundProcesses is a
-    // no-op on a process that is still foreground, and HOME needs a moment to background the app.
+    // Blanks the flagged tab (see blankTab), then sends the browser to the background (HOME) and
+    // force-stops it. Each step is delayed: the browser needs time to load the blank page and
+    // persist its tabs, killBackgroundProcesses is a no-op on a process that is still foreground,
+    // and HOME needs a moment to background the app.
     private fun killBrowser(packageName: String) {
         if (!killing.add(packageName)) return
-        performGlobalAction(GLOBAL_ACTION_BACK)
-        handler.postDelayed({
-            performGlobalAction(GLOBAL_ACTION_HOME)
+        blankTab(packageName) { blanked ->
+            // Not blanked: at least go back, so the restored tab is the previous page.
+            if (!blanked) performGlobalAction(GLOBAL_ACTION_BACK)
             handler.postDelayed({
-                PolicyEnforcer.killAppNow(applicationContext, packageName)
-                killing.remove(packageName)
-            }, KILL_DELAY_MS)
-        }, BACK_DELAY_MS)
+                performGlobalAction(GLOBAL_ACTION_HOME)
+                handler.postDelayed({
+                    PolicyEnforcer.killAppNow(applicationContext, packageName)
+                    killing.remove(packageName)
+                }, KILL_DELAY_MS)
+            }, if (blanked) BLANK_LOAD_DELAY_MS else BACK_DELAY_MS)
+        }
+    }
+
+    // Opens about:blank in the current tab, replacing the flagged page: focuses the address bar,
+    // types it and submits it - with the IME's enter on Android 11+, else by clicking the
+    // browser's own "about:blank" suggestion under the bar (there is no enter action before
+    // API 30). Calls `done` with whether it was submitted.
+    private fun blankTab(packageName: String, done: (Boolean) -> Unit) {
+        val bar = findAddressBar(packageName) ?: return done(false)
+        bar.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+        handler.postDelayed({
+            // Focusing may swap the bar for an editing view (Chrome's omnibox): read it again.
+            val field = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.takeIf { it.isEditable }
+                ?: findAddressBar(packageName)
+            val args = Bundle().apply {
+                putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, BLANK_PAGE)
+            }
+            if (field == null || !field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)) return@postDelayed done(false)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                done(field.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id))
+                return@postDelayed
+            }
+            // The suggestions show up after the text changes.
+            handler.postDelayed({ done(clickBlankSuggestion()) }, SUGGESTIONS_DELAY_MS)
+        }, FOCUS_DELAY_MS)
+    }
+
+    // Clicks a suggestion reading about:blank: the first clickable node (or ancestor) of a
+    // non-editable node with that text, i.e. not the address bar itself.
+    private fun clickBlankSuggestion(): Boolean {
+        val root = rootInActiveWindow ?: return false
+        for (node in root.findAccessibilityNodeInfosByText(BLANK_PAGE)) {
+            if (node.isEditable) continue
+            var target: AccessibilityNodeInfo? = node
+            while (target != null && !target.isClickable) target = target.parent
+            if (target?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true) return true
+        }
+        return false
+    }
+
+    // The address bar's node, by view id.
+    private fun findAddressBar(packageName: String): AccessibilityNodeInfo? {
+        val ids = MonitoredBrowsers.URL_BAR_IDS[packageName] ?: return null
+        val root = rootInActiveWindow ?: return null
+        return ids.firstNotNullOfOrNull { id -> root.findAccessibilityNodeInfosByViewId("$packageName:id/$id").firstOrNull() }
     }
 
     // Raw-IP blocking is on unless the chatbot config turned it off (also on for
     // configless builds).
     private fun blockRawIpEnabled(): Boolean = ProvisioningConfig.get(applicationContext)?.blockRawIp ?: true
 
-    private fun isDeniedTerm(text: String): Boolean {
-        val normalized = text.lowercase()
-        return UrlTermDenyList.deniedTerms(applicationContext).any { term -> normalized.contains(term.lowercase()) }
-    }
+    private fun isDeniedTerm(text: String): Boolean = UrlTermDenyList.matches(applicationContext, text)
 
     private fun extractTypedText(event: AccessibilityEvent): String? {
         val source = event.source
@@ -194,8 +247,15 @@ class BrowserGuardAccessibilityService : AccessibilityService() {
 
     private companion object {
         const val ADDRESS_BAR_CHECK_MS = 500L
-        // Gap between going back and sending the browser HOME, so it navigates back and saves
-        // its tabs before being killed (otherwise it may restore the flagged page on reopen).
+        const val BLANK_PAGE = "about:blank"
+        // Gap between clicking the address bar and typing, so it is focused for editing.
+        const val FOCUS_DELAY_MS = 300L
+        // Gap between typing about:blank and clicking its suggestion, so the list shows it.
+        const val SUGGESTIONS_DELAY_MS = 500L
+        // Gap between submitting about:blank and sending the browser HOME, so it loads the blank
+        // page and saves its tabs before being killed (otherwise it restores the flagged page).
+        const val BLANK_LOAD_DELAY_MS = 800L
+        // Same, after going back instead.
         const val BACK_DELAY_MS = 400L
         // Gap between sending the browser HOME and killing it, so it is backgrounded first.
         const val KILL_DELAY_MS = 300L
