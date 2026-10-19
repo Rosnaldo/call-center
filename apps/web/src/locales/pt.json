@@ -224,7 +224,7 @@
       "close": "Fechar"
     },
     "learn": {
-      "privateDns": "DNS privado é o serviço que bloqueia uma lista de domínios e URLs indesejados.\n\nSugerimos usar o NextDNS: por padrão, ele já bloqueia uma lista de conteúdos tóxicos conhecidos, além da sua lista personalizada.",
+      "privateDns": "DNS privado é o serviço que impede o browser de acessar uma lista de domínios.\n\nSugerimos usar o NextDNS: por padrão, ele já bloqueia uma lista de conteúdos tóxicos conhecidos, além da sua lista personalizada.",
       "deviceOwner": "Device owner é o modo de gerenciamento total do Android. Ele é importante para proteger seu celular de distrações indesejadas.\n\nPara aplicar o device owner, será necessário formatar seu Android.",
       "browserGuard": "O Browser Guard é um filtro de palavras proibidas: ele bloqueia qualquer URL que contenha uma ou mais palavras definidas por você.",
       "rawIp": "Endereço IP direto é quando o site é acessado diretamente pelo seu número de IP (ex.: 102.119.217.84), em vez do nome do domínio.",

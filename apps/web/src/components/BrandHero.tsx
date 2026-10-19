@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import filterToxicSvg from '../assets/filter-toxic-links.svg';
+import deviceOwnerSvg from '../assets/device-owner.svg';
 
 export const BrandHero: React.FC = () => {
   const { t } = useTranslation();
@@ -14,13 +15,23 @@ export const BrandHero: React.FC = () => {
         </h1>
       </div>
 
-      <div className="w-full max-w-2xl mx-auto px-4 py-2">
-        <img
-          src={filterToxicSvg}
-          alt="Filter toxic links illustration"
-          className="w-full h-auto select-none pointer-events-none"
-          draggable={false}
-        />
+      <div className="w-full max-w-3xl mx-auto px-4 py-2 flex flex-col sm:flex-row items-center sm:items-stretch justify-center gap-8">
+        <div className="w-full sm:w-auto sm:flex-[3] sm:min-w-0 flex items-center p-3 bg-white border border-brand-border rounded-2xl">
+          <img
+            src={filterToxicSvg}
+            alt="Filter toxic links illustration"
+            className="w-full h-auto select-none pointer-events-none"
+            draggable={false}
+          />
+        </div>
+        <div className="w-full sm:w-auto sm:flex-[2] sm:min-w-0 flex items-center p-3 bg-white border border-brand-border rounded-2xl">
+          <img
+            src={deviceOwnerSvg}
+            alt="Device owner illustration"
+            className="w-full h-auto select-none pointer-events-none"
+            draggable={false}
+          />
+        </div>
       </div>
     </>
   );

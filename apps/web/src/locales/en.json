@@ -224,7 +224,7 @@
       "close": "Close"
     },
     "learn": {
-      "privateDns": "Private DNS is the service that blocks a list of unwanted domains and URLs.\n\nWe suggest using NextDNS: by default, it already blocks a list of known toxic content, plus your own custom list.",
+      "privateDns": "Private DNS is the service that prevents the browser from accessing a list of domains.\n\nWe suggest using NextDNS: by default, it already blocks a list of known toxic content, plus your own custom list.",
       "deviceOwner": "Device owner is Android's fully managed mode. It's important to keep your phone free of unwanted distractions.\n\nYou'll need to format your Android to apply device owner.",
       "browserGuard": "Browser Guard is a forbidden-keyword filter: it blocks any URL containing one or more terms you define.",
       "rawIp": "A raw IP address is when the website is accessed directly through its numerical IP address (e.g. 102.119.217.84) rather than its domain name.",
