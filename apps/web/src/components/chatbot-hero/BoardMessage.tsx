@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowDown, Ban, ClipboardList, Download, ListChecks, Loader2, RotateCcw } from 'lucide-react';
+import { ArrowDown, Ban, ClipboardList, Clock, Download, ListChecks, Loader2, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChatbotStore } from '../../states/stores.ts';
 import type { ChatbotChoice, ChatbotMessage } from '../../states/local/chatbot/state.ts';
@@ -48,6 +48,8 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
   const openAllowedAppsModal = useChatbotStore(s => s.openAllowedAppsModal);
   const isBlockedTermsRequested = useChatbotStore(s => s.isBlockedTermsRequested);
   const openBlockedTermsModal = useChatbotStore(s => s.openBlockedTermsModal);
+  const isAppSchedulesRequested = useChatbotStore(s => s.isAppSchedulesRequested);
+  const openAppSchedulesModal = useChatbotStore(s => s.openAppSchedulesModal);
   const isChoiceRequested = useChatbotStore(s => s.isChoiceRequested);
   const openSummaryModal = useChatbotStore(s => s.openSummaryModal);
   const isRestartOffered = useChatbotStore(s => s.isRestartOffered);
@@ -174,6 +176,18 @@ export const BoardMessage: React.FC<BoardMessageProps> = ({
               >
                 <Ban className="w-3.5 h-3.5" />
                 {t('chatbot.addBlockedTerms')}
+              </button>
+            )}
+
+            {/* Botão que abre o modal de horários dos apps enquanto o bot os espera */}
+            {msg.action === 'set_app_schedules' && isAppSchedulesRequested && (
+              <button
+                type="button"
+                onClick={openAppSchedulesModal}
+                className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#B97204] text-white font-mono-terminal text-[11px] uppercase font-bold tracking-wider cursor-pointer transition-all active:scale-[0.98] shadow-[0_3px_12px_-1px_rgba(185,114,4,0.38)]"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                {t('chatbot.setAppSchedules')}
               </button>
             )}
 

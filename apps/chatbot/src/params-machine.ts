@@ -7,6 +7,19 @@ export type InstallOs = 'Linux' | 'Windows' | 'macOS';
 export const LEARN_TOPICS = ['privateDns', 'deviceOwner', 'browserGuard', 'rawIp', 'schedule', 'usbDebugging'] as const;
 export type LearnTopic = (typeof LEARN_TOPICS)[number];
 
+// Days as the device owner app names them (ScheduleStore), Sunday first.
+export const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+export type Weekday = (typeof WEEKDAYS)[number];
+// A stretch of a day in which an app may be used: "HH:MM", start before end.
+export interface TimeRange {
+    start: string;
+    end: string;
+}
+// Per day, the ranges an app may be used in; a day left out blocks it all day.
+export type WeekSchedule = Partial<Record<Weekday, TimeRange[]>>;
+// Per allowed app id; an app left out may be used at any time.
+export type AppSchedules = Record<string, WeekSchedule>;
+
 export interface ParamsContext {
     os: MobileOs | null;
     version: string | null;
@@ -23,6 +36,10 @@ export interface ParamsContext {
     blockedTerms: string[] | null;
     // Whether the user wants blocked words (askBlockTerms); yes opens the modal.
     wantsBlockedTerms: boolean | null;
+    // When each allowed app may be used, set in the web modal; {} for none.
+    appSchedules: AppSchedules | null;
+    // Whether the user wants app schedules (askAppSchedules); yes opens the modal.
+    wantsAppSchedules: boolean | null;
     // Changes from outside the current step (fills that saved something, a
     // modal's list sent at another step), so the session asks the current step
     // again even when it didn't change.
@@ -48,12 +65,14 @@ export interface ParamsOutput {
     appVersion: string | null;
     blockRawIp: boolean | null;
     blockedTerms: string[] | null;
+    appSchedules: AppSchedules | null;
 }
 
 export type ParamsEvent =
     | { type: 'ANSWER'; value: string }
     | { type: 'ALLOWED_APPS'; apps: unknown }
     | { type: 'BLOCKED_TERMS'; terms: unknown }
+    | { type: 'APP_SCHEDULES'; schedules: unknown }
     // Fields read from free text (by the LLM), in any order; each is validated
     // by the same parser as its step's answer.
     | { type: 'FILL'; fields: FieldValues }
@@ -164,9 +183,57 @@ export const parseAppIds = (apps: unknown): string[] | null => {
     return [...new Set(apps as string[])];
 };
 
+// The schedules set in the web modal: for apps in `apps` only, each day's
+// ranges valid ("HH:MM", start before end, at most MAX_RANGES_PER_DAY, none
+// overlapping), sorted, and empty days left out. {} is valid (no app
+// restricted); null when anything is off.
+// The web grid's half-hour slots, alternated, make at most 24 ranges a day.
+export const MAX_RANGES_PER_DAY = 24;
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+    !!value && typeof value === 'object' && !Array.isArray(value);
+
+const parseRange = (range: unknown): TimeRange | null => {
+    if (!isRecord(range)) return null;
+    const { start, end } = range;
+    if (typeof start !== 'string' || typeof end !== 'string' || !TIME.test(start) || !TIME.test(end)) return null;
+    // Same-day ranges: "HH:MM" compares in order.
+    return start < end ? { start, end } : null;
+};
+
+const parseDayRanges = (ranges: unknown): TimeRange[] | null => {
+    if (!Array.isArray(ranges) || ranges.length > MAX_RANGES_PER_DAY) return null;
+    const parsed = ranges.map(parseRange);
+    if (parsed.some((range) => range === null)) return null;
+    const sorted = (parsed as TimeRange[]).sort((a, b) => a.start.localeCompare(b.start));
+    return sorted.some((range, i) => i > 0 && range.start < sorted[i - 1].end) ? null : sorted;
+};
+
+export const parseAppSchedules = (schedules: unknown, apps: string[] | null): AppSchedules | null => {
+    if (!isRecord(schedules)) return null;
+    const allowed = new Set(apps ?? []);
+    const result: AppSchedules = {};
+    for (const [app, week] of Object.entries(schedules)) {
+        if (!allowed.has(app) || !isRecord(week)) return null;
+        const days: WeekSchedule = {};
+        for (const [day, ranges] of Object.entries(week)) {
+            if (!(WEEKDAYS as readonly string[]).includes(day)) return null;
+            const parsed = parseDayRanges(ranges);
+            if (!parsed) return null;
+            if (parsed.length) days[day as Weekday] = parsed;
+        }
+        result[app] = days;
+    }
+    return result;
+};
+
+// The schedules of the apps still allowed (a schedule goes with its app).
+const schedulesOf = (schedules: AppSchedules | null, apps: string[] | null): AppSchedules | null =>
+    schedules && Object.fromEntries(Object.entries(schedules).filter(([app]) => apps?.includes(app)));
+
 // The params answered in a modal (checklist, tag input), which free text can't
 // fill but can ask to change: the session sends the modal's question again.
-export const MODAL_FIELDS = ['allowedApps', 'blockedTerms'] as const;
+export const MODAL_FIELDS = ['allowedApps', 'blockedTerms', 'appSchedules'] as const;
 export type ModalField = (typeof MODAL_FIELDS)[number];
 
 // The typed params free text can ask to change without the new value
@@ -262,6 +329,8 @@ export type CollectStep =
     | 'askDns'
     | 'askDnsHost'
     | 'askAllowedApps'
+    | 'askAppSchedules'
+    | 'collectAppSchedules'
     | 'askBlockRawIp'
     | 'askBlockTerms'
     | 'collectBlockedTerms'
@@ -276,6 +345,9 @@ export const nextStep = (context: ParamsContext): CollectStep | null => {
     if (context.privateDns === null) return 'askDns';
     if (context.privateDns && context.privateDnsHost === null) return 'askDnsHost';
     if (context.allowedApps === null) return 'askAllowedApps';
+    // No app allowed, nothing to schedule (saveAllowedApps sets {}).
+    if (context.wantsAppSchedules === null) return 'askAppSchedules';
+    if (context.appSchedules === null) return 'collectAppSchedules';
     if (context.blockRawIp === null) return 'askBlockRawIp';
     if (context.wantsBlockedTerms === null) return 'askBlockTerms';
     if (context.blockedTerms === null) return 'collectBlockedTerms';
@@ -290,10 +362,19 @@ export const savedOf = (params: unknown): ParamsOutput | null => {
     if (!params || typeof params !== 'object') return null;
     const raw = params as Record<string, unknown>;
     const fields: FieldValues = Object.fromEntries(FILLABLE_FIELDS.map((field) => [field, raw[field]]));
-    const context: ParamsContext = { ...initialContext, ...applyFields(initialContext, fields), allowedApps: parseAppIds(raw.allowedApps) };
+    const allowedApps = parseAppIds(raw.allowedApps);
+    // Kept before app schedules existed: none.
+    const appSchedules = raw.appSchedules === undefined ? {} : parseAppSchedules(raw.appSchedules, allowedApps);
+    const context: ParamsContext = {
+        ...initialContext,
+        ...applyFields(initialContext, fields),
+        allowedApps,
+        appSchedules,
+        wantsAppSchedules: appSchedules && Object.keys(appSchedules).length > 0,
+    };
     if (context.error || nextStep(context) !== null) return null;
-    const { os, version, privateDns, privateDnsHost, allowedApps, installOs, appVersion, blockRawIp, blockedTerms } = context;
-    return { os, version, privateDns, privateDnsHost, allowedApps, installOs, appVersion, blockRawIp, blockedTerms };
+    const { os, version, privateDns, privateDnsHost, installOs, appVersion, blockRawIp, blockedTerms } = context;
+    return { os, version, privateDns, privateDnsHost, allowedApps, installOs, appVersion, blockRawIp, blockedTerms, appSchedules };
 };
 
 const COLLECT_STEPS: CollectStep[] = [
@@ -302,6 +383,8 @@ const COLLECT_STEPS: CollectStep[] = [
     'askDns',
     'askDnsHost',
     'askAllowedApps',
+    'askAppSchedules',
+    'collectAppSchedules',
     'askBlockRawIp',
     'askBlockTerms',
     'collectBlockedTerms',
@@ -320,6 +403,8 @@ const initialContext: ParamsContext = {
     blockRawIp: null,
     blockedTerms: null,
     wantsBlockedTerms: null,
+    appSchedules: null,
+    wantsAppSchedules: null,
     fillCount: 0,
     learnTopic: null,
     learnCount: 0,
@@ -328,19 +413,22 @@ const initialContext: ParamsContext = {
 };
 
 // The context with every extracted param reset, except the lists picked in
-// the modals (allowed apps, blocked words), which aren't asked again. Used
+// the modals (allowed apps, their schedules, blocked words), which aren't asked again. Used
 // when the summary is rejected and on RESET (the "reset" button).
 export const resetExtraction = (context: ParamsContext): ParamsContext => ({
     ...initialContext,
     allowedApps: context.allowedApps,
     blockedTerms: context.blockedTerms,
     wantsBlockedTerms: context.blockedTerms === null ? null : context.wantsBlockedTerms,
+    appSchedules: context.appSchedules,
+    wantsAppSchedules: context.appSchedules === null ? null : context.wantsAppSchedules,
 });
 
 // Guards/actions are typed with every event, so they read payloads defensively.
 const answerOf = (event: ParamsEvent): string => (event.type === 'ANSWER' ? event.value : '');
 const appsOf = (event: ParamsEvent): unknown => (event.type === 'ALLOWED_APPS' ? event.apps : undefined);
 const termsOf = (event: ParamsEvent): unknown => (event.type === 'BLOCKED_TERMS' ? event.terms : undefined);
+const schedulesEventOf = (event: ParamsEvent): unknown => (event.type === 'APP_SCHEDULES' ? event.schedules : undefined);
 const fieldsOf = (event: ParamsEvent): FieldValues => (event.type === 'FILL' ? event.fields : {});
 const savedParamsOf = (event: ParamsEvent): unknown => (event.type === 'LOCALSTORAGE' ? event.params : undefined);
 
@@ -366,6 +454,7 @@ export const paramsMachine = setup({
         isValidAppVersion: ({ event }) => parseAppVersion(answerOf(event)) !== null,
         isValidAppIds: ({ event }) => parseAppIds(appsOf(event)) !== null,
         isValidBlockedTerms: ({ event }) => parseBlockedTermsList(termsOf(event)) !== null,
+        isValidAppSchedules: ({ context, event }) => parseAppSchedules(schedulesEventOf(event), context.allowedApps) !== null,
         isYes: ({ event }) => parseYesNo(answerOf(event)) === true,
         isNo: ({ event }) => parseYesNo(answerOf(event)) === false,
         isProceed: ({ event }) => isProceedAnswer(answerOf(event)),
@@ -378,11 +467,24 @@ export const paramsMachine = setup({
         saveVersion: assign({ version: ({ event }) => parseVersion(answerOf(event)), error: null }),
         saveDns: assign({ privateDns: ({ event }) => parseYesNo(answerOf(event)), privateDnsHost: null, error: null }),
         saveDnsHost: assign({ privateDnsHost: ({ event }) => parseHostname(answerOf(event)), error: null }),
-        saveAllowedApps: assign({
-            allowedApps: ({ event }) => parseAppIds(appsOf(event)),
-            fillCount: ({ context }) => context.fillCount + 1,
-            error: null,
+        // A schedule goes with its app; with no app allowed, there's nothing to schedule.
+        saveAllowedApps: assign(({ context, event }) => {
+            const allowedApps = parseAppIds(appsOf(event));
+            const empty = !allowedApps?.length;
+            return {
+                allowedApps,
+                appSchedules: empty ? {} : schedulesOf(context.appSchedules, allowedApps),
+                wantsAppSchedules: empty ? false : context.wantsAppSchedules,
+                fillCount: context.fillCount + 1,
+                error: null,
+            };
         }),
+        saveAppSchedules: assign(({ context, event }) => {
+            const appSchedules = parseAppSchedules(schedulesEventOf(event), context.allowedApps);
+            return { appSchedules, wantsAppSchedules: !!appSchedules && Object.keys(appSchedules).length > 0, fillCount: context.fillCount + 1, error: null };
+        }),
+        wantAppSchedules: assign({ wantsAppSchedules: true, error: null }),
+        saveNoAppSchedules: assign({ wantsAppSchedules: false, appSchedules: () => ({}), error: null }),
         saveInstallOs: assign({ installOs: ({ event }) => parseInstallOs(answerOf(event)), error: null }),
         saveAppVersion: assign({ appVersion: ({ event }) => parseAppVersion(answerOf(event)), error: null }),
         saveBlockRawIp: assign({ blockRawIp: ({ event }) => parseYesNo(answerOf(event)), error: null }),
@@ -407,6 +509,7 @@ export const paramsMachine = setup({
         reuseSaved: assign(({ context }) => ({
             ...context.saved!,
             wantsBlockedTerms: context.saved!.blockedTerms!.length > 0,
+            wantsAppSchedules: Object.keys(context.saved!.appSchedules!).length > 0,
             error: null,
         })),
         resetExtraction: assign(({ context }) => resetExtraction(context)),
@@ -421,6 +524,8 @@ export const paramsMachine = setup({
         rejectAppIds: assign({ error: 'errors.appIds' }),
         rejectBlockedTerms: assign({ error: 'errors.blockedTerms' }),
         rejectTypedTerms: assign({ error: 'errors.typedTerms' }),
+        rejectAppSchedules: assign({ error: 'errors.appSchedules' }),
+        rejectTypedSchedules: assign({ error: 'errors.typedSchedules' }),
         // The list comes from the web app's checklist, not from typed text.
         rejectTypedApps: assign({ error: 'errors.typedApps' }),
     },
@@ -493,6 +598,10 @@ export const paramsMachine = setup({
                     { guard: 'isValidBlockedTerms', target: '.route', actions: 'saveBlockedTerms' },
                     { actions: 'rejectBlockedTerms' },
                 ],
+                APP_SCHEDULES: [
+                    { guard: 'isValidAppSchedules', target: '.route', actions: 'saveAppSchedules' },
+                    { actions: 'rejectAppSchedules' },
+                ],
             },
             states: {
                 route: {
@@ -532,6 +641,22 @@ export const paramsMachine = setup({
                             { guard: 'isValidHostname', target: 'route', actions: 'saveDnsHost' },
                             { actions: 'rejectHostname' },
                         ],
+                    },
+                },
+                // Yes opens the web modal (collectAppSchedules); no means no restriction.
+                askAppSchedules: {
+                    on: {
+                        ANSWER: [
+                            { guard: 'isYes', target: 'route', actions: 'wantAppSchedules' },
+                            { guard: 'isNo', target: 'route', actions: 'saveNoAppSchedules' },
+                            { actions: 'rejectYesNo' },
+                        ],
+                    },
+                },
+                // The schedules come from the web modal (APP_SCHEDULES), not typed text.
+                collectAppSchedules: {
+                    on: {
+                        ANSWER: { actions: 'rejectTypedSchedules' },
                     },
                 },
                 // The list comes from the web checklist (ALLOWED_APPS), not typed text.
@@ -602,6 +727,10 @@ export const paramsMachine = setup({
                     { guard: 'isValidBlockedTerms', target: 'collecting', actions: 'saveBlockedTerms' },
                     { actions: 'rejectBlockedTerms' },
                 ],
+                APP_SCHEDULES: [
+                    { guard: 'isValidAppSchedules', target: 'collecting', actions: 'saveAppSchedules' },
+                    { actions: 'rejectAppSchedules' },
+                ],
             },
         },
         done: {
@@ -618,6 +747,7 @@ export const paramsMachine = setup({
         appVersion: context.appVersion,
         blockRawIp: context.blockRawIp,
         blockedTerms: context.blockedTerms,
+        appSchedules: context.appSchedules,
     }),
 });
 
@@ -631,6 +761,8 @@ export type PromptState =
     | 'askDns'
     | 'askDnsHost'
     | 'askAllowedApps'
+    | 'askAppSchedules'
+    | 'collectAppSchedules'
     | 'askBlockRawIp'
     | 'askBlockTerms'
     | 'collectBlockedTerms'
@@ -667,6 +799,7 @@ export const isStepAnswer = (step: PromptState, text: string): boolean => {
         case 'askDns':
         case 'askBlockRawIp':
         case 'askBlockTerms':
+        case 'askAppSchedules':
         case 'confirm':
             return parseYesNo(text) !== null;
         default:

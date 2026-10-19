@@ -1,7 +1,13 @@
 import type { ChatbotParams } from '../chatbot-params/state.ts';
 
 // A button shown under a bot message.
-export type ChatbotMessageAction = 'select_allowed_apps' | 'add_blocked_terms' | 'choice' | 'restart' | 'download_installer';
+export type ChatbotMessageAction =
+  | 'select_allowed_apps'
+  | 'add_blocked_terms'
+  | 'set_app_schedules'
+  | 'choice'
+  | 'restart'
+  | 'download_installer';
 
 // A text from the bot: an i18n key under `chatbot.` and its params.
 export interface BotText {
@@ -60,6 +66,10 @@ export interface ChatbotState {
   // bot message asking for them shows a button that opens the modal.
   isBlockedTermsRequested: boolean;
   isBlockedTermsModalOpen: boolean;
+  // Set by the bot's `open_app_schedules` event until the schedules are sent;
+  // the bot message asking for them shows a button that opens the modal.
+  isAppSchedulesRequested: boolean;
+  isAppSchedulesModalOpen: boolean;
   // Set by the bot's `ask_choice` ws event until the user answers; the bot
   // question shows a button per choice.
   isChoiceRequested: boolean;
@@ -90,6 +100,8 @@ export const initialChatbotState: ChatbotState = {
   isAllowedAppsModalOpen: false,
   isBlockedTermsRequested: false,
   isBlockedTermsModalOpen: false,
+  isAppSchedulesRequested: false,
+  isAppSchedulesModalOpen: false,
   isChoiceRequested: false,
   isRestartOffered: false,
   isSendEnabled: false,

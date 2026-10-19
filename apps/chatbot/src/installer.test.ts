@@ -6,11 +6,12 @@ const params = {
     version: '14',
     privateDns: false,
     privateDnsHost: null,
-    allowedApps: [],
+    allowedApps: ['com.whatsapp'],
     installOs: 'macOS' as const,
     appVersion: '1.0.0',
     blockRawIp: true,
     blockedTerms: ['semi'],
+    appSchedules: { 'com.whatsapp': { mon: [{ start: '08:00', end: '12:00' }] } },
 };
 
 const getToken = async () => 'service-token';
@@ -33,7 +34,16 @@ describe('createInstallerClient', () => {
         expect((init.headers as Record<string, string>).Authorization).toBe('Bearer service-token');
         expect(JSON.parse(init.body as string)).toEqual({
             platform: 'macos',
-            config: { os: 'Android', version: '14', privateDnsHost: null, allowedApps: [], appVersion: '1.0.0', blockRawIp: true, blockedTerms: ['semi'] },
+            config: {
+                os: 'Android',
+                version: '14',
+                privateDnsHost: null,
+                allowedApps: ['com.whatsapp'],
+                appVersion: '1.0.0',
+                blockRawIp: true,
+                blockedTerms: ['semi'],
+                appSchedules: { 'com.whatsapp': { mon: [{ start: '08:00', end: '12:00' }] } },
+            },
         });
     });
 

@@ -27,10 +27,17 @@ describe('ChatSession allowed apps', () => {
         ]);
     });
 
-    it('asks about raw IPs once the apps are picked', () => {
+    it('asks about app schedules once the apps are picked, then raw IPs', () => {
         const { session } = atAllowedApps();
         const [reply] = session.selectAllowedApps(['com.whatsapp']);
-        expect(reply).toEqual({ event: 'bot_message', key: 'messages.askBlockRawIp', sendEnabled: false });
+        expect(reply).toEqual({ event: 'bot_message', key: 'messages.askAppSchedules', sendEnabled: false });
+        expect(session.handle('no')[0]).toEqual({ event: 'bot_message', key: 'messages.askBlockRawIp', sendEnabled: false });
+    });
+
+    it('skips app schedules when no app is allowed', () => {
+        const { session } = atAllowedApps();
+        expect(session.selectAllowedApps([])[0]).toMatchObject({ key: 'messages.askBlockRawIp' });
+        expect(session.params().appSchedules).toEqual({});
     });
 
     it('ignores a list outside the allowed apps step', () => {
@@ -111,7 +118,8 @@ describe('ChatSession choice buttons', () => {
 
     it('asks raw-IP, then whether to add words, and opens the modal on yes', () => {
         const { session } = atAllowedApps();
-        expect(session.selectAllowedApps(['com.whatsapp'])).toEqual([
+        session.selectAllowedApps(['com.whatsapp']);
+        expect(session.handle('no')).toEqual([
             { event: 'bot_message', key: 'messages.askBlockRawIp', sendEnabled: false },
             YES_NO,
         ]);
@@ -132,6 +140,7 @@ describe('ChatSession choice buttons', () => {
     it('skips the modal and stores no words when the user declines', () => {
         const { session } = atAllowedApps();
         session.selectAllowedApps(['com.whatsapp']);
+        session.handle('no'); // no app schedules
         session.handle('no'); // raw IP
         const [reply] = session.handle('no'); // don't add words
         expect(reply).toEqual({ event: 'bot_message', key: 'messages.askInstallOs', sendEnabled: false });
@@ -141,6 +150,7 @@ describe('ChatSession choice buttons', () => {
     it('offers the USB install OS options', () => {
         const { session } = atAllowedApps();
         session.selectAllowedApps(['com.whatsapp']);
+        session.handle('no'); // no app schedules
         session.handle('no');
         expect(session.handle('no')[1]).toEqual({
             event: 'ask_choice',
@@ -156,6 +166,7 @@ describe('ChatSession choice buttons', () => {
         const atVersion = () => {
             const { session } = atAllowedApps();
             session.selectAllowedApps(['com.whatsapp']);
+            session.handle('no'); // no app schedules
             session.handle('no');
             session.handle('no');
             return { session, replies: session.handle('linux') };
@@ -179,6 +190,7 @@ describe('ChatSession choice buttons', () => {
     it('shows them on the confirmation', () => {
         const { session } = atAllowedApps();
         session.selectAllowedApps(['com.whatsapp']);
+        session.handle('no'); // no app schedules
         session.handle('no');
         session.handle('no');
         session.handle('linux');
@@ -202,6 +214,7 @@ describe('ChatSession finish', () => {
     const finished = () => {
         const { session } = atAllowedApps();
         session.selectAllowedApps(['com.whatsapp']);
+        session.handle('no'); // no app schedules
         session.handle('no');
         session.handle('no');
         session.handle('mac');
@@ -238,6 +251,7 @@ describe('ChatSession params', () => {
         appVersion: null,
         blockRawIp: null,
         blockedTerms: null,
+        appSchedules: null,
     };
 
     it('starts empty', () => {
@@ -249,7 +263,8 @@ describe('ChatSession params', () => {
     it('has the answers given so far', () => {
         const { session } = atAllowedApps();
         session.selectAllowedApps(['com.whatsapp']);
-        expect(session.params()).toEqual({ ...empty, os: 'Android', version: '14', privateDns: false, allowedApps: ['com.whatsapp'] });
+        session.handle('no'); // no app schedules
+        expect(session.params()).toEqual({ ...empty, os: 'Android', version: '14', privateDns: false, allowedApps: ['com.whatsapp'], appSchedules: {} });
     });
 
     it('keeps them once finished and resets them on restart, except the apps and words', () => {
@@ -262,7 +277,7 @@ describe('ChatSession params', () => {
         session.handle('yes');
         expect(session.params()).toMatchObject({ installOs: 'macOS', appVersion: '2.0', blockRawIp: false, blockedTerms: [] });
         session.start();
-        expect(session.params()).toEqual({ ...empty, allowedApps: [], blockedTerms: [] });
+        expect(session.params()).toEqual({ ...empty, allowedApps: [], blockedTerms: [], appSchedules: {} });
     });
 });
 
@@ -291,8 +306,9 @@ describe('ChatSession send state', () => {
         const { replies } = atAllowedApps();
         expect(replies[0]).toMatchObject({ sendEnabled: false });
         const { session } = atAllowedApps();
-        // Raw-IP is a button step (disabled); blocked terms and version are typed.
-        expect(session.selectAllowedApps(['com.whatsapp'])[0]).toMatchObject({ key: 'messages.askBlockRawIp', sendEnabled: false });
+        // App schedules and raw-IP are button steps (disabled); blocked terms and version are typed.
+        expect(session.selectAllowedApps(['com.whatsapp'])[0]).toMatchObject({ key: 'messages.askAppSchedules', sendEnabled: false });
+        expect(session.handle('no')[0]).toMatchObject({ key: 'messages.askBlockRawIp', sendEnabled: false });
         expect(session.handle('no')[0]).toMatchObject({ key: 'messages.askBlockTerms', sendEnabled: false });
         session.handle('no');
         expect(session.handle('mac')[0]).toMatchObject({ key: 'messages.askAppVersion', sendEnabled: true });
@@ -310,6 +326,7 @@ describe('ChatSession installer', () => {
         session.start();
         for (const answer of ['proceed', 'proceed', '1', '14', 'yes', 'dns.google']) session.handle(answer);
         session.selectAllowedApps(['com.whatsapp']);
+        session.handle('no'); // no app schedules
         session.handle('yes');
         session.handle('yes');
         session.selectBlockedTerms(['semi']);
@@ -335,6 +352,7 @@ describe('ChatSession installer', () => {
             appVersion: '1.2.3',
             blockRawIp: true,
             blockedTerms: ['semi'],
+            appSchedules: {},
         });
     });
 
@@ -646,6 +664,7 @@ describe('ChatSession saved configuration', () => {
         appVersion: '1.0.0',
         blockRawIp: false,
         blockedTerms: [],
+        appSchedules: {},
     };
     const YES_NO = { event: 'ask_choice', choices: [{ key: 'choices.yes', value: 'yes' }, { key: 'choices.no', value: 'no' }] };
 
@@ -693,6 +712,7 @@ describe('ChatSession asking for a modal\'s list again (LLM)', () => {
         session.start();
         for (const text of ['proceed', 'proceed', 'android', '14', 'no']) session.handle(text);
         session.selectAllowedApps(['com.whatsapp']);
+        session.handle('no'); // no app schedules
         for (const text of ['no', 'no', 'linux', '1.0']) session.handle(text);
     };
 
@@ -755,6 +775,7 @@ describe('ChatSession asking a typed param\'s question again (LLM)', () => {
         session.start();
         for (const text of ['proceed', 'proceed', 'android', '14', 'no']) session.handle(text);
         session.selectAllowedApps(['com.whatsapp']);
+        session.handle('no'); // no app schedules
         for (const text of ['no', 'no', 'linux', '1.0']) session.handle(text);
     };
 
@@ -789,6 +810,7 @@ describe('ChatSession when the LLM fails', () => {
         session.start();
         for (const text of ['proceed', 'proceed', 'android', '14', 'no']) session.handle(text);
         session.selectAllowedApps(['com.whatsapp']);
+        session.handle('no'); // no app schedules
         for (const text of ['no', 'no', 'linux', '1.0']) session.handle(text);
         vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -802,6 +824,7 @@ describe('ChatSession changing params once finished (LLM)', () => {
         session.start();
         for (const text of ['proceed', 'proceed', 'android', '14', 'no']) session.handle(text);
         session.selectAllowedApps(['com.whatsapp']);
+        session.handle('no'); // no app schedules
         for (const text of ['no', 'no', 'linux', '1.0', 'yes']) session.handle(text);
         return session;
     };
@@ -884,6 +907,7 @@ describe('ChatSession resetting the extracted params', () => {
         session.start();
         for (const text of ['proceed', 'proceed', 'android', '14', 'yes', 'dns.adguard.com']) session.handle(text);
         session.selectAllowedApps(['com.whatsapp']);
+        session.handle('no'); // no app schedules
         session.handle('no');
         session.handle('yes');
         session.selectBlockedTerms(['bet']);
@@ -900,6 +924,7 @@ describe('ChatSession resetting the extracted params', () => {
         blockRawIp: null,
         allowedApps: ['com.whatsapp'],
         blockedTerms: ['bet'],
+        appSchedules: {},
     };
 
     it('keeps only the apps and words when the summary is rejected, without asking them again', () => {
@@ -922,5 +947,56 @@ describe('ChatSession resetting the extracted params', () => {
         const session = atConfirm();
         session.start();
         expect(session.params()).toEqual(RESET);
+    });
+});
+
+describe('ChatSession app schedules', () => {
+    const atSchedules = () => {
+        const session = new ChatSession();
+        session.start();
+        for (const text of ['proceed', 'proceed', 'android', '14', 'no']) session.handle(text);
+        session.selectAllowedApps(['com.whatsapp']);
+        return session;
+    };
+    const MON = { mon: [{ start: '08:00', end: '12:00' }] };
+
+    it('opens the modal on yes and takes the schedules from it', () => {
+        const session = atSchedules();
+        expect(session.handle('yes')).toEqual([
+            { event: 'bot_message', key: 'messages.collectAppSchedules', sendEnabled: false },
+            { event: 'open_app_schedules' },
+        ]);
+        expect(session.isPickingAppSchedules()).toBe(true);
+        expect(session.selectAppSchedules({ 'com.whatsapp': MON })[0]).toMatchObject({ key: 'messages.askBlockRawIp' });
+        expect(session.params().appSchedules).toEqual({ 'com.whatsapp': MON });
+    });
+
+    it('says what is wrong with invalid schedules and asks again', () => {
+        const session = atSchedules();
+        session.handle('yes');
+        expect(session.selectAppSchedules({ 'com.other': MON })).toEqual([
+            { event: 'bot_message', key: 'errors.appSchedules', sendEnabled: false },
+            { event: 'open_app_schedules' },
+        ]);
+    });
+
+    it('ignores schedules outside their step', () => {
+        const session = new ChatSession();
+        session.start();
+        expect(session.selectAppSchedules({})).toEqual([{ event: 'bot_message', key: 'messages.noScheduleList', sendEnabled: false }]);
+    });
+
+    it('asks for them again when the LLM reads a request to change them', async () => {
+        const session = new ChatSession(undefined, undefined, async () => ({ intent: 'flow', fields: {}, flow: 'appSchedules' }));
+        session.start();
+        for (const text of ['proceed', 'proceed', 'android', '14', 'no']) session.handle(text);
+        session.selectAllowedApps(['com.whatsapp']);
+        for (const text of ['no', 'no', 'no', 'linux', '1.0']) session.handle(text);
+
+        expect(await session.answer('quero mudar os horários do whatsapp')).toEqual([
+            { event: 'bot_message', key: 'messages.collectAppSchedules', sendEnabled: true },
+            { event: 'open_app_schedules' },
+        ]);
+        expect(session.selectAppSchedules({ 'com.whatsapp': MON })[0]).toMatchObject({ key: 'messages.confirm' });
     });
 });

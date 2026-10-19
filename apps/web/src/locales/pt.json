@@ -141,7 +141,10 @@
       "loginCheckFailed": "Não foi possível verificar seu login agora. Tente novamente.",
       "learnMore": "Sobre o que você quer saber antes de começar?",
       "learnMoreNext": "Quer saber sobre outro tema ou começar a configuração?",
-      "noted": "Anotei:\n{{noted}}"
+      "noted": "Anotei:\n{{noted}}",
+      "askAppSchedules": "Quer limitar os dias e horários em que algum dos apps permitidos pode ser usado?",
+      "collectAppSchedules": "Use o botão abaixo para definir os dias e horários de cada app.",
+      "noScheduleList": "Não há horários para preencher agora."
     },
     "errors": {
       "os": "Escolha Android ou iOS.",
@@ -155,7 +158,9 @@
       "proceed": "Use o botão \"Prosseguir\" para continuar.",
       "learnMore": "Escolha um tema ou \"Começar configuração\".",
       "blockedTerms": "Informe palavras separadas por vírgula (2 a 40 caracteres, sem espaços) ou \"nenhuma\".",
-      "typedTerms": "Use o botão para adicionar as palavras proibidas."
+      "typedTerms": "Use o botão para adicionar as palavras proibidas.",
+      "appSchedules": "Os horários enviados não são válidos. Confira os intervalos de cada app e tente de novo.",
+      "typedSchedules": "Use o botão para definir os horários dos apps."
     },
     "summary": {
       "os": "Sistema",
@@ -167,7 +172,10 @@
       "blockRawIp": "Bloquear IP direto",
       "blockedTerms": "Palavras bloqueadas",
       "yes": "sim",
-      "none": "nenhuma"
+      "none": "nenhuma",
+      "appSchedules": "Horários dos apps",
+      "appSchedulesNone": "sem restrição",
+      "blockedAllWeek": "bloqueado a semana toda"
     },
     "choices": {
       "proceed": "Prosseguir",
@@ -236,6 +244,7 @@
     },
     "newMessages": "Novas mensagens",
     "addBlockedTerms": "Adicionar palavras",
+    "setAppSchedules": "Configurar horários",
     "blockedTermsModal": {
       "title": "Palavras proibidas",
       "inputPlaceholder": "Digite uma palavra e Enter",
@@ -250,6 +259,50 @@
       "submit": "Salvar",
       "duplicate": "Palavra já adicionada.",
       "invalid": "Use de 2 a 40 caracteres, sem espaços."
+    },
+    "appSchedulesModal": {
+      "title": "Horários dos apps",
+      "hint": "Defina em que dias e horários cada app pode ser usado; fora deles, o app fica bloqueado. Na grade, clique e arraste para liberar horários, ou comece num horário liberado para apagar.",
+      "noApps": "Nenhum app permitido ainda.",
+      "anyTime": "Sempre disponível",
+      "restricted_one": "Restrito · {{count}} dia liberado",
+      "restricted_other": "Restrito · {{count}} dias liberados",
+      "restrict": "Restringir horários",
+      "blocked": "bloqueado o dia todo",
+      "count_one": "{{count}} app com horário",
+      "count_other": "{{count}} apps com horário",
+      "cancel": "Cancelar",
+      "submit": "Salvar",
+      "days": {
+        "sun": "Domingo",
+        "mon": "Segunda",
+        "tue": "Terça",
+        "wed": "Quarta",
+        "thu": "Quinta",
+        "fri": "Sexta",
+        "sat": "Sábado"
+      },
+      "dragging": "{{days}} {{start}}–{{end}}: {{action}}",
+      "enable": "liberar",
+      "disable": "bloquear",
+      "allowAll": "Liberar tudo",
+      "clearAll": "Limpar tudo",
+      "daysShort": {
+        "sun": "Dom",
+        "mon": "Seg",
+        "tue": "Ter",
+        "wed": "Qua",
+        "thu": "Qui",
+        "fri": "Sex",
+        "sat": "Sáb"
+      },
+      "tabs": {
+        "daily": "Por dia",
+        "weekly": "Por dia da semana"
+      },
+      "everyDay": "Todos os dias",
+      "everyDayShort": "Todos",
+      "differentDays": "Os dias da semana têm horários diferentes; editar aqui deixa todos iguais."
     }
   },
   "mediaSettings": {

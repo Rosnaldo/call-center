@@ -28,6 +28,9 @@ data class ProvisioningConfig(
     // and extra words that block a URL containing them (merged with UrlTermDenyList).
     val blockRawIp: Boolean?,
     val blockedTerms: Set<String>?,
+    // Per app, when it may be used (see AppSchedule); an app left out isn't restricted.
+    // Commands sent over adb (ScheduleStore) override an app's.
+    val appSchedules: Map<String, AppSchedule> = emptyMap(),
 ) {
     companion object {
         // Must match CONFIG_BLOCK_ID in apk-config.ts.
@@ -72,7 +75,28 @@ data class ProvisioningConfig(
                 val array = obj.getJSONArray("blockedTerms")
                 (0 until array.length()).map(array::getString).toSet()
             }
-            return ProvisioningConfig(host, apps, appVersion, blockRawIp, blockedTerms)
+            return ProvisioningConfig(host, apps, appVersion, blockRawIp, blockedTerms, parseAppSchedules(obj))
+        }
+
+        // {"<app>": {"mon": [{"start": "08:00", "end": "12:00"}], ...}}. Absent in configs made
+        // before the chatbot asked for it; a malformed app's schedule is skipped (logged).
+        private fun parseAppSchedules(obj: JSONObject): Map<String, AppSchedule> {
+            val schedules = obj.optJSONObject("appSchedules") ?: return emptyMap()
+            val result = mutableMapOf<String, AppSchedule>()
+            for (app in schedules.keys()) {
+                val week = schedules.optJSONObject(app)
+                val days = week?.keys()?.asSequence()?.associateWith { day ->
+                    val ranges = week.optJSONArray(day)
+                    (0 until (ranges?.length() ?: 0)).map { i ->
+                        val range = ranges!!.optJSONObject(i)
+                        (range?.optString("start") ?: "") to (range?.optString("end") ?: "")
+                    }
+                }
+                val schedule = days?.let(AppSchedule::parse)
+                if (schedule == null) Log.w(Constants.LOG_TAG, "Skipping malformed schedule for $app")
+                else result[app] = schedule
+            }
+            return result
         }
 
         private fun readBlock(apkPath: String): String? = RandomAccessFile(apkPath, "r").use { file ->

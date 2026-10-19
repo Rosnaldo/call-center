@@ -25,6 +25,12 @@ export interface EmbeddedConfig {
   // URL containing them (see the Android app's IpUrlDetector / UrlTermDenyList).
   blockRawIp: boolean | null;
   blockedTerms: string[] | null;
+  /**
+   * When each allowed app may be used: per app id, per day (sun..sat), the
+   * "HH:MM" ranges it's enabled in; a day left out blocks it all day, an app
+   * left out isn't restricted (see the Android app's AppSchedule).
+   */
+  appSchedules: Record<string, Record<string, { start: string; end: string }[]>> | null;
 }
 
 export interface EmbeddedPayload {

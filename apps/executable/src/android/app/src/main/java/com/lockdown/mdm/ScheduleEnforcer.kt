@@ -24,13 +24,45 @@ import java.util.Calendar
 object ScheduleEnforcer {
     private const val POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
 
+    /**
+     * The chatbot's schedules (ProvisioningConfig.appSchedules), with the ones set over adb
+     * (ScheduleStore) taking an app's place: commands sent later override the config.
+     */
+    fun allSchedules(context: Context): Map<String, AccessSchedule> =
+        (ProvisioningConfig.get(context)?.appSchedules ?: emptyMap()) + ScheduleStore.allSchedules(context)
+
+    // The apps scheduled at the last check, so one whose schedule is gone (a new config without
+    // it) is released instead of staying suspended for good.
+    private const val STATE_PREFS = "lockdown_schedule_state"
+    private const val KEY_SCHEDULED = "scheduled"
+
     fun enforce(context: Context) {
         if (!PolicyEnforcer.isDeviceOwner(context)) return
-        val schedules = ScheduleStore.allSchedules(context)
-        if (schedules.isEmpty()) return
+        val schedules = allSchedules(context)
+        val prefs = context.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE)
+        val previous = prefs.getStringSet(KEY_SCHEDULED, emptySet()) ?: emptySet()
+        if (schedules.isEmpty() && previous.isEmpty()) return
 
         val manager = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(context, AdminReceiver::class.java)
+
+        val released = previous - schedules.keys
+        for (pkg in released) {
+            try {
+                manager.setPackagesSuspended(admin, arrayOf(pkg), false)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    manager.setPermissionGrantState(admin, pkg, POST_NOTIFICATIONS, DevicePolicyManager.PERMISSION_GRANT_STATE_DEFAULT)
+                }
+                Log.i(Constants.LOG_TAG, "Released $pkg: no schedule anymore")
+            } catch (e: Exception) {
+                Log.w(Constants.LOG_TAG, "Releasing $pkg failed: ${e.message}")
+            }
+        }
+        if (released.isNotEmpty() || !previous.containsAll(schedules.keys)) {
+            prefs.edit().putStringSet(KEY_SCHEDULED, schedules.keys.toSet()).apply()
+        }
+        if (schedules.isEmpty()) return
+
         val calendar = Calendar.getInstance()
         val nowMinute = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
         val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)

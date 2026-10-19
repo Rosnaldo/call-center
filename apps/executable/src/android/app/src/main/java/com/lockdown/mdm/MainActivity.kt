@@ -1,10 +1,7 @@
 package com.lockdown.mdm
 
 import android.app.AlertDialog
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.ActivityNotFoundException
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -27,8 +24,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.setupButton.setOnClickListener { showSetupCommand() }
-        binding.refreshButton.setOnClickListener { refreshStatus() }
+        binding.schedulesButton.setOnClickListener { showAppSchedules() }
         binding.blockedTermsButton.setOnClickListener { showBlockedTerms() }
 
         refreshStatus()
@@ -55,6 +51,8 @@ class MainActivity : AppCompatActivity() {
             }
             append("Install allowlist enforced: ${AllowlistStore.isInstallsLocked(this@MainActivity)}")
         }
+        binding.schedulesButton.visibility =
+            if (ScheduleEnforcer.allSchedules(this).isEmpty()) View.GONE else View.VISIBLE
         binding.blockedTermsButton.visibility =
             if (UrlTermDenyList.deniedTerms(this).isEmpty()) View.GONE else View.VISIBLE
         showAllowedApps()
@@ -119,21 +117,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-    private fun showSetupCommand() {
-        val command = "adb shell dpm set-device-owner ${packageName}/.AdminReceiver"
+    // Each scheduled app (by name) and the times it may be used, a line per day; the days a
+    // chatbot schedule leaves out are blocked, said so on a last line.
+    private fun showAppSchedules() {
+        val schedules = ScheduleEnforcer.allSchedules(this).entries.sortedBy { appLabel(it.key).lowercase() }
+        val text = schedules.joinToString("\n\n") { (pkg, schedule) ->
+            val lines = schedule.toString().split("; ").map { "  " + it.replaceFirstChar(Char::uppercase) }
+            val blockedRest = schedule is AppSchedule && schedule.days.isNotEmpty() && schedule.days.size < ScheduleStore.ALL_DAYS.size
+            appLabel(pkg) + "\n" + (if (blockedRest) lines + "  Other days: blocked" else lines).joinToString("\n")
+        }
         AlertDialog.Builder(this)
-            .setTitle("Device-owner setup command")
-            .setMessage(
-                "Run this from a PC with adb, on a device that has no accounts added yet " +
-                    "(factory reset or fresh profile):\n\n$command\n\n" +
-                    "This is a one-time step. After that, DNS lock, install lockdown and " +
-                    "the allowlist are all managed exclusively through password-protected " +
-                    "adb commands sent to this app."
-            )
-            .setPositiveButton("Copy") { _, _ ->
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboard.setPrimaryClip(ClipData.newPlainText("adb command", command))
-            }
+            .setTitle("App schedules")
+            .setMessage(text)
             .setNegativeButton("Close", null)
             .show()
     }

@@ -14,6 +14,8 @@ import { createUserAuthClient } from './user-auth';
 //                                                                to start the setup (learning more is anonymous)
 //                     { event: 'allowed_apps', apps: string[] }   answers open_allowed_apps
 //                     { event: 'blocked_terms', terms: string[] } answers open_blocked_terms
+//                     { event: 'app_schedules', schedules }       answers open_app_schedules: per allowed app id,
+//                                                                per day (sun..sat), the { start, end } "HH:MM" ranges it may be used in
 //                     { event: 'search_apps', term: string }      Google Play search, while the checklist is open
 //                     { event: 'restart' }                       starts a new conversation (answers offer_restart)
 //                     { event: 'saved_params', params }           the params the client kept from an earlier conversation,
@@ -25,6 +27,7 @@ import { createUserAuthClient } from './user-auth';
 //                                                                sendEnabled: whether the client's send button is enabled
 //                     { event: 'open_allowed_apps' }             client shows a button opening its app checklist
 //                     { event: 'open_blocked_terms' }            client shows a button opening its blocked-words modal
+//                     { event: 'open_app_schedules' }            client shows a button opening its app schedules modal
 //                     { event: 'ask_choice', choices: { key, value }[] }  client shows a button per choice (answered as user_message with its value)
 //                     { event: 'offer_restart' }                 conversation finished; client shows the "reset"/"generate installer" buttons
 //                     { event: 'installer_ready', url: string }  the installer's download URL
@@ -37,6 +40,7 @@ export type ClientMessage =
     | { event: 'user_message'; message: string; token?: string }
     | { event: 'allowed_apps'; apps: unknown[] }
     | { event: 'blocked_terms'; terms: unknown[] }
+    | { event: 'app_schedules'; schedules: unknown }
     | { event: 'search_apps'; term: string }
     | { event: 'restart' }
     | { event: 'saved_params'; params: unknown }
@@ -73,6 +77,9 @@ const parseClientMessage = (raw: WebSocket.RawData): ClientMessage | null => {
         // Ids are validated by the session.
         if (msg?.event === 'allowed_apps' && Array.isArray(msg.apps)) return msg;
         if (msg?.event === 'blocked_terms' && Array.isArray(msg.terms)) return msg;
+        if (msg?.event === 'app_schedules' && msg.schedules && typeof msg.schedules === 'object') {
+            return { event: 'app_schedules', schedules: msg.schedules };
+        }
         if (msg?.event === 'search_apps' && typeof msg.term === 'string') return msg;
         if (msg?.event === 'restart') return { event: 'restart' };
         // Validated by the session, like any answer.
@@ -124,6 +131,10 @@ wss.on('connection', (ws) => {
         }
         if (msg.event === 'blocked_terms') {
             reply(session.selectBlockedTerms(msg.terms));
+            return;
+        }
+        if (msg.event === 'app_schedules') {
+            reply(session.selectAppSchedules(msg.schedules));
             return;
         }
         if (msg.event === 'restart') {

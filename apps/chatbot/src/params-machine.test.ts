@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { createActor } from 'xstate';
-import { applyFields, paramsMachine, savedOf, stepOf, type FieldValues, parseAppIds, parseAppVersion, parseBlockedTermsList, parseHostname, parseInstallOs, parseOs, parseVersion, parseYesNo } from './params-machine';
+import { applyFields, paramsMachine, savedOf, stepOf, type FieldValues, parseAppIds, parseAppSchedules, parseAppVersion, parseBlockedTermsList, parseHostname, parseInstallOs, parseOs, parseVersion, parseYesNo } from './params-machine';
 
 // Strings are typed answers; arrays are the apps picked in the checklist;
 // { terms } is the words added in the blocked-words modal; { fill } is the
 // fields read from free text.
-type Answer = string | string[] | { terms: string[] } | { fill: FieldValues };
+type Answer = string | string[] | { terms: string[] } | { fill: FieldValues } | { schedules: unknown };
 const run = (...answers: Answer[]) => {
     const actor = createActor(paramsMachine).start();
     // Proceeds past the opening and the intro first.
     for (const value of ['proceed', 'proceed', ...answers] as Answer[]) {
         if (Array.isArray(value)) actor.send({ type: 'ALLOWED_APPS', apps: value });
         else if (typeof value === 'object' && 'fill' in value) actor.send({ type: 'FILL', fields: value.fill });
+        else if (typeof value === 'object' && 'schedules' in value) actor.send({ type: 'APP_SCHEDULES', schedules: value.schedules });
         else if (typeof value === 'object') actor.send({ type: 'BLOCKED_TERMS', terms: value.terms });
         else actor.send({ type: 'ANSWER', value });
     }
@@ -81,7 +82,8 @@ describe('parsers', () => {
 
 describe('paramsMachine', () => {
     it('collects params and finishes', () => {
-        const snapshot = run('2', '17.4', 'yes', 'dns.adguard.com', ['com.whatsapp', 'com.Slack'], 'yes', 'yes', { terms: ['bokup', 'semi'] }, 'windows', 'v1.2.0', 'yes');
+        const schedules = { 'com.Slack': { mon: [{ start: '08:00', end: '18:00' }] } };
+        const snapshot = run('2', '17.4', 'yes', 'dns.adguard.com', ['com.whatsapp', 'com.Slack'], 'yes', { schedules }, 'yes', 'yes', { terms: ['bokup', 'semi'] }, 'windows', 'v1.2.0', 'yes');
         expect(snapshot.status).toBe('done');
         expect(snapshot.output).toEqual({
             os: 'iOS',
@@ -93,6 +95,7 @@ describe('paramsMachine', () => {
             appVersion: '1.2.0',
             blockRawIp: true,
             blockedTerms: ['bokup', 'semi'],
+            appSchedules: { 'com.Slack': { mon: [{ start: '08:00', end: '18:00' }] } },
         });
     });
 
@@ -170,7 +173,7 @@ describe('paramsMachine', () => {
     });
 
     it('starts over when the summary is rejected, keeping the apps and words', () => {
-        const snapshot = run('1', '14', 'no', ['com.whatsapp'], 'no', 'no', 'linux', '1.0', 'no');
+        const snapshot = run('1', '14', 'no', ['com.whatsapp'], 'no', 'no', 'no', 'linux', '1.0', 'no');
         expect(stepOf(snapshot)).toBe('askOs');
         expect(snapshot.context).toMatchObject({
             os: null,
@@ -182,6 +185,7 @@ describe('paramsMachine', () => {
             allowedApps: ['com.whatsapp'],
             blockedTerms: [],
             wantsBlockedTerms: false,
+            appSchedules: {},
         });
     });
 
@@ -297,7 +301,11 @@ describe('paramsMachine saved configuration', () => {
     };
 
     it('validates it like the answers, and takes only a complete one', () => {
-        expect(savedOf(SAVED)).toEqual(SAVED);
+        // Kept before app schedules existed: none.
+        expect(savedOf(SAVED)).toEqual({ ...SAVED, appSchedules: {} });
+        const schedules = { 'com.whatsapp': { sat: [{ start: '10:00', end: '12:00' }] } };
+        expect(savedOf({ ...SAVED, appSchedules: schedules })).toEqual({ ...SAVED, appSchedules: schedules });
+        expect(savedOf({ ...SAVED, appSchedules: { 'com.other': schedules['com.whatsapp'] } })).toBeNull();
         expect(savedOf({ ...SAVED, os: 'iPhone', privateDnsHost: 'DNS.Google' })).toMatchObject({ os: 'iOS', privateDnsHost: 'dns.google' });
         expect(savedOf({ ...SAVED, version: 'abc' })).toBeNull();
         expect(savedOf({ ...SAVED, allowedApps: ['not an id'] })).toBeNull();
@@ -310,7 +318,7 @@ describe('paramsMachine saved configuration', () => {
         expect(stepOf(actor.getSnapshot())).toBe('askReuse');
         actor.send({ type: 'ANSWER', value: 'sim' });
         expect(actor.getSnapshot().status).toBe('done');
-        expect(actor.getSnapshot().output).toEqual(SAVED);
+        expect(actor.getSnapshot().output).toEqual({ ...SAVED, appSchedules: {} });
     });
 
     it('asks every param when it is declined', () => {
@@ -374,7 +382,7 @@ describe('paramsMachine taking a modal\'s list at another step', () => {
         const actor = answered('1', ['com.whatsapp']);
         expect(stepOf(actor.getSnapshot())).toBe('askVersion');
         for (const value of ['14', 'no']) actor.send({ type: 'ANSWER', value });
-        expect(stepOf(actor.getSnapshot())).toBe('askBlockRawIp');
+        expect(stepOf(actor.getSnapshot())).toBe('askAppSchedules');
     });
 
     it('rejects an invalid list without leaving the step', () => {
@@ -385,3 +393,80 @@ describe('paramsMachine taking a modal\'s list at another step', () => {
     });
 });
 
+
+describe('paramsMachine app schedules', () => {
+    const MON = { mon: [{ start: '08:00', end: '12:00' }] };
+
+    it('parses ranges per app and day, sorted, leaving empty days out', () => {
+        expect(
+            parseAppSchedules(
+                { 'com.whatsapp': { mon: [{ start: '14:00', end: '18:00' }, { start: '08:00', end: '12:00' }], tue: [] } },
+                ['com.whatsapp'],
+            ),
+        ).toEqual({ 'com.whatsapp': { mon: [{ start: '08:00', end: '12:00' }, { start: '14:00', end: '18:00' }] } });
+        expect(parseAppSchedules({}, null)).toEqual({});
+        // Every day off: blocked all week.
+        expect(parseAppSchedules({ 'com.whatsapp': {} }, ['com.whatsapp'])).toEqual({ 'com.whatsapp': {} });
+    });
+
+    it('rejects apps not allowed, unknown days and invalid, reversed or overlapping ranges', () => {
+        const apps = ['com.whatsapp'];
+        const week = (ranges: unknown) => ({ 'com.whatsapp': { mon: ranges } });
+        expect(parseAppSchedules({ 'com.other': MON }, apps)).toBeNull();
+        expect(parseAppSchedules({ 'com.whatsapp': { monday: MON.mon } }, apps)).toBeNull();
+        expect(parseAppSchedules(week([{ start: '8:00', end: '12:00' }]), apps)).toBeNull();
+        expect(parseAppSchedules(week([{ start: '22:00', end: '02:00' }]), apps)).toBeNull();
+        expect(parseAppSchedules(week([{ start: '08:00', end: '12:00' }, { start: '11:00', end: '13:00' }]), apps)).toBeNull();
+        const time = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+        const ranges = (count: number) => Array.from({ length: count }, (_, i) => ({ start: time(i * 50), end: time(i * 50 + 20) }));
+        expect(parseAppSchedules(week(ranges(24)), apps)).not.toBeNull();
+        expect(parseAppSchedules(week(ranges(25)), apps)).toBeNull();
+        expect(parseAppSchedules([], apps)).toBeNull();
+    });
+
+    it('asks for them after the apps, and skips them when declined', () => {
+        const declined = run('1', '14', 'no', ['com.whatsapp'], 'no');
+        expect(stepOf(declined)).toBe('askBlockRawIp');
+        expect(declined.context).toMatchObject({ appSchedules: {}, wantsAppSchedules: false });
+
+        const wanted = run('1', '14', 'no', ['com.whatsapp'], 'yes');
+        expect(stepOf(wanted)).toBe('collectAppSchedules');
+        const set = run('1', '14', 'no', ['com.whatsapp'], 'yes', { schedules: { 'com.whatsapp': MON } });
+        expect(stepOf(set)).toBe('askBlockRawIp');
+        expect(set.context.appSchedules).toEqual({ 'com.whatsapp': MON });
+    });
+
+    it('rejects typed text and invalid schedules without leaving the step', () => {
+        const typed = run('1', '14', 'no', ['com.whatsapp'], 'yes', 'seg 8 as 12');
+        expect(stepOf(typed)).toBe('collectAppSchedules');
+        expect(typed.context.error).toBe('errors.typedSchedules');
+        const invalid = run('1', '14', 'no', ['com.whatsapp'], 'yes', { schedules: { 'com.other': MON } });
+        expect(stepOf(invalid)).toBe('collectAppSchedules');
+        expect(invalid.context.error).toBe('errors.appSchedules');
+    });
+
+    it('takes them on the summary, and drops the schedule of an app taken off the list', () => {
+        const actor = createActor(paramsMachine).start();
+        for (const value of ['proceed', 'proceed', '1', '14', 'no']) actor.send({ type: 'ANSWER', value });
+        actor.send({ type: 'ALLOWED_APPS', apps: ['com.whatsapp', 'com.Slack'] });
+        for (const value of ['no', 'no', 'no', 'linux', '1.0']) actor.send({ type: 'ANSWER', value });
+        expect(stepOf(actor.getSnapshot())).toBe('confirm');
+
+        actor.send({ type: 'APP_SCHEDULES', schedules: { 'com.whatsapp': MON, 'com.Slack': MON } });
+        expect(stepOf(actor.getSnapshot())).toBe('confirm');
+        actor.send({ type: 'ALLOWED_APPS', apps: ['com.Slack'] });
+        expect(actor.getSnapshot().context).toMatchObject({ appSchedules: { 'com.Slack': MON }, wantsAppSchedules: true });
+        actor.send({ type: 'ALLOWED_APPS', apps: [] });
+        expect(actor.getSnapshot().context).toMatchObject({ appSchedules: {}, wantsAppSchedules: false });
+    });
+
+    it('keeps them on RESET, with the apps', () => {
+        const actor = createActor(paramsMachine).start();
+        for (const value of ['proceed', 'proceed', '1', '14', 'no']) actor.send({ type: 'ANSWER', value });
+        actor.send({ type: 'ALLOWED_APPS', apps: ['com.whatsapp'] });
+        actor.send({ type: 'ANSWER', value: 'yes' });
+        actor.send({ type: 'APP_SCHEDULES', schedules: { 'com.whatsapp': MON } });
+        actor.send({ type: 'RESET' });
+        expect(actor.getSnapshot().context).toMatchObject({ allowedApps: ['com.whatsapp'], appSchedules: { 'com.whatsapp': MON } });
+    });
+});

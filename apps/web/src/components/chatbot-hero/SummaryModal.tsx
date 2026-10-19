@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import React, { useEffect, useId, useState } from 'react';
+import { ChevronDown, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChatbotParamsStore, useChatbotStore } from '../../states/stores.ts';
 import type { AppSearchResult } from '../../states/local/chatbot/state.ts';
-import type { ChatbotParams } from '../../states/local/chatbot-params/state.ts';
+import type { ChatbotParams, WeekSchedule } from '../../states/local/chatbot-params/state.ts';
 import { POPULAR_APPS } from './popular-apps.ts';
 import { loadSavedApps } from './saved-allowed-apps.ts';
+import { groupDays } from './app-schedules.ts';
 
 const MONO = '"JetBrains Mono", Menlo, Consolas, monospace';
 
@@ -84,14 +85,19 @@ const Summary: React.FC = () => {
           <Row label={t('chatbot.summary.os')} value={params?.os} />
           <Row label={t('chatbot.summary.version')} value={params?.version} />
           <Row label={t('chatbot.summary.privateDns')} value={privateDnsText(params, t)} />
-          <div>
-            <Label>{t('chatbot.summaryModal.allowedApps')}</Label>
-            <dd className="mt-1.5">
-              <AllowedApps ids={params?.allowedApps ?? null} knownApps={knownApps} />
-            </dd>
-          </div>
+          <Collapsible label={t('chatbot.summaryModal.allowedApps')} count={params?.allowedApps?.length ?? null}>
+            <AllowedApps ids={params?.allowedApps ?? null} knownApps={knownApps} />
+          </Collapsible>
+          {/* Only once the bot has asked for them (absent before). */}
+          {params?.appSchedules !== undefined && (
+            <Collapsible label={t('chatbot.summary.appSchedules')} count={params.appSchedules ? Object.keys(params.appSchedules).length : null}>
+              <AppSchedules schedules={params.appSchedules} knownApps={knownApps} />
+            </Collapsible>
+          )}
           <Row label={t('chatbot.summary.blockRawIp')} value={boolText(params?.blockRawIp, t)} />
-          <Row label={t('chatbot.summary.blockedTerms')} value={blockedTermsText(params, t)} />
+          <Collapsible label={t('chatbot.summary.blockedTerms')} count={params?.blockedTerms?.length ?? null}>
+            <span className="text-[14px] text-[#1E1913]">{blockedTermsText(params, t)}</span>
+          </Collapsible>
           <Row label={t('chatbot.summary.installOs')} value={params?.installOs} />
           <Row label={t('chatbot.summary.appVersion')} value={params?.appVersion} />
         </dl>
@@ -118,6 +124,7 @@ const blockedTermsText = (params: ChatbotParams | null, t: T): string | null => 
   return terms.length ? terms.join(', ') : t('chatbot.summary.none');
 };
 
+
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <dt className="text-[11px] uppercase tracking-wider font-semibold text-[#857967]" style={{ fontFamily: MONO }}>
     {children}
@@ -127,6 +134,38 @@ const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const Pending: React.FC = () => {
   const { t } = useTranslation();
   return <span className="text-[14px] italic text-[#A09787]">{t('chatbot.summaryModal.pending')}</span>;
+};
+
+// A list's entry, closed until clicked: its label and how many items it holds.
+// Not answered yet (null), it reads "pending" and doesn't open.
+const Collapsible: React.FC<{ label: string; count: number | null; children: React.ReactNode }> = ({ label, count, children }) => {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  if (count === null) return <Row label={label} value={null} />;
+  return (
+    <div>
+      <dt>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={id}
+          onClick={() => setOpen((prev) => !prev)}
+          className="w-full flex items-center justify-between gap-2 text-left cursor-pointer text-[11px] uppercase tracking-wider font-semibold text-[#857967] hover:text-[#524A3D]"
+          style={{ fontFamily: MONO }}
+        >
+          <span>
+            {label} ({count})
+          </span>
+          <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+      </dt>
+      {open && (
+        <dd id={id} className="mt-1.5">
+          {children}
+        </dd>
+      )}
+    </div>
+  );
 };
 
 const Row: React.FC<{ label: string; value: string | null | undefined }> = ({ label, value }) => (
@@ -151,6 +190,47 @@ const AllowedApps: React.FC<{ ids: string[] | null; knownApps: Record<string, Ap
       ))}
     </ul>
   );
+};
+
+// Each restricted app by name, and its days grouped by identical ranges.
+const AppSchedules: React.FC<{ schedules: ChatbotParams['appSchedules']; knownApps: Record<string, AppSearchResult> }> = ({
+  schedules,
+  knownApps,
+}) => {
+  const { t } = useTranslation();
+  if (!schedules) return <Pending />;
+  const apps = Object.keys(schedules);
+  if (!apps.length) return <span className="text-[14px] text-[#1E1913]">{t('chatbot.summary.appSchedulesNone')}</span>;
+  return (
+    <ul className="flex flex-col gap-2 text-[14px] text-[#1E1913]">
+      {apps.map((id) => (
+        <li key={id}>
+          <span>{(POPULAR_BY_ID.get(id) ?? knownApps[id])?.name ?? id}</span>
+          <ul className="mt-0.5 pl-3 flex flex-col text-[13px] text-[#524A3D]" style={{ fontFamily: MONO }}>
+            {weekLines(schedules[id], t).map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+const weekLines = (week: WeekSchedule, t: T): string[] => {
+  const groups = groupDays(week);
+  const rangesOf = (ranges: { start: string; end: string }[]) =>
+    ranges.length ? ranges.map(({ start, end }) => `${start}–${end}`).join(', ') : t('chatbot.appSchedulesModal.blocked');
+  if (groups.length === 1) {
+    return [groups[0].ranges.length ? `${t('chatbot.appSchedulesModal.everyDay')}: ${rangesOf(groups[0].ranges)}` : t('chatbot.summary.blockedAllWeek')];
+  }
+  // Days with times first, then the blocked ones.
+  return [...groups]
+    .sort((a, b) => Number(!a.ranges.length) - Number(!b.ranges.length))
+    .map(({ days, ranges }) => {
+      const names = days.map((day) => t(`chatbot.appSchedulesModal.daysShort.${day}`)).join(', ');
+      return `${names}: ${rangesOf(ranges)}`;
+    });
 };
 
 export default SummaryModal;

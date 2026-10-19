@@ -21,20 +21,20 @@ object ScheduleStore {
     private val WEEKDAY_DAYS = setOf(
         Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY
     )
-    private val DAY_ABBREVIATIONS = mapOf(
+    val DAY_ABBREVIATIONS = mapOf(
         "sun" to Calendar.SUNDAY, "mon" to Calendar.MONDAY, "tue" to Calendar.TUESDAY,
         "wed" to Calendar.WEDNESDAY, "thu" to Calendar.THURSDAY, "fri" to Calendar.FRIDAY,
         "sat" to Calendar.SATURDAY
     )
-    private val DAY_LABELS = DAY_ABBREVIATIONS.entries.associate { (label, day) -> day to label }
+    val DAY_LABELS = DAY_ABBREVIATIONS.entries.associate { (label, day) -> day to label }
 
-    data class Window(val startMinute: Int, val endMinute: Int, val days: Set<Int> = ALL_DAYS) {
+    data class Window(val startMinute: Int, val endMinute: Int, val days: Set<Int> = ALL_DAYS) : AccessSchedule {
         /**
          * Supports overnight windows (e.g. 22:00-02:00) via wraparound, and treats an
          * equal start/end (e.g. 00:00-00:00) as "all day" since HH:MM can't otherwise express
          * a full 24h span.
          */
-        fun contains(nowMinute: Int, dayOfWeek: Int): Boolean {
+        override fun contains(nowMinute: Int, dayOfWeek: Int): Boolean {
             if (dayOfWeek !in days) return false
             if (startMinute == endMinute) return true
             return if (startMinute <= endMinute) nowMinute in startMinute until endMinute
@@ -106,7 +106,7 @@ object ScheduleStore {
         }
     }
 
-    private fun parseHourMinute(text: String): Int? {
+    fun parseHourMinute(text: String): Int? {
         val parts = text.trim().split(":")
         if (parts.size != 2) return null
         val h = parts[0].toIntOrNull() ?: return null

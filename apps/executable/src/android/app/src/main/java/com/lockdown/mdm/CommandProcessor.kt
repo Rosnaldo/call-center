@@ -151,11 +151,12 @@ object CommandProcessor {
                     } catch (e: Exception) {
                         Log.w(Constants.LOG_TAG, "unsuspend on clear_schedule failed: ${e.message}")
                     }
+                    // A schedule from the chatbot config, if any, applies again from the next check.
                     "OK: $arg schedule cleared and unsuspended"
                 }
             }
             "list_schedules" -> {
-                val schedules = ScheduleStore.allSchedules(context)
+                val schedules = ScheduleEnforcer.allSchedules(context)
                 if (schedules.isEmpty()) "(no schedules configured)"
                 else schedules.entries.sortedBy { it.key }.joinToString("\n") { (pkg, window) -> "$pkg: $window" }
             }
@@ -174,7 +175,7 @@ object CommandProcessor {
         appendLine("dnsHost=${AllowlistStore.dnsHost(context)}")
         appendLine("installsLocked=${AllowlistStore.isInstallsLocked(context)}")
         appendLine("allowedApps=${AllowlistStore.allowedPackages(context).sorted().joinToString(",")}")
-        val schedules = ScheduleStore.allSchedules(context)
+        val schedules = ScheduleEnforcer.allSchedules(context)
         append(
             "schedules=" + if (schedules.isEmpty()) "(none)"
             else schedules.entries.sortedBy { it.key }.joinToString(",") { (pkg, w) -> "$pkg=$w" }

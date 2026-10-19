@@ -379,6 +379,46 @@ describe('ChatbotWs blocked terms', () => {
   });
 });
 
+describe('ChatbotWs app schedules', () => {
+  let transport: FakeTransport;
+  let ws: ChatbotWs;
+
+  beforeEach(() => {
+    useChatbotStore.getState().resetChatbot();
+    transport = new FakeTransport();
+    ws = new ChatbotWs(useChatbotStore, useChatbotParamsStore, 'ws://test', () => transport);
+    ws.connect();
+  });
+
+  const askForSchedules = () => {
+    transport.receive({ event: 'bot_message', key: 'messages.askAppSchedules' });
+    transport.receive({ event: 'open_app_schedules' });
+  };
+
+  it('puts the button on the bot question instead of opening the modal', () => {
+    askForSchedules();
+
+    const state = useChatbotStore.getState();
+    expect(state.isAppSchedulesRequested).toBe(true);
+    expect(state.isAppSchedulesModalOpen).toBe(false);
+    expect(state.messages.at(-1)?.action).toBe('set_app_schedules');
+  });
+
+  it('sends the schedules and ends the request', () => {
+    askForSchedules();
+    useChatbotStore.getState().openAppSchedulesModal();
+    const schedules = { 'com.whatsapp': { mon: [{ start: '08:00', end: '12:00' }] } };
+
+    expect(ws.sendAppSchedules(schedules)).toBe(true);
+
+    expect(transport.sent).toEqual([{ event: 'app_schedules', schedules }]);
+    const state = useChatbotStore.getState();
+    expect(state.isAppSchedulesModalOpen).toBe(false);
+    expect(state.isAppSchedulesRequested).toBe(false);
+    expect(state.isBotTyping).toBe(true);
+  });
+});
+
 describe('translateBotText noted params', () => {
   it('shows what the bot read from free text, one line each', () => {
     const text = translateBotText({

@@ -53,12 +53,28 @@ describe('groundExtraction', () => {
         expect(groundExtraction('quero mudar tudo', 'confirm', flow('blockedTerms'))).toEqual({ intent: 'other', fields: {} });
     });
 
+    it('goes back to the app schedules when the message is about them', () => {
+        const flow = (target: string) => ({ intent: 'flow' as const, fields: {}, flow: target });
+        expect(groundExtraction('quero mudar os horários', 'confirm', flow('appSchedules'))).toEqual(flow('appSchedules'));
+        expect(groundExtraction('quero alterar os horários', 'confirm', { intent: 'other', fields: {} })).toEqual(flow('appSchedules'));
+        expect(groundExtraction('quero alterar o agendamento', 'confirm', { intent: 'other', fields: {} })).toEqual(flow('appSchedules'));
+        // Naming the apps too, still the schedules, whichever the model picked.
+        expect(groundExtraction('muda o horário dos apps', 'confirm', flow('appSchedules'))).toEqual(flow('appSchedules'));
+        expect(groundExtraction('quero mudar o agendamento dos apps', 'confirm', flow('allowedApps'))).toEqual(flow('appSchedules'));
+        // Apps alone stay the apps.
+        expect(groundExtraction('quero trocar os apps', 'confirm', flow('allowedApps'))).toEqual(flow('allowedApps'));
+    });
+
     it('goes back to a typed param named without its new value', () => {
         const flow = (target: string) => ({ intent: 'flow' as const, fields: {}, flow: target });
         expect(groundExtraction('quero alterar o dns privado', 'confirm', flow('privateDns'))).toEqual(flow('privateDns'));
         expect(groundExtraction('quero mudar a versão', 'confirm', flow('blockedTerms'))).toEqual(flow('version'));
         // Missed by the model.
         expect(groundExtraction('quero alterar o dns privado', 'confirm', set({}))).toEqual(flow('privateDns'));
+        // Read as a bare yes.
+        expect(groundExtraction('quero alterar o dns privado', 'confirm', set({ privateDns: true }))).toEqual(flow('privateDns'));
+        // A no is a value: kept.
+        expect(groundExtraction('muda para sem dns', 'confirm', set({ privateDns: false }))).toEqual(set({ privateDns: false }));
         expect(groundExtraction('quero alterar o dns privado', 'confirm', { intent: 'other', fields: {} })).toEqual(flow('privateDns'));
         // Naming two, the model's pick when the message names it.
         expect(groundExtraction('muda a versão do android', 'confirm', flow('version'))).toEqual(flow('version'));

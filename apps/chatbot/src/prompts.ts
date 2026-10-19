@@ -39,6 +39,8 @@ export const prompts: Record<PromptState, (ctx: ParamsContext) => BotText | BotT
     askBlockRawIp: () => ({ key: 'messages.askBlockRawIp' }),
     askBlockTerms: () => ({ key: 'messages.askBlockTerms' }),
     collectBlockedTerms: () => ({ key: 'messages.collectBlockedTerms' }),
+    askAppSchedules: () => ({ key: 'messages.askAppSchedules' }),
+    collectAppSchedules: () => ({ key: 'messages.collectAppSchedules' }),
     // The web app shows the summary behind a button on the first message; the
     // yes/no buttons go under the question.
     confirm: (ctx) => [{ key: 'messages.confirm', params: { summary: summaryOf(ctx) } }, { key: 'messages.confirmQuestion' }],
@@ -56,6 +58,8 @@ export const help: Partial<Record<PromptState, BotText[]>> = {
     askBlockRawIp: [{ key: 'learn.rawIp' }, { key: 'help.askBlockRawIp' }],
     askBlockTerms: [{ key: 'learn.browserGuard' }],
     collectBlockedTerms: [{ key: 'learn.browserGuard' }],
+    askAppSchedules: [{ key: 'learn.schedule' }],
+    collectAppSchedules: [{ key: 'learn.schedule' }],
     askInstallOs: [{ key: 'help.askInstallOs' }],
     askAppVersion: [{ key: 'help.askAppVersion' }],
     confirm: [{ key: 'help.confirm' }],

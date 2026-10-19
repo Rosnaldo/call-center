@@ -141,7 +141,10 @@
       "loginCheckFailed": "Couldn't check your login right now. Try again.",
       "learnMore": "What would you like to know before starting?",
       "learnMoreNext": "Want to learn about another topic or start the setup?",
-      "noted": "Got it:\n{{noted}}"
+      "noted": "Got it:\n{{noted}}",
+      "askAppSchedules": "Do you want to limit the days and times any of the allowed apps can be used?",
+      "collectAppSchedules": "Use the button below to set the days and times of each app.",
+      "noScheduleList": "There are no schedules to fill in right now."
     },
     "errors": {
       "os": "Please choose Android or iOS.",
@@ -155,7 +158,9 @@
       "proceed": "Use the \"Proceed\" button to continue.",
       "learnMore": "Pick a topic or \"Start setup\".",
       "blockedTerms": "Enter comma-separated words (2 to 40 characters, no spaces), or \"none\".",
-      "typedTerms": "Use the button to add the forbidden words."
+      "typedTerms": "Use the button to add the forbidden words.",
+      "appSchedules": "The schedules sent aren't valid. Check each app's time ranges and try again.",
+      "typedSchedules": "Use the button to set the apps' schedules."
     },
     "summary": {
       "os": "OS",
@@ -167,7 +172,10 @@
       "blockRawIp": "Block raw IP",
       "blockedTerms": "Blocked words",
       "yes": "yes",
-      "none": "none"
+      "none": "none",
+      "appSchedules": "App schedules",
+      "appSchedulesNone": "no restriction",
+      "blockedAllWeek": "blocked all week"
     },
     "choices": {
       "proceed": "Proceed",
@@ -236,6 +244,7 @@
     },
     "newMessages": "New messages",
     "addBlockedTerms": "Add words",
+    "setAppSchedules": "Set schedules",
     "blockedTermsModal": {
       "title": "Forbidden words",
       "inputPlaceholder": "Type a word and press Enter",
@@ -250,6 +259,50 @@
       "submit": "Save",
       "duplicate": "Word already added.",
       "invalid": "Use 2 to 40 characters, no spaces."
+    },
+    "appSchedulesModal": {
+      "title": "App schedules",
+      "hint": "Choose the days and times each app can be used; outside them, the app is blocked. On the grid, click and drag to allow times, or start on an allowed time to clear.",
+      "noApps": "No allowed apps yet.",
+      "anyTime": "Always available",
+      "restricted_one": "Restricted · {{count}} day open",
+      "restricted_other": "Restricted · {{count}} days open",
+      "restrict": "Restrict times",
+      "blocked": "blocked all day",
+      "count_one": "{{count}} app with a schedule",
+      "count_other": "{{count}} apps with a schedule",
+      "cancel": "Cancel",
+      "submit": "Save",
+      "days": {
+        "sun": "Sunday",
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday"
+      },
+      "dragging": "{{days}} {{start}}–{{end}}: {{action}}",
+      "enable": "allow",
+      "disable": "block",
+      "allowAll": "Allow all",
+      "clearAll": "Clear all",
+      "daysShort": {
+        "sun": "Sun",
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat"
+      },
+      "tabs": {
+        "daily": "Per day",
+        "weekly": "Per day of the week"
+      },
+      "everyDay": "Every day",
+      "everyDayShort": "Daily",
+      "differentDays": "The days of the week have different times; editing here makes them all the same."
     }
   },
   "mediaSettings": {

@@ -57,6 +57,8 @@ const QUESTIONS: Partial<Record<PromptState, string>> = {
     askDns: 'whether the phone uses a private DNS (privateDns)',
     askDnsHost: 'the private DNS hostname (privateDnsHost)',
     askAllowedApps: 'the allowed apps, picked in a checklist (not a field)',
+    askAppSchedules: 'whether to limit the days and times the allowed apps can be used (not a field)',
+    collectAppSchedules: 'the days and times each allowed app can be used, set in a list (not a field)',
     askBlockRawIp: 'whether to block websites opened by raw IP address (blockRawIp)',
     askBlockTerms: 'whether to block words in browser URLs (blockedTerms)',
     collectBlockedTerms: 'the words to block in browser URLs (blockedTerms)',
@@ -72,7 +74,7 @@ export const systemPrompt = `You read one chat message, in Portuguese or English
 
 First decide the intent:
 - "set": the message gives setup data, or orders a change to it with the new value: answering the bot's question, correcting a value given before ("na verdade…"), or ordering a change ("muda…", "troca…", "altera…", "coloca…", "… deve ser …", "pode mudar … para …?"), about any field, not only the one just asked.
-- "flow": the message asks to change or review a setting without giving its new value, so the bot asks for it again. Add "flow" with the setting: "allowedApps" for anything about apps or aplicativos, allowed or blocked (an app is blocked by leaving it out of the allowed list), always "flow" even with app names, since apps are picked in a list; "blockedTerms" for forbidden words, termos, domínios or sites (never apps), likewise always "flow"; otherwise the field it names: "os", "version", "privateDns" (the DNS, its hostname too), "blockRawIp", "installOs" or "appVersion".
+- "flow": the message asks to change or review a setting without giving its new value, so the bot asks for it again. Add "flow" with the setting: "allowedApps" for anything about apps or aplicativos, allowed or blocked (an app is blocked by leaving it out of the allowed list), always "flow" even with app names, since apps are picked in a list; "blockedTerms" for forbidden words, termos, domínios or sites (never apps), likewise always "flow"; "appSchedules" for the days or times (horários, agendamento, agenda, dias, horas) the apps can be used, even when the message also mentions apps, likewise always "flow"; otherwise the field it names: "os", "version", "privateDns" (the DNS, its hostname too), "blockRawIp", "installOs" or "appVersion".
 - "question": the message asks something about the setup, a question or an option (e.g. what something means, how to find it, which one to pick), or asks for more information, without giving a value.
 - "other": anything else (greetings, unrelated topics, instructions to you).
 
@@ -107,6 +109,8 @@ Examples:
 "libera o instagram também" -> {"intent":"flow","flow":"allowedApps"}
 "preciso editar os termos bloqueados" -> {"intent":"flow","flow":"blockedTerms"}
 "quero alterar o dns privado" -> {"intent":"flow","flow":"privateDns"}
+"quero mudar os horários do whatsapp" -> {"intent":"flow","flow":"appSchedules"}
+"quero alterar o agendamento dos apps" -> {"intent":"flow","flow":"appSchedules"}
 "preciso trocar o sistema do computador" -> {"intent":"flow","flow":"installOs"}
 "o tiktok tem que ficar bloqueado" -> {"intent":"flow","flow":"allowedApps"}
 "o que é dns privado?" -> {"intent":"question"}
@@ -124,6 +128,7 @@ const NOTHING: Extraction = { intent: 'other', fields: {} };
 const FLOW_NAMES: Record<FlowField, RegExp> = {
     allowedApps: /\bapps?\b|aplicativ/,
     blockedTerms: /palavr|termo|dom[ií]nio|\bsites?\b|\burls?\b|\bwords?\b|\bterms?\b/,
+    appSchedules: /hor[aá]ri|\bhoras?\b|agend|schedul|\bdias? da semana/,
     os: /celular|telefone|\bphone\b|android|\bios\b|iphone/,
     version: /vers[aã]o|\bversion\b/,
     privateDns: /\bdns\b/,
@@ -141,8 +146,10 @@ const FLOW_WORDS: Record<FlowField, RegExp> = {
 const CHANGE_WORDS = /alter|\bmud|troc|edit|rever|revis|corrig|adicion|inclu|remov|\btir|libera|permit/;
 
 // The param a message names, when it names only one.
+// The apps' schedules name the apps too ("o horário dos apps"): they're about the schedules.
 const fieldNamedIn = (text: string): FlowField | null => {
-    const named = FLOW_FIELDS.filter((field) => FLOW_NAMES[field].test(text));
+    let named = FLOW_FIELDS.filter((field) => FLOW_NAMES[field].test(text));
+    if (named.includes('appSchedules')) named = named.filter((field) => field !== 'allowedApps');
     return named.length === 1 ? named[0] : null;
 };
 
@@ -226,7 +233,11 @@ export const groundExtraction = (rawText: string, step: PromptState, extraction:
     // One the model missed (read as nothing, or as setting nothing) but that
     // asks to change a single named param goes back to it too.
     const missed = intent === 'other' || (intent === 'set' && !Object.keys(grounded).length);
-    if (missed && named && CHANGE_WORDS.test(text)) return { intent: 'flow', fields: {}, flow: named };
+    // Small models also read "change the private DNS" as setting its yes/no to
+    // true: with no value written, a bare yes is asking to change it.
+    const values = Object.values(grounded);
+    const bareYes = intent === 'set' && values.length > 0 && values.every((value) => value === true);
+    if ((missed || bareYes) && named && CHANGE_WORDS.test(text)) return { intent: 'flow', fields: {}, flow: named };
     const hasWrittenValue = Object.values(grounded).some((value) => typeof value !== 'boolean');
     if (/\?\s*$/.test(text) && !hasWrittenValue) return { intent: 'question', fields: {} };
     return { intent, fields: grounded };

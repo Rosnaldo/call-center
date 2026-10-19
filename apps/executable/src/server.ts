@@ -86,6 +86,26 @@ const isPlatform = (value: unknown): value is Platform =>
 
 const nullableString = (value: unknown): value is string | null => value === null || typeof value === "string";
 
+const DAYS = new Set(["sun", "mon", "tue", "wed", "thu", "fri", "sat"]);
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+// Shape only: the chatbot already checked the ranges (order, overlaps).
+const isAppSchedules = (value: unknown): value is EmbeddedConfig["appSchedules"] =>
+  value === null ||
+  (isRecord(value) &&
+    Object.values(value).every(
+      (week) =>
+        isRecord(week) &&
+        Object.entries(week).every(
+          ([day, ranges]) =>
+            DAYS.has(day) &&
+            Array.isArray(ranges) &&
+            ranges.every((range) => isRecord(range) && TIME.test(String(range.start)) && TIME.test(String(range.end))),
+        ),
+    ));
+
 function parseConfig(value: unknown): EmbeddedConfig {
   const config = value as Partial<EmbeddedConfig> | null;
   const valid =
@@ -101,7 +121,8 @@ function parseConfig(value: unknown): EmbeddedConfig {
       config.blockedTerms === null ||
       (Array.isArray(config.blockedTerms) && config.blockedTerms.every((term) => typeof term === "string"))) &&
     (config.allowedApps === null ||
-      (Array.isArray(config.allowedApps) && config.allowedApps.every((app) => typeof app === "string")));
+      (Array.isArray(config.allowedApps) && config.allowedApps.every((app) => typeof app === "string"))) &&
+    (config.appSchedules === undefined || isAppSchedules(config.appSchedules));
   if (!valid) throw new HttpError(400, "Invalid config");
   const {
     os: mobileOs,
@@ -111,8 +132,9 @@ function parseConfig(value: unknown): EmbeddedConfig {
     appVersion = null,
     blockRawIp = null,
     blockedTerms = null,
+    appSchedules = null,
   } = config as EmbeddedConfig;
-  return { os: mobileOs, version, privateDnsHost, allowedApps, appVersion, blockRawIp, blockedTerms };
+  return { os: mobileOs, version, privateDnsHost, allowedApps, appVersion, blockRawIp, blockedTerms, appSchedules };
 }
 
 async function createApk(config: EmbeddedConfig): Promise<Buffer> {

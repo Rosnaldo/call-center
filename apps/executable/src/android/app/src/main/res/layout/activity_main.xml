@@ -28,26 +28,27 @@
             android:textColor="@color/text_primary"
             android:textSize="14sp" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/setupButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="Show device-owner setup command" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/refreshButton"
+        <!-- Each button shows only when there's something to list (see MainActivity.refreshStatus). -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="Refresh status" />
+            android:orientation="vertical">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/blockedTermsButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Show blocked search terms" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/schedulesButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Show app schedules" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/blockedTermsButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Show blocked search terms" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/allowlistTitle"

@@ -31,6 +31,7 @@ export type BotReply =
     | ({ event: 'bot_message'; sendEnabled: boolean } & BotText)
     | { event: 'open_allowed_apps' }
     | { event: 'open_blocked_terms' }
+    | { event: 'open_app_schedules' }
     | { event: 'ask_choice'; choices: Choice[] }
     | { event: 'offer_restart' }
     | { event: 'installer_ready'; url: string };
@@ -42,6 +43,7 @@ const say = (key: string, params?: BotText['params']): Reply =>
     params ? { event: 'bot_message', key, params } : { event: 'bot_message', key };
 const OPEN_ALLOWED_APPS: BotReply = { event: 'open_allowed_apps' };
 const OPEN_BLOCKED_TERMS: BotReply = { event: 'open_blocked_terms' };
+const OPEN_APP_SCHEDULES: BotReply = { event: 'open_app_schedules' };
 const askChoice = (...choices: Choice[]): BotReply => ({ event: 'ask_choice', choices });
 const ASK_YES_NO = askChoice({ key: 'choices.yes', value: 'yes' }, { key: 'choices.no', value: 'no' });
 const OFFER_RESTART: BotReply = { event: 'offer_restart' };
@@ -66,6 +68,8 @@ const BUTTONS: Partial<Record<PromptState, BotReply>> = {
     askOs: askChoice({ key: 'choices.android', value: 'android' }, { key: 'choices.ios', value: 'ios' }),
     askDns: ASK_YES_NO,
     askAllowedApps: OPEN_ALLOWED_APPS,
+    askAppSchedules: ASK_YES_NO,
+    collectAppSchedules: OPEN_APP_SCHEDULES,
     askBlockRawIp: ASK_YES_NO,
     askBlockTerms: ASK_YES_NO,
     collectBlockedTerms: OPEN_BLOCKED_TERMS,
@@ -79,7 +83,11 @@ const BUTTONS: Partial<Record<PromptState, BotReply>> = {
 };
 
 // The step whose question asks for each modal's list.
-const MODAL_STEPS: Record<ModalField, PromptState> = { allowedApps: 'askAllowedApps', blockedTerms: 'collectBlockedTerms' };
+const MODAL_STEPS: Record<ModalField, PromptState> = {
+    allowedApps: 'askAllowedApps',
+    blockedTerms: 'collectBlockedTerms',
+    appSchedules: 'collectAppSchedules',
+};
 
 // The opening steps, open to anyone; going on to the setup needs a logged-in user.
 const OPENING = new Set<PromptState>(['askStart', 'learnMore']);
@@ -97,6 +105,8 @@ const FILLING = new Set<PromptState>([
     'askDns',
     'askDnsHost',
     'askAllowedApps',
+    'askAppSchedules',
+    'collectAppSchedules',
     'askBlockRawIp',
     'askBlockTerms',
     'collectBlockedTerms',
@@ -298,6 +308,17 @@ export class ChatSession {
         return this.withSendState(this.replies());
     }
 
+    // The schedules set in the client's modal.
+    selectAppSchedules(schedules: unknown): BotReply[] {
+        if (this.isDone()) return this.withSendState([say('messages.finished'), OFFER_RESTART]);
+        if (!this.isPickingAppSchedules()) {
+            return this.withSendState([say('messages.noScheduleList')]);
+        }
+
+        this.actor.send({ type: 'APP_SCHEDULES', schedules });
+        return this.withSendState(this.replies());
+    }
+
     // The installer for the collected params, once the conversation is done
     // and only for a logged-in user (`token` is their access token).
     // Repeated clicks while one is being created are ignored.
@@ -326,9 +347,9 @@ export class ChatSession {
 
     // The params collected so far (null until answered), for the client's summary.
     params(): ParamsOutput {
-        const { os, version, privateDns, privateDnsHost, allowedApps, installOs, appVersion, blockRawIp, blockedTerms } =
+        const { os, version, privateDns, privateDnsHost, allowedApps, installOs, appVersion, blockRawIp, blockedTerms, appSchedules } =
             this.actor.getSnapshot().context;
-        return { os, version, privateDns, privateDnsHost, allowedApps, installOs, appVersion, blockRawIp, blockedTerms };
+        return { os, version, privateDns, privateDnsHost, allowedApps, installOs, appVersion, blockRawIp, blockedTerms, appSchedules };
     }
 
     // Whether the client's checklist can answer the bot now: at its step, or
@@ -340,6 +361,11 @@ export class ChatSession {
     // Whether the client's blocked-words modal can answer the bot now, likewise.
     isPickingBlockedTerms(): boolean {
         return !this.isDone() && (this.step() === 'collectBlockedTerms' || this.isFilling());
+    }
+
+    // Whether the client's schedules modal can answer the bot now, likewise.
+    isPickingAppSchedules(): boolean {
+        return !this.isDone() && (this.step() === 'collectAppSchedules' || this.isFilling());
     }
 
     stop(): void {

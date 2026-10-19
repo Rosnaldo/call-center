@@ -7,6 +7,7 @@ export interface ChatbotActions {
   setBotTyping: (isBotTyping: boolean, activity?: BotActivity) => void;
   requestAllowedApps: () => void;
   requestBlockedTerms: () => void;
+  requestAppSchedules: () => void;
   requestChoice: (choices: ChatbotChoice[]) => void;
   fulfillChoiceRequest: () => void;
   offerRestart: () => void;
@@ -17,6 +18,9 @@ export interface ChatbotActions {
   fulfillBlockedTermsRequest: () => void;
   openBlockedTermsModal: () => void;
   closeBlockedTermsModal: () => void;
+  fulfillAppSchedulesRequest: () => void;
+  openAppSchedulesModal: () => void;
+  closeAppSchedulesModal: () => void;
   startAppSearch: (term: string) => void;
   setAppSearchResults: (result: { term: string; apps: AppSearchResult[]; failed: boolean }) => void;
   clearAppSearch: () => void;
@@ -61,6 +65,11 @@ export const createChatbotActions = (
         messages: withActionOnLastBotMessage(state.messages, 'add_blocked_terms'),
         isBlockedTermsRequested: true,
       })),
+    requestAppSchedules: () =>
+      set((state) => ({
+        messages: withActionOnLastBotMessage(state.messages, 'set_app_schedules'),
+        isAppSchedulesRequested: true,
+      })),
     // The buttons go on the bot's question.
     requestChoice: (choices) =>
       set((state) => ({
@@ -94,6 +103,10 @@ export const createChatbotActions = (
       set(() => ({ isBlockedTermsRequested: false, isBlockedTermsModalOpen: false })),
     openBlockedTermsModal: () => set(() => ({ isBlockedTermsModalOpen: true })),
     closeBlockedTermsModal: () => set(() => ({ isBlockedTermsModalOpen: false })),
+    fulfillAppSchedulesRequest: () =>
+      set(() => ({ isAppSchedulesRequested: false, isAppSchedulesModalOpen: false })),
+    openAppSchedulesModal: () => set(() => ({ isAppSchedulesModalOpen: true })),
+    closeAppSchedulesModal: () => set(() => ({ isAppSchedulesModalOpen: false })),
     // Keeps the previous results on screen until the new ones arrive.
     startAppSearch: (term) => set((state) => ({ appSearch: { ...state.appSearch, term, status: 'loading' } })),
     setAppSearchResults: ({ term, apps, failed }) =>

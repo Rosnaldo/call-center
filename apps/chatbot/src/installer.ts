@@ -15,14 +15,14 @@ export type CreateInstaller = (params: ParamsOutput) => Promise<string>;
 // answers with is a presigned S3 link the browser uses directly.
 export const createInstallerClient =
     (baseUrl: string, getToken: GetToken): CreateInstaller =>
-    async ({ os, version, privateDnsHost, allowedApps, installOs, appVersion, blockRawIp, blockedTerms }) => {
+    async ({ os, version, privateDnsHost, allowedApps, installOs, appVersion, blockRawIp, blockedTerms, appSchedules }) => {
         if (!installOs) throw new Error('No install OS');
         const res = await fetch(`${baseUrl}/executables`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await getToken()}` },
             body: JSON.stringify({
                 platform: PLATFORMS[installOs],
-                config: { os, version, privateDnsHost, allowedApps, appVersion, blockRawIp, blockedTerms },
+                config: { os, version, privateDnsHost, allowedApps, appVersion, blockRawIp, blockedTerms, appSchedules },
             }),
             signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });

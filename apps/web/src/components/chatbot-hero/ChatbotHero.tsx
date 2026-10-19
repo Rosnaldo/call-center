@@ -5,9 +5,11 @@ import BoardMessage from './BoardMessage';
 import AllowedAppsModal from './AllowedAppsModal';
 import SummaryModal from './SummaryModal';
 import BlockedTermsModal from './BlockedTermsModal';
+import AppSchedulesModal from './AppSchedulesModal';
 import { useChatbotParamsStore, useChatbotStore } from '../../states/stores.ts';
 import { ChatbotWs } from '../../services/ws/chatbot-ws.ts';
 import type { ChatbotChoice } from '../../states/local/chatbot/state.ts';
+import type { AppSchedules } from '../../states/local/chatbot-params/state.ts';
 
 export const ChatbotHero: React.FC = () => {
   const { t } = useTranslation();
@@ -37,6 +39,7 @@ export const ChatbotHero: React.FC = () => {
   const handleRestart = () => chatbotWs.current?.restart();
   const handleAllowedApps = (apps: string[]) => chatbotWs.current?.sendAllowedApps(apps) ?? false;
   const handleBlockedTerms = (terms: string[]) => chatbotWs.current?.sendBlockedTerms(terms) ?? false;
+  const handleAppSchedules = (schedules: AppSchedules) => chatbotWs.current?.sendAppSchedules(schedules) ?? false;
   // Stable: the modal's debounce effect depends on it.
   const handleSearchApps = useCallback((term: string) => chatbotWs.current?.searchApps(term), []);
 
@@ -133,6 +136,7 @@ export const ChatbotHero: React.FC = () => {
       </div>
       <AllowedAppsModal onSubmit={handleAllowedApps} onSearch={handleSearchApps} />
       <BlockedTermsModal onSubmit={handleBlockedTerms} />
+      <AppSchedulesModal onSubmit={handleAppSchedules} />
       <SummaryModal />
     </div>
   );

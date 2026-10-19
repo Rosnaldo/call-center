@@ -2,7 +2,7 @@ import i18n from 'i18next';
 import { ITransport, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
 import type { ChatbotParamsStoreInstance, ChatbotStoreInstance } from '../../states/stores';
 import type { AppSearchResult, BotText } from '../../states/local/chatbot/state';
-import type { ChatbotParams } from '../../states/local/chatbot-params/state';
+import type { AppSchedules, ChatbotParams } from '../../states/local/chatbot-params/state';
 import properties from '../../properties';
 import authSession from '../../auth/session';
 
@@ -25,6 +25,7 @@ type ChatbotServerMessage =
     | ({ event: 'bot_message'; sendEnabled: boolean } & BotText)
     | { event: 'open_allowed_apps' }
     | { event: 'open_blocked_terms' }
+    | { event: 'open_app_schedules' }
     | { event: 'ask_choice'; choices: { key: string; value: string }[] }
     | { event: 'offer_restart' }
     | { event: 'installer_ready'; url: string }
@@ -158,6 +159,18 @@ export class ChatbotWs {
         return true;
     }
 
+    // Answers the bot's `open_app_schedules` with the schedules set in the modal
+    // (per allowed app, the time ranges it may be used in each day).
+    // Returns false when they couldn't be sent (socket not open).
+    sendAppSchedules(schedules: AppSchedules): boolean {
+        if (this.ws?.readyState !== TRANSPORT_OPEN) return false;
+        const { fulfillAppSchedulesRequest, setBotTyping } = this.store.getState();
+        fulfillAppSchedulesRequest();
+        setBotTyping(true);
+        this.ws.send(JSON.stringify({ event: 'app_schedules', schedules }));
+        return true;
+    }
+
     // Answers the bot's `offer_restart`: the server starts a new conversation
     // and greets again, so the finished one is cleared from the board.
     // Returns false when the request couldn't be sent (socket not open).
@@ -266,6 +279,8 @@ export class ChatbotWs {
                 this.store.getState().requestAllowedApps();
             } else if (msg.event === 'open_blocked_terms') {
                 this.store.getState().requestBlockedTerms();
+            } else if (msg.event === 'open_app_schedules') {
+                this.store.getState().requestAppSchedules();
             } else if (msg.event === 'ask_choice') {
                 this.store.getState().requestChoice(msg.choices.map(({ key, value }) => ({ label: t(key), value, key })));
             } else if (msg.event === 'installer_ready') {
