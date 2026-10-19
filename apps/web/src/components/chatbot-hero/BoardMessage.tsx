@@ -2,7 +2,8 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowDown, Ban, ClipboardList, Download, ListChecks, Loader2, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChatbotStore } from '../../states/stores.ts';
-import type { ChatbotChoice, ChatbotMessage, ChatbotParams } from '../../states/local/chatbot/state.ts';
+import type { ChatbotChoice, ChatbotMessage } from '../../states/local/chatbot/state.ts';
+import type { ChatbotParams } from '../../states/local/chatbot-params/state.ts';
 import { translateBotText } from '../../services/ws/chatbot-ws.ts';
 
 // Translated on render (not on arrival), so the chat follows language changes.

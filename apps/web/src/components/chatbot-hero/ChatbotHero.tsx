@@ -5,7 +5,7 @@ import BoardMessage from './BoardMessage';
 import AllowedAppsModal from './AllowedAppsModal';
 import SummaryModal from './SummaryModal';
 import BlockedTermsModal from './BlockedTermsModal';
-import { useChatbotStore } from '../../states/stores.ts';
+import { useChatbotParamsStore, useChatbotStore } from '../../states/stores.ts';
 import { ChatbotWs } from '../../services/ws/chatbot-ws.ts';
 import type { ChatbotChoice } from '../../states/local/chatbot/state.ts';
 
@@ -17,7 +17,7 @@ export const ChatbotHero: React.FC = () => {
   const chatbotWs = useRef<ChatbotWs | null>(null);
 
   useEffect(() => {
-    const ws = new ChatbotWs(useChatbotStore);
+    const ws = new ChatbotWs(useChatbotStore, useChatbotParamsStore);
     chatbotWs.current = ws;
     ws.connect();
     return () => {

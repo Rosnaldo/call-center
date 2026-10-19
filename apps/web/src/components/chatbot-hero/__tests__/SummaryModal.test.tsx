@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { SummaryModal } from '../SummaryModal.tsx';
-import { useChatbotStore } from '../../../states/stores.ts';
+import { useChatbotParamsStore, useChatbotStore } from '../../../states/stores.ts';
 
 const EMPTY = {
   os: null,
@@ -19,22 +19,22 @@ describe('SummaryModal', () => {
   beforeEach(() => {
     localStorage.clear();
     act(() => {
-      useChatbotStore.setState({ savedParams: null });
+      useChatbotParamsStore.setState({ params: null, savedParams: null });
       useChatbotStore.getState().resetChatbot();
     });
   });
 
   it('shows the kept params until the conversation collects its own', () => {
     act(() => {
-      useChatbotStore.setState({ savedParams: { ...EMPTY, os: 'iOS', version: '17.4' } });
-      useChatbotStore.getState().setParams(EMPTY);
+      useChatbotParamsStore.setState({ savedParams: { ...EMPTY, os: 'iOS', version: '17.4' } });
+      useChatbotParamsStore.getState().setParams(EMPTY);
       useChatbotStore.getState().openSummaryModal();
     });
     render(<SummaryModal />);
     expect(screen.getByText('iOS')).toBeTruthy();
     expect(screen.getByText('17.4')).toBeTruthy();
 
-    act(() => useChatbotStore.getState().setParams({ ...EMPTY, os: 'Android' }));
+    act(() => useChatbotParamsStore.getState().setParams({ ...EMPTY, os: 'Android' }));
     expect(screen.getByText('Android')).toBeTruthy();
     expect(screen.queryByText('17.4')).toBeNull();
   });
@@ -49,7 +49,7 @@ describe('SummaryModal', () => {
 
   it('marks the params not answered yet', () => {
     act(() => {
-      useChatbotStore.getState().setParams({ ...EMPTY, os: 'Android' });
+      useChatbotParamsStore.getState().setParams({ ...EMPTY, os: 'Android' });
       useChatbotStore.getState().openSummaryModal();
     });
     render(<SummaryModal />);
@@ -67,7 +67,7 @@ describe('SummaryModal', () => {
         apps: [{ id: 'com.spotify.music', name: 'Spotify', iconUrl: 'https://example.test/s.png' }],
         failed: false,
       });
-      store.setParams({
+      useChatbotParamsStore.getState().setParams({
         os: 'Android',
         version: '14',
         privateDns: true,

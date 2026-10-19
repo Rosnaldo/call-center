@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createOllamaExtractor, groundExtraction, systemPrompt, toExtraction } from './extractor';
+import { createOllamaExtractor, groundExtraction, stepPrompt, systemPrompt, toExtraction } from './extractor';
 
 describe('toExtraction', () => {
     it('keeps the known fields that were stated when setting params', () => {
@@ -15,9 +15,10 @@ describe('toExtraction', () => {
         expect(toExtraction('{"intent":"hack","os":"iOS"}')).toEqual({ intent: 'other', fields: {} });
     });
 
-    it('keeps the modal of a flow, and nothing else', () => {
+    it('keeps the param of a flow, and nothing else', () => {
         expect(toExtraction('{"intent":"flow","flow":"allowedApps","os":"iOS"}')).toEqual({ intent: 'flow', fields: {}, flow: 'allowedApps' });
-        expect(toExtraction('{"intent":"flow","flow":"os"}')).toEqual({ intent: 'other', fields: {} });
+        expect(toExtraction('{"intent":"flow","flow":"privateDns"}')).toEqual({ intent: 'flow', fields: {}, flow: 'privateDns' });
+        expect(toExtraction('{"intent":"flow","flow":"privateDnsHost"}')).toEqual({ intent: 'other', fields: {} });
         expect(toExtraction('{"intent":"flow"}')).toEqual({ intent: 'other', fields: {} });
     });
 
@@ -49,7 +50,19 @@ describe('groundExtraction', () => {
         expect(groundExtraction('quero alterar os domínios proibidos', 'confirm', flow('blockedTerms'))).toEqual(flow('blockedTerms'));
         expect(groundExtraction('posso trocar os apps?', 'confirm', flow('allowedApps'))).toEqual(flow('allowedApps'));
         expect(groundExtraction('libera o whatsapp', 'askInstallOs', flow('allowedApps'))).toEqual(flow('allowedApps'));
-        expect(groundExtraction('quero mudar a versão', 'confirm', flow('blockedTerms'))).toEqual({ intent: 'other', fields: {} });
+        expect(groundExtraction('quero mudar tudo', 'confirm', flow('blockedTerms'))).toEqual({ intent: 'other', fields: {} });
+    });
+
+    it('goes back to a typed param named without its new value', () => {
+        const flow = (target: string) => ({ intent: 'flow' as const, fields: {}, flow: target });
+        expect(groundExtraction('quero alterar o dns privado', 'confirm', flow('privateDns'))).toEqual(flow('privateDns'));
+        expect(groundExtraction('quero mudar a versão', 'confirm', flow('blockedTerms'))).toEqual(flow('version'));
+        // Missed by the model.
+        expect(groundExtraction('quero alterar o dns privado', 'confirm', set({}))).toEqual(flow('privateDns'));
+        expect(groundExtraction('quero alterar o dns privado', 'confirm', { intent: 'other', fields: {} })).toEqual(flow('privateDns'));
+        // Naming two, the model's pick when the message names it.
+        expect(groundExtraction('muda a versão do android', 'confirm', flow('version'))).toEqual(flow('version'));
+        expect(groundExtraction('muda a versão do android', 'confirm', flow('installOs'))).toEqual({ intent: 'other', fields: {} });
     });
 
     it('goes to the modal the message names, whichever the model picked', () => {
@@ -102,25 +115,29 @@ describe('groundExtraction', () => {
         });
         // An order asked politely.
         expect(groundExtraction('pode mudar a versão para 9?', 'askOs', set({ version: '9' }))).toEqual(set({ version: '9' }));
-        // The value has to be in the text to count.
-        expect(groundExtraction('pode mudar a versão?', 'askOs', set({ version: '9' }))).toEqual({ intent: 'question', fields: {} });
+        // The value has to be in the text to count; without it, the bot asks for it.
+        expect(groundExtraction('pode mudar a versão?', 'askOs', set({ version: '9' }))).toEqual({ intent: 'flow', fields: {}, flow: 'version' });
+        expect(groundExtraction('o que é versão?', 'askOs', set({ version: '9' }))).toEqual({ intent: 'question', fields: {} });
     });
 });
 
-describe('systemPrompt', () => {
+describe('stepPrompt', () => {
     it("names the bot's current question", () => {
-        expect(systemPrompt('askDnsHost')).toContain('the private DNS hostname (privateDnsHost)');
+        expect(stepPrompt('askDnsHost')).toContain('the private DNS hostname (privateDnsHost)');
     });
 });
 
 describe('createOllamaExtractor', () => {
-    afterEach(() => vi.unstubAllGlobals());
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+    });
 
     it('asks Ollama for the schema-constrained fields and reads its reply', async () => {
         const fetchMock = vi.fn(async () => new Response(JSON.stringify({ message: { content: '{"intent":"set","os":"Android"}' } })));
         vi.stubGlobal('fetch', fetchMock);
 
-        expect(await createOllamaExtractor('http://llm:11434', 'qwen2.5:3b')('meu android', 'askOs')).toEqual({
+        expect(await createOllamaExtractor('http://llm:11434', 'qwen2.5:3b').extract('meu android', 'askOs')).toEqual({
             intent: 'set',
             fields: { os: 'Android' },
         });
@@ -131,11 +148,42 @@ describe('createOllamaExtractor', () => {
         expect(body).toMatchObject({ model: 'qwen2.5:3b', stream: false, options: { temperature: 0 } });
         expect(body.format.properties).toHaveProperty('privateDnsHost');
         expect(body.format.required).toEqual(['intent']);
-        expect(body.messages[1]).toEqual({ role: 'user', content: 'meu android' });
+        // The system prompt first, the same at every step, so Ollama reuses it.
+        expect(body.messages).toEqual([
+            { role: 'system', content: systemPrompt },
+            { role: 'system', content: stepPrompt('askOs') },
+            { role: 'user', content: 'meu android' },
+        ]);
     });
 
     it('fails on an error status', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => new Response('model not found', { status: 404 })));
-        await expect(createOllamaExtractor('http://llm:11434', 'x')('oi', 'askOs')).rejects.toThrow('404');
+        const fetchMock = vi.fn(async () => new Response('model not found', { status: 404 }));
+        vi.stubGlobal('fetch', fetchMock);
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        vi.useFakeTimers();
+        await expect(createOllamaExtractor('http://llm:11434', 'x').extract('oi', 'askOs')).rejects.toThrow('404');
+        // Then warms the model up again.
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+        vi.useRealTimers();
+    });
+
+    it('warms up until Ollama answers, one warm-up at a time', async () => {
+        vi.useFakeTimers();
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        vi.spyOn(console, 'log').mockImplementation(() => {});
+        const fetchMock = vi
+            .fn()
+            .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+            .mockResolvedValue(new Response(JSON.stringify({ message: { content: '{}' } })));
+        vi.stubGlobal('fetch', fetchMock);
+        const { warmUp } = createOllamaExtractor('http://llm:11434', 'x');
+
+        const first = warmUp();
+        expect(warmUp()).toBe(first);
+        await vi.advanceTimersByTimeAsync(15_000);
+        await first;
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        vi.useRealTimers();
     });
 });

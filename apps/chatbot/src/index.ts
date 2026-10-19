@@ -54,7 +54,9 @@ const EXECUTABLE_URL = process.env.EXECUTABLE_URL ?? 'http://127.0.0.1:5005';
 const IAM_URI = process.env.IAM_URI ?? 'http://127.0.0.1:5002';
 const createInstaller = createInstallerClient(EXECUTABLE_URL, serviceTokenFromEnv());
 const isLoggedIn = createUserAuthClient(IAM_URI);
-const extractFields = extractorFromEnv();
+const ollama = extractorFromEnv();
+// Up front, so the first user doesn't wait for the model to load.
+void ollama?.warmUp();
 
 const send = (ws: WebSocket, msg: ServerMessage): void => {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
@@ -93,7 +95,7 @@ const alive = new WeakMap<WebSocket, boolean>();
 
 wss.on('connection', (ws) => {
     // Each socket gets its own conversation; closing the socket ends it.
-    const session = new ChatSession(createInstaller, isLoggedIn, extractFields);
+    const session = new ChatSession(createInstaller, isLoggedIn, ollama?.extract);
     // The params go after every reply, so the client's summary follows the conversation.
     const reply = (replies: BotReply[]) => {
         replies.forEach((msg) => send(ws, msg));

@@ -1,5 +1,5 @@
-import { AppSearchResult, BotActivity, ChatbotChoice, ChatbotMessage, ChatbotMessageAction, ChatbotParams, ChatbotState, initialAppSearch, initialChatbotState } from './state.ts';
-import { saveParams } from '../../../components/chatbot-hero/saved-params.ts';
+import { AppSearchResult, BotActivity, ChatbotChoice, ChatbotMessage, ChatbotMessageAction, ChatbotState, initialAppSearch, initialChatbotState } from './state.ts';
+import type { ChatbotParams } from '../chatbot-params/state.ts';
 
 export interface ChatbotActions {
   addMessage: (message: ChatbotMessage) => void;
@@ -21,9 +21,6 @@ export interface ChatbotActions {
   setAppSearchResults: (result: { term: string; apps: AppSearchResult[]; failed: boolean }) => void;
   clearAppSearch: () => void;
   setSendEnabled: (isSendEnabled: boolean) => void;
-  setParams: (params: ChatbotParams) => void;
-  // Keeps the finished conversation's params, in the store and localStorage.
-  setSavedParams: (params: ChatbotParams) => void;
   // `params` shows other params than the conversation's.
   openSummaryModal: (params?: ChatbotParams) => void;
   closeSummaryModal: () => void;
@@ -110,14 +107,9 @@ export const createChatbotActions = (
       ),
     clearAppSearch: () => set(() => ({ appSearch: initialAppSearch })),
     setSendEnabled: (isSendEnabled) => set(() => ({ isSendEnabled })),
-    setParams: (params) => set(() => ({ params })),
-    setSavedParams: (savedParams) => {
-      saveParams(savedParams);
-      set(() => ({ savedParams }));
-    },
     openSummaryModal: (params) => set(() => ({ isSummaryModalOpen: true, summaryParams: params ?? null })),
     closeSummaryModal: () => set(() => ({ isSummaryModalOpen: false, summaryParams: null })),
-    // A new conversation; the kept params stay, for it to reuse.
-    resetChatbot: () => set((state) => ({ ...initialChatbotState, savedParams: state.savedParams })),
+    // A new conversation (its params are reset in the chatbot-params store).
+    resetChatbot: () => set(() => initialChatbotState),
   };
 };

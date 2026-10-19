@@ -59,7 +59,10 @@ export type ParamsEvent =
     | { type: 'FILL'; fields: FieldValues }
     // The configuration the client kept from an earlier conversation (raw).
     | { type: 'LOCALSTORAGE'; params: unknown }
-    | { type: 'RESTART' };
+    // Asking to change a typed param without its new value: back to its question.
+    | { type: 'REASK'; step: CollectStep }
+    // Back to the opening with the extracted params reset (see resetExtraction).
+    | { type: 'RESET' };
 
 const OS_ALIASES: Record<string, MobileOs> = {
     android: 'Android',
@@ -165,6 +168,23 @@ export const parseAppIds = (apps: unknown): string[] | null => {
 // fill but can ask to change: the session sends the modal's question again.
 export const MODAL_FIELDS = ['allowedApps', 'blockedTerms'] as const;
 export type ModalField = (typeof MODAL_FIELDS)[number];
+
+// The typed params free text can ask to change without the new value
+// ("quero alterar o dns"): the bot goes back to each one's question.
+export const REASK_STEPS = {
+    os: 'askOs',
+    version: 'askVersion',
+    privateDns: 'askDns',
+    blockRawIp: 'askBlockRawIp',
+    installOs: 'askInstallOs',
+    appVersion: 'askAppVersion',
+} as const satisfies Record<string, CollectStep>;
+export type ReaskField = keyof typeof REASK_STEPS;
+
+// The params free text can ask to change: a modal's, or a typed one's question.
+export const FLOW_FIELDS = [...MODAL_FIELDS, ...(Object.keys(REASK_STEPS) as ReaskField[])];
+export type FlowField = ModalField | ReaskField;
+export const isModalField = (field: FlowField): field is ModalField => (MODAL_FIELDS as readonly string[]).includes(field);
 
 // The params free text can fill (FILL). The allowed apps aren't among them:
 // they're Play ids picked in the checklist.
@@ -307,12 +327,30 @@ const initialContext: ParamsContext = {
     saved: null,
 };
 
+// The context with every extracted param reset, except the lists picked in
+// the modals (allowed apps, blocked words), which aren't asked again. Used
+// when the summary is rejected and on RESET (the "reset" button).
+export const resetExtraction = (context: ParamsContext): ParamsContext => ({
+    ...initialContext,
+    allowedApps: context.allowedApps,
+    blockedTerms: context.blockedTerms,
+    wantsBlockedTerms: context.blockedTerms === null ? null : context.wantsBlockedTerms,
+});
+
 // Guards/actions are typed with every event, so they read payloads defensively.
 const answerOf = (event: ParamsEvent): string => (event.type === 'ANSWER' ? event.value : '');
 const appsOf = (event: ParamsEvent): unknown => (event.type === 'ALLOWED_APPS' ? event.apps : undefined);
 const termsOf = (event: ParamsEvent): unknown => (event.type === 'BLOCKED_TERMS' ? event.terms : undefined);
 const fieldsOf = (event: ParamsEvent): FieldValues => (event.type === 'FILL' ? event.fields : {});
 const savedParamsOf = (event: ParamsEvent): unknown => (event.type === 'LOCALSTORAGE' ? event.params : undefined);
+
+// To each question asked again (REASK), keeping the params answered: its
+// answer goes on to the first unanswered one, or to confirm.
+const REASK = COLLECT_STEPS.map((step) => ({
+    guard: ({ event }: { event: ParamsEvent }) => event.type === 'REASK' && event.step === step,
+    target: `#mobileParams.collecting.${step}`,
+    actions: 'reask' as const,
+}));
 
 export const paramsMachine = setup({
     types: {
@@ -355,6 +393,8 @@ export const paramsMachine = setup({
         wantBlockedTerms: assign({ wantsBlockedTerms: true, error: null }),
         saveNoBlockedTerms: assign({ wantsBlockedTerms: false, blockedTerms: () => [], error: null }),
         fill: assign(({ context, event }) => applyFields(context, fieldsOf(event))),
+        // Counted as a fill, so the question is sent even when already at it.
+        reask: assign({ fillCount: ({ context }) => context.fillCount + 1, error: null }),
         openLearnMore: assign({ learnTopic: null, error: null }),
         explainTopic: assign({
             learnTopic: ({ event }) => parseLearnTopic(answerOf(event)),
@@ -369,7 +409,7 @@ export const paramsMachine = setup({
             wantsBlockedTerms: context.saved!.blockedTerms!.length > 0,
             error: null,
         })),
-        reset: assign(() => ({ ...initialContext })),
+        resetExtraction: assign(({ context }) => resetExtraction(context)),
         rejectOs: assign({ error: 'errors.os' }),
         rejectVersion: assign({ error: 'errors.version' }),
         rejectHostname: assign({ error: 'errors.hostname' }),
@@ -389,7 +429,7 @@ export const paramsMachine = setup({
     context: { ...initialContext },
     initial: 'askStart',
     on: {
-        RESTART: { target: '.askStart', actions: 'reset' },
+        RESET: { target: '.askStart', actions: 'resetExtraction' },
         // Used only when the intro is done; the client sends it on connecting.
         LOCALSTORAGE: { actions: 'storeSaved' },
     },
@@ -444,6 +484,7 @@ export const paramsMachine = setup({
             initial: 'route',
             on: {
                 FILL: { target: '.route', actions: 'fill' },
+                REASK,
                 ALLOWED_APPS: [
                     { guard: 'isValidAppIds', target: '.route', actions: 'saveAllowedApps' },
                     { actions: 'rejectAppIds' },
@@ -548,10 +589,11 @@ export const paramsMachine = setup({
             on: {
                 ANSWER: [
                     { guard: 'isYes', target: 'done', actions: 'clearError' },
-                    { guard: 'isNo', target: 'collecting', actions: 'reset' },
+                    { guard: 'isNo', target: 'collecting', actions: 'resetExtraction' },
                     { actions: 'rejectYesNo' },
                 ],
                 FILL: { target: 'collecting', actions: 'fill' },
+                REASK,
                 ALLOWED_APPS: [
                     { guard: 'isValidAppIds', target: 'collecting', actions: 'saveAllowedApps' },
                     { actions: 'rejectAppIds' },
@@ -606,6 +648,11 @@ export const stepOf = (snapshot: SnapshotFrom<typeof paramsMachine>): PromptStat
 // Steps answered only with the checklist or the modal take no typed answer.
 export const isStepAnswer = (step: PromptState, text: string): boolean => {
     switch (step) {
+        case 'askStart':
+        case 'intro':
+            return isProceedAnswer(text) || (step === 'askStart' && LEARN_MORE.includes(normalize(text)));
+        case 'learnMore':
+            return isProceedAnswer(text) || parseLearnTopic(text) !== null;
         case 'askOs':
             return parseOs(text) !== null;
         case 'askVersion':
@@ -616,6 +663,7 @@ export const isStepAnswer = (step: PromptState, text: string): boolean => {
             return parseInstallOs(text) !== null;
         case 'askAppVersion':
             return parseAppVersion(text) !== null;
+        case 'askReuse':
         case 'askDns':
         case 'askBlockRawIp':
         case 'askBlockTerms':

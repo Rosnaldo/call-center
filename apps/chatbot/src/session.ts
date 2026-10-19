@@ -1,7 +1,18 @@
 import { createActor, type Actor } from 'xstate';
-import { isProceedAnswer, isStepAnswer, paramsMachine, stepOf, type ModalField, type ParamsOutput, type PromptState } from './params-machine';
+import {
+    isModalField,
+    isProceedAnswer,
+    isStepAnswer,
+    paramsMachine,
+    REASK_STEPS,
+    stepOf,
+    type FlowField,
+    type ModalField,
+    type ParamsOutput,
+    type PromptState,
+} from './params-machine';
 import { help, notedOf, prompts, summaryOf, type BotText } from './prompts';
-import type { ExtractFields, Extraction } from './extractor';
+import { groundExtraction, type ExtractFields, type Extraction } from './extractor';
 import type { CreateInstaller } from './installer';
 import type { IsLoggedIn } from './user-auth';
 
@@ -72,6 +83,8 @@ const MODAL_STEPS: Record<ModalField, PromptState> = { allowedApps: 'askAllowedA
 
 // The opening steps, open to anyone; going on to the setup needs a logged-in user.
 const OPENING = new Set<PromptState>(['askStart', 'learnMore']);
+// The steps before the setup's questions: asking to change a param there starts it.
+const BEFORE_SETUP = new Set<PromptState>([...OPENING, 'intro']);
 
 // Steps with buttons that can also be answered by typing.
 const TYPED_TOO = new Set<PromptState>(['askAppVersion']);
@@ -114,10 +127,18 @@ export class ChatSession {
         private readonly extractFields?: ExtractFields,
     ) {}
 
-    // Opening replies for a fresh conversation.
+    // Opening replies for a fresh conversation. Restarting one (the "reset"
+    // button) resets its extracted params (RESET), keeping the apps and words.
     start(): BotReply[] {
-        this.actor?.stop();
-        this.actor = createActor(paramsMachine).start();
+        if (this.actor) {
+            const { context } = this.actor.getSnapshot();
+            this.actor.stop();
+            // A finished actor takes no events: a new one, with the old params.
+            this.actor = createActor(paramsMachine, { snapshot: paramsMachine.resolveState({ value: 'askStart', context }) }).start();
+            this.actor.send({ type: 'RESET' });
+        } else {
+            this.actor = createActor(paramsMachine).start();
+        }
         this.lastState = null;
         this.lastLearnCount = 0;
         this.lastFillCount = 0;
@@ -136,45 +157,90 @@ export class ChatSession {
     // Like handle, but starting the setup from the opening needs a logged-in
     // user (`token` is their access token); learning more doesn't. During the
     // setup, text that isn't the step's own answer goes to the LLM, which may
-    // fill any params from it.
+    // fill any params from it, and once finished change them (see fill).
     async answer(text: string, token?: string): Promise<BotReply[]> {
-        if (this.isLoggedIn && this.isStartingSetup(text)) {
-            try {
-                if (!(await this.isLoggedIn(token))) return this.withSendState(this.askAgain('messages.proceedLoginRequired'));
-            } catch (err) {
-                console.error('[login]', err);
-                return this.withSendState(this.askAgain('messages.loginCheckFailed'));
-            }
+        if (this.isStartingSetup(text)) {
+            const refusal = await this.loginRefusal(token);
+            if (refusal) return this.withSendState(refusal);
         }
-        if (this.isFilling() && !isStepAnswer(this.step(), text.trim()) && text.trim() !== '/restart') return this.fill(text);
+        // Every step reads free text with the LLM; only the step's own answer
+        // (a button's value, a valid typed answer) skips it.
+        if (this.extractFields && !isStepAnswer(this.step(), text.trim()) && text.trim() !== '/restart') return this.fill(text, token);
         return this.handle(text);
+    }
+
+    // Why the user can't start the setup (not logged in, or the check
+    // failed), as replies; null when they can.
+    private async loginRefusal(token?: string): Promise<Reply[] | null> {
+        if (!this.isLoggedIn) return null;
+        try {
+            return (await this.isLoggedIn(token)) ? null : this.askAgain('messages.proceedLoginRequired');
+        } catch (err) {
+            console.error('[login]', err);
+            return this.askAgain('messages.loginCheckFailed');
+        }
     }
 
     // The params the LLM reads from `text`, each validated by the machine,
     // after a message saying what was read; a question gets the step's fixed
-    // help, and asking to change a modal's params asks for its list again. When it
+    // help, and asking to change a param without its value asks for it again. When it
     // reads none of these (or fails), the step's own parser answers, as without it.
-    private async fill(text: string): Promise<BotReply[]> {
+    // A finished conversation, or a kept configuration offered for reuse, is
+    // read as at its confirmation, and changing a param goes back to it.
+    // Before the setup (opening, intro), changing a param starts it, logged in.
+    private async fill(text: string, token?: string): Promise<BotReply[]> {
         const actor = this.actor;
-        let extraction: Extraction = { intent: 'other', fields: {} };
+        const step = this.canReopen() ? 'confirm' : this.step();
+        let extraction: Extraction;
         try {
-            extraction = await this.extractFields!(text, this.step());
+            extraction = await this.extractFields!(text, step);
         } catch (err) {
+            // The model failed (or timed out, as while it loads): asking to
+            // change a param it names still goes back to it, read from the words.
             console.error('[extract]', err);
+            extraction = groundExtraction(text, step, { intent: 'other', fields: {} });
         }
         // Restarted while the model was reading: the text was for the old conversation.
         if (actor !== this.actor) return [];
-        if (this.isDone()) return this.handle(text);
+        const changes = (extraction.intent === 'flow' && extraction.flow) || Object.keys(extraction.fields).length;
+        if (!this.isDone() && BEFORE_SETUP.has(this.step())) {
+            if (!changes) return this.handle(text);
+            if (OPENING.has(this.step())) {
+                const refusal = await this.loginRefusal(token);
+                if (actor !== this.actor) return [];
+                if (refusal) return this.withSendState(refusal);
+            }
+            this.startSetup();
+        }
+        if (this.canReopen()) {
+            if (!changes) return this.handle(text);
+            // The kept configuration is taken (as answering yes), then changed.
+            if (!this.isDone()) this.actor.send({ type: 'ANSWER', value: 'yes' });
+            this.reopen();
+        }
         if (extraction.intent === 'question' && help[this.step()]) return this.withSendState(this.helpReplies());
-        // The modal's question again, without leaving the step: its list is
-        // taken at any step and the setup goes on from where it was.
-        if (extraction.intent === 'flow' && extraction.flow) return this.withSendState(this.modalReplies(extraction.flow));
+        if (extraction.intent === 'flow' && extraction.flow) return this.withSendState(this.flowReplies(extraction.flow));
         if (!Object.keys(extraction.fields).length) return this.handle(text);
 
         const before = this.params();
         this.actor.send({ type: 'FILL', fields: extraction.fields });
         const noted = notedOf(before, this.params());
         return this.withSendState([...(noted ? [say('messages.noted', { noted })] : []), ...this.replies()]);
+    }
+
+    // Past the opening and intro, as answering proceed: to the kept
+    // configuration's offer, or the first question.
+    private startSetup(): void {
+        while (!this.isDone() && BEFORE_SETUP.has(this.step())) this.actor.send({ type: 'ANSWER', value: 'proceed' });
+    }
+
+    // A finished conversation back at its confirmation, with its params, to
+    // change some: it's confirmed again before the installer is generated.
+    private reopen(): void {
+        const { context } = this.actor.getSnapshot();
+        this.actor.stop();
+        this.actor = createActor(paramsMachine, { snapshot: paramsMachine.resolveState({ value: 'confirm', context }) }).start();
+        this.lastState = 'confirm';
     }
 
     // The current step's help, then its question and buttons again.
@@ -185,6 +251,15 @@ export class ChatSession {
         for (const { key, params } of [prompts[step](snapshot.context)].flat()) replies.push(say(key, params));
         const buttons = BUTTONS[step];
         return buttons ? [...replies, buttons] : replies;
+    }
+
+    // A modal's question again, without leaving the step: its list is taken at
+    // any step and the setup goes on from where it was. A typed param's
+    // question is its step: the bot goes back to it.
+    private flowReplies(field: FlowField): Reply[] {
+        if (isModalField(field)) return this.modalReplies(field);
+        this.actor.send({ type: 'REASK', step: REASK_STEPS[field] });
+        return this.replies();
     }
 
     // The question asking for a modal's list, and its button.
@@ -283,11 +358,11 @@ export class ChatSession {
     }
 
     // Typing is for the steps without buttons (or that take both), or any setup
-    // step with an LLM to read it, while not finished.
+    // step with an LLM to read it; once finished, only with the LLM, to change params.
     private isSendEnabled(): boolean {
-        if (this.isDone()) return false;
+        if (this.isDone()) return !!this.extractFields;
         const state = this.step();
-        return !BUTTONS[state] || TYPED_TOO.has(state) || this.isFilling();
+        return !BUTTONS[state] || TYPED_TOO.has(state) || this.isFilling() || this.canReopen();
     }
 
     private withSendState(replies: Reply[]): BotReply[] {
@@ -303,6 +378,12 @@ export class ChatSession {
     // The current question (only meaningful while not done).
     private step(): PromptState {
         return stepOf(this.actor.getSnapshot()) as PromptState;
+    }
+
+    // Whether free text can change params of a finished conversation, or of
+    // the kept configuration offered for reuse, going back to the confirmation.
+    private canReopen(): boolean {
+        return !!this.extractFields && (this.isDone() || this.step() === 'askReuse');
     }
 
     // Whether free text can fill params now: an LLM is set and the setup is on.

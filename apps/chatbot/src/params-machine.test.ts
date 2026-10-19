@@ -169,18 +169,38 @@ describe('paramsMachine', () => {
         expect(invalid.context.error).toBe('errors.appIds');
     });
 
-    it('starts over when the summary is rejected', () => {
-        const snapshot = run('1', '14', 'no', [], 'no', 'no', 'linux', '1.0', 'no');
+    it('starts over when the summary is rejected, keeping the apps and words', () => {
+        const snapshot = run('1', '14', 'no', ['com.whatsapp'], 'no', 'no', 'linux', '1.0', 'no');
         expect(stepOf(snapshot)).toBe('askOs');
-        expect(snapshot.context.os).toBeNull();
+        expect(snapshot.context).toMatchObject({
+            os: null,
+            version: null,
+            privateDns: null,
+            blockRawIp: null,
+            installOs: null,
+            appVersion: null,
+            allowedApps: ['com.whatsapp'],
+            blockedTerms: [],
+            wantsBlockedTerms: false,
+        });
     });
 
-    it('restarts on RESTART', () => {
+    it('goes back to the opening on RESET, keeping the apps and words', () => {
         const actor = createActor(paramsMachine).start();
         actor.send({ type: 'ANSWER', value: 'proceed' });
-        actor.send({ type: 'RESTART' });
+        actor.send({ type: 'ANSWER', value: 'proceed' });
+        actor.send({ type: 'FILL', fields: { os: 'Android', privateDnsHost: 'dns.adguard.com', blockedTerms: ['bet'] } });
+        actor.send({ type: 'ALLOWED_APPS', apps: ['com.whatsapp'] });
+        actor.send({ type: 'RESET' });
         expect(stepOf(actor.getSnapshot())).toBe('askStart');
-        expect(actor.getSnapshot().context.os).toBeNull();
+        expect(actor.getSnapshot().context).toMatchObject({
+            os: null,
+            privateDns: null,
+            privateDnsHost: null,
+            allowedApps: ['com.whatsapp'],
+            blockedTerms: ['bet'],
+            wantsBlockedTerms: true,
+        });
     });
 });
 

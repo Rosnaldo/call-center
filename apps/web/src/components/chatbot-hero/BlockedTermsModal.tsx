@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useChatbotStore } from '../../states/stores.ts';
+import { useChatbotParamsStore, useChatbotStore } from '../../states/stores.ts';
 
 const MONO = '"JetBrains Mono", Menlo, Consolas, monospace';
 const SCROLLBAR =
@@ -31,7 +31,7 @@ const TermsEditor: React.FC<BlockedTermsModalProps> = ({ onSubmit }) => {
   const close = useChatbotStore((s) => s.closeBlockedTermsModal);
   // The conversation's words, else the kept configuration's.
   const [terms, setTerms] = useState<string[]>(() => {
-    const { params, savedParams } = useChatbotStore.getState();
+    const { params, savedParams } = useChatbotParamsStore.getState();
     return params?.blockedTerms ?? savedParams?.blockedTerms ?? [];
   });
   const [draft, setDraft] = useState('');

@@ -45,14 +45,18 @@ class MainActivity : AppCompatActivity() {
             val configVersion = ProvisioningConfig.get(this@MainActivity)?.appVersion
             appendLine("Configuration version: ${configVersion ?: "none"}")
             appendLine("Device owner active: $isOwner")
-            if (!PolicyEnforcer.isDnsLockSupported()) {
-                appendLine("Private DNS lock: via VPN fallback (native API needs Android 10+)")
-            } else {
-                appendLine("Private DNS locked: ${AllowlistStore.isDnsLocked(this@MainActivity)}")
+            // Private DNS only shows up when configured (locked natively or via the VPN fallback).
+            if (AllowlistStore.isDnsLocked(this@MainActivity)) {
+                if (!PolicyEnforcer.isDnsLockSupported()) {
+                    appendLine("Private DNS lock: via VPN fallback (native API needs Android 10+)")
+                }
+                val host = AllowlistStore.dnsHost(this@MainActivity)
+                if (host != Constants.LOCKED_PRIVATE_DNS_HOST) appendLine("Private DNS host: $host")
             }
-            appendLine("Private DNS host: ${AllowlistStore.dnsHost(this@MainActivity)}")
             append("Install allowlist enforced: ${AllowlistStore.isInstallsLocked(this@MainActivity)}")
         }
+        binding.blockedTermsButton.visibility =
+            if (UrlTermDenyList.deniedTerms(this).isEmpty()) View.GONE else View.VISIBLE
         showAllowedApps()
     }
 
@@ -138,7 +142,7 @@ class MainActivity : AppCompatActivity() {
         val terms = UrlTermDenyList.deniedTerms(this).sorted()
         AlertDialog.Builder(this)
             .setTitle("Blocked search terms")
-            .setMessage(if (terms.isEmpty()) "No blocked search terms." else terms.joinToString("\n"))
+            .setMessage(terms.joinToString("\n"))
             .setNegativeButton("Close", null)
             .show()
     }

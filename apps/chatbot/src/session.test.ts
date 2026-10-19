@@ -252,7 +252,7 @@ describe('ChatSession params', () => {
         expect(session.params()).toEqual({ ...empty, os: 'Android', version: '14', privateDns: false, allowedApps: ['com.whatsapp'] });
     });
 
-    it('keeps them once finished and clears them on restart', () => {
+    it('keeps them once finished and resets them on restart, except the apps and words', () => {
         const { session } = atAllowedApps();
         session.selectAllowedApps([]);
         session.handle('no');
@@ -262,7 +262,7 @@ describe('ChatSession params', () => {
         session.handle('yes');
         expect(session.params()).toMatchObject({ installOs: 'macOS', appVersion: '2.0', blockRawIp: false, blockedTerms: [] });
         session.start();
-        expect(session.params()).toEqual(empty);
+        expect(session.params()).toEqual({ ...empty, allowedApps: [], blockedTerms: [] });
     });
 });
 
@@ -594,12 +594,34 @@ describe('ChatSession free text (LLM)', () => {
         expect((await session.answer('14'))[0]).toMatchObject({ key: 'messages.askDns', sendEnabled: true });
     });
 
-    it('keeps the opening deterministic', async () => {
+    it('starts the setup from the opening with the params read there', async () => {
         const extract = vi.fn(async () => answer({ os: 'Android' }));
         const session = new ChatSession(undefined, undefined, extract);
         session.start();
-        expect((await session.answer('tenho um android'))[0]).toMatchObject({ key: 'errors.proceed' });
-        expect(extract).not.toHaveBeenCalled();
+        const replies = await session.answer('tenho um android');
+        expect(extract).toHaveBeenCalledWith('tenho um android', 'askStart');
+        expect(replies.map((r) => ('key' in r ? r.key : r.event))).toEqual(['messages.noted', 'messages.askVersion']);
+        expect(session.params().os).toBe('Android');
+    });
+
+    it('needs a logged-in user to start the setup from the opening', async () => {
+        const isLoggedIn = vi.fn(async () => false);
+        const session = new ChatSession(undefined, isLoggedIn, async () => answer({ os: 'Android' }));
+        session.start();
+        expect((await session.answer('tenho um android', 'tok'))[0]).toMatchObject({ key: 'messages.proceedLoginRequired' });
+        expect(isLoggedIn).toHaveBeenCalledWith('tok');
+        expect(session.params().os).toBeNull();
+    });
+
+    it('keeps the opening for anything else, and its buttons without the LLM', async () => {
+        const extract = vi.fn(async (): Promise<Extraction> => ({ intent: 'other', fields: {} }));
+        const session = new ChatSession(undefined, undefined, extract);
+        session.start();
+        expect((await session.answer('oi'))[0]).toMatchObject({ key: 'errors.proceed' });
+        expect(extract).toHaveBeenCalledTimes(1);
+        expect((await session.answer('learn'))[0]).toMatchObject({ key: 'messages.learnMore' });
+        expect((await session.answer('proceed'))[0]).toMatchObject({ key: 'messages.intro' });
+        expect(extract).toHaveBeenCalledTimes(1);
     });
 
     it('drops the replies of a conversation restarted while the model was reading', async () => {
@@ -726,3 +748,179 @@ describe('ChatSession asking for a modal\'s list again (LLM)', () => {
     });
 });
 
+
+describe('ChatSession asking a typed param\'s question again (LLM)', () => {
+    const flow = (target: 'privateDns' | 'version') => async () => ({ intent: 'flow' as const, fields: {}, flow: target });
+    const atConfirm = (session: ChatSession) => {
+        session.start();
+        for (const text of ['proceed', 'proceed', 'android', '14', 'no']) session.handle(text);
+        session.selectAllowedApps(['com.whatsapp']);
+        for (const text of ['no', 'no', 'linux', '1.0']) session.handle(text);
+    };
+
+    it('goes back to the private DNS question from the confirmation, then shows it again', async () => {
+        const session = new ChatSession(undefined, undefined, flow('privateDns'));
+        atConfirm(session);
+
+        expect(await session.answer('quero alterar o dns privado')).toEqual([
+            { event: 'bot_message', key: 'messages.askDns', sendEnabled: true },
+            { event: 'ask_choice', choices: [{ key: 'choices.yes', value: 'yes' }, { key: 'choices.no', value: 'no' }] },
+        ]);
+        expect(session.handle('yes')[0]).toMatchObject({ key: 'messages.askDnsHost' });
+        expect(session.handle('dns.adguard.com')[0]).toMatchObject({ key: 'messages.confirm' });
+        expect(session.params()).toMatchObject({ privateDns: true, privateDnsHost: 'dns.adguard.com', installOs: 'Linux' });
+    });
+
+    it('asks the question again when already at it', async () => {
+        const session = new ChatSession(undefined, undefined, flow('version'));
+        session.start();
+        for (const text of ['proceed', 'proceed', 'android']) session.handle(text);
+        expect(await session.answer('quero mudar a versão')).toEqual([
+            { event: 'bot_message', key: 'messages.askVersion', params: { os: 'Android', example: '14' }, sendEnabled: true },
+        ]);
+    });
+});
+
+describe('ChatSession when the LLM fails', () => {
+    it('still goes back to a param the message asks to change', async () => {
+        const session = new ChatSession(undefined, undefined, async () => {
+            throw new Error('timeout');
+        });
+        session.start();
+        for (const text of ['proceed', 'proceed', 'android', '14', 'no']) session.handle(text);
+        session.selectAllowedApps(['com.whatsapp']);
+        for (const text of ['no', 'no', 'linux', '1.0']) session.handle(text);
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        expect((await session.answer('quero alterar o dns privado'))[0]).toMatchObject({ key: 'messages.askDns' });
+    });
+});
+
+describe('ChatSession changing params once finished (LLM)', () => {
+    const finished = (extract: ExtractFields) => {
+        const session = new ChatSession(undefined, undefined, extract);
+        session.start();
+        for (const text of ['proceed', 'proceed', 'android', '14', 'no']) session.handle(text);
+        session.selectAllowedApps(['com.whatsapp']);
+        for (const text of ['no', 'no', 'linux', '1.0', 'yes']) session.handle(text);
+        return session;
+    };
+
+    it('goes back to the asked question, then to the confirmation', async () => {
+        const extract = vi.fn(async (): Promise<Extraction> => ({ intent: 'flow', fields: {}, flow: 'privateDns' }));
+        const session = finished(extract);
+
+        expect((await session.answer('quero alterar o dns privado'))[0]).toMatchObject({ key: 'messages.askDns' });
+        expect(extract).toHaveBeenCalledWith('quero alterar o dns privado', 'confirm');
+        session.handle('yes');
+        expect(session.handle('dns.adguard.com')[0]).toMatchObject({ key: 'messages.confirm' });
+        expect(session.handle('yes')[0]).toMatchObject({ key: 'messages.done' });
+        expect(session.params()).toMatchObject({ privateDnsHost: 'dns.adguard.com', installOs: 'Linux' });
+    });
+
+    it('fills a value given, then confirms again', async () => {
+        const session = finished(async () => ({ intent: 'set', fields: { installOs: 'Windows' } }));
+        const replies = await session.answer('muda o computador para windows');
+        expect(replies.map((r) => ('key' in r ? r.key : r.event))).toContain('messages.confirm');
+        expect(session.params().installOs).toBe('Windows');
+    });
+
+    it('stays finished for anything else', async () => {
+        const session = finished(async () => ({ intent: 'other', fields: {} }));
+        expect((await session.answer('oi'))[0]).toMatchObject({ key: 'messages.finished' });
+    });
+});
+
+describe('ChatSession changing the kept configuration offered for reuse (LLM)', () => {
+    const KEPT = {
+        os: 'Android',
+        version: '14',
+        privateDns: false,
+        privateDnsHost: null,
+        allowedApps: ['com.whatsapp'],
+        installOs: 'Linux',
+        appVersion: '1.0.0',
+        blockRawIp: false,
+        blockedTerms: [],
+    };
+    const atReuse = (extract: ExtractFields) => {
+        const session = new ChatSession(undefined, undefined, extract);
+        session.start();
+        session.handle('proceed');
+        session.useSaved(KEPT);
+        session.handle('proceed');
+        return session;
+    };
+
+    it('takes it and asks for the apps, then confirms', async () => {
+        const extract = vi.fn(async (): Promise<Extraction> => ({ intent: 'flow', fields: {}, flow: 'allowedApps' }));
+        const session = atReuse(extract);
+
+        expect(await session.answer('quero alterar apps bloqueados')).toEqual([
+            { event: 'bot_message', key: 'messages.askAllowedApps', sendEnabled: true },
+            { event: 'open_allowed_apps' },
+        ]);
+        expect(extract).toHaveBeenCalledWith('quero alterar apps bloqueados', 'confirm');
+        expect(session.selectAllowedApps(['com.Slack'])[0]).toMatchObject({ key: 'messages.confirm' });
+        expect(session.params()).toMatchObject({ allowedApps: ['com.Slack'], installOs: 'Linux' });
+    });
+
+    it('still takes yes and no without the LLM', async () => {
+        const extract = vi.fn(async (): Promise<Extraction> => ({ intent: 'other', fields: {} }));
+        expect((await atReuse(extract).answer('sim'))[0]).toMatchObject({ key: 'messages.done' });
+        expect((await atReuse(extract).answer('não'))[0]).toMatchObject({ key: 'messages.askOs' });
+        expect(extract).not.toHaveBeenCalled();
+    });
+
+    it('asks again for anything else', async () => {
+        const session = atReuse(async () => ({ intent: 'other', fields: {} }));
+        expect((await session.answer('oi'))[0]).toMatchObject({ key: 'errors.yesNo' });
+    });
+});
+
+describe('ChatSession resetting the extracted params', () => {
+    const atConfirm = () => {
+        const session = new ChatSession();
+        session.start();
+        for (const text of ['proceed', 'proceed', 'android', '14', 'yes', 'dns.adguard.com']) session.handle(text);
+        session.selectAllowedApps(['com.whatsapp']);
+        session.handle('no');
+        session.handle('yes');
+        session.selectBlockedTerms(['bet']);
+        for (const text of ['linux', '1.0']) session.handle(text);
+        return session;
+    };
+    const RESET = {
+        os: null,
+        version: null,
+        privateDns: null,
+        privateDnsHost: null,
+        installOs: null,
+        appVersion: null,
+        blockRawIp: null,
+        allowedApps: ['com.whatsapp'],
+        blockedTerms: ['bet'],
+    };
+
+    it('keeps only the apps and words when the summary is rejected, without asking them again', () => {
+        const session = atConfirm();
+        expect(session.handle('no')[0]).toMatchObject({ key: 'messages.askOs' });
+        expect(session.params()).toEqual(RESET);
+
+        for (const text of ['ios', '17', 'no', 'no', 'mac']) session.handle(text);
+        expect(session.handle('2.0')[0]).toMatchObject({ key: 'messages.confirm' });
+    });
+
+    it('keeps only the apps and words on restarting a finished conversation', () => {
+        const session = atConfirm();
+        session.handle('yes');
+        expect(session.start()[0]).toMatchObject({ key: 'messages.askStart' });
+        expect(session.params()).toEqual(RESET);
+    });
+
+    it('keeps only the apps and words on restarting mid-conversation', () => {
+        const session = atConfirm();
+        session.start();
+        expect(session.params()).toEqual(RESET);
+    });
+});

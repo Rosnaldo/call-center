@@ -1,3 +1,5 @@
+import type { ChatbotParams } from '../chatbot-params/state.ts';
+
 // A button shown under a bot message.
 export type ChatbotMessageAction = 'select_allowed_apps' | 'add_blocked_terms' | 'choice' | 'restart' | 'download_installer';
 
@@ -35,20 +37,6 @@ export interface AppSearchResult {
   iconUrl: string;
 }
 
-// The params collected so far (null until answered), as sent by the chatbot
-// with each reply.
-export interface ChatbotParams {
-  os: string | null;
-  version: string | null;
-  privateDns: boolean | null;
-  privateDnsHost: string | null;
-  allowedApps: string[] | null;
-  installOs: string | null;
-  appVersion: string | null;
-  blockRawIp: boolean | null;
-  blockedTerms: string[] | null;
-}
-
 export interface AppSearchState {
   // Normalized term of the latest search sent; results for other terms are stale.
   term: string;
@@ -82,16 +70,11 @@ export interface ChatbotState {
   // on the steps answered by typing (not buttons/checklist, nor once finished).
   isSendEnabled: boolean;
   appSearch: AppSearchState;
-  // Null until the chatbot sends them; shown in the summary modal.
-  params: ChatbotParams | null;
   isSummaryModalOpen: boolean;
-  // Shown in the summary modal instead of `params`, e.g. the configuration
-  // kept from an earlier conversation; null shows `params`.
+  // Shown in the summary modal instead of the conversation's params (see the
+  // chatbot-params store), e.g. the configuration kept from an earlier
+  // conversation; null shows those.
   summaryParams: ChatbotParams | null;
-  // The params of the last finished conversation, kept in localStorage and
-  // loaded with the store: the summary shows them until the conversation
-  // collects its own, and the forms start with them.
-  savedParams: ChatbotParams | null;
   // Name and icon of the apps seen in searches, so the summary can show the
   // picked ones that aren't popular apps.
   searchedApps: Record<string, AppSearchResult>;
@@ -111,9 +94,7 @@ export const initialChatbotState: ChatbotState = {
   isRestartOffered: false,
   isSendEnabled: false,
   appSearch: initialAppSearch,
-  params: null,
   isSummaryModalOpen: false,
   summaryParams: null,
-  savedParams: null,
   searchedApps: {},
 };

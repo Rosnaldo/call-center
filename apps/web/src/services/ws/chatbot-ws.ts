@@ -1,7 +1,8 @@
 import i18n from 'i18next';
 import { ITransport, TransportFactory, TRANSPORT_OPEN, createWsTransport } from './transport';
-import type { ChatbotStoreInstance } from '../../states/stores';
-import type { AppSearchResult, BotText, ChatbotParams } from '../../states/local/chatbot/state';
+import type { ChatbotParamsStoreInstance, ChatbotStoreInstance } from '../../states/stores';
+import type { AppSearchResult, BotText } from '../../states/local/chatbot/state';
+import type { ChatbotParams } from '../../states/local/chatbot-params/state';
 import properties from '../../properties';
 import authSession from '../../auth/session';
 
@@ -90,6 +91,7 @@ export class ChatbotWs {
 
     constructor(
         private readonly store: ChatbotStoreInstance,
+        private readonly paramsStore: ChatbotParamsStoreInstance,
         private readonly url: string = properties.chatbotWsUrl,
         private readonly factory: TransportFactory = createWsTransport,
         private readonly getToken: () => Promise<string | undefined> = () => authSession.getToken(),
@@ -163,6 +165,7 @@ export class ChatbotWs {
         if (this.ws?.readyState !== TRANSPORT_OPEN) return false;
         const { resetChatbot, setBotTyping } = this.store.getState();
         resetChatbot();
+        this.paramsStore.getState().clearParams();
         setBotTyping(true);
         this.ws.send(JSON.stringify({ event: 'restart' }));
         this.sendSavedParams();
@@ -172,7 +175,7 @@ export class ChatbotWs {
     // The configuration kept from the last finished conversation, which the
     // bot offers to reuse; each socket and restart is a new conversation.
     private sendSavedParams(): void {
-        const params = this.store.getState().savedParams;
+        const params = this.paramsStore.getState().savedParams;
         if (params && this.ws?.readyState === TRANSPORT_OPEN) this.ws.send(JSON.stringify({ event: 'saved_params', params }));
     }
 
@@ -225,6 +228,7 @@ export class ChatbotWs {
             // The server starts a new conversation per socket and greets
             // right away, so any history from a previous socket is stale.
             this.store.getState().resetChatbot();
+            this.paramsStore.getState().clearParams();
             this.sendSavedParams();
         };
 
@@ -241,9 +245,10 @@ export class ChatbotWs {
             }
             // Follows every batch of replies; not a reply itself, so the typing state stays.
             if ('event' in msg && msg.event === 'params') {
-                this.store.getState().setParams(msg.params);
+                const { setParams, setSavedParams } = this.paramsStore.getState();
+                setParams(msg.params);
                 // They follow the finished conversation's offer_restart: keep them for the next one.
-                if (this.store.getState().isRestartOffered) this.store.getState().setSavedParams(msg.params);
+                if (this.store.getState().isRestartOffered) setSavedParams(msg.params);
                 return;
             }
             this.store.getState().setBotTyping(false);

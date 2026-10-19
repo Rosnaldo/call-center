@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ChatbotWs, formatSummary, translateBotText } from '../chatbot-ws.ts';
 import { ITransport, TRANSPORT_OPEN } from '../transport.ts';
-import { useChatbotStore } from '../../../states/stores.ts';
+import { useChatbotParamsStore, useChatbotStore } from '../../../states/stores.ts';
 
 class FakeTransport implements ITransport {
   readyState = TRANSPORT_OPEN;
@@ -29,7 +29,7 @@ describe('ChatbotWs allowed apps', () => {
   beforeEach(() => {
     useChatbotStore.getState().resetChatbot();
     transport = new FakeTransport();
-    ws = new ChatbotWs(useChatbotStore, 'ws://test', () => transport);
+    ws = new ChatbotWs(useChatbotStore, useChatbotParamsStore, 'ws://test', () => transport);
     ws.connect();
   });
 
@@ -96,7 +96,7 @@ describe('ChatbotWs choices', () => {
   beforeEach(() => {
     useChatbotStore.getState().resetChatbot();
     transport = new FakeTransport();
-    ws = new ChatbotWs(useChatbotStore, 'ws://test', () => transport);
+    ws = new ChatbotWs(useChatbotStore, useChatbotParamsStore, 'ws://test', () => transport);
     ws.connect();
   });
 
@@ -194,7 +194,7 @@ describe('ChatbotWs restart', () => {
   beforeEach(() => {
     useChatbotStore.getState().resetChatbot();
     transport = new FakeTransport();
-    ws = new ChatbotWs(useChatbotStore, 'ws://test', () => transport);
+    ws = new ChatbotWs(useChatbotStore, useChatbotParamsStore, 'ws://test', () => transport);
     ws.connect();
   });
 
@@ -236,7 +236,7 @@ describe('ChatbotWs installer', () => {
     useChatbotStore.getState().resetChatbot();
     transport = new FakeTransport();
     token = 'user-token';
-    ws = new ChatbotWs(useChatbotStore, 'ws://test', () => transport, async () => token);
+    ws = new ChatbotWs(useChatbotStore, useChatbotParamsStore, 'ws://test', () => transport, async () => token);
     ws.connect();
   });
 
@@ -292,7 +292,7 @@ describe('ChatbotWs send state', () => {
   beforeEach(() => {
     useChatbotStore.getState().resetChatbot();
     transport = new FakeTransport();
-    new ChatbotWs(useChatbotStore, 'ws://test', () => transport).connect();
+    new ChatbotWs(useChatbotStore, useChatbotParamsStore, 'ws://test', () => transport).connect();
   });
 
   it('starts with sending disabled', () => {
@@ -314,7 +314,7 @@ describe('ChatbotWs params', () => {
   beforeEach(() => {
     useChatbotStore.getState().resetChatbot();
     transport = new FakeTransport();
-    new ChatbotWs(useChatbotStore, 'ws://test', () => transport).connect();
+    new ChatbotWs(useChatbotStore, useChatbotParamsStore, 'ws://test', () => transport).connect();
   });
 
   it('stores the params without touching the typing state', () => {
@@ -334,7 +334,7 @@ describe('ChatbotWs params', () => {
     transport.receive({ event: 'params', params });
 
     const state = useChatbotStore.getState();
-    expect(state.params).toEqual(params);
+    expect(useChatbotParamsStore.getState().params).toEqual(params);
     expect(state.isBotTyping).toBe(true);
     expect(state.messages).toEqual([]);
   });
@@ -347,7 +347,7 @@ describe('ChatbotWs blocked terms', () => {
   beforeEach(() => {
     useChatbotStore.getState().resetChatbot();
     transport = new FakeTransport();
-    ws = new ChatbotWs(useChatbotStore, 'ws://test', () => transport);
+    ws = new ChatbotWs(useChatbotStore, useChatbotParamsStore, 'ws://test', () => transport);
     ws.connect();
   });
 
@@ -399,30 +399,31 @@ describe('ChatbotWs saved params', () => {
 
   beforeEach(() => {
     localStorage.clear();
-    useChatbotStore.setState({ savedParams: null });
+    useChatbotParamsStore.setState({ params: null, savedParams: null });
     useChatbotStore.getState().resetChatbot();
     transport = new FakeTransport();
-    ws = new ChatbotWs(useChatbotStore, 'ws://test', () => transport);
+    ws = new ChatbotWs(useChatbotStore, useChatbotParamsStore, 'ws://test', () => transport);
     ws.connect();
   });
 
   it('keeps the params of a finished conversation, in the store and localStorage', () => {
     transport.receive({ event: 'params', params: { ...PARAMS, appVersion: null } });
-    expect(localStorage.getItem('chatbot.params')).toBeNull();
+    expect(JSON.parse(localStorage.getItem('chatbot.params')!).state).toEqual({ savedParams: null });
 
     transport.receive({ event: 'bot_message', key: 'messages.done', sendEnabled: false });
     transport.receive({ event: 'offer_restart' });
     transport.receive({ event: 'params', params: PARAMS });
 
-    expect(JSON.parse(localStorage.getItem('chatbot.params')!)).toEqual(PARAMS);
-    expect(useChatbotStore.getState().savedParams).toEqual(PARAMS);
+    // Only the kept params are persisted, not the conversation's.
+    expect(JSON.parse(localStorage.getItem('chatbot.params')!).state).toEqual({ savedParams: PARAMS });
+    expect(useChatbotParamsStore.getState().savedParams).toEqual(PARAMS);
     // A new conversation keeps them, to offer them again.
     ws.restart();
-    expect(useChatbotStore.getState().savedParams).toEqual(PARAMS);
+    expect(useChatbotParamsStore.getState().savedParams).toEqual(PARAMS);
   });
 
   it('sends the kept params on connecting and after a restart', () => {
-    useChatbotStore.setState({ savedParams: PARAMS });
+    useChatbotParamsStore.setState({ savedParams: PARAMS });
     transport.onopen?.({} as Event);
     expect(transport.sent).toEqual([{ event: 'saved_params', params: PARAMS }]);
 

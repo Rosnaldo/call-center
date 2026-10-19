@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { BlockedTermsModal } from '../BlockedTermsModal.tsx';
-import { useChatbotStore } from '../../../states/stores.ts';
+import { useChatbotParamsStore, useChatbotStore } from '../../../states/stores.ts';
 
 const open = () => act(() => useChatbotStore.getState().openBlockedTermsModal());
 const typeWord = (word: string) => {
@@ -13,7 +13,7 @@ const typeWord = (word: string) => {
 describe('BlockedTermsModal', () => {
   beforeEach(() =>
     act(() => {
-      useChatbotStore.setState({ savedParams: null });
+      useChatbotParamsStore.setState({ params: null, savedParams: null });
       useChatbotStore.getState().resetChatbot();
     }),
   );
@@ -23,14 +23,14 @@ describe('BlockedTermsModal', () => {
       os: null, version: null, privateDns: null, privateDnsHost: null, allowedApps: null,
       installOs: null, appVersion: null, blockRawIp: null, blockedTerms: null,
     };
-    useChatbotStore.setState({ savedParams: { ...empty, blockedTerms: ['cassino', 'bet'] } });
+    useChatbotParamsStore.setState({ savedParams: { ...empty, blockedTerms: ['cassino', 'bet'] } });
     open();
     const { unmount } = render(<BlockedTermsModal onSubmit={vi.fn(() => true)} />);
     expect(screen.getByText('cassino')).toBeTruthy();
     expect(screen.getByText('bet')).toBeTruthy();
     unmount();
 
-    act(() => useChatbotStore.getState().setParams({ ...empty, blockedTerms: ['poker'] }));
+    act(() => useChatbotParamsStore.getState().setParams({ ...empty, blockedTerms: ['poker'] }));
     render(<BlockedTermsModal onSubmit={vi.fn(() => true)} />);
     expect(screen.getByText('poker')).toBeTruthy();
     expect(screen.queryByText('cassino')).toBeNull();

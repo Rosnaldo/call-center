@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useChatbotStore } from '../../states/stores.ts';
-import type { AppSearchResult, ChatbotParams } from '../../states/local/chatbot/state.ts';
+import { useChatbotParamsStore, useChatbotStore } from '../../states/stores.ts';
+import type { AppSearchResult } from '../../states/local/chatbot/state.ts';
+import type { ChatbotParams } from '../../states/local/chatbot-params/state.ts';
 import { POPULAR_APPS } from './popular-apps.ts';
 import { loadSavedApps } from './saved-allowed-apps.ts';
 
@@ -24,7 +25,9 @@ export const SummaryModal: React.FC = () => {
 const Summary: React.FC = () => {
   const { t } = useTranslation();
   const close = useChatbotStore((s) => s.closeSummaryModal);
-  const params = useChatbotStore((s) => s.summaryParams ?? (hasAny(s.params) ? s.params : (s.savedParams ?? s.params)));
+  const summaryParams = useChatbotStore((s) => s.summaryParams);
+  const conversationParams = useChatbotParamsStore((s) => (hasAny(s.params) ? s.params : (s.savedParams ?? s.params)));
+  const params = summaryParams ?? conversationParams;
   const searchedApps = useChatbotStore((s) => s.searchedApps);
   // Saved picks cover apps searched before a reload.
   const [knownApps] = useState(() => ({
