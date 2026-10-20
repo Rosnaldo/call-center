@@ -41,3 +41,7 @@ yarn-error.log*
 
 error.log
 tmp/
+
+# Let's Encrypt certificates and ACME challenge files (prod nginx).
+letsencrypt/
+certbot/
