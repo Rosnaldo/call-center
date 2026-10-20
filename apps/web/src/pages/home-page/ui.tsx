@@ -10,7 +10,6 @@ import { Header } from '../../components/header/Header.tsx';
 import { Footer } from '../../components/Footer.tsx';
 import { SectionHeader } from '../../components/SectionHeader.tsx';
 import { BrandHero } from '../../components/BrandHero.tsx';
-import { ChatbotHero } from '../../components/chatbot-hero/ChatbotHero.tsx';
 import { useLogout } from '../../hooks/auth/useLogout.ts';
 import { CallLobbyView } from '../../components/call-lobby-view/call-view/CallLobbyView.tsx';
 import { AttendantList } from '../../components/user-list/AttendantList.tsx';
@@ -37,14 +36,6 @@ export const HomePageUI: React.FC = () => {
 
           <SectionHeader
             sectionNumber="01"
-            title={t('chatbot.section')}
-            id="chatbot-section-header"
-          />
-
-          <ChatbotHero />
-
-          <SectionHeader
-            sectionNumber="02"
             title={t('call.lobbySection')}
             id="lobby-section-header"
           />
@@ -52,7 +43,7 @@ export const HomePageUI: React.FC = () => {
           <CallLobbyView />
 
           <SectionHeader
-            sectionNumber="03"
+            sectionNumber="02"
             title={t('call.placeCallSection')}
             id="call-section-header"
           />

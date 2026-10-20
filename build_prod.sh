@@ -1,19 +1,15 @@
 #!/bin/bash
 
-# Builds the prod images (iam, realtime, chatbot, executable) via
+# Builds the prod images (iam, realtime) via
 # docker-compose.prod.yml. Unlike the dev images, the prod Dockerfiles copy a
 # turbo-pruned workspace (apps/<app>/out), so that must be generated first, or
 # `COPY ./apps/<app>/out` fails.
-#
-# The executable image also needs the Android signing key, which compose passes
-# as BuildKit secrets sourced from ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD
-# in the environment (the project .env is loaded automatically).
 set -e
 
 COMPOSE_FILE="docker-compose.prod.yml"
 
 # Apps whose dockerfile.prod copies apps/<app>/out (see dockerfile.prod).
-PRUNE_APPS=(iam realtime chatbot)
+PRUNE_APPS=(iam realtime)
 
 for APP in "${PRUNE_APPS[@]}"; do
   echo "Pruning workspace for $APP..."

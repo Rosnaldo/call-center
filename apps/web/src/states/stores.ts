@@ -3,8 +3,6 @@ import { createAuthStore } from './local/auth/store.ts';
 import { createBillingStore } from './local/billing/store.ts';
 import { createCallStore } from './shared/call/store.ts';
 import { createCallViewStore } from './local/call-view/store.ts';
-import { createChatbotStore } from './local/chatbot/store.ts';
-import { createChatbotParamsStore } from './local/chatbot-params/store.ts';
 import { createChatStore } from './shared/chat/store.ts';
 import { createCurrentUserStore } from './entities/current-user/store.ts';
 import { createDevicesStore } from './local/devices/store.ts';
@@ -18,8 +16,6 @@ export type BillingStoreInstance = ReturnType<typeof createBillingStore>;
 export type CallStoreInstance = ReturnType<typeof createCallStore>;
 export type CallViewStoreInstance = ReturnType<typeof createCallViewStore>;
 export type ChatStoreInstance = ReturnType<typeof createChatStore>;
-export type ChatbotStoreInstance = ReturnType<typeof createChatbotStore>;
-export type ChatbotParamsStoreInstance = ReturnType<typeof createChatbotParamsStore>;
 export type CurrentUserStoreInstance = ReturnType<typeof createCurrentUserStore>;
 export type DevicesStoreInstance = ReturnType<typeof createDevicesStore>;
 export type IncomingCallStoreInstance = ReturnType<typeof createIncomingCallStore>;
@@ -44,8 +40,6 @@ export interface Stores {
     call: CallStoreInstance;
     callView: CallViewStoreInstance;
     chat: ChatStoreInstance;
-    chatbot: ChatbotStoreInstance;
-    chatbotParams: ChatbotParamsStoreInstance;
     currentUser: CurrentUserStoreInstance;
     devices: DevicesStoreInstance;
     incomingCall: IncomingCallStoreInstance;
@@ -59,8 +53,6 @@ export let useBillingStore: BillingStoreInstance;
 export let useCallStore: CallStoreInstance;
 export let useCallViewStore: CallViewStoreInstance;
 export let useChatStore: ChatStoreInstance;
-export let useChatbotStore: ChatbotStoreInstance;
-export let useChatbotParamsStore: ChatbotParamsStoreInstance;
 export let useCurrentUserStore: CurrentUserStoreInstance;
 export let useDevicesStore: DevicesStoreInstance;
 export let useIncomingCallStore: IncomingCallStoreInstance;
@@ -84,8 +76,6 @@ export function createStores(dailyService: IDailyService = noopDailyService): St
         call: createCallStore(dailyService, ref),
         callView: createCallViewStore(),
         chat: createChatStore(ref),
-        chatbot: createChatbotStore(),
-        chatbotParams: createChatbotParamsStore(),
         currentUser: createCurrentUserStore(),
         devices: createDevicesStore(),
         incomingCall: createIncomingCallStore(ref),
@@ -108,8 +98,6 @@ export function createStores(dailyService: IDailyService = noopDailyService): St
     useCallStore = s.call;
     useCallViewStore = s.callView;
     useChatStore = s.chat;
-    useChatbotStore = s.chatbot;
-    useChatbotParamsStore = s.chatbotParams;
     useCurrentUserStore = s.currentUser;
     useDevicesStore = s.devices;
     useIncomingCallStore = s.incomingCall;
