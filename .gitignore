@@ -40,3 +40,4 @@ yarn-error.log*
 *.pem
 
 error.log
+tmp/
