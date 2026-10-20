@@ -590,7 +590,7 @@ describe('ChatSession free text (LLM)', () => {
             OS_CHOICES,
         ]);
         vi.spyOn(console, 'error').mockImplementation(() => {});
-        const failed = atOs(async () => Promise.reject(new Error('ollama down')));
+        const failed = atOs(async () => Promise.reject(new Error('llm down')));
         expect((await failed.answer('tenho um iphone'))[0]).toMatchObject({ key: 'errors.os' });
     });
 

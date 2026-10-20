@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createOllamaExtractor, groundExtraction, stepPrompt, systemPrompt, toExtraction } from './extractor';
+import { describe, expect, it, vi } from 'vitest';
+import type Anthropic from '@anthropic-ai/sdk';
+import { createClaudeExtractor, groundExtraction, stepPrompt, systemPrompt, toExtraction } from './extractor';
 
 describe('toExtraction', () => {
     it('keeps the known fields that were stated when setting params', () => {
@@ -143,63 +144,40 @@ describe('stepPrompt', () => {
     });
 });
 
-describe('createOllamaExtractor', () => {
-    afterEach(() => {
-        vi.unstubAllGlobals();
-        vi.restoreAllMocks();
-    });
+describe('createClaudeExtractor', () => {
+    const clientReplying = (content: unknown[]) => {
+        const create = vi.fn(async () => ({ content }));
+        return { create, client: { messages: { create } } as unknown as Anthropic };
+    };
 
-    it('asks Ollama for the schema-constrained fields and reads its reply', async () => {
-        const fetchMock = vi.fn(async () => new Response(JSON.stringify({ message: { content: '{"intent":"set","os":"Android"}' } })));
-        vi.stubGlobal('fetch', fetchMock);
+    it('asks Claude for the schema-constrained fields and reads its reply', async () => {
+        const { create, client } = clientReplying([{ type: 'text', text: '{"intent":"set","os":"Android"}' }]);
 
-        expect(await createOllamaExtractor('http://llm:11434', 'qwen2.5:3b').extract('meu android', 'askOs')).toEqual({
+        expect(await createClaudeExtractor(client, 'claude-haiku-5-5')('meu android', 'askOs')).toEqual({
             intent: 'set',
             fields: { os: 'Android' },
         });
 
-        const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-        expect(url).toBe('http://llm:11434/api/chat');
-        const body = JSON.parse(String(init.body));
-        expect(body).toMatchObject({ model: 'qwen2.5:3b', stream: false, options: { temperature: 0 } });
-        expect(body.format.properties).toHaveProperty('privateDnsHost');
-        expect(body.format.required).toEqual(['intent']);
-        // The system prompt first, the same at every step, so Ollama reuses it.
-        expect(body.messages).toEqual([
-            { role: 'system', content: systemPrompt },
-            { role: 'system', content: stepPrompt('askOs') },
-            { role: 'user', content: 'meu android' },
+        const [params] = create.mock.calls[0] as unknown as [Anthropic.MessageCreateParamsNonStreaming];
+        expect(params).toMatchObject({ model: 'claude-haiku-5-5', thinking: { type: 'disabled' } });
+        expect(params.output_config?.format?.type).toBe('json_schema');
+        expect(params.output_config?.format?.schema).toMatchObject({ required: ['intent'], additionalProperties: false });
+        // The system prompt first, the same at every step, so it's cached.
+        expect(params.system).toEqual([
+            { type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } },
+            { type: 'text', text: stepPrompt('askOs') },
         ]);
+        expect(params.messages).toEqual([{ role: 'user', content: 'meu android' }]);
     });
 
-    it('fails on an error status', async () => {
-        vi.stubGlobal('fetch', vi.fn(async () => new Response('model not found', { status: 404 })));
-        const fetchMock = vi.fn(async () => new Response('model not found', { status: 404 }));
-        vi.stubGlobal('fetch', fetchMock);
-        vi.spyOn(console, 'error').mockImplementation(() => {});
-        vi.useFakeTimers();
-        await expect(createOllamaExtractor('http://llm:11434', 'x').extract('oi', 'askOs')).rejects.toThrow('404');
-        // Then warms the model up again.
-        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-        vi.useRealTimers();
+    it('reads nothing from a reply without text', async () => {
+        const { client } = clientReplying([]);
+        expect(await createClaudeExtractor(client, 'x')('oi', 'askOs')).toEqual({ intent: 'other', fields: {} });
     });
 
-    it('warms up until Ollama answers, one warm-up at a time', async () => {
-        vi.useFakeTimers();
-        vi.spyOn(console, 'error').mockImplementation(() => {});
-        vi.spyOn(console, 'log').mockImplementation(() => {});
-        const fetchMock = vi
-            .fn()
-            .mockRejectedValueOnce(new Error('ECONNREFUSED'))
-            .mockResolvedValue(new Response(JSON.stringify({ message: { content: '{}' } })));
-        vi.stubGlobal('fetch', fetchMock);
-        const { warmUp } = createOllamaExtractor('http://llm:11434', 'x');
-
-        const first = warmUp();
-        expect(warmUp()).toBe(first);
-        await vi.advanceTimersByTimeAsync(15_000);
-        await first;
-        expect(fetchMock).toHaveBeenCalledTimes(2);
-        vi.useRealTimers();
+    it('fails when the API fails', async () => {
+        const create = vi.fn(async () => Promise.reject(new Error('overloaded')));
+        const client = { messages: { create } } as unknown as Anthropic;
+        await expect(createClaudeExtractor(client, 'x')('oi', 'askOs')).rejects.toThrow('overloaded');
     });
 });

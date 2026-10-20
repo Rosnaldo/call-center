@@ -92,35 +92,6 @@ services:
       retries: 5
       start_period: 10s
 
-  # Local LLM for the chatbot's free-text answers, on the default OLLAMA_URL
-  # (http://127.0.0.1:11434) of a chatbot run outside docker.
-  ollama:
-    image: ollama/ollama:0.34.4
-    restart: no
-    ports:
-      - 11434:11434
-    environment:
-      - OLLAMA_KEEP_ALIVE=-1
-    volumes:
-      - ollama_data:/root/.ollama
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-  # Downloads the chatbot's model (DEFAULT_OLLAMA_MODEL in apps/chatbot/src/extractor.ts).
-  ollama-pull:
-    image: ollama/ollama:0.34.4
-    restart: no
-    environment:
-      - OLLAMA_HOST=ollama:11434
-    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-qwen2.5:3b}"]
-    depends_on:
-      ollama:
-        condition: service_healthy
-
   loki:
     image: grafana/loki:3.6.12
     container_name: loki
@@ -171,5 +142,3 @@ volumes:
     name: call_center_loki_data
   grafana_data:
     name: call_center_grafana_data
-  ollama_data:
-    name: call_center_ollama_data

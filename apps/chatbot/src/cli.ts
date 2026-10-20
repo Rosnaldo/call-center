@@ -66,7 +66,7 @@ async function main(): Promise<void> {
     const session = new ChatSession(
         createInstallerClient(process.env.EXECUTABLE_URL ?? 'http://127.0.0.1:5005', serviceTokenFromEnv()),
         undefined,
-        extractorFromEnv()?.extract,
+        extractorFromEnv(),
     );
     // The terminal has no checklist, so the app list is typed as comma-separated ids.
     let pickingApps = false;

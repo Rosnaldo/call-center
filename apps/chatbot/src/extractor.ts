@@ -1,10 +1,12 @@
+import Anthropic from '@anthropic-ai/sdk';
 import { FILLABLE_FIELDS, FLOW_FIELDS, parseInstallOs, parseOs, type FieldValues, type FlowField, type PromptState } from './params-machine';
 
-// Reads the setup params out of a free-text message with a local LLM served by
-// Ollama. The model only extracts: the values it returns are raw and go
-// through the params machine's parsers (FILL), and the bot's replies stay its
-// fixed i18n messages. Ollama's structured output (`format`) constrains the
-// reply to the JSON schema below, so a small model can't break the format.
+// Reads the setup params out of a free-text message with Claude Haiku, through
+// the Anthropic API. The model only extracts: the values it returns are raw
+// and go through the params machine's parsers (FILL), and the bot's replies
+// stay its fixed i18n messages. Structured output (`output_config.format`)
+// constrains the reply to the JSON schema below, so the model can't break the
+// format.
 
 // What the message is: setting params (answering the bot's question or
 // ordering a change, with the fields it states), asking to change a param
@@ -23,13 +25,14 @@ export type ExtractFields = (text: string, step: PromptState) => Promise<Extract
 
 const INTENTS: Intent[] = ['set', 'flow', 'question', 'other'];
 
-export const DEFAULT_OLLAMA_MODEL = 'qwen2.5:3b';
-// CPU inference of a small model takes seconds; past this the bot falls back
-// to the step's own parser.
-const REQUEST_TIMEOUT_MS = 20_000;
-// Loading the model and reading the system prompt the first time, on CPU.
-const WARM_UP_TIMEOUT_MS = 5 * 60_000;
-const WARM_UP_RETRY_MS = 15_000;
+export const DEFAULT_CLAUDE_MODEL = 'claude-haiku-5-5';
+// A hosted model answers in about a second. The SDK retries once (429, 5xx,
+// network), so a failing call gives up after about twice this, and the bot
+// falls back to the step's own parser.
+const CLAUDE_TIMEOUT_MS = 5_000;
+const CLAUDE_MAX_RETRIES = 1;
+// The reply is a short JSON object.
+const CLAUDE_MAX_TOKENS = 256;
 
 // No enums: an OS the model can't map is returned as written, and the
 // parsers reject it, instead of the model being forced to pick one.
@@ -48,6 +51,8 @@ const SCHEMA = {
         appVersion: { type: 'string' },
     },
     required: ['intent'],
+    // Required by structured outputs.
+    additionalProperties: false,
 };
 
 // The bot's current question, so short answers ("yes", "14") go to its field.
@@ -67,9 +72,8 @@ const QUESTIONS: Partial<Record<PromptState, string>> = {
     confirm: 'whether the summary is correct; any field may be corrected here',
 };
 
-// The same for every step, so Ollama reads it once and reuses it (its prompt
-// cache keeps the longest prefix already read): what changes goes after it,
-// in stepPrompt.
+// The same for every step, so the prompt cache reuses it (it keeps a prefix
+// already read): what changes goes after it, in stepPrompt.
 export const systemPrompt = `You read one chat message, in Portuguese or English, sent to a bot that sets up a phone lockdown installer.
 
 First decide the intent:
@@ -243,66 +247,31 @@ export const groundExtraction = (rawText: string, step: PromptState, extraction:
     return { intent, fields: grounded };
 };
 
-const chat = async (baseUrl: string, model: string, text: string, step: PromptState, timeoutMs: number): Promise<unknown> => {
-    const res = await fetch(`${baseUrl}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+// `client` carries the API key, timeout and retries (see extractorFromEnv).
+export const createClaudeExtractor =
+    (client: Anthropic, model: string): ExtractFields =>
+    async (text, step) => {
+        const response = await client.messages.create({
             model,
-            stream: false,
-            format: SCHEMA,
-            options: { temperature: 0 },
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'system', content: stepPrompt(step) },
-                { role: 'user', content: text },
+            max_tokens: CLAUDE_MAX_TOKENS,
+            // Reading a few fields needs no reasoning; thinking would only add latency.
+            thinking: { type: 'disabled' },
+            output_config: { format: { type: 'json_schema', schema: SCHEMA } },
+            system: [
+                { type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } },
+                { type: 'text', text: stepPrompt(step) },
             ],
-        }),
-        signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!res.ok) throw new Error(`Ollama answered ${res.status}: ${await res.text()}`);
-    const { message } = (await res.json()) as { message?: { content?: string } };
-    return message?.content;
-};
-
-export interface OllamaExtractor {
-    extract: ExtractFields;
-    // Loads the model and has it read the system prompt, so the first user
-    // isn't the one waiting (past REQUEST_TIMEOUT_MS on CPU). Retried until
-    // Ollama answers (it may still be starting); one at a time.
-    warmUp: () => Promise<void>;
-}
-
-export const createOllamaExtractor = (baseUrl: string, model: string): OllamaExtractor => {
-    let warming: Promise<void> | null = null;
-    const warmUp = (): Promise<void> =>
-        (warming ??= (async () => {
-            for (;;) {
-                try {
-                    await chat(baseUrl, model, 'oi', 'askOs', WARM_UP_TIMEOUT_MS);
-                    console.log(`[extract] ${model} warmed up`);
-                    return;
-                } catch (err) {
-                    console.error('[extract] warm-up failed, retrying:', String(err));
-                    await new Promise((resolve) => setTimeout(resolve, WARM_UP_RETRY_MS));
-                }
-            }
-        })().finally(() => (warming = null)));
-    const extract: ExtractFields = async (text, step) => {
-        try {
-            return groundExtraction(text, step, toExtraction(await chat(baseUrl, model, text, step, REQUEST_TIMEOUT_MS)));
-        } catch (err) {
-            // Ollama restarted (model unloaded) or isn't up yet: warm it up again.
-            void warmUp();
-            throw err;
-        }
+            messages: [{ role: 'user', content: text }],
+        });
+        // A refusal or a cut-off reply isn't valid JSON, so it reads as nothing.
+        const reply = response.content.find((block): block is Anthropic.TextBlock => block.type === 'text');
+        return groundExtraction(text, step, toExtraction(reply?.text));
     };
-    return { extract, warmUp };
-};
 
-// OLLAMA_URL set to an empty string turns free text off: answers then go
-// only through each step's parser, as typed or clicked.
-export const extractorFromEnv = (): OllamaExtractor | undefined => {
-    const url = process.env.OLLAMA_URL ?? 'http://127.0.0.1:11434';
-    return url ? createOllamaExtractor(url, process.env.OLLAMA_MODEL || DEFAULT_OLLAMA_MODEL) : undefined;
+// Without ANTHROPIC_API_KEY free text is off: answers then go only through
+// each step's parser, as typed or clicked.
+export const extractorFromEnv = (): ExtractFields | undefined => {
+    if (!process.env.ANTHROPIC_API_KEY) return undefined;
+    const client = new Anthropic({ timeout: CLAUDE_TIMEOUT_MS, maxRetries: CLAUDE_MAX_RETRIES });
+    return createClaudeExtractor(client, process.env.CLAUDE_MODEL || DEFAULT_CLAUDE_MODEL);
 };
